@@ -1,9 +1,9 @@
-// lib/presentation/views/reports/reports_view.dart
+// lib/presentation/views/settings/profile_view.dart
 import 'package:flutter/material.dart';
 import '../../../core/themes/app_colors.dart';
 
-class ReportsView extends StatelessWidget {
-  const ReportsView({super.key});
+class ProfileView extends StatelessWidget {
+  const ProfileView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,13 +24,13 @@ class ReportsView extends StatelessWidget {
               child: const Row(
                 children: [
                   Icon(
-                    Icons.analytics,
-                    color: Colors.red,
+                    Icons.person,
+                    color: Colors.purple,
                     size: 28,
                   ),
                   SizedBox(width: 12),
                   Text(
-                    'Sales Reports',
+                    'Profile Settings',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -47,14 +47,18 @@ class ReportsView extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.analytics,
-                      size: 80,
-                      color: Colors.red,
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.purple,
+                      child: Icon(
+                        Icons.person,
+                        size: 50,
+                        color: Colors.white,
+                      ),
                     ),
                     SizedBox(height: 16),
                     Text(
-                      'Reports Dashboard',
+                      'Waiter Profile',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -63,7 +67,7 @@ class ReportsView extends StatelessWidget {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Daily sales and analytics coming soon',
+                      'Profile settings and preferences',
                       style: TextStyle(
                         fontSize: 16,
                         color: AppColors.textSecondary,

@@ -18,8 +18,13 @@ dependencies:
   # HTTP requests
   http: ^1.2.1
   
-  # Local database
+  # Local database - Added Hive for offline storage
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
   sqflite: ^2.3.3+1
+  
+  # Connectivity check
+  connectivity_plus: ^5.0.2
   
   # Navigation
   go_router: ^14.2.0
@@ -47,17 +52,13 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  # Hive code generation
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.7
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/images/
-    # REMOVED FONT ASSETS THAT DON'T EXIST
     - assets/images/logo/wizard_logo.png
-
-  # REMOVED CUSTOM FONTS - Using system fonts instead
-  # fonts:
-  #   - family: Roboto
-  #     fonts:
-  #       - asset: assets/fonts/Roboto/Roboto-Regular.ttf

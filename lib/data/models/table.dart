@@ -1,4 +1,10 @@
-enum TableStatus { available, occupied, reserved, cleaning }
+enum TableStatus { 
+  available, 
+  occupied, 
+  reserved,
+  // cleaning
+  // Removed: cleaning
+}
 
 class RestaurantTable {
   final String id;

@@ -1,3 +1,4 @@
+// lib/shared/widgets/layout/location_header.dart
 import 'package:flutter/material.dart';
 import '../../../core/themes/app_colors.dart';
 import '../../../data/models/table.dart';
@@ -27,7 +28,7 @@ class LocationHeader extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12), // ✅ REDUCED from 16
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -36,28 +37,28 @@ class LocationHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(locationData.icon, color: locationData.color, size: 24),
-          const SizedBox(width: 12),
+          Icon(locationData.icon, color: locationData.color, size: 20), // ✅ REDUCED from 24
+          const SizedBox(width: 8), // ✅ REDUCED from 12
           Text(
             selectedLocation,
             style: const TextStyle(
-              fontSize: 20,
+              fontSize: 18, // ✅ REDUCED from 20
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
           ),
           const Spacer(),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), // ✅ REDUCED from 12,6
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14), // ✅ REDUCED from 16
             ),
             child: Text(
               '$occupiedCount/$totalCount Occupied',
               style: const TextStyle(
                 color: AppColors.primary,
-                fontSize: 12,
+                fontSize: 11, // ✅ REDUCED from 12
                 fontWeight: FontWeight.w500,
               ),
             ),

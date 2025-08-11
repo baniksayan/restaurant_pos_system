@@ -1,9 +1,9 @@
-// lib/presentation/views/reports/reports_view.dart
+// lib/presentation/views/order_taking/cart_view.dart
 import 'package:flutter/material.dart';
 import '../../../core/themes/app_colors.dart';
 
-class ReportsView extends StatelessWidget {
-  const ReportsView({super.key});
+class CartView extends StatelessWidget {
+  const CartView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +12,7 @@ class ReportsView extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // Custom header
+            // Custom header instead of AppBar
             Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
@@ -24,13 +24,13 @@ class ReportsView extends StatelessWidget {
               child: const Row(
                 children: [
                   Icon(
-                    Icons.analytics,
-                    color: Colors.red,
+                    Icons.shopping_cart,
+                    color: Colors.green,
                     size: 28,
                   ),
                   SizedBox(width: 12),
                   Text(
-                    'Sales Reports',
+                    'Cart Management',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -48,13 +48,13 @@ class ReportsView extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      Icons.analytics,
+                      Icons.shopping_cart_outlined,
                       size: 80,
-                      color: Colors.red,
+                      color: Colors.green,
                     ),
                     SizedBox(height: 16),
                     Text(
-                      'Reports Dashboard',
+                      'Your Cart is Empty',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -63,7 +63,7 @@ class ReportsView extends StatelessWidget {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Daily sales and analytics coming soon',
+                      'Order items will appear here',
                       style: TextStyle(
                         fontSize: 16,
                         color: AppColors.textSecondary,

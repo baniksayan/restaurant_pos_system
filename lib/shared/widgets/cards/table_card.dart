@@ -71,12 +71,12 @@ class TableCard extends StatelessWidget {
           borderColor: AppColors.tableReserved,
           statusText: 'Reserved',
         );
-      case TableStatus.cleaning:
-        return TableCardData(
-          backgroundColor: AppColors.tableCleaning.withValues(alpha: 0.1),
-          borderColor: AppColors.tableCleaning,
-          statusText: 'Cleaning',
-        );
+      // case TableStatus.cleaning:
+      //   return TableCardData(
+      //     backgroundColor: AppColors.tableCleaning.withValues(alpha: 0.1),
+      //     borderColor: AppColors.tableCleaning,
+      //     statusText: 'Cleaning',
+      //   ); // Removed cleaning case
     }
   }
 
