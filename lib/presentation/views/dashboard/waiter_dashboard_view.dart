@@ -10,13 +10,17 @@ import '../../../data/models/table.dart';
 import '../../../data/local/models/table_model.dart';
 import '../auth/login_view.dart';
 import '../table_management/table_detail_view.dart';
-// import '../menu/menu_view.dart'; // Add this import for menu navigation
 import '../../../shared/widgets/drawers/location_drawer.dart';
 import '../../../shared/widgets/layout/location_header.dart';
 import '../../../services/sync_service.dart';
 
 class WaiterDashboardView extends StatefulWidget {
-  const WaiterDashboardView({super.key});
+  final Function(String tableId, String tableName)? onTableSelected; // Added callback
+
+  const WaiterDashboardView({
+    super.key,
+    this.onTableSelected, // Added parameter
+  });
 
   @override
   State<WaiterDashboardView> createState() => _WaiterDashboardViewState();
@@ -403,7 +407,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     }
   }
 
-  // ✅ UPDATED TABLE CLICK HANDLER
+  // Updated table click handler with callback support
   void _handleTableClick(RestaurantTable table, TableProvider tableProvider) {
     if (table.status == TableStatus.available) {
       // For available tables, show occupy/reserve options first
@@ -421,8 +425,12 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
               onPressed: () {
                 Navigator.pop(context);
                 tableProvider.updateTableStatus(table.id, 'occupied');
-                // After occupying, navigate to menu
-                _navigateToMenuForTable(table);
+                // Use callback if provided, otherwise navigate directly
+                if (widget.onTableSelected != null) {
+                  widget.onTableSelected!(table.id, table.name);
+                } else {
+                  _navigateToMenuForTable(table);
+                }
               },
               child: const Text('Occupy & Order'),
             ),
@@ -438,27 +446,27 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
         ),
       );
     } else if (table.status == TableStatus.occupied || table.status == TableStatus.reserved) {
-      // For occupied/reserved tables, directly go to menu
-      _navigateToMenuForTable(table);
+      // For occupied/reserved tables, use callback if provided, otherwise navigate directly
+      if (widget.onTableSelected != null) {
+        widget.onTableSelected!(table.id, table.name);
+      } else {
+        _navigateToMenuForTable(table);
+      }
     }
   }
 
-  // lib/presentation/views/dashboard/waiter_dashboard_view.dart
-// Update the _navigateToMenuForTable method (around line 454):
-
-void _navigateToMenuForTable(RestaurantTable table) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => MenuView(
-        selectedTableId: table.id,
-        tableName: table.name,
-        // Remove this line - tableCapacity parameter doesn't exist:
-        // tableCapacity: table.capacity,
+  // Keep this method for backward compatibility when no callback is provided
+  void _navigateToMenuForTable(RestaurantTable table) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MenuView(
+          selectedTableId: table.id,
+          tableName: table.name,
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   void _handleLocationChange(String location) {
     if (mounted) {

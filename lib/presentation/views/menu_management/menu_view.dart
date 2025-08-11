@@ -6,11 +6,13 @@ import '../../../data/models/menu_item.dart';
 class MenuView extends StatefulWidget {
   final String? selectedTableId; // null = view-only, non-null = can order
   final String? tableName;
+  final Function(String itemId, String itemName, double price, Offset position)? onAddToCart;
   
   const MenuView({
     super.key,
     this.selectedTableId,
     this.tableName,
+    this.onAddToCart,
   });
 
   @override
@@ -27,95 +29,95 @@ class _MenuViewState extends State<MenuView> {
   // Sample menu items (will come from API later)
   final List<MenuItemModel> _menuItems = [
     MenuItemModel(
-  id: '1',
-  name: 'Chicken Roll',
-  price: 120,
-  category: 'Starters',
-  isVeg: false,
-  imageUrl: 'https://butfirstchai.com/wp-content/uploads/2023/09/musakhan-rolls-sumac-chicken-recipe.jpg',
-  description: 'Spicy chicken wrapped in soft bread',
-),
-MenuItemModel(
-  id: '2', 
-  name: 'Paneer Tikka',
-  price: 180,
-  category: 'Starters',
-  isVeg: true,
-  imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJ2WY2YmIJtXrpmDToEHwJIOAcyBefjpFwXg&s',
-  description: 'Grilled cottage cheese with spices',
-),
-MenuItemModel(
-  id: '3',
-  name: 'Chili Paneer',
-  price: 160,
-  category: 'Main Course',
-  isVeg: true,
-  imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRyPmolFdbsSAAg4mZENnvph9hkhKoCJNj9EA&s',
-  description: 'Indo-Chinese style paneer',
-),
-MenuItemModel(
-  id: '4',
-  name: 'Butter Chicken',
-  price: 280,
-  category: 'Main Course',
-  isVeg: false,
-  imageUrl: 'https://www.indianhealthyrecipes.com/wp-content/uploads/2023/04/butter-chicken-recipe.jpg',
-  description: 'Creamy tomato-based chicken curry',
-),
-MenuItemModel(
-  id: '5',
-  name: 'Chicken Biryani',
-  price: 320,
-  category: 'Main Course',
-  isVeg: false,
-  imageUrl: 'https://www.licious.in/blog/wp-content/uploads/2022/06/chicken-hyderabadi-biryani-01.jpg',
-  description: 'Aromatic basmati rice with spiced chicken',
-),
-MenuItemModel(
-  id: '6',
-  name: 'Palak Paneer',
-  price: 220,
-  category: 'Desserts',
-  isVeg: true,
-  imageUrl: 'https://www.munatycooking.com/wp-content/uploads/2022/09/palak-paneer-feature-1200-x-1200.jpg',
-  description: 'Cottage cheese in spinach gravy',
-),
-MenuItemModel(
-  id: '7',
-  name: 'Fish Curry',
-  price: 260,
-  category: 'Main Course',
-  isVeg: false,
-  imageUrl: 'https://stewwithsaba.com/wp-content/uploads/2024/05/IMG_4409-edited.jpg',
-  description: 'Traditional spiced fish curry',
-),
-MenuItemModel(
-  id: '8',
-  name: 'Dal Makhani',
-  price: 180,
-  category: 'Beverages',
-  isVeg: true,
-  imageUrl: 'https://www.sharmispassions.com/wp-content/uploads/2012/05/dal-makhani7.jpg',
-  description: 'Creamy black lentil curry',
-),
-MenuItemModel(
-  id: '9',
-  name: 'Mutton Curry',
-  price: 350,
-  category: 'Main Course',
-  isVeg: false,
-  imageUrl: 'https://www.licious.in/blog/wp-content/uploads/2023/02/shutterstock_2205168763-750x508.jpg',
-  description: 'Tender mutton in rich spiced gravy',
-),
-MenuItemModel(
-  id: '10',
-  name: 'Veg Pulao',
-  price: 150,
-  category: 'Main Course',
-  isVeg: true,
-  imageUrl: 'https://www.sharmispassions.com/wp-content/uploads/2014/07/VegPulao1.jpg',
-  description: 'Fragrant rice with mixed vegetables',
-),
+      id: '1',
+      name: 'Chicken Roll',
+      price: 120,
+      category: 'Starters',
+      isVeg: false,
+      imageUrl: 'https://butfirstchai.com/wp-content/uploads/2023/09/musakhan-rolls-sumac-chicken-recipe.jpg',
+      description: 'Spicy chicken wrapped in soft bread',
+    ),
+    MenuItemModel(
+      id: '2', 
+      name: 'Paneer Tikka',
+      price: 180,
+      category: 'Starters',
+      isVeg: true,
+      imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJ2WY2YmIJtXrpmDToEHwJIOAcyBefjpFwXg&s',
+      description: 'Grilled cottage cheese with spices',
+    ),
+    MenuItemModel(
+      id: '3',
+      name: 'Chili Paneer',
+      price: 160,
+      category: 'Main Course',
+      isVeg: true,
+      imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRyPmolFdbsSAAg4mZENnvph9hkhKoCJNj9EA&s',
+      description: 'Indo-Chinese style paneer',
+    ),
+    MenuItemModel(
+      id: '4',
+      name: 'Butter Chicken',
+      price: 280,
+      category: 'Main Course',
+      isVeg: false,
+      imageUrl: 'https://www.indianhealthyrecipes.com/wp-content/uploads/2023/04/butter-chicken-recipe.jpg',
+      description: 'Creamy tomato-based chicken curry',
+    ),
+    MenuItemModel(
+      id: '5',
+      name: 'Chicken Biryani',
+      price: 320,
+      category: 'Main Course',
+      isVeg: false,
+      imageUrl: 'https://www.licious.in/blog/wp-content/uploads/2022/06/chicken-hyderabadi-biryani-01.jpg',
+      description: 'Aromatic basmati rice with spiced chicken',
+    ),
+    MenuItemModel(
+      id: '6',
+      name: 'Palak Paneer',
+      price: 220,
+      category: 'Main Course',
+      isVeg: true,
+      imageUrl: 'https://www.munatycooking.com/wp-content/uploads/2022/09/palak-paneer-feature-1200-x-1200.jpg',
+      description: 'Cottage cheese in spinach gravy',
+    ),
+    MenuItemModel(
+      id: '7',
+      name: 'Fish Curry',
+      price: 260,
+      category: 'Main Course',
+      isVeg: false,
+      imageUrl: 'https://stewwithsaba.com/wp-content/uploads/2024/05/IMG_4409-edited.jpg',
+      description: 'Traditional spiced fish curry',
+    ),
+    MenuItemModel(
+      id: '8',
+      name: 'Dal Makhani',
+      price: 180,
+      category: 'Main Course',
+      isVeg: true,
+      imageUrl: 'https://www.sharmispassions.com/wp-content/uploads/2012/05/dal-makhani7.jpg',
+      description: 'Creamy black lentil curry',
+    ),
+    MenuItemModel(
+      id: '9',
+      name: 'Mutton Curry',
+      price: 350,
+      category: 'Main Course',
+      isVeg: false,
+      imageUrl: 'https://www.licious.in/blog/wp-content/uploads/2023/02/shutterstock_2205168763-750x508.jpg',
+      description: 'Tender mutton in rich spiced gravy',
+    ),
+    MenuItemModel(
+      id: '10',
+      name: 'Veg Pulao',
+      price: 150,
+      category: 'Main Course',
+      isVeg: true,
+      imageUrl: 'https://www.sharmispassions.com/wp-content/uploads/2014/07/VegPulao1.jpg',
+      description: 'Fragrant rice with mixed vegetables',
+    ),
   ];
 
   @override
@@ -150,6 +152,7 @@ MenuItemModel(
         children: [
           const Icon(Icons.restaurant_menu, color: Colors.orange, size: 28),
           const SizedBox(width: 12),
+          
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,6 +176,8 @@ MenuItemModel(
               ],
             ),
           ),
+          
+          // Status indicator
           if (canOrder) ...[
             IconButton(
               onPressed: _printKOT,
@@ -186,7 +191,7 @@ MenuItemModel(
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Text(
-                'CAN ORDER',
+                'ORDERING',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
@@ -297,201 +302,208 @@ MenuItemModel(
   }
 
   Widget _buildMenuItemCard(MenuItemModel item, bool canOrder) {
-  final quantity = _cart[item.id] ?? 0;
-  
-  return Container(
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.grey.withOpacity(0.1),
-          blurRadius: 10,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Image with veg/non-veg indicator
-        Expanded(
-          flex: 3,
-          child: Stack(
-            children: [
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                ),
-                child: item.imageUrl != null
-                    ? ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(16),
-                          topRight: Radius.circular(16),
-                        ),
-                        child: Image.network(
-                          item.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => 
-                              const Icon(Icons.restaurant, size: 40, color: Colors.grey),
-                        ),
-                      )
-                    : const Icon(Icons.restaurant, size: 40, color: Colors.grey),
-              ),
-              
-              // Veg/Non-Veg indicator
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(4),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                  child: Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: item.isVeg ? Colors.green : Colors.red,
-                      shape: item.isVeg ? BoxShape.rectangle : BoxShape.circle,
-                      borderRadius: item.isVeg ? BorderRadius.circular(2) : null,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+    final quantity = _cart[item.id] ?? 0;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-        ),
-        
-        // Item details with reduced padding
-        Expanded(
-          flex: 2,
-          child: Padding(
-            padding: const EdgeInsets.all(8), // REDUCED from 12 to 8
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min, // ADDED to minimize space
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image with veg/non-veg indicator
+          Expanded(
+            flex: 3,
+            child: Stack(
               children: [
-                Text(
-                  item.name,
-                  style: const TextStyle(
-                    fontSize: 14, // REDUCED from 16 to 14
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  child: item.imageUrl != null
+                      ? ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            topRight: Radius.circular(16),
+                          ),
+                          child: Image.network(
+                            item.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => 
+                                const Icon(Icons.restaurant, size: 40, color: Colors.grey),
+                          ),
+                        )
+                      : const Icon(Icons.restaurant, size: 40, color: Colors.grey),
                 ),
                 
-                const SizedBox(height: 2), // REDUCED from 4 to 2
-                
-                Flexible( // CHANGED from fixed height to Flexible
-                  child: Text(
-                    item.description ?? '',
-                    style: const TextStyle(
-                      fontSize: 11, // REDUCED from 12 to 11
-                      color: AppColors.textSecondary,
+                // Veg/Non-Veg indicator
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
-                    maxLines: 2,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: item.isVeg ? Colors.green : Colors.red,
+                        shape: item.isVeg ? BoxShape.rectangle : BoxShape.circle,
+                        borderRadius: item.isVeg ? BorderRadius.circular(2) : null,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Item details with reduced padding
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    item.name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                
-                const SizedBox(height: 4), // REDUCED from 8 to 4
-                
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '₹${item.price.toInt()}', // Remove decimal places
+                  
+                  const SizedBox(height: 2),
+                  
+                  Flexible(
+                    child: Text(
+                      item.description ?? '',
                       style: const TextStyle(
-                        fontSize: 16, // REDUCED from 18 to 16
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    
-                    if (canOrder)
-                      quantity == 0
-                          ? GestureDetector(
-                              onTap: () => _addToCart(item.id),
-                              child: Container(
-                                padding: const EdgeInsets.all(6), // REDUCED from 8 to 6
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(6), // REDUCED from 8 to 6
-                                ),
-                                child: const Icon(
-                                  Icons.add,
-                                  color: Colors.white,
-                                  size: 14, // REDUCED from 16 to 14
-                                ),
-                              ),
-                            )
-                          : Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  GestureDetector(
-                                    onTap: () => _removeFromCart(item.id),
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(6),
-                                      child: Icon(
-                                        Icons.remove,
-                                        color: Colors.white,
-                                        size: 14,
+                  ),
+                  
+                  const SizedBox(height: 4),
+                  
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '₹${item.price.toInt()}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      
+                      if (canOrder)
+                        quantity == 0
+                            ? Builder(
+                                builder: (context) {
+                                  return GestureDetector(
+                                    onTap: () => _addToCartWithAnimation(context, item),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary,
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
-                                    ),
-                                  ),
-                                  Text(
-                                    quantity.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12, // ADDED font size
-                                    ),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () => _addToCart(item.id),
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(6),
-                                      child: Icon(
+                                      child: const Icon(
                                         Icons.add,
                                         color: Colors.white,
                                         size: 14,
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  );
+                                },
+                              )
+                            : Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => _removeFromCart(item.id),
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(6),
+                                        child: Icon(
+                                          Icons.remove,
+                                          color: Colors.white,
+                                          size: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      quantity.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Builder(
+                                      builder: (context) {
+                                        return GestureDetector(
+                                          onTap: () => _addToCartWithAnimation(context, item),
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(6),
+                                            child: Icon(
+                                              Icons.add,
+                                              color: Colors.white,
+                                              size: 14,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
-
+        ],
+      ),
+    );
+  }
 
   Widget _buildCartFooter() {
     final totalItems = _cart.values.fold(0, (sum, qty) => sum + qty);
@@ -559,9 +571,20 @@ MenuItemModel(
     return filtered;
   }
 
-  void _addToCart(String itemId) {
+  // 🎯 MERGED: Animation-enabled add to cart method
+  void _addToCartWithAnimation(BuildContext context, MenuItemModel item) {
+    // Get button position for animation
+    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox != null) {
+      final buttonPosition = renderBox.localToGlobal(Offset.zero);
+      
+      // Trigger animation callback if provided
+      widget.onAddToCart?.call(item.id, item.name, item.price, buttonPosition);
+    }
+    
+    // Add to local cart
     setState(() {
-      _cart[itemId] = (_cart[itemId] ?? 0) + 1;
+      _cart[item.id] = (_cart[item.id] ?? 0) + 1;
     });
   }
 
@@ -587,13 +610,17 @@ MenuItemModel(
   }
 
   void _placeOrder() {
-    // Implement order placement
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Order placed for ${widget.tableName}!'),
         backgroundColor: Colors.green,
       ),
     );
+    
+    // Clear cart after placing order
+    setState(() {
+      _cart.clear();
+    });
   }
 
   void _printKOT() {

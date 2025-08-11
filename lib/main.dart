@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:restaurant_pos_system/presentation/view_models/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/presentation/views/main_navigation.dart';
 import 'app/app.dart';
 import 'core/themes/app_theme.dart';
@@ -35,6 +36,7 @@ class RestaurantPOSApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MenuProvider()),
         ChangeNotifierProvider(create: (_) => TableProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => AnimatedCartProvider()),
       ],
       child: MaterialApp(
         title: 'WiZARD Restaurant POS',
