@@ -1,5 +1,6 @@
 // lib/presentation/views/dashboard/waiter_dashboard_view.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // 👈 ADD this import for SystemUiOverlayStyle
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/presentation/views/menu_management/menu_view.dart';
 import '../../../core/themes/app_colors.dart';
@@ -15,11 +16,11 @@ import '../../../shared/widgets/layout/location_header.dart';
 import '../../../services/sync_service.dart';
 
 class WaiterDashboardView extends StatefulWidget {
-  final Function(String tableId, String tableName)? onTableSelected; // Added callback
+  final Function(String tableId, String tableName)? onTableSelected;
 
   const WaiterDashboardView({
     super.key,
-    this.onTableSelected, // Added parameter
+    this.onTableSelected,
   });
 
   @override
@@ -52,66 +53,76 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
 
-    return Consumer<TableProvider>(
-      builder: (context, tableProvider, child) {
-        if (tableProvider.isLoading) {
-          return _buildLoadingState();
-        }
+    // 👈 APPLIED: AnnotatedRegion wrapper with status bar fix
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark, // Dark icons on light background
+        statusBarBrightness: Brightness.light,    // For iOS compatibility
+        systemNavigationBarColor: Colors.white,   // Bottom nav bar color
+        systemNavigationBarIconBrightness: Brightness.dark, // Bottom nav icons
+      ),
+      child: Consumer<TableProvider>(
+        builder: (context, tableProvider, child) {
+          if (tableProvider.isLoading) {
+            return _buildLoadingState();
+          }
 
-        if (tableProvider.error != null) {
-          return _buildErrorState(tableProvider);
-        }
+          if (tableProvider.error != null) {
+            return _buildErrorState(tableProvider);
+          }
 
-        final hiveTables = tableProvider.getTablesForLocation(_selectedLocation);
-        final tables = _convertHiveTablesToRestaurantTables(hiveTables);
+          final hiveTables = tableProvider.getTablesForLocation(_selectedLocation);
+          final tables = _convertHiveTablesToRestaurantTables(hiveTables);
 
-        return Scaffold(
-          key: _scaffoldKey,
-          backgroundColor: Colors.grey[50],
-          
-          drawer: LocationDrawer(
-            locations: _locations,
-            selectedLocation: _selectedLocation,
-            onLocationChanged: _handleLocationChange,
-          ),
+          return Scaffold(
+            key: _scaffoldKey,
+            backgroundColor: Colors.grey[50],
+            
+            drawer: LocationDrawer(
+              locations: _locations,
+              selectedLocation: _selectedLocation,
+              onLocationChanged: _handleLocationChange,
+            ),
 
-          body: Container(
-            color: Colors.grey[50],
-            child: Column(
-              children: [
-                _buildOptimizedHeader(),
-                LocationHeader(
-                  selectedLocation: _selectedLocation,
-                  locations: _locations,
-                  tables: tables,
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: GridView.builder(
-                      padding: EdgeInsets.zero,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: isMobile ? 2 : 3,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: isMobile ? 1.0 : 1.05,
+            body: Container(
+              color: Colors.grey[50],
+              child: Column(
+                children: [
+                  _buildOptimizedHeader(),
+                  LocationHeader(
+                    selectedLocation: _selectedLocation,
+                    locations: _locations,
+                    tables: tables,
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: GridView.builder(
+                        padding: EdgeInsets.zero,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: isMobile ? 2 : 3,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: isMobile ? 1.0 : 1.05,
+                        ),
+                        itemCount: tables.length,
+                        itemBuilder: (context, index) {
+                          final table = tables[index];
+                          return FadeInAnimation(
+                            delay: Duration(milliseconds: 50 * index),
+                            child: _buildOptimizedTableCard(table, tableProvider),
+                          );
+                        },
                       ),
-                      itemCount: tables.length,
-                      itemBuilder: (context, index) {
-                        final table = tables[index];
-                        return FadeInAnimation(
-                          delay: Duration(milliseconds: 50 * index),
-                          child: _buildOptimizedTableCard(table, tableProvider),
-                        );
-                      },
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -407,10 +418,8 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     }
   }
 
-  // Updated table click handler with callback support
   void _handleTableClick(RestaurantTable table, TableProvider tableProvider) {
     if (table.status == TableStatus.available) {
-      // For available tables, show occupy/reserve options first
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -425,7 +434,6 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
               onPressed: () {
                 Navigator.pop(context);
                 tableProvider.updateTableStatus(table.id, 'occupied');
-                // Use callback if provided, otherwise navigate directly
                 if (widget.onTableSelected != null) {
                   widget.onTableSelected!(table.id, table.name);
                 } else {
@@ -446,7 +454,6 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
         ),
       );
     } else if (table.status == TableStatus.occupied || table.status == TableStatus.reserved) {
-      // For occupied/reserved tables, use callback if provided, otherwise navigate directly
       if (widget.onTableSelected != null) {
         widget.onTableSelected!(table.id, table.name);
       } else {
@@ -455,7 +462,6 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     }
   }
 
-  // Keep this method for backward compatibility when no callback is provided
   void _navigateToMenuForTable(RestaurantTable table) {
     Navigator.push(
       context,

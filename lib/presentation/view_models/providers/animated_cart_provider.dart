@@ -1,4 +1,3 @@
-// lib/presentation/view_models/providers/animated_cart_provider.dart
 import 'package:flutter/material.dart';
 
 class AnimatedCartProvider extends ChangeNotifier {
@@ -9,9 +8,14 @@ class AnimatedCartProvider extends ChangeNotifier {
   int get totalItems => _totalItems;
   double get totalAmount => _cartItems.values.fold(0, (sum, item) => sum + (item.price * item.quantity));
   
-  void addItem(String itemId, String name, double price, String tableId, String tableName) {
+  // 👈 UPDATED: Add specialNotes parameter to fix the error
+  void addItem(String itemId, String name, double price, String tableId, String tableName, {String? specialNotes}) {
     if (_cartItems.containsKey(itemId)) {
       _cartItems[itemId]!.quantity++;
+      // Update special notes if provided
+      if (specialNotes != null && specialNotes.isNotEmpty) {
+        _cartItems[itemId]!.specialNotes = specialNotes;
+      }
     } else {
       _cartItems[itemId] = CartItem(
         id: itemId,
@@ -20,6 +24,7 @@ class AnimatedCartProvider extends ChangeNotifier {
         quantity: 1,
         tableId: tableId,
         tableName: tableName,
+        specialNotes: specialNotes,
       );
     }
     _updateTotalItems();
@@ -37,6 +42,14 @@ class AnimatedCartProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // Add method to update special notes
+  void updateItemNotes(String itemId, String notes) {
+    if (_cartItems.containsKey(itemId)) {
+      _cartItems[itemId]!.specialNotes = notes;
+      notifyListeners();
+    }
+  }
   
   void _updateTotalItems() {
     _totalItems = _cartItems.values.fold(0, (sum, item) => sum + item.quantity);
@@ -49,6 +62,7 @@ class AnimatedCartProvider extends ChangeNotifier {
   }
 }
 
+// Updated CartItem class with specialNotes
 class CartItem {
   String id;
   String name;
@@ -56,6 +70,7 @@ class CartItem {
   int quantity;
   String tableId;
   String tableName;
+  String? specialNotes; // 👈 ADD this field
   
   CartItem({
     required this.id,
@@ -64,5 +79,6 @@ class CartItem {
     required this.quantity,
     required this.tableId,
     required this.tableName,
+    this.specialNotes, // 👈 ADD this parameter
   });
 }

@@ -1,5 +1,6 @@
 // lib/presentation/views/main_navigation.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dashboard/waiter_dashboard_view.dart';
 import 'menu_management/menu_view.dart';
@@ -22,7 +23,6 @@ class _MainNavigationState extends State<MainNavigation> {
   String? _selectedTableId;
   String? _selectedTableName;
   
-  // ✅ FIXED: Removed underscore from CartAnimationOverlayState
   final GlobalKey<CartAnimationOverlayState> _overlayKey = GlobalKey();
 
   final List<NavigationItem> _navigationItems = [
@@ -35,34 +35,42 @@ class _MainNavigationState extends State<MainNavigation> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: CartAnimationOverlay(
-        key: _overlayKey,
-        child: IndexedStack(
-          index: _currentIndex,
-          children: [
-            WaiterDashboardView(
-              onTableSelected: (tableId, tableName) {
-                _selectTableAndGoToMenu(tableId, tableName);
-              },
-            ),
-            MenuView(
-              selectedTableId: _selectedTableId,
-              tableName: _selectedTableName,
-              onAddToCart: _handleAddToCart,
-            ),
-            const CartView(),
-            const ProfileView(),
-            const ReportsView(),
-          ],
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      child: Scaffold(
+        body: CartAnimationOverlay(
+          key: _overlayKey,
+          child: IndexedStack(
+            index: _currentIndex,
+            children: [
+              WaiterDashboardView(
+                onTableSelected: (tableId, tableName) {
+                  _selectTableAndGoToMenu(tableId, tableName);
+                },
+              ),
+              MenuView(
+                selectedTableId: _selectedTableId,
+                tableName: _selectedTableName,
+                onAddToCart: _handleAddToCart,
+              ),
+              const CartView(),
+              const ProfileView(),
+              const ReportsView(),
+            ],
+          ),
+        ),
+        bottomNavigationBar: _buildBottomNavigationBar(),
+      ),
     );
   }
 
   void _handleAddToCart(String itemId, String itemName, double price, Offset buttonPosition) {
-    // Create flying item
     final flyingItem = Container(
       width: 50,
       height: 50,
@@ -80,12 +88,10 @@ class _MainNavigationState extends State<MainNavigation> {
       child: const Icon(Icons.restaurant, color: Colors.white, size: 25),
     );
 
-    // Start animation
     _overlayKey.currentState?.animateToCart(
       item: flyingItem,
       startPosition: buttonPosition,
       onComplete: () {
-        // Add to cart after animation completes
         Provider.of<AnimatedCartProvider>(context, listen: false).addItem(
           itemId,
           itemName,
@@ -94,7 +100,6 @@ class _MainNavigationState extends State<MainNavigation> {
           _selectedTableName ?? '',
         );
         
-        // Show success feedback
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('$itemName added to cart!'),
@@ -148,6 +153,7 @@ class _MainNavigationState extends State<MainNavigation> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Stack(
+                                clipBehavior: Clip.none, // 👈 Allow badge to overflow
                                 children: [
                                   Icon(
                                     _navigationItems[index].icon,
@@ -156,27 +162,40 @@ class _MainNavigationState extends State<MainNavigation> {
                                         ? Colors.transparent 
                                         : Colors.grey[600],
                                   ),
-                                  // Cart badge
-                                  if (index == 2 && cartProvider.totalItems > 0)
+                                  // 🎨 IMPROVED Cart Badge Design
+                                  if (index == 2 && cartProvider.totalItems > 0 && _currentIndex != 2) // Hide when cart tab is active
                                     Positioned(
-                                      right: -6,
-                                      top: -6,
+                                      right: -8, // 👈 Move further right
+                                      top: -8,   // 👈 Move further up
                                       child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient( // 👈 Beautiful gradient instead of flat red
+                                            colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFFFF6B6B).withOpacity(0.4),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                          border: Border.all(color: Colors.white, width: 2), // 👈 White border for contrast
                                         ),
                                         constraints: const BoxConstraints(
-                                          minWidth: 16,
-                                          minHeight: 16,
+                                          minWidth: 20,
+                                          minHeight: 20,
                                         ),
                                         child: Text(
-                                          '${cartProvider.totalItems}',
+                                          '${cartProvider.totalItems > 99 ? '99+' : cartProvider.totalItems}', // 👈 Handle large numbers
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontSize: 10,
                                             fontWeight: FontWeight.bold,
+                                            height: 1.0, // 👈 Better text alignment
                                           ),
                                           textAlign: TextAlign.center,
                                         ),
@@ -206,13 +225,14 @@ class _MainNavigationState extends State<MainNavigation> {
                 ),
               ),
               
+              // Floating active tab with cart badge when cart is active
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
                 left: (_currentIndex * MediaQuery.of(context).size.width / 5) + 
                        (MediaQuery.of(context).size.width / 5 / 2) - 25,
                 top: 8,
-                child: _buildFloatingActiveTab(),
+                child: _buildFloatingActiveTab(cartProvider), // 👈 Pass cart provider
               ),
             ],
           ),
@@ -221,28 +241,74 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  Widget _buildFloatingActiveTab() {
+  // Updated floating active tab to show cart badge
+  Widget _buildFloatingActiveTab(AnimatedCartProvider cartProvider) {
     final activeItem = _navigationItems[_currentIndex];
     
-    return Container(
-      width: 50,
-      height: 50,
-      decoration: BoxDecoration(
-        color: activeItem.activeColor,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: activeItem.activeColor.withOpacity(0.25),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: activeItem.activeColor,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: activeItem.activeColor.withOpacity(0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Icon(
-        activeItem.icon,
-        color: Colors.white,
-        size: 24,
-      ),
+          child: Icon(
+            activeItem.icon,
+            color: Colors.white,
+            size: 24,
+          ),
+        ),
+        
+        // 🎨 Cart badge on floating tab when cart is active
+        if (_currentIndex == 2 && cartProvider.totalItems > 0)
+          Positioned(
+            right: -4,
+            top: -4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF6B6B).withOpacity(0.4),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              constraints: const BoxConstraints(
+                minWidth: 18,
+                minHeight: 18,
+              ),
+              child: Text(
+                '${cartProvider.totalItems > 99 ? '99+' : cartProvider.totalItems}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  height: 1.0,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
