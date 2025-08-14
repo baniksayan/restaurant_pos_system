@@ -1,23 +1,24 @@
-// lib/presentation/views/dashboard/waiter_dashboard_view.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // 👈 ADD this import for SystemUiOverlayStyle
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
+import 'package:vibration/vibration.dart';
 import 'package:restaurant_pos_system/presentation/views/menu_management/menu_view.dart';
 import '../../../core/themes/app_colors.dart';
 import '../../../shared/widgets/animations/fade_in_animation.dart';
 import '../../view_models/providers/auth_provider.dart';
-import '../../view_models/providers/table_provider.dart';
-import '../../../data/models/table.dart';
 import '../../../data/local/models/table_model.dart';
 import '../auth/login_view.dart';
 import '../table_management/table_detail_view.dart';
 import '../../../shared/widgets/drawers/location_drawer.dart';
 import '../../../shared/widgets/layout/location_header.dart';
 import '../../../services/sync_service.dart';
+import '../../view_models/providers/table_provider.dart';
+
 
 class WaiterDashboardView extends StatefulWidget {
   final Function(String tableId, String tableName)? onTableSelected;
-
+  
   const WaiterDashboardView({
     super.key,
     this.onTableSelected,
@@ -30,8 +31,9 @@ class WaiterDashboardView extends StatefulWidget {
 class _WaiterDashboardViewState extends State<WaiterDashboardView> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   String _selectedLocation = 'Main Hall';
-
+  
   final List<LocationSection> _locations = [
+    LocationSection('All', Icons.all_inclusive, Colors.grey),
     LocationSection('Main Hall', Icons.home, Colors.blue),
     LocationSection('VIP Section', Icons.star, Colors.purple),
     LocationSection('Terrace', Icons.deck, Colors.orange),
@@ -53,38 +55,40 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
 
-    // 👈 APPLIED: AnnotatedRegion wrapper with status bar fix
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark, // Dark icons on light background
-        statusBarBrightness: Brightness.light,    // For iOS compatibility
-        systemNavigationBarColor: Colors.white,   // Bottom nav bar color
-        systemNavigationBarIconBrightness: Brightness.dark, // Bottom nav icons
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
       child: Consumer<TableProvider>(
         builder: (context, tableProvider, child) {
+          // Handle loading state
           if (tableProvider.isLoading) {
             return _buildLoadingState();
           }
-
+          
+          // Handle error state with retry
           if (tableProvider.error != null) {
             return _buildErrorState(tableProvider);
           }
 
-          final hiveTables = tableProvider.getTablesForLocation(_selectedLocation);
-          final tables = _convertHiveTablesToRestaurantTables(hiveTables);
+          // Get tables for selected location
+          final tables = tableProvider.getTablesForLocation(_selectedLocation);
+          
+          // Handle empty tables state
+          if (tables.isEmpty) {
+            return _buildEmptyState();
+          }
 
           return Scaffold(
             key: _scaffoldKey,
             backgroundColor: Colors.grey[50],
-            
             drawer: LocationDrawer(
               locations: _locations,
               selectedLocation: _selectedLocation,
               onLocationChanged: _handleLocationChange,
             ),
-
             body: Container(
               color: Colors.grey[50],
               child: Column(
@@ -96,26 +100,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                     tables: tables,
                   ),
                   Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: GridView.builder(
-                        padding: EdgeInsets.zero,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: isMobile ? 2 : 3,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: isMobile ? 1.0 : 1.05,
-                        ),
-                        itemCount: tables.length,
-                        itemBuilder: (context, index) {
-                          final table = tables[index];
-                          return FadeInAnimation(
-                            delay: Duration(milliseconds: 50 * index),
-                            child: _buildOptimizedTableCard(table, tableProvider),
-                          );
-                        },
-                      ),
-                    ),
+                    child: _buildTableGrid(tables),
                   ),
                 ],
               ),
@@ -126,6 +111,158 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     );
   }
 
+  Widget _buildTableGrid(List<RestaurantTable> tables) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 1.2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: tables.length,
+      itemBuilder: (context, index) {
+        final table = tables[index];
+        return _buildEnhancedTableCard(table, context.read<TableProvider>());
+      },
+    );
+  }
+
+  // Loading state with better UX
+  Widget _buildLoadingState() {
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Loading tables...',
+              style: TextStyle(
+                fontSize: 16,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Error state with clear retry action
+  Widget _buildErrorState(TableProvider tableProvider) {
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.red[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Error Loading Tables',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red[700],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                tableProvider.error ?? 'Unknown error occurred',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton(
+                    onPressed: () {
+                      tableProvider.clearError();
+                    },
+                    child: const Text('Clear Error'),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      tableProvider.clearError();
+                      tableProvider.initializeTables();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Empty state for better UX
+  Widget _buildEmptyState() {
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.table_restaurant_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No Tables Available',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'No tables found for $_selectedLocation',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => _showLocationSelector(context, context.read<TableProvider>()),
+              icon: const Icon(Icons.location_on),
+              label: const Text('Change Location'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Enhanced header with location selector
   Widget _buildOptimizedHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 40, 16, 10),
@@ -170,6 +307,21 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            // Location filter button
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.location_on, color: AppColors.primary, size: 20),
+                onPressed: () => _showLocationSelector(context, context.read<TableProvider>()),
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                padding: const EdgeInsets.all(6),
+                tooltip: 'Filter by Location',
+              ),
+            ),
+            const SizedBox(width: 8),
             Container(
               decoration: BoxDecoration(
                 color: AppColors.primary.withOpacity(0.1),
@@ -188,56 +340,170 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     );
   }
 
-  Widget _buildOptimizedTableCard(RestaurantTable table, TableProvider tableProvider) {
+  // ✅ FIXED: Enhanced Table Card with Proper ReservationInfo Access
+  Widget _buildEnhancedTableCard(RestaurantTable table, TableProvider tableProvider) {
     final cardData = _getEnhancedCardData(table);
     
     return GestureDetector(
       onTap: () => _handleTableClick(table, tableProvider),
+      onLongPress: () => _handleTableLongPress(table, tableProvider),
       child: Container(
         decoration: BoxDecoration(
           gradient: cardData['gradient'],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: cardData['borderColor'], width: 1.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: cardData['borderColor'], width: 2),
           boxShadow: [
             BoxShadow(
-              color: cardData['borderColor'].withOpacity(0.15),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+              color: cardData['borderColor'].withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(12),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildCompactIconSection(table, cardData),
+              // LIVE status indicator
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: _getLiveStatusColor(table.status),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'LIVE',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                      color: _getLiveStatusColor(table.status),
+                    ),
+                  ),
+                  const Spacer(),
+                  if (table.status == TableStatus.reserved)
+                    const Icon(Icons.schedule, size: 12, color: Colors.orange),
+                ],
+              ),
+              
               const SizedBox(height: 8),
+              
+              // Icon with capacity indicator
+              Stack(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: cardData['borderColor'].withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.table_restaurant,
+                      color: cardData['borderColor'],
+                      size: 22,
+                    ),
+                  ),
+                  if (table.status == TableStatus.occupied)
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        width: 16,
+                        height: 16,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.person,
+                          size: 10,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              
+              const SizedBox(height: 10),
+              
+              // Table name
               Text(
                 table.name,
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                   color: cardData['textColor'],
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 2),
+              
+              const SizedBox(height: 3),
+              
+              // Capacity
               Text(
-                'Cap: ${table.capacity}',
+                'Capacity: ${table.capacity}',
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   color: Colors.grey,
                   fontWeight: FontWeight.w500,
                 ),
               ),
+              
               const SizedBox(height: 6),
-              _buildCompactStatusBadge(table, cardData),
-              if (table.status == TableStatus.occupied) ...[
-                const SizedBox(height: 5),
-                _buildCompactStatusIndicators(table),
+              
+              // Status badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: cardData['borderColor'],
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: cardData['borderColor'].withOpacity(0.25),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  table.status.name.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+              
+              // ✅ FIXED: Proper reservation info display with null safety
+              if (table.status == TableStatus.reserved && table.reservationInfo != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  table.reservationInfo!.timeRange,
+                  style: const TextStyle(
+                    fontSize: 8,
+                    color: Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  table.reservationInfo!.customerName,
+                  style: const TextStyle(
+                    fontSize: 7,
+                    color: Colors.orange,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ],
           ),
@@ -246,143 +512,153 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     );
   }
 
-  Widget _buildCompactIconSection(RestaurantTable table, Map<String, dynamic> cardData) {
-    return Stack(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: cardData['borderColor'].withOpacity(0.15),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            Icons.table_restaurant,
-            color: cardData['borderColor'],
-            size: 20,
+  // Location selector dialog
+  void _showLocationSelector(BuildContext context, TableProvider tableProvider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.location_on, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('Select Location'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: _locations.length,
+            itemBuilder: (context, index) {
+              final location = _locations[index];
+              final isSelected = _selectedLocation == location.name;
+              
+              return ListTile(
+                leading: Icon(
+                  location.icon,
+                  color: isSelected ? AppColors.primary : location.color,
+                ),
+                title: Text(
+                  location.name,
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? AppColors.primary : null,
+                  ),
+                ),
+                trailing: isSelected ? const Icon(Icons.check, color: AppColors.primary) : null,
+                selected: isSelected,
+                onTap: () {
+                  _handleLocationChange(location.name);
+                },
+              );
+            },
           ),
         ),
-        if (table.status == TableStatus.occupied)
-          Positioned(
-            right: -1,
-            top: -1,
-            child: Container(
-              width: 14,
-              height: 14,
-              decoration: const BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 2,
-                    offset: Offset(0, 1),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.person, size: 8, color: Colors.white),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildCompactStatusBadge(RestaurantTable table, Map<String, dynamic> cardData) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: cardData['borderColor'],
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: cardData['borderColor'].withOpacity(0.2),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
         ],
       ),
-      child: Text(
-        table.status.name.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 9,
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.3,
-        ),
-      ),
     );
   }
 
-  Widget _buildCompactStatusIndicators(RestaurantTable table) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (table.kotGenerated) _buildMiniIndicator('KOT', Colors.orange),
-        if (table.kotGenerated && table.billGenerated) const SizedBox(width: 6),
-        if (table.billGenerated) _buildMiniIndicator('BILL', Colors.green),
-      ],
-    );
-  }
-
-  Widget _buildMiniIndicator(String text, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  // Handle long press for cleaning requests
+  Future<void> _handleTableLongPress(RestaurantTable table, TableProvider tableProvider) async {
+    await _triggerHapticFeedback();
+    
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.cleaning_services, color: Colors.blue, size: 24),
+            const SizedBox(width: 8),
+            Text('${table.name} - Cleaning Request'),
+          ],
         ),
-        const SizedBox(width: 3),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 8,
-            color: color,
-            fontWeight: FontWeight.w600,
+        content: const Text('Send cleaning request to KOT team for this table?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLoadingState() {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Loading tables...', style: TextStyle(fontSize: 16)),
-          ],
-        ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _sendCleaningRequest(table);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            child: const Text('Send Request', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildErrorState(TableProvider tableProvider) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+  // ✅ FIXED: Trigger haptic feedback with proper import
+  Future<void> _triggerHapticFeedback() async {
+    try {
+      if (await Vibration.hasVibrator() ?? false) {
+        await Vibration.vibrate(duration: 100, amplitude: 128);
+      }
+      await HapticFeedback.lightImpact();
+    } catch (e) {
+      await HapticFeedback.lightImpact();
+    }
+  }
+
+  // Send cleaning request
+  void _sendCleaningRequest(RestaurantTable table) async {
+    await _triggerHapticFeedback();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
           children: [
-            Icon(Icons.error, size: 64, color: Colors.red[400]),
-            const SizedBox(height: 16),
-            Text('Error: ${tableProvider.error}', textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => tableProvider.initializeTables(),
-              child: const Text('Retry'),
-            ),
+            const Icon(Icons.cleaning_services, color: Colors.white),
+            const SizedBox(width: 8),
+            Text('Cleaning request sent for ${table.name}'),
           ],
+        ),
+        backgroundColor: Colors.blue,
+        action: SnackBarAction(
+          label: 'UNDO',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Cleaning request cancelled'),
+                backgroundColor: Colors.grey,
+              ),
+            );
+          },
         ),
       ),
     );
+    
+    // TODO: Send to KOT team via API
+    print('Cleaning request sent for table: ${table.id}');
   }
 
+  // Get live status color
+  Color _getLiveStatusColor(TableStatus status) {
+    switch (status) {
+      case TableStatus.available:
+        return Colors.green;
+      case TableStatus.occupied:
+        return Colors.red;
+      case TableStatus.reserved:
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // Helper method to get card styling data
   Map<String, dynamic> _getEnhancedCardData(RestaurantTable table) {
     switch (table.status) {
       case TableStatus.available:
@@ -418,48 +694,77 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     }
   }
 
-  void _handleTableClick(RestaurantTable table, TableProvider tableProvider) {
+  // Enhanced table click handler with reservation system
+  void _handleTableClick(RestaurantTable table, TableProvider tableProvider) async {
+    await _triggerHapticFeedback();
+    
     if (table.status == TableStatus.available) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: Text('${table.name} - Available'),
-          content: const Text('What would you like to do with this table?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('What would you like to do with this table?'),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info, color: Colors.green, size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Capacity: ${table.capacity} persons',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
             ),
-            TextButton(
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                _showReservationPage(table, tableProvider);
+              },
+              icon: const Icon(Icons.schedule, size: 18),
+              label: const Text('Reserve Table'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.orange,
+                side: const BorderSide(color: Colors.orange),
+              ),
+            ),
+            ElevatedButton.icon(
               onPressed: () {
                 Navigator.pop(context);
                 tableProvider.updateTableStatus(table.id, 'occupied');
-                if (widget.onTableSelected != null) {
-                  widget.onTableSelected!(table.id, table.name);
-                } else {
-                  _navigateToMenuForTable(table);
-                }
+                widget.onTableSelected?.call(table.id, table.name);
               },
-              child: const Text('Occupy & Order'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                tableProvider.updateTableStatus(table.id, 'reserved');
-                _showSnackBar('${table.name} is now reserved', Colors.orange);
-              },
-              child: const Text('Reserve Table'),
+              icon: const Icon(Icons.restaurant_menu, size: 18),
+              label: const Text('Occupy & Order'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             ),
           ],
         ),
       );
     } else if (table.status == TableStatus.occupied || table.status == TableStatus.reserved) {
-      if (widget.onTableSelected != null) {
-        widget.onTableSelected!(table.id, table.name);
-      } else {
-        _navigateToMenuForTable(table);
-      }
+      widget.onTableSelected?.call(table.id, table.name);
     }
+  }
+
+  // Show reservation page (placeholder)
+  void _showReservationPage(RestaurantTable table, TableProvider tableProvider) {
+    _showSnackBar('Reservation feature coming soon for ${table.name}', Colors.orange);
   }
 
   void _navigateToMenuForTable(RestaurantTable table) {
@@ -509,75 +814,12 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
       );
     }
   }
-
-  List<RestaurantTable> _convertHiveTablesToRestaurantTables(List<TableModel> hiveTables) {
-    if (hiveTables.isEmpty) {
-      return _getStaticTablesForLocation(_selectedLocation);
-    }
-    
-    return hiveTables.map((hiveTable) {
-      return RestaurantTable(
-        id: hiveTable.id,
-        name: hiveTable.name,
-        capacity: hiveTable.capacity,
-        status: TableStatus.values.firstWhere(
-          (status) => status.name == hiveTable.status,
-          orElse: () => TableStatus.available,
-        ),
-        kotGenerated: hiveTable.kotGenerated,
-        billGenerated: hiveTable.billGenerated,
-        lastUpdated: hiveTable.lastUpdated,
-      );
-    }).toList();
-  }
-
-  List<RestaurantTable> _getStaticTablesForLocation(String location) {
-    switch (location) {
-      case 'Main Hall':
-        return [
-          RestaurantTable(id: '1', name: 'Table 1', capacity: 4, status: TableStatus.available, kotGenerated: false, billGenerated: false),
-          RestaurantTable(id: '2', name: 'Table 2', capacity: 2, status: TableStatus.occupied, kotGenerated: true, billGenerated: false),
-          RestaurantTable(id: '3', name: 'Table 3', capacity: 6, status: TableStatus.available, kotGenerated: false, billGenerated: false),
-          RestaurantTable(id: '4', name: 'Table 4', capacity: 4, status: TableStatus.occupied, kotGenerated: true, billGenerated: true),
-          RestaurantTable(id: '5', name: 'Table 5', capacity: 8, status: TableStatus.reserved, kotGenerated: false, billGenerated: false),
-          RestaurantTable(id: '6', name: 'Table 6', capacity: 4, status: TableStatus.available, kotGenerated: false, billGenerated: false),
-        ];
-      case 'VIP Section':
-        return [
-          RestaurantTable(id: '9', name: 'VIP 1', capacity: 10, status: TableStatus.available, kotGenerated: false, billGenerated: false),
-          RestaurantTable(id: '10', name: 'VIP 2', capacity: 8, status: TableStatus.occupied, kotGenerated: true, billGenerated: false),
-          RestaurantTable(id: '11', name: 'VIP 3', capacity: 6, status: TableStatus.reserved, kotGenerated: false, billGenerated: false),
-        ];
-      case 'Terrace':
-        return [
-          RestaurantTable(id: '13', name: 'Terrace 1', capacity: 4, status: TableStatus.available, kotGenerated: false, billGenerated: false),
-          RestaurantTable(id: '14', name: 'Terrace 2', capacity: 6, status: TableStatus.occupied, kotGenerated: true, billGenerated: true),
-        ];
-      case 'Garden Area':
-        return [
-          RestaurantTable(id: '16', name: 'Garden 1', capacity: 6, status: TableStatus.available, kotGenerated: false, billGenerated: false),
-          RestaurantTable(id: '17', name: 'Garden 2', capacity: 8, status: TableStatus.occupied, kotGenerated: false, billGenerated: false),
-          RestaurantTable(id: '18', name: 'Garden 3', capacity: 4, status: TableStatus.available, kotGenerated: false, billGenerated: false),
-        ];
-      case 'Balcony':
-        return [
-          RestaurantTable(id: '20', name: 'Balcony 1', capacity: 2, status: TableStatus.available, kotGenerated: false, billGenerated: false),
-          RestaurantTable(id: '21', name: 'Balcony 2', capacity: 4, status: TableStatus.occupied, kotGenerated: true, billGenerated: false),
-        ];
-      case 'Private Room':
-        return [
-          RestaurantTable(id: '22', name: 'Private 1', capacity: 12, status: TableStatus.available, kotGenerated: false, billGenerated: false),
-        ];
-      default:
-        return [];
-    }
-  }
 }
 
 class LocationSection {
   final String name;
   final IconData icon;
   final Color color;
-
+  
   LocationSection(this.name, this.icon, this.color);
 }

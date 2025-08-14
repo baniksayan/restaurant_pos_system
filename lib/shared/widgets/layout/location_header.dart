@@ -1,7 +1,8 @@
 // lib/shared/widgets/layout/location_header.dart
 import 'package:flutter/material.dart';
+import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
 import '../../../core/themes/app_colors.dart';
-import '../../../data/models/table.dart';
+import '../../../data/models/table.dart' hide TableStatus;
 import '../../../presentation/views/dashboard/waiter_dashboard_view.dart';
 
 class LocationHeader extends StatelessWidget {

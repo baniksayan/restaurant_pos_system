@@ -1,157 +1,184 @@
+// lib/presentation/view_models/providers/table_provider.dart
 import 'package:flutter/material.dart';
-import '../../../data/local/hive_service.dart';
-import '../../../data/local/models/table_model.dart';
-import '../../../services/sync_service.dart';
-import '../../../core/utils/uuid_generator.dart';
+import '../../../data/models/restaurant_table.dart';
 
 class TableProvider extends ChangeNotifier {
-  List<TableModel> _tables = [];
-  bool _isLoading = false;
-  String? _error;
+  List<RestaurantTable> _tables = [];
+  bool _isLoading = false; // 👈 ADD this property
+  String? _error; // 👈 ADD this property
+  String _selectedLocation = 'All'; // 👈 ADD location tracking
 
-  List<TableModel> get tables => _tables;
-  bool get isLoading => _isLoading;
-  String? get error => _error;
+  // 👈 ADD these getters
+  List<RestaurantTable> get tables => _tables;
+  bool get isLoading => _isLoading; // Fix for line 1365
+  String? get error => _error; // Fix for line 1369 & 1772
+  String get selectedLocation => _selectedLocation;
 
-  // Initialize with sample data if no tables exist
-  Future<void> initializeTables() async {
-    _setLoading(true);
-    
-    try {
-      _tables = HiveService.getAllTables();
-      
-      // If no tables exist, create sample data
-      if (_tables.isEmpty) {
-        await _createSampleTables();
-      }
-      
-      _error = null;
-    } catch (e) {
-      _error = 'Failed to load tables: ${e.toString()}';
-    } finally {
-      _setLoading(false);
-    }
-  }
+  // lib/presentation/view_models/providers/table_provider.dart
+// Update your initializeTables method:
 
-  Future<void> _createSampleTables() async {
-    final sampleTables = [
-      TableModel(
-        id: UuidGenerator.generate(),
+void initializeTables() {
+  _isLoading = true;
+  _error = null;
+  notifyListeners();
+  
+  try {
+    _tables.clear();
+    _tables.addAll([
+      RestaurantTable(
+        id: '1',
         name: 'Table 1',
         capacity: 4,
-        status: 'available',
-        lastUpdated: DateTime.now(),
+        location: 'Main Hall',
+        status: TableStatus.available,
+        kotGenerated: false,
+        billGenerated: false,
       ),
-      TableModel(
-        id: UuidGenerator.generate(),
+      RestaurantTable(
+        id: '2',
         name: 'Table 2',
         capacity: 2,
-        status: 'occupied',
+        location: 'Main Hall',
+        status: TableStatus.occupied,
         kotGenerated: true,
-        lastUpdated: DateTime.now(),
+        billGenerated: false,
       ),
-      TableModel(
-        id: UuidGenerator.generate(),
-        name: 'Table 3',
+      RestaurantTable(
+        id: '3',
+        name: 'VIP 1',
         capacity: 6,
-        status: 'available',
-        lastUpdated: DateTime.now(),
+        location: 'VIP Section',
+        status: TableStatus.reserved,
+        kotGenerated: false,
+        billGenerated: false,
+        reservationInfo: ReservationInfo( // 👈 FIX: Complete reservation info
+          startTime: '19:00',
+          endTime: '21:00',
+          occasion: 'Birthday Party',
+          guestCount: 4,
+          reservationDate: DateTime.now().add(const Duration(hours: 2)),
+          totalAmount: 1200.0,
+          customerName: 'John Smith',
+          specialRequests: 'Birthday cake decoration',
+        ),
       ),
-      TableModel(
-        id: UuidGenerator.generate(),
-        name: 'Table 4',
-        capacity: 4,
-        status: 'occupied',
-        kotGenerated: true,
-        billGenerated: true,
-        lastUpdated: DateTime.now(),
-      ),
-      TableModel(
-        id: UuidGenerator.generate(),
-        name: 'Table 5',
+      RestaurantTable(
+        id: '4',
+        name: 'Terrace 1',
         capacity: 8,
-        status: 'reserved',
-        lastUpdated: DateTime.now(),
+        location: 'Terrace',
+        status: TableStatus.available,
+        kotGenerated: false,
+        billGenerated: false,
       ),
-      TableModel(
-        id: UuidGenerator.generate(),
-        name: 'Table 6',
+      RestaurantTable(
+        id: '5',
+        name: 'Garden 1',
         capacity: 4,
-        status: 'cleaning',
-        lastUpdated: DateTime.now(),
+        location: 'Garden Area',
+        status: TableStatus.occupied,
+        kotGenerated: true,
+        billGenerated: false,
       ),
-    ];
-
-    for (final table in sampleTables) {
-      await HiveService.saveTable(table);
-    }
+      RestaurantTable(
+        id: '6',
+        name: 'Private Room 1',
+        capacity: 12,
+        location: 'Private Room',
+        status: TableStatus.available,
+        kotGenerated: false,
+        billGenerated: false,
+      ),
+    ]);
     
-    _tables = sampleTables;
+    _isLoading = false;
+    _error = null;
+  } catch (e) {
+    _isLoading = false;
+    _error = 'Failed to load tables: ${e.toString()}';
+  }
+  
+  notifyListeners();
+}
+
+
+  // 👈 ADD this method - Fix for line 1373
+  List<RestaurantTable> getTablesForLocation(String locationName) {
+    if (locationName == 'All') {
+      return _tables;
+    }
+    return _tables.where((table) => table.location == locationName).toList();
   }
 
-  Future<void> updateTableStatus(String tableId, String status) async {
+  void updateTableStatus(String tableId, String newStatus) {
     try {
-      await HiveService.updateTableStatus(tableId, status);
-      
-      // Update local state
-      final tableIndex = _tables.indexWhere((t) => t.id == tableId);
+      final tableIndex = _tables.indexWhere((table) => table.id == tableId);
       if (tableIndex != -1) {
-        _tables[tableIndex].status = status;
-        _tables[tableIndex].lastUpdated = DateTime.now();
+        final table = _tables[tableIndex];
+        final updatedStatus = _getTableStatusFromString(newStatus);
+        
+        _tables[tableIndex] = RestaurantTable(
+          id: table.id,
+          name: table.name,
+          capacity: table.capacity,
+          location: table.location,
+          status: updatedStatus,
+          kotGenerated: table.kotGenerated,
+          billGenerated: table.billGenerated,
+          reservationInfo: table.reservationInfo,
+        );
         notifyListeners();
       }
-      
-      _error = null;
     } catch (e) {
-      _error = 'Failed to update table: ${e.toString()}';
+      _error = 'Failed to update table status: ${e.toString()}';
       notifyListeners();
     }
   }
 
-  Future<void> occupyTable(String tableId, String orderId) async {
+  void addReservation(String tableId, ReservationInfo reservationInfo) {
     try {
-      final table = HiveService.getTable(tableId);
-      if (table != null) {
-        table.status = 'occupied';
-        table.currentOrderId = orderId;
-        table.lastUpdated = DateTime.now();
-        await HiveService.saveTable(table);
+      final tableIndex = _tables.indexWhere((table) => table.id == tableId);
+      if (tableIndex != -1) {
+        final table = _tables[tableIndex];
         
-        await initializeTables(); // Refresh list
+        _tables[tableIndex] = RestaurantTable(
+          id: table.id,
+          name: table.name,
+          capacity: table.capacity,
+          location: table.location,
+          status: TableStatus.reserved,
+          kotGenerated: table.kotGenerated,
+          billGenerated: table.billGenerated,
+          reservationInfo: reservationInfo,
+        );
+        notifyListeners();
       }
     } catch (e) {
-      _error = 'Failed to occupy table: ${e.toString()}';
+      _error = 'Failed to add reservation: ${e.toString()}';
       notifyListeners();
     }
   }
 
-  Future<void> clearTable(String tableId) async {
-    try {
-      final table = HiveService.getTable(tableId);
-      if (table != null) {
-        table.status = 'available';
-        table.currentOrderId = null;
-        table.kotGenerated = false;
-        table.billGenerated = false;
-        table.lastUpdated = DateTime.now();
-        await HiveService.saveTable(table);
-        
-        await initializeTables(); // Refresh list
-      }
-    } catch (e) {
-      _error = 'Failed to clear table: ${e.toString()}';
-      notifyListeners();
-    }
-  }
-
-  List<TableModel> getTablesForLocation(String location) {
-    // Filter tables based on location if needed
-    // For now, return all tables
-    return _tables;
-  }
-
-  void _setLoading(bool loading) {
-    _isLoading = loading;
+  void setSelectedLocation(String location) {
+    _selectedLocation = location;
     notifyListeners();
+  }
+
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+
+  TableStatus _getTableStatusFromString(String status) {
+    switch (status.toLowerCase()) {
+      case 'available':
+        return TableStatus.available;
+      case 'occupied':
+        return TableStatus.occupied;
+      case 'reserved':
+        return TableStatus.reserved;
+      default:
+        return TableStatus.available;
+    }
   }
 }

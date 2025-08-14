@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/animated_cart_provider.dart';
-import 'package:restaurant_pos_system/presentation/view_models/providers/profile_provider.dart'; // 👈 ADD this import
+import 'package:restaurant_pos_system/presentation/view_models/providers/profile_provider.dart';
 import 'package:restaurant_pos_system/presentation/views/main_navigation.dart';
 import 'app/app.dart';
 import 'core/themes/app_theme.dart';
@@ -16,7 +16,7 @@ import 'services/sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  
   // Set global status bar style (app-wide)
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -27,13 +27,13 @@ void main() async {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
-
+  
   // Initialize Hive for offline storage
   await HiveService.init();
   
   // Schedule end-of-day sync for offline data
   SyncService.scheduleEndOfDaySync();
-
+  
   runApp(const RestaurantPOSApp());
 }
 
@@ -47,10 +47,16 @@ class RestaurantPOSApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => MenuProvider()),
-        ChangeNotifierProvider(create: (_) => TableProvider()),
+        ChangeNotifierProvider(
+          create: (_) {
+            final provider = TableProvider();
+            provider.initializeTables(); // 👈 Initialize tables on app start
+            return provider;
+          },
+        ),
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => AnimatedCartProvider()),
-        ChangeNotifierProvider(create: (_) => ProfileProvider()), // 👈 ADDED ProfileProvider
+        ChangeNotifierProvider(create: (_) => ProfileProvider()),
       ],
       child: MaterialApp(
         title: 'WiZARD Restaurant POS',
