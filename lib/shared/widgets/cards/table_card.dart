@@ -7,11 +7,7 @@ class TableCard extends StatelessWidget {
   final RestaurantTable table;
   final VoidCallback onTap;
 
-  const TableCard({
-    super.key,
-    required this.table,
-    required this.onTap,
-  });
+  const TableCard({super.key, required this.table, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -89,11 +85,7 @@ class TableCard extends StatelessWidget {
         color: borderColor.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Icon(
-        Icons.table_restaurant,
-        color: borderColor,
-        size: 24,
-      ),
+      child: Icon(Icons.table_restaurant, color: borderColor, size: 24),
     );
   }
 
@@ -103,7 +95,10 @@ class TableCard extends StatelessWidget {
       style: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.bold,
-        color: borderColor == Colors.grey[300] ? AppColors.textPrimary : borderColor,
+        color:
+            borderColor == Colors.grey[300]
+                ? AppColors.textPrimary
+                : borderColor,
       ),
     );
   }
@@ -111,10 +106,7 @@ class TableCard extends StatelessWidget {
   Widget _buildCapacity() {
     return Text(
       'Capacity: ${table.capacity}',
-      style: const TextStyle(
-        fontSize: 12,
-        color: AppColors.textSecondary,
-      ),
+      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
     );
   }
 
