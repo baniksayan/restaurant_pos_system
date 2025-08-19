@@ -15,92 +15,92 @@ class TableProvider extends ChangeNotifier {
   String get selectedLocation => _selectedLocation;
 
   // lib/presentation/view_models/providers/table_provider.dart
-// Update your initializeTables method:
+  // Update your initializeTables method:
 
-void initializeTables() {
-  _isLoading = true;
-  _error = null;
-  notifyListeners();
-  
-  try {
-    _tables.clear();
-    _tables.addAll([
-      RestaurantTable(
-        id: '1',
-        name: 'Table 1',
-        capacity: 4,
-        location: 'Main Hall',
-        status: TableStatus.available,
-        kotGenerated: false,
-        billGenerated: false,
-      ),
-      RestaurantTable(
-        id: '2',
-        name: 'Table 2',
-        capacity: 2,
-        location: 'Main Hall',
-        status: TableStatus.occupied,
-        kotGenerated: true,
-        billGenerated: false,
-      ),
-      RestaurantTable(
-        id: '3',
-        name: 'VIP 1',
-        capacity: 6,
-        location: 'VIP Section',
-        status: TableStatus.reserved,
-        kotGenerated: false,
-        billGenerated: false,
-        reservationInfo: ReservationInfo( // 👈 FIX: Complete reservation info
-          startTime: '19:00',
-          endTime: '21:00',
-          occasion: 'Birthday Party',
-          guestCount: 4,
-          reservationDate: DateTime.now().add(const Duration(hours: 2)),
-          totalAmount: 1200.0,
-          customerName: 'John Smith',
-          specialRequests: 'Birthday cake decoration',
-        ),
-      ),
-      RestaurantTable(
-        id: '4',
-        name: 'Terrace 1',
-        capacity: 8,
-        location: 'Terrace',
-        status: TableStatus.available,
-        kotGenerated: false,
-        billGenerated: false,
-      ),
-      RestaurantTable(
-        id: '5',
-        name: 'Garden 1',
-        capacity: 4,
-        location: 'Garden Area',
-        status: TableStatus.occupied,
-        kotGenerated: true,
-        billGenerated: false,
-      ),
-      RestaurantTable(
-        id: '6',
-        name: 'Private Room 1',
-        capacity: 12,
-        location: 'Private Room',
-        status: TableStatus.available,
-        kotGenerated: false,
-        billGenerated: false,
-      ),
-    ]);
-    
-    _isLoading = false;
+  void initializeTables() {
+    _isLoading = true;
     _error = null;
-  } catch (e) {
-    _isLoading = false;
-    _error = 'Failed to load tables: ${e.toString()}';
-  }
-  
-  notifyListeners();
-}
+    notifyListeners();
 
+    try {
+      _tables.clear();
+      _tables.addAll([
+        RestaurantTable(
+          id: '1',
+          name: 'Table 1',
+          capacity: 4,
+          location: 'Main Hall',
+          status: TableStatus.available,
+          kotGenerated: false,
+          billGenerated: false,
+        ),
+        RestaurantTable(
+          id: '2',
+          name: 'Table 2',
+          capacity: 2,
+          location: 'Main Hall',
+          status: TableStatus.occupied,
+          kotGenerated: true,
+          billGenerated: false,
+        ),
+        RestaurantTable(
+          id: '3',
+          name: 'VIP 1',
+          capacity: 6,
+          location: 'VIP Section',
+          status: TableStatus.reserved,
+          kotGenerated: false,
+          billGenerated: false,
+          reservationInfo: ReservationInfo(
+            // 👈 FIX: Complete reservation info
+            startTime: '19:00',
+            endTime: '21:00',
+            occasion: 'Birthday Party',
+            guestCount: 4,
+            reservationDate: DateTime.now().add(const Duration(hours: 2)),
+            totalAmount: 1200.0,
+            customerName: 'Sayan Banik',
+            specialRequests: 'Birthday cake decoration',
+          ),
+        ),
+        RestaurantTable(
+          id: '4',
+          name: 'Terrace 1',
+          capacity: 8,
+          location: 'Terrace',
+          status: TableStatus.available,
+          kotGenerated: false,
+          billGenerated: false,
+        ),
+        RestaurantTable(
+          id: '5',
+          name: 'Garden 1',
+          capacity: 4,
+          location: 'Garden Area',
+          status: TableStatus.occupied,
+          kotGenerated: true,
+          billGenerated: false,
+        ),
+        RestaurantTable(
+          id: '6',
+          name: 'Private Room 1',
+          capacity: 12,
+          location: 'Private Room',
+          status: TableStatus.available,
+          kotGenerated: false,
+          billGenerated: false,
+        ),
+      ]);
+
+      _isLoading = false;
+      _error = null;
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Failed to load tables: ${e.toString()}';
+    }
+
+    notifyListeners();
+  }
 
   // 👈 ADD this method - Fix for line 1373
   List<RestaurantTable> getTablesForLocation(String locationName) {
@@ -116,7 +116,7 @@ void initializeTables() {
       if (tableIndex != -1) {
         final table = _tables[tableIndex];
         final updatedStatus = _getTableStatusFromString(newStatus);
-        
+
         _tables[tableIndex] = RestaurantTable(
           id: table.id,
           name: table.name,
@@ -140,7 +140,7 @@ void initializeTables() {
       final tableIndex = _tables.indexWhere((table) => table.id == tableId);
       if (tableIndex != -1) {
         final table = _tables[tableIndex];
-        
+
         _tables[tableIndex] = RestaurantTable(
           id: table.id,
           name: table.name,
