@@ -61,7 +61,10 @@ class _CartViewState extends State<CartView> {
     );
   }
 
-  Widget _buildEnhancedHeader(BuildContext context, AnimatedCartProvider cartProvider) {
+  Widget _buildEnhancedHeader(
+    BuildContext context,
+    AnimatedCartProvider cartProvider,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -87,7 +90,11 @@ class _CartViewState extends State<CartView> {
                   color: Colors.green.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.shopping_cart, color: Colors.green, size: 24),
+                child: const Icon(
+                  Icons.shopping_cart,
+                  color: Colors.green,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -107,7 +114,10 @@ class _CartViewState extends State<CartView> {
                         if (_kotGenerated) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.green,
                               borderRadius: BorderRadius.circular(12),
@@ -149,9 +159,14 @@ class _CartViewState extends State<CartView> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.red,
                       side: const BorderSide(color: Colors.red),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       minimumSize: const Size(0, 32),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
@@ -173,7 +188,9 @@ class _CartViewState extends State<CartView> {
                   backgroundColor: Colors.orange,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   elevation: 2,
                 ),
               ),
@@ -184,18 +201,29 @@ class _CartViewState extends State<CartView> {
     );
   }
 
-  Widget _buildCartItems(BuildContext context, AnimatedCartProvider cartProvider) {
+  Widget _buildCartItems(
+    BuildContext context,
+    AnimatedCartProvider cartProvider,
+  ) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
-        children: cartProvider.cartItems.values
-            .map((item) => _buildEnhancedCartItemCard(context, item, cartProvider))
-            .toList(),
+        children:
+            cartProvider.cartItems.values
+                .map(
+                  (item) =>
+                      _buildEnhancedCartItemCard(context, item, cartProvider),
+                )
+                .toList(),
       ),
     );
   }
 
-  Widget _buildEnhancedCartItemCard(BuildContext context, CartItem item, AnimatedCartProvider cartProvider) {
+  Widget _buildEnhancedCartItemCard(
+    BuildContext context,
+    CartItem item,
+    AnimatedCartProvider cartProvider,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -222,7 +250,11 @@ class _CartViewState extends State<CartView> {
                     color: Colors.orange.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.restaurant, color: Colors.orange, size: 30),
+                  child: const Icon(
+                    Icons.restaurant,
+                    color: Colors.orange,
+                    size: 30,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -245,10 +277,21 @@ class _CartViewState extends State<CartView> {
                             IconButton(
                               onPressed: () {
                                 _triggerHapticFeedback();
-                                _showEditItemDialog(context, item, cartProvider);
+                                _showEditItemDialog(
+                                  context,
+                                  item,
+                                  cartProvider,
+                                );
                               },
-                              icon: const Icon(Icons.edit, size: 18, color: AppColors.primary),
-                              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                              icon: const Icon(
+                                Icons.edit,
+                                size: 18,
+                                color: AppColors.primary,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 30,
+                                minHeight: 30,
+                              ),
                             ),
                         ],
                       ),
@@ -263,26 +306,35 @@ class _CartViewState extends State<CartView> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Text(
-                            '₹${item.price.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
+                          Flexible(
+                            child: Text(
+                              '₹${item.price.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const Text(' × '),
                           Text(
                             '${item.quantity}',
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                          ),
-                          const Text(' = '),
-                          Text(
-                            '₹${(item.price * item.quantity).toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontSize: 14,
-                              color: AppColors.primary,
                               fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Text(' = '),
+                          Flexible(
+                            child: Text(
+                              '₹${(item.price * item.quantity).toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -320,17 +372,30 @@ class _CartViewState extends State<CartView> {
                               bottomLeft: Radius.circular(12),
                             ),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              child: const Icon(Icons.remove, color: AppColors.primary, size: 18),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              child: const Icon(
+                                Icons.remove,
+                                color: AppColors.primary,
+                                size: 18,
+                              ),
                             ),
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primary,
                             border: Border.symmetric(
-                              vertical: BorderSide(color: AppColors.primary, width: 1),
+                              vertical: BorderSide(
+                                color: AppColors.primary,
+                                width: 1,
+                              ),
                             ),
                           ),
                           child: Text(
@@ -360,8 +425,15 @@ class _CartViewState extends State<CartView> {
                               bottomRight: Radius.circular(12),
                             ),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              child: const Icon(Icons.add, color: AppColors.primary, size: 18),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              child: const Icon(
+                                Icons.add,
+                                color: AppColors.primary,
+                                size: 18,
+                              ),
                             ),
                           ),
                         ),
@@ -370,7 +442,10 @@ class _CartViewState extends State<CartView> {
                   )
                 else
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.grey[200],
                       borderRadius: BorderRadius.circular(8),
@@ -420,7 +495,10 @@ class _CartViewState extends State<CartView> {
     );
   }
 
-  Widget _buildEnhancedCheckoutFooter(BuildContext context, AnimatedCartProvider cartProvider) {
+  Widget _buildEnhancedCheckoutFooter(
+    BuildContext context,
+    AnimatedCartProvider cartProvider,
+  ) {
     final subtotal = cartProvider.totalAmount;
     final gstAmount = subtotal * 0.18;
     final total = subtotal + gstAmount;
@@ -455,7 +533,11 @@ class _CartViewState extends State<CartView> {
                       color: Colors.blue,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.info, color: Colors.white, size: 14),
+                    child: const Icon(
+                      Icons.info,
+                      color: Colors.white,
+                      size: 14,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -468,7 +550,11 @@ class _CartViewState extends State<CartView> {
                       ),
                     ),
                   ),
-                  Icon(Icons.arrow_forward_ios, size: 12, color: Colors.blue[700]),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 12,
+                    color: Colors.blue[700],
+                  ),
                 ],
               ),
             ),
@@ -479,7 +565,11 @@ class _CartViewState extends State<CartView> {
           const SizedBox(height: 12),
           const Divider(thickness: 2),
           const SizedBox(height: 8),
-          _buildPriceRow("TOTAL AMOUNT:", "₹${total.toStringAsFixed(2)}", isTotal: true),
+          _buildPriceRow(
+            "TOTAL AMOUNT:",
+            "₹${total.toStringAsFixed(2)}",
+            isTotal: true,
+          ),
           const SizedBox(height: 20),
           if (!_kotGenerated)
             _buildPreKOTButtons(context, cartProvider)
@@ -490,7 +580,10 @@ class _CartViewState extends State<CartView> {
     );
   }
 
-  Widget _buildPreKOTButtons(BuildContext context, AnimatedCartProvider cartProvider) {
+  Widget _buildPreKOTButtons(
+    BuildContext context,
+    AnimatedCartProvider cartProvider,
+  ) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
@@ -510,7 +603,10 @@ class _CartViewState extends State<CartView> {
     );
   }
 
-  Widget _buildPostKOTButtons(BuildContext context, AnimatedCartProvider cartProvider) {
+  Widget _buildPostKOTButtons(
+    BuildContext context,
+    AnimatedCartProvider cartProvider,
+  ) {
     return Row(
       children: [
         Expanded(
@@ -525,7 +621,9 @@ class _CartViewState extends State<CartView> {
               padding: const EdgeInsets.symmetric(vertical: 12),
               side: const BorderSide(color: Colors.orange),
               foregroundColor: Colors.orange,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
         ),
@@ -542,7 +640,9 @@ class _CartViewState extends State<CartView> {
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
         ),
@@ -560,7 +660,10 @@ class _CartViewState extends State<CartView> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.green.withOpacity(0.4), width: 3),
+                border: Border.all(
+                  color: Colors.green.withOpacity(0.4),
+                  width: 3,
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -616,48 +719,55 @@ class _CartViewState extends State<CartView> {
   void _showGSTInfoDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.info, color: Colors.blue),
-            SizedBox(width: 8),
-            Text('GST Information'),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Restaurant GST Details:', style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
-            Text('• GST Rate: 18% (Pre-defined)'),
-            Text('• Applied to all food items'),
-            Text('• Inclusive in final amount'),
-            SizedBox(height: 12),
-            Card(
-              color: Color(0xFFE8F5E8),
-              child: Padding(
-                padding: EdgeInsets.all(8),
-                child: Text(
-                  'This is a standard restaurant GST rate as per regulations.',
-                  style: TextStyle(fontSize: 12, color: Colors.green),
-                ),
-              ),
+      builder:
+          (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.info, color: Colors.blue),
+                SizedBox(width: 8),
+                Text('GST Information'),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Got it'),
+            content: const Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Restaurant GST Details:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 8),
+                Text('• GST Rate: 18% (Pre-defined)'),
+                Text('• Applied to all food items'),
+                Text('• Inclusive in final amount'),
+                SizedBox(height: 12),
+                Card(
+                  color: Color(0xFFE8F5E8),
+                  child: Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Text(
+                      'This is a standard restaurant GST rate as per regulations.',
+                      style: TextStyle(fontSize: 12, color: Colors.green),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Got it'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   // 👈 FIX 4: Navigate Back to Menu - Fixed
-  void _navigateBackToMenu(BuildContext context, AnimatedCartProvider cartProvider) {
+  void _navigateBackToMenu(
+    BuildContext context,
+    AnimatedCartProvider cartProvider,
+  ) {
     try {
       final items = cartProvider.cartItems.values.toList();
       if (items.isEmpty) {
@@ -671,7 +781,7 @@ class _CartViewState extends State<CartView> {
       }
 
       final firstItem = items.first;
-      
+
       // Navigate back to menu with proper table context
       Navigator.pushNamed(
         context,
@@ -681,7 +791,6 @@ class _CartViewState extends State<CartView> {
           'tableName': firstItem.tableName,
         },
       );
-      
     } catch (e) {
       // Fallback: just pop current screen
       Navigator.pop(context);
@@ -694,7 +803,10 @@ class _CartViewState extends State<CartView> {
     }
   }
 
-  Future<void> _generateKOT(BuildContext context, AnimatedCartProvider cartProvider) async {
+  Future<void> _generateKOT(
+    BuildContext context,
+    AnimatedCartProvider cartProvider,
+  ) async {
     try {
       final orderNumber = PDFService.generateOrderNumber();
       final items = cartProvider.cartItems.values.toList();
@@ -746,7 +858,10 @@ class _CartViewState extends State<CartView> {
     }
   }
 
-  Future<void> _sendToKitchen(BuildContext context, AnimatedCartProvider cartProvider) async {
+  Future<void> _sendToKitchen(
+    BuildContext context,
+    AnimatedCartProvider cartProvider,
+  ) async {
     if (_kotOrderNumber == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -761,16 +876,17 @@ class _CartViewState extends State<CartView> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text('Sending Order #$_kotOrderNumber to Kitchen...'),
-            ],
-          ),
-        ),
+        builder:
+            (context) => AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text('Sending Order #$_kotOrderNumber to Kitchen...'),
+                ],
+              ),
+            ),
       );
 
       final items = cartProvider.cartItems.values.toList();
@@ -797,59 +913,66 @@ class _CartViewState extends State<CartView> {
     }
   }
 
-  void _showSendToKitchenOptions(BuildContext context, dynamic kotBytes, String orderNumber) {
+  void _showSendToKitchenOptions(
+    BuildContext context,
+    dynamic kotBytes,
+    String orderNumber,
+  ) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Send Order #$orderNumber to Kitchen'),
-        content: const Text('Choose how to send the KOT to kitchen:'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _sendViaWhatsApp(kotBytes, orderNumber);
-            },
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.message, color: Colors.green),
-                SizedBox(width: 4),
-                Text('WhatsApp'),
-              ],
-            ),
+      builder:
+          (context) => AlertDialog(
+            title: Text('Send Order #$orderNumber to Kitchen'),
+            content: const Text('Choose how to send the KOT to kitchen:'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _sendViaWhatsApp(kotBytes, orderNumber);
+                },
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.message, color: Colors.green),
+                    SizedBox(width: 4),
+                    Text('WhatsApp'),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _printKOT(kotBytes, orderNumber);
+                },
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.print, color: Colors.blue),
+                    SizedBox(width: 4),
+                    Text('Print'),
+                  ],
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _shareKOT(kotBytes, orderNumber);
+                },
+                child: const Text('Share'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _printKOT(kotBytes, orderNumber);
-            },
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.print, color: Colors.blue),
-                SizedBox(width: 4),
-                Text('Print'),
-              ],
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _shareKOT(kotBytes, orderNumber);
-            },
-            child: const Text('Share'),
-          ),
-        ],
-      ),
     );
   }
 
   void _sendViaWhatsApp(dynamic kotBytes, String orderNumber) async {
     try {
       await PDFService.sharePDF(kotBytes, 'KOT_$orderNumber');
-      final whatsappMessage = "New order from restaurant! Please check the KOT.";
-      final whatsappUrl = "https://wa.me/+918768412832?text=${Uri.encodeComponent(whatsappMessage)}";
-      
+      final whatsappMessage =
+          "New order from restaurant! Please check the KOT.";
+      final whatsappUrl =
+          "https://wa.me/+918768412832?text=${Uri.encodeComponent(whatsappMessage)}";
+
       if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
         await launchUrl(Uri.parse(whatsappUrl));
       }
@@ -908,7 +1031,10 @@ class _CartViewState extends State<CartView> {
     }
   }
 
-  void _navigateToBillingPage(BuildContext context, AnimatedCartProvider cartProvider) {
+  void _navigateToBillingPage(
+    BuildContext context,
+    AnimatedCartProvider cartProvider,
+  ) {
     if (!_kotGenerated || _kotOrderNumber == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -922,24 +1048,29 @@ class _CartViewState extends State<CartView> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => BillingPage(
-          orderNumber: _kotOrderNumber!,
-          cartItems: cartProvider.cartItems.values.toList(),
-          // 👈 FIX 2: Don't clear cart here - let billing page handle it
-          onBillGenerated: () {
-            // This will be called after payment is completed
-            cartProvider.clearCart();
-            setState(() {
-              _kotGenerated = false;
-              _kotOrderNumber = null;
-            });
-          },
-        ),
+        builder:
+            (context) => BillingPage(
+              orderNumber: _kotOrderNumber!,
+              cartItems: cartProvider.cartItems.values.toList(),
+              // 👈 FIX 2: Don't clear cart here - let billing page handle it
+              onBillGenerated: () {
+                // This will be called after payment is completed
+                cartProvider.clearCart();
+                setState(() {
+                  _kotGenerated = false;
+                  _kotOrderNumber = null;
+                });
+              },
+            ),
       ),
     );
   }
 
-  void _showEditItemDialog(BuildContext context, CartItem item, AnimatedCartProvider cartProvider) {
+  void _showEditItemDialog(
+    BuildContext context,
+    CartItem item,
+    AnimatedCartProvider cartProvider,
+  ) {
     if (_kotGenerated) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -950,159 +1081,194 @@ class _CartViewState extends State<CartView> {
       return;
     }
 
-    final TextEditingController notesController = TextEditingController(text: item.specialNotes ?? '');
+    final TextEditingController notesController = TextEditingController(
+      text: item.specialNotes ?? '',
+    );
 
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        child: Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.7,
-            maxWidth: 400,
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.edit, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Edit ${item.name}',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
+      builder:
+          (context) => Dialog(
+            child: Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.7,
+                maxWidth: 400,
               ),
-              const SizedBox(height: 16),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.restaurant, color: Colors.orange),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  Text('Price: ₹${item.price} | Qty: ${item.quantity}'),
-                                  Text('Table: ${item.tableName}'),
-                                ],
-                              ),
-                            ),
-                          ],
+                      const Icon(Icons.edit, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Edit ${item.name}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: notesController,
-                        decoration: const InputDecoration(
-                          labelText: 'Special Instructions',
-                          hintText: 'e.g., Extra spicy, No onions, etc.',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.note),
-                        ),
-                        maxLines: 3,
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
                       ),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        _showRemoveConfirmation(context, item, cartProvider);
-                      },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
+                  const SizedBox(height: 16),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.restaurant,
+                                  color: Colors.orange,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item.name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Price: ₹${item.price} | Qty: ${item.quantity}',
+                                      ),
+                                      Text('Table: ${item.tableName}'),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: notesController,
+                            decoration: const InputDecoration(
+                              labelText: 'Special Instructions',
+                              hintText: 'e.g., Extra spicy, No onions, etc.',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.note),
+                            ),
+                            maxLines: 3,
+                          ),
+                        ],
                       ),
-                      child: const Text('Remove'),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _triggerHapticFeedback();
-                        cartProvider.updateItemNotes(item.id, notesController.text.trim());
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${item.name} updated!'),
-                            backgroundColor: Colors.green,
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            _showRemoveConfirmation(
+                              context,
+                              item,
+                              cartProvider,
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
                           ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
+                          child: const Text('Remove'),
+                        ),
                       ),
-                      child: const Text('Save Changes'),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            _triggerHapticFeedback();
+                            cartProvider.updateItemNotes(
+                              item.id,
+                              notesController.text.trim(),
+                            );
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('${item.name} updated!'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Save Changes'),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
     );
   }
 
-  void _showRemoveConfirmation(BuildContext context, CartItem item, AnimatedCartProvider cartProvider) {
+  void _showRemoveConfirmation(
+    BuildContext context,
+    CartItem item,
+    AnimatedCartProvider cartProvider,
+  ) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove Item'),
-        content: Text('Remove ${item.name} from cart?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              _triggerHapticFeedback();
-              cartProvider.removeItem(item.id);
-              Navigator.pop(context);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${item.name} removed from cart'),
-                  backgroundColor: Colors.orange,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Remove Item'),
+            content: Text('Remove ${item.name} from cart?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  _triggerHapticFeedback();
+                  cartProvider.removeItem(item.id);
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${item.name} removed from cart'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text(
+                  'Remove',
+                  style: TextStyle(color: Colors.white),
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Remove', style: TextStyle(color: Colors.white)),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
-  void _showClearCartDialog(BuildContext context, AnimatedCartProvider cartProvider) {
+  void _showClearCartDialog(
+    BuildContext context,
+    AnimatedCartProvider cartProvider,
+  ) {
     if (_kotGenerated) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1115,31 +1281,35 @@ class _CartViewState extends State<CartView> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear Cart'),
-        content: const Text('Remove all items from cart?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              _triggerHapticFeedback();
-              cartProvider.clearCart();
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Cart cleared'),
-                  backgroundColor: Colors.orange,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Clear Cart'),
+            content: const Text('Remove all items from cart?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  _triggerHapticFeedback();
+                  cartProvider.clearCart();
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Cart cleared'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text(
+                  'Clear All',
+                  style: TextStyle(color: Colors.white),
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Clear All', style: TextStyle(color: Colors.white)),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 }
