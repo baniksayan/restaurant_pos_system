@@ -1,17 +1,24 @@
 // lib/presentation/views/menu_management/menu_view.dart
 import 'package:flutter/material.dart';
+
 import '../../../core/themes/app_colors.dart';
+
 import '../../../data/models/menu_item.dart';
 
+// 👈 ADD: Accept selectedLocation for context propagation
 class MenuView extends StatefulWidget {
   final String? selectedTableId; // null = view-only, non-null = can order
   final String? tableName;
-  final Function(String itemId, String itemName, double price, Offset position)? onAddToCart;
-  
+  final String? selectedLocation; // 👈 NEW: Location context
+
+  final Function(String itemId, String itemName, double price, Offset position)?
+  onAddToCart;
+
   const MenuView({
     super.key,
     this.selectedTableId,
     this.tableName,
+    this.selectedLocation,
     this.onAddToCart,
   });
 
@@ -22,9 +29,14 @@ class MenuView extends StatefulWidget {
 class _MenuViewState extends State<MenuView> {
   String _searchQuery = '';
   String _selectedCategory = 'All';
-  final Map<String, int> _cart = {}; // menuItemId -> quantity
-
-  final List<String> _categories = ['All', 'Starters', 'Main Course', 'Beverages', 'Desserts'];
+  final Map _cart = {}; // menuItemId -> quantity
+  final List _categories = [
+    'All',
+    'Starters',
+    'Main Course',
+    'Beverages',
+    'Desserts',
+  ];
 
   // Sample menu items (will come from API later)
   final List<MenuItemModel> _menuItems = [
@@ -34,16 +46,18 @@ class _MenuViewState extends State<MenuView> {
       price: 120,
       category: 'Starters',
       isVeg: false,
-      imageUrl: 'https://butfirstchai.com/wp-content/uploads/2023/09/musakhan-rolls-sumac-chicken-recipe.jpg',
+      imageUrl:
+          'https://butfirstchai.com/wp-content/uploads/2023/09/musakhan-rolls-sumac-chicken-recipe.jpg',
       description: 'Spicy chicken wrapped in soft bread',
     ),
     MenuItemModel(
-      id: '2', 
+      id: '2',
       name: 'Paneer Tikka',
       price: 180,
       category: 'Starters',
       isVeg: true,
-      imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJ2WY2YmIJtXrpmDToEHwJIOAcyBefjpFwXg&s',
+      imageUrl:
+          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJ2WY2YmIJtXrpmDToEHwJIOAcyBefjpFwXg&s',
       description: 'Grilled cottage cheese with spices',
     ),
     MenuItemModel(
@@ -52,7 +66,8 @@ class _MenuViewState extends State<MenuView> {
       price: 160,
       category: 'Main Course',
       isVeg: true,
-      imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRyPmolFdbsSAAg4mZENnvph9hkhKoCJNj9EA&s',
+      imageUrl:
+          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRyPmolFdbsSAAg4mZENnvph9hkhKoCJNj9EA&s',
       description: 'Indo-Chinese style paneer',
     ),
     MenuItemModel(
@@ -61,7 +76,8 @@ class _MenuViewState extends State<MenuView> {
       price: 280,
       category: 'Main Course',
       isVeg: false,
-      imageUrl: 'https://www.indianhealthyrecipes.com/wp-content/uploads/2023/04/butter-chicken-recipe.jpg',
+      imageUrl:
+          'https://www.indianhealthyrecipes.com/wp-content/uploads/2023/04/butter-chicken-recipe.jpg',
       description: 'Creamy tomato-based chicken curry',
     ),
     MenuItemModel(
@@ -70,7 +86,8 @@ class _MenuViewState extends State<MenuView> {
       price: 320,
       category: 'Main Course',
       isVeg: false,
-      imageUrl: 'https://www.licious.in/blog/wp-content/uploads/2022/06/chicken-hyderabadi-biryani-01.jpg',
+      imageUrl:
+          'https://www.licious.in/blog/wp-content/uploads/2022/06/chicken-hyderabadi-biryani-01.jpg',
       description: 'Aromatic basmati rice with spiced chicken',
     ),
     MenuItemModel(
@@ -79,7 +96,8 @@ class _MenuViewState extends State<MenuView> {
       price: 220,
       category: 'Main Course',
       isVeg: true,
-      imageUrl: 'https://www.munatycooking.com/wp-content/uploads/2022/09/palak-paneer-feature-1200-x-1200.jpg',
+      imageUrl:
+          'https://www.munatycooking.com/wp-content/uploads/2022/09/palak-paneer-feature-1200-x-1200.jpg',
       description: 'Cottage cheese in spinach gravy',
     ),
     MenuItemModel(
@@ -88,7 +106,8 @@ class _MenuViewState extends State<MenuView> {
       price: 260,
       category: 'Main Course',
       isVeg: false,
-      imageUrl: 'https://stewwithsaba.com/wp-content/uploads/2024/05/IMG_4409-edited.jpg',
+      imageUrl:
+          'https://stewwithsaba.com/wp-content/uploads/2024/05/IMG_4409-edited.jpg',
       description: 'Traditional spiced fish curry',
     ),
     MenuItemModel(
@@ -97,7 +116,8 @@ class _MenuViewState extends State<MenuView> {
       price: 180,
       category: 'Main Course',
       isVeg: true,
-      imageUrl: 'https://www.sharmispassions.com/wp-content/uploads/2012/05/dal-makhani7.jpg',
+      imageUrl:
+          'https://www.sharmispassions.com/wp-content/uploads/2012/05/dal-makhani7.jpg',
       description: 'Creamy black lentil curry',
     ),
     MenuItemModel(
@@ -106,7 +126,8 @@ class _MenuViewState extends State<MenuView> {
       price: 350,
       category: 'Main Course',
       isVeg: false,
-      imageUrl: 'https://www.licious.in/blog/wp-content/uploads/2023/02/shutterstock_2205168763-750x508.jpg',
+      imageUrl:
+          'https://www.licious.in/blog/wp-content/uploads/2023/02/shutterstock_2205168763-750x508.jpg',
       description: 'Tender mutton in rich spiced gravy',
     ),
     MenuItemModel(
@@ -115,7 +136,8 @@ class _MenuViewState extends State<MenuView> {
       price: 150,
       category: 'Main Course',
       isVeg: true,
-      imageUrl: 'https://www.sharmispassions.com/wp-content/uploads/2014/07/VegPulao1.jpg',
+      imageUrl:
+          'https://www.sharmispassions.com/wp-content/uploads/2014/07/VegPulao1.jpg',
       description: 'Fragrant rice with mixed vegetables',
     ),
   ];
@@ -146,13 +168,14 @@ class _MenuViewState extends State<MenuView> {
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.cardShadow, width: 1)),
+        border: Border(
+          bottom: BorderSide(color: AppColors.cardShadow, width: 1),
+        ),
       ),
       child: Row(
         children: [
           const Icon(Icons.restaurant_menu, color: Colors.orange, size: 28),
           const SizedBox(width: 12),
-          
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,7 +188,7 @@ class _MenuViewState extends State<MenuView> {
                     color: AppColors.textPrimary,
                   ),
                 ),
-                if (canOrder) 
+                if (canOrder)
                   Text(
                     widget.tableName ?? 'Select Table',
                     style: const TextStyle(
@@ -173,10 +196,15 @@ class _MenuViewState extends State<MenuView> {
                       color: AppColors.textSecondary,
                     ),
                   ),
+                // 👈 ADD: Show location context if present
+                if ((widget.selectedLocation ?? '').isNotEmpty)
+                  Text(
+                    'Location: ${widget.selectedLocation}',
+                    style: const TextStyle(fontSize: 12, color: Colors.orange),
+                  ),
               ],
             ),
           ),
-          
           // Status indicator
           if (canOrder) ...[
             IconButton(
@@ -256,25 +284,29 @@ class _MenuViewState extends State<MenuView> {
         itemBuilder: (context, index) {
           final category = _categories[index];
           final isSelected = _selectedCategory == category;
-          
           return Container(
             margin: const EdgeInsets.only(right: 12),
             child: GestureDetector(
               onTap: () => setState(() => _selectedCategory = category),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.primary : Colors.white,
                   borderRadius: BorderRadius.circular(25),
                   border: Border.all(
-                    color: isSelected ? AppColors.primary : Colors.grey.shade300,
+                    color:
+                        isSelected ? AppColors.primary : Colors.grey.shade300,
                   ),
                 ),
                 child: Text(
                   category,
                   style: TextStyle(
                     color: isSelected ? Colors.white : Colors.grey[700],
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
               ),
@@ -303,7 +335,7 @@ class _MenuViewState extends State<MenuView> {
 
   Widget _buildMenuItemCard(MenuItemModel item, bool canOrder) {
     final quantity = _cart[item.id] ?? 0;
-    
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -333,22 +365,30 @@ class _MenuViewState extends State<MenuView> {
                       topRight: Radius.circular(16),
                     ),
                   ),
-                  child: item.imageUrl != null
-                      ? ClipRRect(
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(16),
-                            topRight: Radius.circular(16),
+                  child:
+                      item.imageUrl != null
+                          ? ClipRRect(
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(16),
+                              topRight: Radius.circular(16),
+                            ),
+                            child: Image.network(
+                              item.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder:
+                                  (context, error, stackTrace) => const Icon(
+                                    Icons.restaurant,
+                                    size: 40,
+                                    color: Colors.grey,
+                                  ),
+                            ),
+                          )
+                          : const Icon(
+                            Icons.restaurant,
+                            size: 40,
+                            color: Colors.grey,
                           ),
-                          child: Image.network(
-                            item.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => 
-                                const Icon(Icons.restaurant, size: 40, color: Colors.grey),
-                          ),
-                        )
-                      : const Icon(Icons.restaurant, size: 40, color: Colors.grey),
                 ),
-                
                 // Veg/Non-Veg indicator
                 Positioned(
                   top: 8,
@@ -370,8 +410,10 @@ class _MenuViewState extends State<MenuView> {
                       height: 12,
                       decoration: BoxDecoration(
                         color: item.isVeg ? Colors.green : Colors.red,
-                        shape: item.isVeg ? BoxShape.rectangle : BoxShape.circle,
-                        borderRadius: item.isVeg ? BorderRadius.circular(2) : null,
+                        shape:
+                            item.isVeg ? BoxShape.rectangle : BoxShape.circle,
+                        borderRadius:
+                            item.isVeg ? BorderRadius.circular(2) : null,
                       ),
                     ),
                   ),
@@ -379,8 +421,7 @@ class _MenuViewState extends State<MenuView> {
               ],
             ),
           ),
-          
-          // Item details with reduced padding
+          // Item details
           Expanded(
             flex: 2,
             child: Padding(
@@ -399,9 +440,7 @@ class _MenuViewState extends State<MenuView> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  
                   const SizedBox(height: 2),
-                  
                   Flexible(
                     child: Text(
                       item.description ?? '',
@@ -413,9 +452,7 @@ class _MenuViewState extends State<MenuView> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  
                   const SizedBox(height: 4),
-                  
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -427,73 +464,80 @@ class _MenuViewState extends State<MenuView> {
                           color: AppColors.primary,
                         ),
                       ),
-                      
                       if (canOrder)
                         quantity == 0
                             ? Builder(
-                                builder: (context) {
-                                  return GestureDetector(
-                                    onTap: () => _addToCartWithAnimation(context, item),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(6),
+                              builder: (context) {
+                                return GestureDetector(
+                                  onTap:
+                                      () => _addToCartWithAnimation(
+                                        context,
+                                        item,
                                       ),
-                                      child: const Icon(
-                                        Icons.add,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Icon(
+                                      Icons.add,
+                                      color: Colors.white,
+                                      size: 14,
+                                    ),
+                                  ),
+                                );
+                              },
+                            )
+                            : Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => _removeFromCart(item.id),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(6),
+                                      child: Icon(
+                                        Icons.remove,
                                         color: Colors.white,
                                         size: 14,
                                       ),
                                     ),
-                                  );
-                                },
-                              )
-                            : Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () => _removeFromCart(item.id),
-                                      child: const Padding(
-                                        padding: EdgeInsets.all(6),
-                                        child: Icon(
-                                          Icons.remove,
-                                          color: Colors.white,
-                                          size: 14,
-                                        ),
-                                      ),
+                                  ),
+                                  Text(
+                                    quantity.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
                                     ),
-                                    Text(
-                                      quantity.toString(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    Builder(
-                                      builder: (context) {
-                                        return GestureDetector(
-                                          onTap: () => _addToCartWithAnimation(context, item),
-                                          child: const Padding(
-                                            padding: EdgeInsets.all(6),
-                                            child: Icon(
-                                              Icons.add,
-                                              color: Colors.white,
-                                              size: 14,
+                                  ),
+                                  Builder(
+                                    builder: (context) {
+                                      return GestureDetector(
+                                        onTap:
+                                            () => _addToCartWithAnimation(
+                                              context,
+                                              item,
                                             ),
+                                        child: const Padding(
+                                          padding: EdgeInsets.all(6),
+                                          child: Icon(
+                                            Icons.add,
+                                            color: Colors.white,
+                                            size: 14,
                                           ),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
                               ),
+                            ),
                     ],
                   ),
                 ],
@@ -506,9 +550,12 @@ class _MenuViewState extends State<MenuView> {
   }
 
   Widget _buildCartFooter() {
-    final totalItems = _cart.values.fold(0, (sum, qty) => sum + qty);
+    final totalItems = _cart.values.fold(
+      0,
+      (int sum, qty) => sum + (qty as int),
+    );
     final totalAmount = _calculateTotal();
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
@@ -539,7 +586,6 @@ class _MenuViewState extends State<MenuView> {
               ],
             ),
           ),
-          
           ElevatedButton(
             onPressed: _placeOrder,
             style: ElevatedButton.styleFrom(
@@ -558,31 +604,30 @@ class _MenuViewState extends State<MenuView> {
 
   List<MenuItemModel> _getFilteredItems() {
     var filtered = _menuItems;
-    
     if (_selectedCategory != 'All') {
-      filtered = filtered.where((item) => item.category == _selectedCategory).toList();
+      filtered =
+          filtered.where((item) => item.category == _selectedCategory).toList();
     }
-    
     if (_searchQuery.isNotEmpty) {
-      filtered = filtered.where((item) => 
-        item.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+      filtered =
+          filtered
+              .where(
+                (item) => item.name.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ),
+              )
+              .toList();
     }
-    
     return filtered;
   }
 
-  // 🎯 MERGED: Animation-enabled add to cart method
+  // Animation-enabled add to cart method
   void _addToCartWithAnimation(BuildContext context, MenuItemModel item) {
-    // Get button position for animation
     final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox != null) {
       final buttonPosition = renderBox.localToGlobal(Offset.zero);
-      
-      // Trigger animation callback if provided
       widget.onAddToCart?.call(item.id, item.name, item.price, buttonPosition);
     }
-    
-    // Add to local cart
     setState(() {
       _cart[item.id] = (_cart[item.id] ?? 0) + 1;
     });
@@ -601,10 +646,10 @@ class _MenuViewState extends State<MenuView> {
   }
 
   double _calculateTotal() {
-    double total = 0;
+    double total = 0.0; // ✅ Explicitly double
     _cart.forEach((itemId, quantity) {
       final item = _menuItems.firstWhere((item) => item.id == itemId);
-      total += item.price * quantity;
+      total += item.price * quantity.toDouble(); // ✅ Ensure double arithmetic
     });
     return total;
   }
@@ -616,24 +661,23 @@ class _MenuViewState extends State<MenuView> {
         backgroundColor: Colors.green,
       ),
     );
-    
-    // Clear cart after placing order
     setState(() {
       _cart.clear();
     });
   }
 
   void _printKOT() {
-    // Implement KOT printing via WiFi/Bluetooth
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('KOT sent to kitchen printer!'),
         backgroundColor: Colors.blue,
       ),
     );
+    // Implementation for KOT printing would go here.
   }
 }
 
+// Model, typically in a separate file.
 class MenuItemModel {
   final String id;
   final String name;
@@ -653,5 +697,3 @@ class MenuItemModel {
     this.description,
   });
 }
-
-

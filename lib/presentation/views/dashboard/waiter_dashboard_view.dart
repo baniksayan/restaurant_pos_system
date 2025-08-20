@@ -1,7 +1,10 @@
+// lib/presentation/views/dashboard/waiter_dashboard_view.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
+import 'package:restaurant_pos_system/presentation/views/reservations/table_reservation_view.dart';
 import 'package:vibration/vibration.dart';
 import 'package:restaurant_pos_system/presentation/views/menu_management/menu_view.dart';
 import '../../../core/themes/app_colors.dart';
@@ -14,10 +17,11 @@ import '../../../shared/widgets/drawers/location_drawer.dart';
 import '../../../shared/widgets/layout/location_header.dart';
 import '../../../services/sync_service.dart';
 import '../../view_models/providers/table_provider.dart';
+// 👈 ADD THIS: Import NavigationProvider
+import '../../view_models/providers/navigation_provider.dart';
 
 class WaiterDashboardView extends StatefulWidget {
   final Function(String tableId, String tableName)? onTableSelected;
-
   const WaiterDashboardView({super.key, this.onTableSelected});
 
   @override
@@ -131,7 +135,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              valueColor: AlwaysStoppedAnimation(AppColors.primary),
             ),
             SizedBox(height: 16),
             Text(
@@ -336,7 +340,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     );
   }
 
-  // ✅ FIXED: Enhanced Table Card with Proper ReservationInfo Access
+  // Enhanced Table Card with Proper ReservationInfo Access
   Widget _buildEnhancedTableCard(
     RestaurantTable table,
     TableProvider tableProvider,
@@ -359,330 +363,159 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-
-          // child: Column(
-          //   mainAxisAlignment: MainAxisAlignment.center,
-          //   mainAxisSize: MainAxisSize.min,
-          //   children: [
-          //     // LIVE status indicator
-          //     Row(
-          //       children: [
-          //         Container(
-          //           width: 8,
-          //           height: 8,
-          //           decoration: BoxDecoration(
-          //             color: _getLiveStatusColor(table.status),
-          //             shape: BoxShape.circle,
-          //           ),
-          //         ),
-          //         const SizedBox(width: 4),
-          //         Text(
-          //           'LIVE',
-          //           style: TextStyle(
-          //             fontSize: 8,
-          //             fontWeight: FontWeight.bold,
-          //             color: _getLiveStatusColor(table.status),
-          //           ),
-          //         ),
-          //         const Spacer(),
-          //         if (table.status == TableStatus.reserved)
-          //           const Icon(Icons.schedule, size: 12, color: Colors.orange),
-          //       ],
-          //     ),
-
-          //     const SizedBox(height: 8),
-
-          //     // Icon with capacity indicator
-          //     Stack(
-          //       children: [
-          //         Container(
-          //           width: 40,
-          //           height: 40,
-          //           decoration: BoxDecoration(
-          //             color: cardData['borderColor'].withOpacity(0.2),
-          //             borderRadius: BorderRadius.circular(12),
-          //           ),
-          //           child: Icon(
-          //             Icons.table_restaurant,
-          //             color: cardData['borderColor'],
-          //             size: 22,
-          //           ),
-          //         ),
-          //         if (table.status == TableStatus.occupied)
-          //           Positioned(
-          //             right: -2,
-          //             top: -2,
-          //             child: Container(
-          //               width: 16,
-          //               height: 16,
-          //               decoration: const BoxDecoration(
-          //                 color: Colors.red,
-          //                 shape: BoxShape.circle,
-          //               ),
-          //               child: const Icon(
-          //                 Icons.person,
-          //                 size: 10,
-          //                 color: Colors.white,
-          //               ),
-          //             ),
-          //           ),
-          //       ],
-          //     ),
-
-          //     const SizedBox(height: 10),
-
-          //     // Table name
-          //     Text(
-          //       table.name,
-          //       style: TextStyle(
-          //         fontSize: 18,
-          //         fontWeight: FontWeight.bold,
-          //         color: cardData['textColor'],
-          //       ),
-          //       maxLines: 1,
-          //       overflow: TextOverflow.ellipsis,
-          //     ),
-
-          //     const SizedBox(height: 3),
-
-          //     // Capacity
-          //     Text(
-          //       'Capacity: ${table.capacity}',
-          //       style: const TextStyle(
-          //         fontSize: 12,
-          //         color: Colors.grey,
-          //         fontWeight: FontWeight.w500,
-          //       ),
-          //     ),
-
-          //     const SizedBox(height: 6),
-
-          //     // Status badge
-          //     Container(
-          //       padding: const EdgeInsets.symmetric(
-          //         horizontal: 10,
-          //         vertical: 4,
-          //       ),
-          //       decoration: BoxDecoration(
-          //         color: cardData['borderColor'],
-          //         borderRadius: BorderRadius.circular(16),
-          //         boxShadow: [
-          //           BoxShadow(
-          //             color: cardData['borderColor'].withOpacity(0.25),
-          //             blurRadius: 3,
-          //             offset: const Offset(0, 1),
-          //           ),
-          //         ],
-          //       ),
-          //       child: Text(
-          //         table.status.name.toUpperCase(),
-          //         style: const TextStyle(
-          //           fontSize: 10,
-          //           color: Colors.white,
-          //           fontWeight: FontWeight.bold,
-          //           letterSpacing: 0.2,
-          //         ),
-          //       ),
-          //     ),
-
-          //     // ✅ FIXED: Proper reservation info display with null safety
-          //     if (table.status == TableStatus.reserved &&
-          //         table.reservationInfo != null) ...[
-          //       const SizedBox(height: 4),
-          //       Text(
-          //         table.reservationInfo!.timeRange,
-          //         style: const TextStyle(
-          //           fontSize: 8,
-          //           color: Colors.orange,
-          //           fontWeight: FontWeight.bold,
-          //         ),
-          //       ),
-          //       Text(
-          //         table.reservationInfo!.customerName,
-          //         style: const TextStyle(fontSize: 7, color: Colors.orange),
-          //         maxLines: 1,
-          //         overflow: TextOverflow.ellipsis,
-          //       ),
-          //     ],
-          //   ],
-          // ), //eklfweklflkfnffnlkffffffff
-          child: Container(
-            height: 145, // Constrain height to prevent overflow
-            padding: const EdgeInsets.all(6), // REDUCED
-            child: Container(
-              height: 140, // 👈 REDUCED: from 145 to 140
-              padding: const EdgeInsets.all(4), // 👈 REDUCED: from 6 to 4
-              child: ClipRect(
-                // 👈 ADD: Prevents any visual overflow
-                child: SingleChildScrollView(
-                  physics:
-                      const NeverScrollableScrollPhysics(), // Disable user scrolling
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+        child: Container(
+          height: 140,
+          padding: const EdgeInsets.all(4),
+          child: ClipRect(
+            child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // LIVE status indicator
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // LIVE status indicator
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 4, // 👈 REDUCED: from 6 to 4
-                                height: 4, // 👈 REDUCED: from 6 to 4
-                                decoration: BoxDecoration(
-                                  color: _getLiveStatusColor(table.status),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(
-                                width: 2,
-                              ), // 👈 REDUCED: from 3 to 2
-                              Text(
-                                'LIVE',
-                                style: TextStyle(
-                                  fontSize: 6, // 👈 REDUCED: from 7 to 6
-                                  fontWeight: FontWeight.bold,
-                                  color: _getLiveStatusColor(table.status),
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (table.status == TableStatus.reserved)
-                            const Icon(
-                              Icons.schedule,
-                              size: 8, // 👈 REDUCED: from 10 to 8
-                              color: Colors.orange,
-                            ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 4), // 👈 REDUCED: from 6 to 4
-                      // Icon with capacity indicator
-                      Stack(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            width: 30, // 👈 REDUCED: from 35 to 30
-                            height: 30, // 👈 REDUCED: from 35 to 30
+                            width: 4,
+                            height: 4,
                             decoration: BoxDecoration(
-                              color: cardData['borderColor'].withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(
-                                8,
-                              ), // 👈 REDUCED: from 10 to 8
-                            ),
-                            child: Icon(
-                              Icons.table_restaurant,
-                              color: cardData['borderColor'],
-                              size: 16, // 👈 REDUCED: from 20 to 16
+                              color: _getLiveStatusColor(table.status),
+                              shape: BoxShape.circle,
                             ),
                           ),
-                          if (table.status == TableStatus.occupied)
-                            Positioned(
-                              right: -1,
-                              top: -1,
-                              child: Container(
-                                width: 10, // 👈 REDUCED: from 12 to 10
-                                height: 10, // 👈 REDUCED: from 12 to 10
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.person,
-                                  size: 6, // 👈 REDUCED: from 8 to 6
-                                  color: Colors.white,
-                                ),
-                              ),
+                          const SizedBox(width: 2),
+                          Text(
+                            'LIVE',
+                            style: TextStyle(
+                              fontSize: 6,
+                              fontWeight: FontWeight.bold,
+                              color: _getLiveStatusColor(table.status),
                             ),
+                          ),
                         ],
                       ),
-
-                      const SizedBox(height: 4), // 👈 REDUCED: from 6 to 4
-                      // Table name
-                      Text(
-                        table.name,
-                        style: TextStyle(
-                          fontSize: 12, // 👈 REDUCED: from 14 to 12
-                          fontWeight: FontWeight.bold,
-                          color: cardData['textColor'],
+                      if (table.status == TableStatus.reserved)
+                        const Icon(
+                          Icons.schedule,
+                          size: 8,
+                          color: Colors.orange,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-
-                      // Capacity
-                      Text(
-                        'Capacity: ${table.capacity}',
-                        style: const TextStyle(
-                          fontSize: 8, // 👈 REDUCED: from 10 to 8
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-
-                      const SizedBox(height: 2), // 👈 REDUCED: from 4 to 2
-                      // Status badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4, // 👈 REDUCED: from 6 to 4
-                          vertical: 1, // 👈 REDUCED: from 2 to 1
-                        ),
-                        decoration: BoxDecoration(
-                          color: cardData['borderColor'],
-                          borderRadius: BorderRadius.circular(
-                            8,
-                          ), // 👈 REDUCED: from 12 to 8
-                          boxShadow: [
-                            BoxShadow(
-                              color: cardData['borderColor'].withOpacity(0.25),
-                              blurRadius: 1,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          table.status.name.toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 6, // 👈 REDUCED: from 8 to 6
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.1,
-                          ),
-                        ),
-                      ),
-
-                      // 👈 FIX: Conditional reservation info with ultra-compact design
-                      if (table.status == TableStatus.reserved &&
-                          table.reservationInfo != null) ...[
-                        const SizedBox(height: 1), // 👈 MINIMAL spacing
-                        Text(
-                          table.reservationInfo!.timeRange,
-                          style: const TextStyle(
-                            fontSize: 4, // 👈 ULTRA-SMALL: from 6 to 4
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          table.reservationInfo!.customerName,
-                          style: const TextStyle(
-                            fontSize: 4, // 👈 ULTRA-SMALL: from 6 to 4
-                            color: Colors.orange,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
                     ],
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  // Icon with capacity indicator
+                  Stack(
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: cardData['borderColor'].withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.table_restaurant,
+                          color: cardData['borderColor'],
+                          size: 16,
+                        ),
+                      ),
+                      if (table.status == TableStatus.occupied)
+                        Positioned(
+                          right: -1,
+                          top: -1,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.person,
+                              size: 6,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  // Table name
+                  Text(
+                    table.name,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: cardData['textColor'],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  // Capacity
+                  Text(
+                    'Capacity: ${table.capacity}',
+                    style: const TextStyle(
+                      fontSize: 8,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  // Status badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cardData['borderColor'],
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: cardData['borderColor'].withOpacity(0.25),
+                          blurRadius: 1,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      table.status.name.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 6,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ),
+                  // Conditional reservation info with ultra-compact design
+                  if (table.status == TableStatus.reserved &&
+                      table.reservationInfo != null) ...[
+                    const SizedBox(height: 1),
+                    Text(
+                      table.reservationInfo!.timeRange,
+                      style: const TextStyle(
+                        fontSize: 4,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      table.reservationInfo!.customerName,
+                      style: const TextStyle(fontSize: 4, color: Colors.orange),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
               ),
             ),
-            // jhvhdvhvhjhvfffffffffffffffffh
           ),
         ),
       ),
@@ -713,7 +546,6 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                 itemBuilder: (context, index) {
                   final location = _locations[index];
                   final isSelected = _selectedLocation == location.name;
-
                   return ListTile(
                     leading: Icon(
                       location.icon,
@@ -755,7 +587,6 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     TableProvider tableProvider,
   ) async {
     await _triggerHapticFeedback();
-
     if (!mounted) return;
 
     showDialog(
@@ -770,7 +601,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                   size: 24,
                 ),
                 const SizedBox(width: 8),
-                Text('${table.name} - Cleaning Request'),
+                Expanded(child: Text('${table.name} - Cleaning Request')),
               ],
             ),
             content: const Text(
@@ -797,7 +628,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     );
   }
 
-  // ✅ FIXED: Trigger haptic feedback with proper import
+  // Trigger haptic feedback with proper import
   Future<void> _triggerHapticFeedback() async {
     try {
       if (await Vibration.hasVibrator() ?? false) {
@@ -812,14 +643,13 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
   // Send cleaning request
   void _sendCleaningRequest(RestaurantTable table) async {
     await _triggerHapticFeedback();
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             const Icon(Icons.cleaning_services, color: Colors.white),
             const SizedBox(width: 8),
-            Text('Cleaning request sent for ${table.name}'),
+            Expanded(child: Text('Cleaning request sent for ${table.name}')),
           ],
         ),
         backgroundColor: Colors.blue,
@@ -837,7 +667,6 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
         ),
       ),
     );
-
     // TODO: Send to KOT team via API
     print('Cleaning request sent for table: ${table.id}');
   }
@@ -889,16 +718,25 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
           'borderColor': const Color(0xFFF59E0B),
           'textColor': const Color(0xFFD97706),
         };
+      default:
+        return {
+          'gradient': const LinearGradient(
+            colors: [Colors.white, Colors.grey],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          'borderColor': Colors.grey,
+          'textColor': Colors.grey,
+        };
     }
   }
 
-  // Enhanced table click handler with reservation system
+  // 👈 UPDATED: Table click handler with NavigationProvider instead of Navigator.push
   void _handleTableClick(
     RestaurantTable table,
     TableProvider tableProvider,
   ) async {
     await _triggerHapticFeedback();
-
     if (table.status == TableStatus.available) {
       showDialog(
         context: context,
@@ -950,7 +788,12 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                   onPressed: () {
                     Navigator.pop(context);
                     tableProvider.updateTableStatus(table.id, 'occupied');
-                    widget.onTableSelected?.call(table.id, table.name);
+                    // 👈 NEW: Use NavigationProvider instead of Navigator.push
+                    context.read<NavigationProvider>().selectTable(
+                      table.id,
+                      table.name,
+                      _selectedLocation,
+                    );
                   },
                   icon: const Icon(Icons.restaurant_menu, size: 18),
                   label: const Text('Occupy & Order'),
@@ -963,28 +806,36 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
       );
     } else if (table.status == TableStatus.occupied ||
         table.status == TableStatus.reserved) {
-      widget.onTableSelected?.call(table.id, table.name);
+      // 👈 NEW: Use NavigationProvider instead of Navigator.push
+      context.read<NavigationProvider>().selectTable(
+        table.id,
+        table.name,
+        _selectedLocation,
+      );
     }
   }
 
   // Show reservation page (placeholder)
+  // Replace your existing _showReservationPage method with this:
   void _showReservationPage(
     RestaurantTable table,
     TableProvider tableProvider,
   ) {
-    _showSnackBar(
-      'Reservation feature coming soon for ${table.name}',
-      Colors.orange,
-    );
-  }
-
-  void _navigateToMenuForTable(RestaurantTable table) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder:
-            (context) =>
-                MenuView(selectedTableId: table.id, tableName: table.name),
+            (context) => TableReservationView(
+              table: table,
+              onReservationConfirmed: (reservation) {
+                // Update table status to reserved
+                tableProvider.updateTableStatus(table.id, 'reserved');
+                _showSnackBar(
+                  '${table.name} reserved successfully!',
+                  Colors.green,
+                );
+              },
+            ),
       ),
     );
   }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/themes/app_colors.dart';
 
-class ReportsView extends StatelessWidget {
-  const ReportsView({super.key});
+class ProfileView extends StatelessWidget {
+  const ProfileView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -14,13 +14,13 @@ class ReportsView extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.analytics_outlined,
+                Icons.person_outline,
                 size: 80,
                 color: Colors.grey,
               ),
               const SizedBox(height: 16),
               const Text(
-                'Reports',
+                'Profile',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -29,7 +29,7 @@ class ReportsView extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Analytics & reports coming soon',
+                'User profile coming soon',
                 style: TextStyle(
                   fontSize: 16,
                   color: AppColors.textSecondary,

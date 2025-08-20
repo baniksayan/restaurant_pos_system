@@ -1,5 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:restaurant_pos_system/core/constants/api_constants.dart';
+import 'package:restaurant_pos_system/data/models/auth_api_res_model.dart';
+import 'package:restaurant_pos_system/services/api_service.dart';
 import '../../../core/themes/app_colors.dart';
 import '../../../shared/widgets/animations/fade_in_animation.dart';
 import '../../../shared/widgets/animations/scale_animation.dart';
@@ -23,6 +27,13 @@ class _LoginViewState extends State<LoginView> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
+  AuthApiResModel model = AuthApiResModel();
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
   @override
   void dispose() {
     _usernameController.dispose();
@@ -35,16 +46,7 @@ class _LoginViewState extends State<LoginView> {
       setState(() => _isLoading = true);
 
       try {
-        await Provider.of<AuthProvider>(
-          context,
-          listen: false,
-        ).login(_usernameController.text, _passwordController.text);
-
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const WaiterDashboardView()),
-          );
-        }
+        getCustomerWishItems();
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -320,5 +322,52 @@ class _LoginViewState extends State<LoginView> {
         ),
       ),
     );
+  }
+
+  Future<AuthApiResModel?> getCustomerWishItems() async {
+    try {
+      final body = {
+        "userId": "wizdemo@gmail.com",
+        "password": "test1234",
+        "companyCode": "",
+        "connectionString": "",
+        "url": "",
+      };
+
+      if (kDebugMode) {
+        debugPrint('Request Body: $body');
+      }
+
+      final response = await ApiService.apiRequestHttpRawBody(
+        ApiConstants.auth,
+        body,
+        method: 'POST',
+      );
+      model = AuthApiResModel.fromJson(response);
+      if (model.statusCode == 200) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const WaiterDashboardView()),
+        );
+      }
+
+      if (response != null) {
+        if (kDebugMode) {
+          debugPrint('Wishlist API Response: $response');
+        }
+
+        return AuthApiResModel.fromJson(response);
+      } else {
+        if (kDebugMode) {
+          debugPrint('Wishlist API returned null response');
+        }
+        return null;
+      }
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Error in getCustomerWishItems: $e');
+        debugPrint('StackTrace: $stackTrace');
+      }
+      return null;
+    }
   }
 }

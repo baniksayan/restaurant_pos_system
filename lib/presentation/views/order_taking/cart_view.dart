@@ -1,19 +1,26 @@
-// lib/presentation/views/order_taking/cart_view.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
 import '../../../core/themes/app_colors.dart';
 import '../../view_models/providers/animated_cart_provider.dart';
+import '../../view_models/providers/navigation_provider.dart';
 import '../../../services/pdf_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../billing/billing_page.dart';
+import '../menu_management/menu_view.dart';
 
 class CartView extends StatefulWidget {
   final String? tableId;
   final String? tableName;
+  final String? selectedLocation; // 👈 ADD: Location context
 
-  const CartView({super.key, this.tableId, this.tableName});
+  const CartView({
+    super.key,
+    this.tableId,
+    this.tableName,
+    this.selectedLocation, // 👈 ADD: Location parameter
+  });
 
   @override
   State<CartView> createState() => _CartViewState();
@@ -48,11 +55,7 @@ class _CartViewState extends State<CartView> {
                       _buildEnhancedCheckoutFooter(context, cartProvider),
                   ],
                 ),
-                if (_kotGenerated)
-                  IgnorePointer(
-                    ignoring: true,
-                    child: _buildKOTGeneratedOverlay(),
-                  ),
+                // 👈 REMOVED: KOT Generated overlay that blocked interactions
               ],
             );
           },
@@ -84,6 +87,11 @@ class _CartViewState extends State<CartView> {
         children: [
           Row(
             children: [
+              // 👈 ADD: Back button
+              // IconButton(
+              //   onPressed: () => Navigator.pop(context),
+              //   icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+              // ),
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -143,10 +151,30 @@ class _CartViewState extends State<CartView> {
                         color: AppColors.textSecondary,
                       ),
                     ),
+                    // 👈 ADD: Show table and location info
+                    if (widget.tableName != null) ...[
+                      Text(
+                        'Table: ${widget.tableName}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (widget.selectedLocation != null)
+                        Text(
+                          'Location: ${widget.selectedLocation}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange,
+                          ),
+                        ),
+                    ],
                   ],
                 ),
               ),
-              if (cartProvider.cartItems.isNotEmpty && !_kotGenerated)
+              // 👈 CHANGED: Clear All button - Now always works (not just when !_kotGenerated)
+              if (cartProvider.cartItems.isNotEmpty)
                 Container(
                   margin: const EdgeInsets.only(left: 8),
                   child: OutlinedButton.icon(
@@ -172,7 +200,7 @@ class _CartViewState extends State<CartView> {
                 ),
             ],
           ),
-          // 👈 FIX 4: Add More Items Button - Always Works
+          // 👈 CHANGED: Add More Items Button - Always works regardless of KOT status
           if (cartProvider.cartItems.isNotEmpty) ...[
             const SizedBox(height: 12),
             SizedBox(
@@ -273,26 +301,22 @@ class _CartViewState extends State<CartView> {
                               ),
                             ),
                           ),
-                          if (!_kotGenerated)
-                            IconButton(
-                              onPressed: () {
-                                _triggerHapticFeedback();
-                                _showEditItemDialog(
-                                  context,
-                                  item,
-                                  cartProvider,
-                                );
-                              },
-                              icon: const Icon(
-                                Icons.edit,
-                                size: 18,
-                                color: AppColors.primary,
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 30,
-                                minHeight: 30,
-                              ),
+                          // 👈 CHANGED: Edit button always works (removed _kotGenerated check)
+                          IconButton(
+                            onPressed: () {
+                              _triggerHapticFeedback();
+                              _showEditItemDialog(context, item, cartProvider);
+                            },
+                            icon: const Icon(
+                              Icons.edit,
+                              size: 18,
+                              color: AppColors.primary,
                             ),
+                            constraints: const BoxConstraints(
+                              minWidth: 30,
+                              minHeight: 30,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -342,122 +366,103 @@ class _CartViewState extends State<CartView> {
                     ],
                   ),
                 ),
-                // 👈 FIX 3: Better Quantity Counter UI
-                if (!_kotGenerated)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.primary, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              _triggerHapticFeedback();
-                              cartProvider.removeItem(item.id);
-                            },
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(12),
-                              bottomLeft: Radius.circular(12),
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              child: const Icon(
-                                Icons.remove,
-                                color: AppColors.primary,
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            border: Border.symmetric(
-                              vertical: BorderSide(
-                                color: AppColors.primary,
-                                width: 1,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            item.quantity.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              _triggerHapticFeedback();
-                              cartProvider.addItem(
-                                item.id,
-                                item.name,
-                                item.price,
-                                item.tableId,
-                                item.tableName,
-                              );
-                            },
-                            borderRadius: const BorderRadius.only(
-                              topRight: Radius.circular(12),
-                              bottomRight: Radius.circular(12),
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              child: const Icon(
-                                Icons.add,
-                                color: AppColors.primary,
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Qty: ${item.quantity}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
+                // 👈 CHANGED: Quantity controls always work (removed _kotGenerated check)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primary, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
                       ),
-                    ),
+                    ],
                   ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            _triggerHapticFeedback();
+                            cartProvider.removeItem(item.id);
+                          },
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(12),
+                            bottomLeft: Radius.circular(12),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: const Icon(
+                              Icons.remove,
+                              color: AppColors.primary,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          border: Border.symmetric(
+                            vertical: BorderSide(
+                              color: AppColors.primary,
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          item.quantity.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            _triggerHapticFeedback();
+                            cartProvider.addItem(
+                              item.id,
+                              item.name,
+                              item.price,
+                              item.tableId,
+                              item.tableName,
+                            );
+                          },
+                          borderRadius: const BorderRadius.only(
+                            topRight: Radius.circular(12),
+                            bottomRight: Radius.circular(12),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: const Icon(
+                              Icons.add,
+                              color: AppColors.primary,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -550,11 +555,11 @@ class _CartViewState extends State<CartView> {
                       ),
                     ),
                   ),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    size: 12,
-                    color: Colors.blue[700],
-                  ),
+                  // Icon(
+                  //   Icons.arrow_forward_ios,
+                  //   size: 12,
+                  //   color: Colors.blue[700],
+                  // ),
                 ],
               ),
             ),
@@ -650,38 +655,6 @@ class _CartViewState extends State<CartView> {
     );
   }
 
-  Widget _buildKOTGeneratedOverlay() {
-    return Positioned.fill(
-      child: Container(
-        color: Colors.black.withOpacity(0.05),
-        child: Center(
-          child: Transform.rotate(
-            angle: -0.3,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Colors.green.withOpacity(0.4),
-                  width: 3,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                'KOT GENERATED',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green.withOpacity(0.4),
-                  letterSpacing: 4,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildPriceRow(String label, String value, {bool isTotal = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -763,7 +736,7 @@ class _CartViewState extends State<CartView> {
     );
   }
 
-  // 👈 FIX 4: Navigate Back to Menu - Fixed
+  // 👈 UPDATED: Navigate Back to Menu with provider-based navigation
   void _navigateBackToMenu(
     BuildContext context,
     AnimatedCartProvider cartProvider,
@@ -782,20 +755,15 @@ class _CartViewState extends State<CartView> {
 
       final firstItem = items.first;
 
-      // Navigate back to menu with proper table context
-      Navigator.pushNamed(
-        context,
-        '/menu',
-        arguments: {
-          'tableId': firstItem.tableId,
-          'tableName': firstItem.tableName,
-        },
+      // 👈 CHANGED: Use provider instead of Navigator.push
+      context.read<NavigationProvider>().selectTable(
+        firstItem.tableId,
+        firstItem.tableName,
+        widget.selectedLocation ?? '', // Use the location passed to CartView
       );
     } catch (e) {
-      // Fallback: just pop current screen
-      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Navigated back to menu'),
           backgroundColor: Colors.green,
         ),
@@ -899,6 +867,7 @@ class _CartViewState extends State<CartView> {
       );
 
       await Future.delayed(const Duration(seconds: 2));
+
       Navigator.pop(context);
 
       _showSendToKitchenOptions(context, kotBytes, _kotOrderNumber!);
@@ -1052,7 +1021,6 @@ class _CartViewState extends State<CartView> {
             (context) => BillingPage(
               orderNumber: _kotOrderNumber!,
               cartItems: cartProvider.cartItems.values.toList(),
-              // 👈 FIX 2: Don't clear cart here - let billing page handle it
               onBillGenerated: () {
                 // This will be called after payment is completed
                 cartProvider.clearCart();
@@ -1071,16 +1039,7 @@ class _CartViewState extends State<CartView> {
     CartItem item,
     AnimatedCartProvider cartProvider,
   ) {
-    if (_kotGenerated) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cannot edit items after KOT is generated'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
+    // 👈 REMOVED: KOT generation check - Now always allows editing
     final TextEditingController notesController = TextEditingController(
       text: item.specialNotes ?? '',
     );
@@ -1269,16 +1228,7 @@ class _CartViewState extends State<CartView> {
     BuildContext context,
     AnimatedCartProvider cartProvider,
   ) {
-    if (_kotGenerated) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cannot clear cart after KOT is generated'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
+    // 👈 REMOVED: KOT generation check - Now always allows clearing
     showDialog(
       context: context,
       builder:
