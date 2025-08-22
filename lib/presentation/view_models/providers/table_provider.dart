@@ -1,22 +1,28 @@
 // lib/presentation/view_models/providers/table_provider.dart
 import 'package:flutter/material.dart';
 import '../../../data/models/restaurant_table.dart';
+import '../../../services/api_service.dart';
+import '../../../data/models/order_channel.dart';
 
 class TableProvider extends ChangeNotifier {
   List<RestaurantTable> _tables = [];
-  bool _isLoading = false; // 👈 ADD this property
-  String? _error; // 👈 ADD this property
-  String _selectedLocation = 'All'; // 👈 ADD location tracking
+  List<OrderChannel> _orderChannels = [];
+  bool _isLoading = false;
+  bool _isApiLoading = false;
+  String? _error;
+  String? _tableApiError;
+  String _selectedLocation = 'All';
 
-  // 👈 ADD these getters
+  // Getters
   List<RestaurantTable> get tables => _tables;
-  bool get isLoading => _isLoading; // Fix for line 1365
-  String? get error => _error; // Fix for line 1369 & 1772
+  List<OrderChannel> get orderChannels => _orderChannels;
+  bool get isLoading => _isLoading;
+  bool get isApiLoading => _isApiLoading;
+  String? get error => _error;
+  String? get tableApiError => _tableApiError;
   String get selectedLocation => _selectedLocation;
 
-  // lib/presentation/view_models/providers/table_provider.dart
-  // Update your initializeTables method:
-
+  // Initialize tables with mock data
   void initializeTables() {
     _isLoading = true;
     _error = null;
@@ -52,7 +58,6 @@ class TableProvider extends ChangeNotifier {
           kotGenerated: false,
           billGenerated: false,
           reservationInfo: ReservationInfo(
-            // 👈 FIX: Complete reservation info
             startTime: '19:00',
             endTime: '21:00',
             occasion: 'Birthday Party',
@@ -102,7 +107,36 @@ class TableProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // 👈 ADD this method - Fix for line 1373
+  // Fetch tables from API
+  Future<void> fetchTablesByOutlet({
+    required String token,
+    required int outletId,
+  }) async {
+    _isApiLoading = true;
+    _tableApiError = null;
+    notifyListeners();
+
+    try {
+      final result = await ApiService.getTablesByOutlet(
+        token: token,
+        outletId: outletId,
+      );
+      if (result != null) {
+        _orderChannels = result;
+      } else {
+        _tableApiError = 'Failed to fetch tables from API';
+        _orderChannels = [];
+      }
+    } catch (e) {
+      _tableApiError = 'Error: $e';
+      _orderChannels = [];
+    } finally {
+      _isApiLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Get tables filtered by location
   List<RestaurantTable> getTablesForLocation(String locationName) {
     if (locationName == 'All') {
       return _tables;
@@ -110,6 +144,7 @@ class TableProvider extends ChangeNotifier {
     return _tables.where((table) => table.location == locationName).toList();
   }
 
+  // Update table status
   void updateTableStatus(String tableId, String newStatus) {
     try {
       final tableIndex = _tables.indexWhere((table) => table.id == tableId);
@@ -135,6 +170,7 @@ class TableProvider extends ChangeNotifier {
     }
   }
 
+  // Add reservation to table
   void addReservation(String tableId, ReservationInfo reservationInfo) {
     try {
       final tableIndex = _tables.indexWhere((table) => table.id == tableId);
@@ -159,16 +195,25 @@ class TableProvider extends ChangeNotifier {
     }
   }
 
+  // Set selected location filter
   void setSelectedLocation(String location) {
     _selectedLocation = location;
     notifyListeners();
   }
 
+  // Clear general error
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
+  // Clear API error
+  void clearApiError() {
+    _tableApiError = null;
+    notifyListeners();
+  }
+
+  // Convert string to TableStatus enum
   TableStatus _getTableStatusFromString(String status) {
     switch (status.toLowerCase()) {
       case 'available':

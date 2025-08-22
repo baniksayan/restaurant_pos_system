@@ -1,6 +1,7 @@
 // lib/shared/widgets/layout/location_header.dart
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
+import 'package:restaurant_pos_system/presentation/view_models/providers/dashboard_provider.dart';
 import '../../../core/themes/app_colors.dart';
 import '../../../data/models/table.dart' hide TableStatus;
 import '../../../presentation/views/dashboard/waiter_dashboard_view.dart';

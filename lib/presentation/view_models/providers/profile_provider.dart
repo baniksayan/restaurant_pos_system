@@ -87,7 +87,7 @@ class ProfileProvider extends ChangeNotifier {
 
   void _loadActiveAssignments() {
     _activeTableAssignments = [
-      'Table 1 - Occupied (Smith Family)',
+      'Table 1 - Occupied (Banik Family)',
       'Table 5 - Reserved (8:30 PM)',
       'Terrace 1 - Occupied (Birthday Party)',
       'Table 8 - Cleaning Required',

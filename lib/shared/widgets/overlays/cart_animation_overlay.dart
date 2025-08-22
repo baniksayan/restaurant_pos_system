@@ -8,20 +8,16 @@ class CartAnimationOverlay extends StatefulWidget {
   const CartAnimationOverlay({Key? key, required this.child}) : super(key: key);
 
   @override
-  CartAnimationOverlayState createState() => CartAnimationOverlayState(); // 👈 Make public
+  CartAnimationOverlayState createState() => CartAnimationOverlayState(); // |  Make public
 }
 
-class CartAnimationOverlayState extends State<CartAnimationOverlay> { // 👈 No underscore - public class
+class CartAnimationOverlayState extends State<CartAnimationOverlay> {
+  // |  No underscore - public class
   final List<Widget> _flyingItems = [];
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        widget.child,
-        ..._flyingItems,
-      ],
-    );
+    return Stack(children: [widget.child, ..._flyingItems]);
   }
 
   void animateToCart({
@@ -36,9 +32,9 @@ class CartAnimationOverlayState extends State<CartAnimationOverlay> { // 👈 No
       screenSize.height - 100, // Bottom navigation area
     );
 
-    // 👈 FIXED: Declare flyingItem before usage
+    // |  FIXED: Declare flyingItem before usage
     late Widget flyingItem;
-    
+
     flyingItem = FlyingCartAnimation(
       child: item,
       startPosition: startPosition,
@@ -46,7 +42,7 @@ class CartAnimationOverlayState extends State<CartAnimationOverlay> { // 👈 No
       onComplete: () {
         if (mounted) {
           setState(() {
-            _flyingItems.remove(flyingItem); // 👈 Now this works
+            _flyingItems.remove(flyingItem); // |  Now this works
           });
         }
         onComplete();

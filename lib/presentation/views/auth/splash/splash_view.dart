@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/themes/app_colors.dart';
-import '../../../shared/widgets/animations/scale_animation.dart';
+import '../../../../core/themes/app_colors.dart';
+import '../../../../shared/widgets/animations/scale_animation.dart';
 
 class SplashView extends StatelessWidget {
   const SplashView({super.key});

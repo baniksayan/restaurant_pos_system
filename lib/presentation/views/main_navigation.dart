@@ -9,7 +9,7 @@ import '../view_models/providers/animated_cart_provider.dart';
 
 import 'dashboard/waiter_dashboard_view.dart';
 import 'menu_management/menu_view.dart';
-import 'order_taking/cart_view.dart';
+import 'order_taking/cart/cart_view.dart';
 import 'profile/profile_view.dart';
 import 'reports/reports_view.dart';
 

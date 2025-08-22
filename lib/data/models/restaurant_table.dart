@@ -11,7 +11,7 @@ class RestaurantTable {
   final TableStatus status;
   final bool kotGenerated;
   final bool billGenerated;
-  final ReservationInfo? reservationInfo; // 👈 FIX: Add this property
+  final ReservationInfo? reservationInfo; // FIX: Add this property
 
   const RestaurantTable({
     required this.id,
@@ -21,7 +21,7 @@ class RestaurantTable {
     required this.status,
     required this.kotGenerated,
     required this.billGenerated,
-    this.reservationInfo, // 👈 FIX: Add to constructor
+    this.reservationInfo, // FIX: Add to constructor
   });
 
   RestaurantTable copyWith({
@@ -64,13 +64,9 @@ class RestaurantTable {
   }
 }
 
-enum TableStatus {
-  available,
-  occupied,
-  reserved,
-}
+enum TableStatus { available, occupied, reserved }
 
-// 👈 FIX: Complete ReservationInfo class
+// |  FIX: Complete ReservationInfo class
 class ReservationInfo {
   final String startTime;
   final String endTime;
@@ -116,12 +112,12 @@ class ReservationInfo {
 
   // Helper to format reservation time display
   String get timeRange => '$startTime - $endTime';
-  
+
   // Helper to check if reservation is today
   bool get isToday {
     final now = DateTime.now();
     return reservationDate.year == now.year &&
-           reservationDate.month == now.month &&
-           reservationDate.day == now.day;
+        reservationDate.month == now.month &&
+        reservationDate.day == now.day;
   }
 }

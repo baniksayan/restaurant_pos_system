@@ -1,13 +1,15 @@
 // lib/core/constants/api_constants.dart
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
+
 class ApiConstants {
   ApiConstants._();
 
   // Base URL
-  static String baseUrl = "https://posapi.uvanij.com/";
-  static String accessToken = '';
+  static String baseUrl = "https://posapi.uvanij.com/api/";
+  static String accessToken = HiveService.getAuthToken();
 
   // Auth endpoints
-  static const String auth = "api/User/authenticate";
+  static const String auth = "User/authenticate";
   static const String register = "api/signup";
   static const String googleLogin = "api/google-login";
   static const String signUp = "api/signup";
@@ -23,6 +25,9 @@ class ApiConstants {
   static const String createOrder = "api/orders";
   static const String getTables = "api/tables";
   static const String updateTable = "api/tables";
+
+  static const String getTablesByOutlet =
+      "api/api/Setting/OrderChannelListByType";
 }
 
 class ApiMethods {

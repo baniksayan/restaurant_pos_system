@@ -3,13 +3,25 @@ import 'package:flutter/material.dart';
 class AnimatedCartProvider extends ChangeNotifier {
   final Map<String, CartItem> _cartItems = {};
   int _totalItems = 0;
-  
+
   Map<String, CartItem> get cartItems => _cartItems;
   int get totalItems => _totalItems;
-  double get totalAmount => _cartItems.values.fold(0, (sum, item) => sum + (item.price * item.quantity));
-  
-  // 👈 UPDATED: Add specialNotes parameter to fix the error
-  void addItem(String itemId, String name, double price, String tableId, String tableName, {String? specialNotes}) {
+  double get totalAmount => _cartItems.values.fold(
+    0,
+    (sum, item) => sum + (item.price * item.quantity),
+  );
+/*
+
+*/
+  // |  UPDATED: Add specialNotes parameter to fix the error
+  void addItem(
+    String itemId,
+    String name,
+    double price,
+    String tableId,
+    String tableName, {
+    String? specialNotes,
+  }) {
     if (_cartItems.containsKey(itemId)) {
       _cartItems[itemId]!.quantity++;
       // Update special notes if provided
@@ -30,7 +42,7 @@ class AnimatedCartProvider extends ChangeNotifier {
     _updateTotalItems();
     notifyListeners();
   }
-  
+
   void removeItem(String itemId) {
     if (_cartItems.containsKey(itemId)) {
       if (_cartItems[itemId]!.quantity > 1) {
@@ -50,11 +62,11 @@ class AnimatedCartProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   void _updateTotalItems() {
     _totalItems = _cartItems.values.fold(0, (sum, item) => sum + item.quantity);
   }
-  
+
   void clearCart() {
     _cartItems.clear();
     _totalItems = 0;
@@ -70,8 +82,8 @@ class CartItem {
   int quantity;
   String tableId;
   String tableName;
-  String? specialNotes; // 👈 ADD this field
-  
+  String? specialNotes; // |  ADD this field
+
   CartItem({
     required this.id,
     required this.name,
@@ -79,6 +91,6 @@ class CartItem {
     required this.quantity,
     required this.tableId,
     required this.tableName,
-    this.specialNotes, // 👈 ADD this parameter
+    this.specialNotes, // |  ADD this parameter
   });
 }

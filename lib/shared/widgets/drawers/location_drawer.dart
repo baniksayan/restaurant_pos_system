@@ -1,6 +1,7 @@
 // lib/shared/widgets/drawers/location_drawer.dart
 
 import 'package:flutter/material.dart';
+import 'package:restaurant_pos_system/presentation/view_models/providers/dashboard_provider.dart';
 import '../../../core/themes/app_colors.dart';
 import '../../../presentation/views/dashboard/waiter_dashboard_view.dart';
 

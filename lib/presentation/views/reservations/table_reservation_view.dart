@@ -1,13 +1,16 @@
-// lib/presentation/views/reservations/table_reservation_view.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
+
 import '../../../core/themes/app_colors.dart';
 import '../../../data/models/restaurant_table.dart';
 import '../../../data/models/reservation.dart';
 import '../../view_models/providers/reservation_provider.dart';
 import '../../view_models/providers/navigation_provider.dart';
+import '../../../services/reservation_bill_service.dart';
 
 class TableReservationView extends StatefulWidget {
   final RestaurantTable table;
@@ -26,19 +29,23 @@ class TableReservationView extends StatefulWidget {
 class _TableReservationViewState extends State<TableReservationView> {
   final _formKey = GlobalKey<FormState>();
   final _personsController = TextEditingController(text: '2');
-  
+  final _customerNameController = TextEditingController();
+  final _customerPhoneController = TextEditingController();
+  final _specialNotesController = TextEditingController();
+  final _advanceAmountController = TextEditingController();
+
   DateTime? _fromTime;
   DateTime? _toTime;
   String _selectedOccasion = 'Other';
   bool _decoration = false;
-  bool _advanceOrder = false;
   double _calculatedPrice = 0.0;
+  double _minAdvanceAmount = 100.0;
   String? _timeValidationError;
-  
+
   final List<String> _occasions = [
     'Other',
     'Birthday',
-    'Anniversary', 
+    'Anniversary',
     'Ceremony',
     'Party',
   ];
@@ -59,7 +66,7 @@ class _TableReservationViewState extends State<TableReservationView> {
       0,
     );
     final defaultEnd = defaultStart.add(const Duration(hours: 2));
-    
+
     setState(() {
       _fromTime = defaultStart;
       _toTime = defaultEnd;
@@ -71,13 +78,16 @@ class _TableReservationViewState extends State<TableReservationView> {
   void _calculatePrice() {
     if (_fromTime != null && _toTime != null) {
       final reservationProvider = context.read<ReservationProvider>();
+      final price = reservationProvider.calculatePrice(
+        fromTime: _fromTime!,
+        toTime: _toTime!,
+        occasion: _selectedOccasion,
+        decoration: _decoration,
+      );
       setState(() {
-        _calculatedPrice = reservationProvider.calculatePrice(
-          fromTime: _fromTime!,
-          toTime: _toTime!,
-          occasion: _selectedOccasion,
-          decoration: _decoration,
-        );
+        _calculatedPrice = price;
+        _minAdvanceAmount = Reservation.getMinAdvanceAmount(price);
+        _advanceAmountController.text = _minAdvanceAmount.toStringAsFixed(0);
       });
     }
   }
@@ -123,10 +133,14 @@ class _TableReservationViewState extends State<TableReservationView> {
                     children: [
                       _buildTableInfoCard(),
                       const SizedBox(height: 16),
-                      _buildFormSection(),
+                      _buildCustomerInfoCard(),
                       const SizedBox(height: 16),
-                      _buildPricingAndOptionsCard(),
-                      const SizedBox(height: 80), // Space for floating buttons
+                      _buildReservationDetailsCard(),
+                      const SizedBox(height: 16),
+                      _buildPricingAndPaymentCard(),
+                      const SizedBox(height: 16),
+                      _buildActionButtons(),
+                      const SizedBox(height: 100),
                     ],
                   ),
                 ),
@@ -135,8 +149,7 @@ class _TableReservationViewState extends State<TableReservationView> {
           ],
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _buildModernActionButtons(),
+      bottomNavigationBar: _buildPersistentBottomNav(),
     );
   }
 
@@ -162,7 +175,11 @@ class _TableReservationViewState extends State<TableReservationView> {
             ),
             child: IconButton(
               onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back, color: AppColors.primary, size: 22),
+              icon: const Icon(
+                Icons.arrow_back,
+                color: AppColors.primary,
+                size: 22,
+              ),
               constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             ),
           ),
@@ -281,7 +298,11 @@ class _TableReservationViewState extends State<TableReservationView> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(Icons.people_outline, size: 16, color: Colors.grey[600]),
+                    Icon(
+                      Icons.people_outline,
+                      size: 16,
+                      color: Colors.grey[600],
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Capacity: ${widget.table.capacity} persons',
@@ -301,7 +322,110 @@ class _TableReservationViewState extends State<TableReservationView> {
     );
   }
 
-  Widget _buildFormSection() {
+  Widget _buildCustomerInfoCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.person, color: AppColors.primary, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Customer Details',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _customerNameController,
+            decoration: InputDecoration(
+              labelText: 'Customer Name *',
+              hintText: 'Enter full name',
+              prefixIcon: const Icon(Icons.person_outline),
+              filled: true,
+              fillColor: Colors.grey[50],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 2,
+                ),
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter customer name';
+              }
+              if (value.trim().length < 2) {
+                return 'Name must be at least 2 characters';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _customerPhoneController,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
+            decoration: InputDecoration(
+              labelText: 'Phone Number *',
+              hintText: 'Enter 10-digit number',
+              prefixIcon: const Icon(Icons.phone_outlined),
+              filled: true,
+              fillColor: Colors.grey[50],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 2,
+                ),
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter phone number';
+              }
+              if (value.length != 10) {
+                return 'Phone number must be 10 digits';
+              }
+              return null;
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReservationDetailsCard() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -333,6 +457,8 @@ class _TableReservationViewState extends State<TableReservationView> {
           const SizedBox(height: 20),
           _buildOccasionSelection(),
           const SizedBox(height: 20),
+          _buildSpecialNotesField(),
+          const SizedBox(height: 20),
           _buildDurationDisplay(),
         ],
       ),
@@ -340,56 +466,35 @@ class _TableReservationViewState extends State<TableReservationView> {
   }
 
   Widget _buildPersonsField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.people, color: AppColors.primary, size: 20),
-            const SizedBox(width: 8),
-            const Text(
-              'Number of Persons',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
+    return TextFormField(
+      controller: _personsController,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: InputDecoration(
+        labelText: 'Number of Persons',
+        hintText: 'Enter number of persons',
+        prefixIcon: const Icon(Icons.people_outline),
+        filled: true,
+        fillColor: Colors.grey[50],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: _personsController,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: InputDecoration(
-            hintText: 'Enter number of persons',
-            hintStyle: TextStyle(color: Colors.grey[400]),
-            prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
-            filled: true,
-            fillColor: Colors.grey,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.primary, width: 2),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please enter number of persons';
-            }
-            final persons = int.tryParse(value);
-            if (persons == null || persons < 1 || persons > widget.table.capacity) {
-              return 'Please enter between 1 and ${widget.table.capacity} persons';
-            }
-            return null;
-          },
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
-      ],
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter number of persons';
+        }
+        final persons = int.tryParse(value);
+        if (persons == null || persons < 1 || persons > widget.table.capacity) {
+          return 'Please enter between 1 and ${widget.table.capacity} persons';
+        }
+        return null;
+      },
     );
   }
 
@@ -399,8 +504,6 @@ class _TableReservationViewState extends State<TableReservationView> {
       children: [
         Row(
           children: [
-            Icon(Icons.access_time, color: AppColors.primary, size: 20),
-            const SizedBox(width: 8),
             const Text(
               'Reservation Time',
               style: TextStyle(
@@ -421,7 +524,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                 child: const Icon(
                   Icons.info_outline,
                   color: Colors.blue,
-                  size: 18,
+                  size: 16,
                 ),
               ),
               tooltip: 'Reservation Rules',
@@ -435,7 +538,7 @@ class _TableReservationViewState extends State<TableReservationView> {
               child: _buildTimeSelector(
                 label: 'From',
                 time: _fromTime,
-                icon: Icons.login,
+                icon: Icons.schedule,
                 onTimeSelected: (time) {
                   setState(() {
                     _fromTime = time;
@@ -453,7 +556,7 @@ class _TableReservationViewState extends State<TableReservationView> {
               child: _buildTimeSelector(
                 label: 'To',
                 time: _toTime,
-                icon: Icons.logout,
+                icon: Icons.schedule_outlined,
                 onTimeSelected: (time) {
                   setState(() {
                     _toTime = time;
@@ -476,7 +579,7 @@ class _TableReservationViewState extends State<TableReservationView> {
             ),
             child: Row(
               children: [
-                Icon(Icons.warning_amber, color: Colors.orange[700], size: 16),
+                const Icon(Icons.warning_amber, color: Colors.orange, size: 16),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -523,9 +626,9 @@ class _TableReservationViewState extends State<TableReservationView> {
               builder: (context, child) {
                 return Theme(
                   data: Theme.of(context).copyWith(
-                    colorScheme: Theme.of(context).colorScheme.copyWith(
-                      primary: AppColors.primary,
-                    ),
+                    colorScheme: Theme.of(
+                      context,
+                    ).colorScheme.copyWith(primary: AppColors.primary),
                   ),
                   child: child!,
                 );
@@ -540,9 +643,10 @@ class _TableReservationViewState extends State<TableReservationView> {
                 pickedTime.hour,
                 pickedTime.minute,
               );
-              final finalDateTime = selectedDateTime.isBefore(now)
-                  ? selectedDateTime.add(const Duration(days: 1))
-                  : selectedDateTime;
+              final finalDateTime =
+                  selectedDateTime.isBefore(now)
+                      ? selectedDateTime.add(const Duration(days: 1))
+                      : selectedDateTime;
               onTimeSelected(finalDateTime);
             }
           },
@@ -552,20 +656,21 @@ class _TableReservationViewState extends State<TableReservationView> {
             decoration: BoxDecoration(
               color: Colors.grey[50],
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey!),
+              border: Border.all(color: Colors.grey.shade300),
             ),
             child: Row(
               children: [
-                Icon(icon, color: Colors.grey, size: 18),
+                Icon(icon, color: Colors.grey.shade600, size: 18),
                 const SizedBox(width: 8),
                 Text(
-                  time != null 
+                  time != null
                       ? TimeOfDay.fromDateTime(time).format(context)
                       : 'Select time',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: time != null ? AppColors.textPrimary : Colors.grey[500],
+                    color:
+                        time != null ? AppColors.textPrimary : Colors.grey[500],
                   ),
                 ),
               ],
@@ -577,40 +682,23 @@ class _TableReservationViewState extends State<TableReservationView> {
   }
 
   Widget _buildOccasionSelection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.celebration, color: AppColors.primary, size: 20),
-            const SizedBox(width: 8),
-            const Text(
-              'Special Occasion',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
+    return DropdownButtonFormField<String>(
+      value: _selectedOccasion,
+      decoration: InputDecoration(
+        labelText: 'Special Occasion',
+        filled: true,
+        fillColor: Colors.grey[50],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          value: _selectedOccasion,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.grey[50],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.primary, width: 2),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          ),
-          items: _occasions.map((occasion) {
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+      ),
+      items:
+          _occasions.map((occasion) {
             return DropdownMenuItem(
               value: occasion,
               child: Text(
@@ -619,22 +707,43 @@ class _TableReservationViewState extends State<TableReservationView> {
               ),
             );
           }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedOccasion = value!;
-            });
-            _calculatePrice();
-          },
+      onChanged: (value) {
+        setState(() {
+          _selectedOccasion = value!;
+        });
+        _calculatePrice();
+      },
+    );
+  }
+
+  Widget _buildSpecialNotesField() {
+    return TextFormField(
+      controller: _specialNotesController,
+      maxLines: 3,
+      decoration: InputDecoration(
+        labelText: 'Special Notes (Optional)',
+        hintText: 'Any special requirements or notes...',
+        prefixIcon: const Icon(Icons.note_outlined),
+        filled: true,
+        fillColor: Colors.grey[50],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
-      ],
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+      ),
     );
   }
 
   Widget _buildDurationDisplay() {
-    final duration = _fromTime != null && _toTime != null
-        ? _toTime!.difference(_fromTime!)
-        : Duration.zero;
-    
+    final duration =
+        _fromTime != null && _toTime != null
+            ? _toTime!.difference(_fromTime!)
+            : Duration.zero;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -683,7 +792,7 @@ class _TableReservationViewState extends State<TableReservationView> {
     );
   }
 
-  Widget _buildPricingAndOptionsCard() {
+  Widget _buildPricingAndPaymentCard() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -700,24 +809,36 @@ class _TableReservationViewState extends State<TableReservationView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Pricing & Options',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
+          const Row(
+            children: [
+              Icon(Icons.currency_rupee, color: AppColors.primary, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Pricing & Payment',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           _buildPricingBreakdown(),
           const SizedBox(height: 20),
-          _buildAdditionalOptions(),
+          _buildAdvancePaymentSection(),
+          const SizedBox(height: 16),
+          _buildDecorationOption(),
         ],
       ),
     );
   }
 
   Widget _buildPricingBreakdown() {
+    final advanceAmount =
+        double.tryParse(_advanceAmountController.text) ?? _minAdvanceAmount;
+    final remainingAmount = _calculatedPrice - advanceAmount;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -732,25 +853,13 @@ class _TableReservationViewState extends State<TableReservationView> {
       child: Column(
         children: [
           Row(
-            children: [
-              Icon(Icons.currency_rupee, color: Colors.green[700], size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Pricing Breakdown',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.green[700],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Base Amount:', style: TextStyle(fontSize: 14)),
-              Text('₹${_calculatedPrice.toStringAsFixed(0)}', style: const TextStyle(fontSize: 14)),
+              Text(
+                '₹${_calculatedPrice.toStringAsFixed(0)}',
+                style: const TextStyle(fontSize: 14),
+              ),
             ],
           ),
           if (_decoration) ...[
@@ -778,7 +887,7 @@ class _TableReservationViewState extends State<TableReservationView> {
               Text(
                 '₹${_calculatedPrice.toStringAsFixed(0)}',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.green[700],
                 ),
@@ -786,12 +895,49 @@ class _TableReservationViewState extends State<TableReservationView> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            '* No GST applicable on reservations',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.green[600],
-              fontStyle: FontStyle.italic,
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Advance Payment:',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '₹${advanceAmount.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Remaining Amount:',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    Text(
+                      '₹${remainingAmount.toStringAsFixed(0)}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -799,96 +945,152 @@ class _TableReservationViewState extends State<TableReservationView> {
     );
   }
 
-  Widget _buildAdditionalOptions() {
+  Widget _buildAdvancePaymentSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Advance Payment Amount',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _advanceAmountController,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: InputDecoration(
+            hintText: 'Enter advance amount',
+            prefixIcon: const Icon(Icons.currency_rupee_outlined),
+            suffixText: 'INR',
+            filled: true,
+            fillColor: Colors.grey[50],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+            helperText:
+                'Minimum: ₹${_minAdvanceAmount.toStringAsFixed(0)} • Maximum: ₹${_calculatedPrice.toStringAsFixed(0)}',
+            helperStyle: const TextStyle(fontSize: 11),
+          ),
+          onChanged: (value) {
+            setState(() {});
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter advance amount';
+            }
+            final amount = double.tryParse(value);
+            if (amount == null) {
+              return 'Please enter valid amount';
+            }
+            if (amount < _minAdvanceAmount) {
+              return 'Minimum advance: ₹${_minAdvanceAmount.toStringAsFixed(0)}';
+            }
+            if (amount > _calculatedPrice) {
+              return 'Cannot exceed total amount';
+            }
+            return null;
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDecorationOption() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        title: const Row(
+          children: [
+            Icon(Icons.auto_awesome, color: Colors.purple, size: 20),
+            SizedBox(width: 8),
+            Text(
+              'Table Decoration',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        subtitle: const Text('₹500 - Balloons, flowers & table setup'),
+        value: _decoration,
+        activeColor: AppColors.primary,
+        onChanged: (value) {
+          setState(() {
+            _decoration = value;
+          });
+          _calculatePrice();
+        },
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
     return Column(
       children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: SwitchListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            title: const Row(
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed:
+                _timeValidationError == null ? _confirmReservation : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 2,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.auto_awesome, color: Colors.purple, size: 20),
-                SizedBox(width: 8),
+                const Icon(Icons.check_circle, size: 20),
+                const SizedBox(width: 8),
                 Text(
-                  'Table Decoration',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  _timeValidationError == null
+                      ? 'Confirm & Generate Bill'
+                      : 'Fix Time Issues',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
-            subtitle: const Text('₹500 - Balloons, flowers & setup'),
-            value: _decoration,
-            activeColor: AppColors.primary,
-            onChanged: (value) {
-              setState(() {
-                _decoration = value;
-              });
-              _calculatePrice();
-            },
           ),
         ),
         const SizedBox(height: 12),
-        InkWell(
-          onTap: () {
-            final navProvider = context.read<NavigationProvider>();
-            navProvider.selectTable(
-              widget.table.id,
-              widget.table.name,
-              '',
-            );
-            Navigator.pop(context);
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange.withOpacity(0.2)),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red,
+              side: const BorderSide(color: Colors.red, width: 2),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
-            child: Row(
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.restaurant_menu,
-                    color: Colors.orange,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Pre-order Food',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        'Order food items in advance',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: Colors.grey[600],
+                Icon(Icons.cancel, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Cancel',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -898,61 +1100,64 @@ class _TableReservationViewState extends State<TableReservationView> {
     );
   }
 
-  Widget _buildModernActionButtons() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.red, width: 2),
+  Widget _buildPersistentBottomNav() {
+    return Consumer<NavigationProvider>(
+      builder: (context, navProvider, _) {
+        return Container(
+          height: 65,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 15,
+                offset: const Offset(0, -3),
               ),
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            flex: 2,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.primary, width: 2),
-              ),
-              child: TextButton(
-                onPressed: _timeValidationError == null ? _confirmReservation : null,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: const Text(
-                  'Confirm Reservation',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(0, Icons.table_restaurant, 'Tables', navProvider),
+              _buildNavItem(1, Icons.restaurant_menu, 'Menu', navProvider),
+              _buildNavItem(2, Icons.shopping_cart, 'Cart', navProvider),
+              _buildNavItem(3, Icons.person, 'Profile', navProvider),
+              _buildNavItem(4, Icons.analytics, 'Reports', navProvider),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildNavItem(
+    int index,
+    IconData icon,
+    String label,
+    NavigationProvider navProvider,
+  ) {
+    final isActive = navProvider.currentIndex == index;
+    return GestureDetector(
+      onTap: () {
+        _triggerHapticFeedback();
+        navProvider.navigateToIndex(index);
+        Navigator.pop(context);
+      },
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            color: isActive ? AppColors.primary : Colors.grey[600],
+            size: 22,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              color: isActive ? AppColors.primary : Colors.grey[600],
             ),
           ),
         ],
@@ -964,87 +1169,89 @@ class _TableReservationViewState extends State<TableReservationView> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      builder:
+          (context) => Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.info_outline,
-                    color: Colors.blue,
-                    size: 24,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.info_outline,
+                        color: Colors.blue,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Reservation Rules',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Reservation Rules',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                const SizedBox(height: 16),
+                _buildInfoItem(
+                  icon: Icons.schedule,
+                  title: 'Advance Booking',
+                  description: 'Reserve at least 2 hours in advance',
+                ),
+                _buildInfoItem(
+                  icon: Icons.access_time,
+                  title: 'Operating Hours',
+                  description:
+                      'Reservations until 12:00 AM (restaurant closing)',
+                ),
+                _buildInfoItem(
+                  icon: Icons.timer,
+                  title: 'Duration Limits',
+                  description: 'Minimum 30 minutes, Maximum 6 hours',
+                ),
+                _buildInfoItem(
+                  icon: Icons.currency_rupee,
+                  title: 'Advance Payment',
+                  description: 'Minimum 20% of total amount, ₹100 minimum',
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Got it',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            _buildInfoItem(
-              icon: Icons.schedule,
-              title: 'Advance Booking',
-              description: 'Reserve at least 2 hours in advance',
-            ),
-            _buildInfoItem(
-              icon: Icons.access_time,
-              title: 'Operating Hours',
-              description: 'Reservations until 12:00 AM (restaurant closing)',
-            ),
-            _buildInfoItem(
-              icon: Icons.timer,
-              title: 'Duration Limits',
-              description: 'Minimum 30 minutes, Maximum 6 hours',
-            ),
-            _buildInfoItem(
-              icon: Icons.calendar_today,
-              title: 'Example',
-              description: 'Current time 6:00 PM → Can book from 8:00 PM onwards',
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Got it',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
@@ -1073,10 +1280,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                 ),
                 Text(
                   description,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -1088,19 +1292,16 @@ class _TableReservationViewState extends State<TableReservationView> {
 
   Future<void> _confirmReservation() async {
     if (!_formKey.currentState!.validate()) return;
-
     if (_fromTime == null || _toTime == null) {
       _showErrorSnackBar('Please select reservation time');
       return;
     }
-
     if (_timeValidationError != null) {
       _showErrorSnackBar(_timeValidationError!);
       return;
     }
 
     final reservationProvider = context.read<ReservationProvider>();
-    
     if (!reservationProvider.isTableAvailable(
       tableId: widget.table.id,
       fromTime: _fromTime!,
@@ -1110,90 +1311,239 @@ class _TableReservationViewState extends State<TableReservationView> {
       return;
     }
 
+    final advanceAmount =
+        double.tryParse(_advanceAmountController.text) ?? _minAdvanceAmount;
+    final remainingAmount = _calculatedPrice - advanceAmount;
+    final billNumber = ReservationBillService.generateBillNumber();
+
     final reservation = Reservation(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       tableId: widget.table.id,
       tableName: widget.table.name,
+      customerName: _customerNameController.text.trim(),
+      customerPhone: _customerPhoneController.text.trim(),
       persons: int.parse(_personsController.text),
       fromTime: _fromTime!,
       toTime: _toTime!,
       occasion: _selectedOccasion,
+      specialNotes:
+          _specialNotesController.text.trim().isEmpty
+              ? null
+              : _specialNotesController.text.trim(),
       basePrice: _calculatedPrice,
       finalPrice: _calculatedPrice,
+      advanceAmount: advanceAmount,
+      remainingAmount: remainingAmount,
       decoration: _decoration,
-      advanceOrder: _advanceOrder,
       createdAt: DateTime.now(),
+      billNumber: billNumber,
     );
 
     final success = await reservationProvider.addReservation(reservation);
-    
     if (success) {
       await _triggerHapticFeedback();
       widget.onReservationConfirmed?.call(reservation);
-      
       if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                    size: 48,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Reservation Confirmed!',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${widget.table.name} reserved successfully',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.pop(context);
-                    },
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Back to Tables',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
+        // Generate and show advance bill
+        await _generateAndShowAdvanceBill(reservation);
       }
     } else {
       _showErrorSnackBar('Failed to create reservation');
+    }
+  }
+
+  // Updated method for generating and showing advance bill with PDF
+  Future<void> _generateAndShowAdvanceBill(Reservation reservation) async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => const AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Generating PDF bill...'),
+                ],
+              ),
+            ),
+      );
+
+      // Generate PDF bill file
+      final pdfFile = await ReservationBillService.generateAdvanceBillPDF(
+        reservation,
+      );
+
+      // Wait a bit for UX
+      await Future.delayed(const Duration(seconds: 1));
+
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+
+      // Show success dialog with automatic sharing
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 48,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Reservation Confirmed!',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Table: ${reservation.tableName}\nAdvance: ₹${reservation.advanceAmount.toStringAsFixed(0)}\nBill: ${reservation.billNumber}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              await _triggerHapticFeedback();
+                              Navigator.pop(context); // Close dialog first
+                              await _shareToWhatsAppAutomatically(
+                                reservation,
+                                pdfFile,
+                              );
+                            },
+                            icon: const Icon(Icons.share, size: 18),
+                            label: const Text('Share Bill'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.green,
+                              side: const BorderSide(color: Colors.green),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context); // Close dialog
+                              Navigator.pop(context); // Go back to tables
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Done'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        _showErrorSnackBar('Failed to generate bill: $e');
+      }
+    }
+  }
+
+  // New method for automatic WhatsApp sharing
+  Future<void> _shareToWhatsAppAutomatically(
+    Reservation reservation,
+    File pdfFile,
+  ) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => const AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Sharing bill to WhatsApp...'),
+                ],
+              ),
+            ),
+      );
+
+      // Wait a moment
+      await Future.delayed(const Duration(seconds: 1));
+
+      // Close loading
+      if (mounted) Navigator.pop(context);
+
+      // Share to WhatsApp
+      final success =
+          await ReservationBillService.shareToSpecificWhatsAppNumber(
+            reservation,
+            pdfFile,
+          );
+
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Bill shared to ${reservation.customerName}!'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        } else {
+          // Fallback: Open share dialog
+          await ReservationBillService.shareAdvanceBillToWhatsApp(
+            reservation,
+            pdfFile,
+          );
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select WhatsApp from the share options'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog if open
+        _showErrorSnackBar('Error sharing bill: $e');
+      }
     }
   }
 
@@ -1217,6 +1567,10 @@ class _TableReservationViewState extends State<TableReservationView> {
   @override
   void dispose() {
     _personsController.dispose();
+    _customerNameController.dispose();
+    _customerPhoneController.dispose();
+    _specialNotesController.dispose();
+    _advanceAmountController.dispose();
     super.dispose();
   }
 }

@@ -1,10 +1,10 @@
 // lib/presentation/views/settings/profile_view.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/themes/app_colors.dart';
-import '../../view_models/providers/profile_provider.dart';
-import '../../view_models/providers/auth_provider.dart';
-import '../auth/login_view.dart';
+import '../../../../core/themes/app_colors.dart';
+import '../../../view_models/providers/profile_provider.dart';
+import '../../../view_models/providers/auth_provider.dart';
+import '../../auth/login/login_view.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({super.key});

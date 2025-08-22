@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../presentation/views/auth/login_view.dart';
-import '../presentation/views/auth/splash_view.dart';
+import '../presentation/views/auth/login/login_view.dart';
+import '../presentation/views/auth/splash/splash_view.dart';
 
 class POSApp extends StatefulWidget {
   const POSApp({super.key});

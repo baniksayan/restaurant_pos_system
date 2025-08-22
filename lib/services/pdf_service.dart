@@ -27,7 +27,7 @@ class PDFService {
     required String tableName,
     required String orderNumber,
     required DateTime orderTime,
-    String? specialNotes, // 👈 ADD this parameter
+    String? specialNotes, // |  ADD this parameter
   }) async {
     final pdf = pw.Document();
 
@@ -188,7 +188,7 @@ class PDFService {
                               ),
                             ],
                           ),
-                          // 👈 ADD individual item notes for KOT
+                          // |  ADD individual item notes for KOT
                           if (item.specialNotes != null &&
                               item.specialNotes!.isNotEmpty)
                             pw.Container(
@@ -219,7 +219,7 @@ class PDFService {
                   .toList(),
               pw.SizedBox(height: 20),
 
-              // 👈 ADD Special Notes section for entire order in KOT
+              // |  ADD Special Notes section for entire order in KOT
               if (specialNotes != null && specialNotes.isNotEmpty) ...[
                 pw.Container(
                   width: double.infinity,
@@ -277,7 +277,7 @@ class PDFService {
 
   // Generate Customer Bill with GST and Special Notes
   static Future<Uint8List> generateCustomerBill({
-    required List<CartItem> items,
+    required List<dynamic> items,
     required String tableId,
     required String tableName,
     required String orderNumber,
@@ -285,7 +285,7 @@ class PDFService {
     required double subtotal,
     required double gstAmount,
     required double total,
-    String? specialNotes, // 👈 ADD this parameter
+    String? specialNotes, // |  ADD this parameter
   }) async {
     final pdf = pw.Document();
 
@@ -514,7 +514,7 @@ class PDFService {
                                 ),
                               ),
                             ),
-                            // 👈 ADD special notes for each item
+                            // |  ADD special notes for each item
                             if (item.specialNotes != null &&
                                 item.specialNotes!.isNotEmpty)
                               pw.Text(
@@ -555,7 +555,7 @@ class PDFService {
               }).toList(),
               pw.SizedBox(height: 20),
 
-              // 👈 ADD Special Notes section for entire order
+              // |  ADD Special Notes section for entire order
               if (specialNotes != null && specialNotes.isNotEmpty) ...[
                 pw.Container(
                   width: double.infinity,

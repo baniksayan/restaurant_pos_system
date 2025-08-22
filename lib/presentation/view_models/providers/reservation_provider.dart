@@ -1,16 +1,17 @@
+// lib/presentation/view_models/providers/reservation_provider.dart
 import 'package:flutter/material.dart';
 import '../../../data/models/reservation.dart';
 
 class ReservationProvider extends ChangeNotifier {
   final List<Reservation> _reservations = [];
-  
+
   List<Reservation> get reservations => _reservations;
 
-  // Pricing logic
+  // Pricing logic with enhanced rates
   static const Map<String, double> _timeSlotRates = {
-    'morning': 200.0,   // 6AM-12PM
-    'afternoon': 300.0, // 12PM-6PM
-    'evening': 500.0,   // 6PM-12AM
+    'morning': 250.0, // 6AM-12PM
+    'afternoon': 350.0, // 12PM-6PM
+    'evening': 600.0, // 6PM-12AM
   };
 
   static const Map<String, double> _occasionMultipliers = {
@@ -36,18 +37,18 @@ class ReservationProvider extends ChangeNotifier {
   }) {
     final duration = toTime.difference(fromTime);
     final durationInHours = duration.inMinutes / 60.0;
-    
+
     final timeSlot = _getTimeSlot(fromTime);
-    final baseRate = _timeSlotRates[timeSlot] ?? 300.0;
+    final baseRate = _timeSlotRates[timeSlot] ?? 350.0;
     final occasionMultiplier = _occasionMultipliers[occasion] ?? 1.0;
-    
+
     double basePrice = durationInHours * baseRate;
     double finalPrice = basePrice * occasionMultiplier;
-    
+
     if (decoration) {
       finalPrice += 500.0; // Decoration charge
     }
-    
+
     return finalPrice;
   }
 
@@ -57,11 +58,10 @@ class ReservationProvider extends ChangeNotifier {
     required DateTime toTime,
   }) {
     for (final reservation in _reservations) {
-      if (reservation.tableId == tableId &&
-          reservation.status == 'confirmed') {
+      if (reservation.tableId == tableId && reservation.status == 'confirmed') {
         // Check for overlap
         if ((fromTime.isBefore(reservation.toTime) &&
-             toTime.isAfter(reservation.fromTime))) {
+            toTime.isAfter(reservation.fromTime))) {
           return false;
         }
       }
@@ -75,25 +75,25 @@ class ReservationProvider extends ChangeNotifier {
   }) {
     final now = DateTime.now();
     final minLeadTime = now.add(const Duration(hours: 2));
-    final maxTime = DateTime(now.year, now.month, now.day, 23, 59); // 11:59 PM
-    
+    final maxTime = DateTime(now.year, now.month, now.day, 23, 59);
+
     if (fromTime.isBefore(minLeadTime)) {
       return 'Reservation must be made at least 2 hours in advance';
     }
-    
+
     if (toTime.isAfter(maxTime)) {
       return 'Reservation cannot exceed restaurant closing time (12:00 AM)';
     }
-    
+
     final duration = toTime.difference(fromTime);
     if (duration.inMinutes < 30) {
       return 'Minimum reservation duration is 30 minutes';
     }
-    
+
     if (duration.inHours > 6) {
       return 'Maximum reservation duration is 6 hours';
     }
-    
+
     return null;
   }
 
@@ -105,9 +105,13 @@ class ReservationProvider extends ChangeNotifier {
     )) {
       return false;
     }
-    
+
     _reservations.add(reservation);
     notifyListeners();
+
+    // TODO: In real app, save to API/database here
+    print('Reservation saved: ${reservation.toJson()}');
+
     return true;
   }
 

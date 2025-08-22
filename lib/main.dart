@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/profile_provider.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/reservation_provider.dart';
+import 'package:restaurant_pos_system/presentation/views/auth/login/login_view.dart';
 import 'package:restaurant_pos_system/presentation/views/main_navigation.dart';
+
 import 'app/app.dart';
 import 'core/themes/app_theme.dart';
 import 'data/local/hive_service.dart';
@@ -66,7 +68,7 @@ class RestaurantPOSApp extends StatelessWidget {
         title: 'WiZARD Restaurant POS',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const MainNavigation(),
+        home: HiveService.getAuthToken()!=""?MainNavigation(): const LoginView(),
       ),
     );
   }

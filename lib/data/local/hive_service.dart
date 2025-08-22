@@ -1,4 +1,5 @@
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:restaurant_pos_system/data/models/auth_api_res_model.dart';
 import 'models/table_model.dart';
 import 'models/order_model.dart';
 
@@ -9,22 +10,24 @@ class HiveService {
 
   static Future<void> init() async {
     await Hive.initFlutter();
-    
+
     // Register adapters
     Hive.registerAdapter(TableModelAdapter());
     Hive.registerAdapter(OrderModelAdapter());
     Hive.registerAdapter(OrderItemModelAdapter());
-    
+
     // Open boxes
     await Hive.openBox<TableModel>(_tablesBoxName);
     await Hive.openBox<OrderModel>(_ordersBoxName);
     await Hive.openBox<Map>(_syncBoxName);
+    await Hive.openBox('pos'); // Box for storing auth token
   }
 
   // Get box instances
   static Box<TableModel> get tablesBox => Hive.box<TableModel>(_tablesBoxName);
   static Box<OrderModel> get ordersBox => Hive.box<OrderModel>(_ordersBoxName);
   static Box<Map> get syncBox => Hive.box<Map>(_syncBoxName);
+  static Box get posBox => Hive.box('pos');
 
   // Table CRUD operations
   static Future<void> saveTable(TableModel table) async {
@@ -36,6 +39,30 @@ class HiveService {
 
   static List<TableModel> getAllTables() {
     return tablesBox.values.toList();
+  }
+
+  // save auth token
+  static Future<void> saveAuthToken(String token) async {
+    await posBox.put('token', token);
+  }
+
+  static String getAuthToken() {
+    return posBox.get('token', defaultValue: '');
+  }
+
+  //save auth data from api
+  static Future<void> saveAuthData(data) async {
+    await posBox.put('auth_data', data);
+  }
+
+  static AuthApiResModel? getAuthData() {
+    return posBox.get('auth_data');
+  }
+
+  //deleting auth data on logout
+  static Future<void> clearAuthData() async {
+    await posBox.delete('token');
+    await posBox.delete('auth_data');
   }
 
   static TableModel? getTable(String id) {

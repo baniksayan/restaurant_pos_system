@@ -1,9 +1,5 @@
 // lib/data/models/table.dart
-enum TableStatus { 
-  available, 
-  occupied, 
-  reserved,
-}
+enum TableStatus { available, occupied, reserved }
 
 class TableModel {
   final String id;
@@ -15,7 +11,7 @@ class TableModel {
   final bool billGenerated;
   final DateTime? lastUpdated;
 
-  // 👈 FIX: Use TableModel constructor, not RestaurantTable
+  // |  FIX: Use TableModel constructor, not RestaurantTable
   const TableModel({
     required this.id,
     required this.name,
@@ -27,7 +23,7 @@ class TableModel {
     this.lastUpdated,
   });
 
-  // 👈 FIX: Return TableModel, not RestaurantTable
+  // |  FIX: Return TableModel, not RestaurantTable
   TableModel copyWith({
     String? id,
     String? name,
@@ -38,7 +34,8 @@ class TableModel {
     bool? billGenerated,
     DateTime? lastUpdated,
   }) {
-    return TableModel( // 👈 FIX: Use TableModel constructor
+    return TableModel(
+      // |  FIX: Use TableModel constructor
       id: id ?? this.id,
       name: name ?? this.name,
       capacity: capacity ?? this.capacity,
