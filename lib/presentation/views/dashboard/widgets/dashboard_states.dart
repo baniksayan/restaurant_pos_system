@@ -31,10 +31,7 @@ class DashboardLoadingState extends StatelessWidget {
 class DashboardErrorState extends StatelessWidget {
   final TableProvider tableProvider;
 
-  const DashboardErrorState({
-    super.key,
-    required this.tableProvider,
-  });
+  const DashboardErrorState({super.key, required this.tableProvider});
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +74,8 @@ class DashboardErrorState extends StatelessWidget {
                   ElevatedButton.icon(
                     onPressed: () {
                       tableProvider.clearError();
-                      tableProvider.initializeTables();
+                      // tableProvider.initializeTables();
+                      tableProvider.fetchTables();
                     },
                     icon: const Icon(Icons.refresh),
                     label: const Text('Retry'),
@@ -113,11 +111,7 @@ class DashboardEmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.table_restaurant_outlined,
-              size: 64,
-              color: Colors.grey,
-            ),
+            Icon(Icons.table_restaurant_outlined, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
               'No Tables Available',

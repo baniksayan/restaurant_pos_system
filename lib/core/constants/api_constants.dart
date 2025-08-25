@@ -10,6 +10,7 @@ class ApiConstants {
 
   // Auth endpoints
   static const String auth = "User/authenticate";
+
   static const String register = "api/signup";
   static const String googleLogin = "api/google-login";
   static const String signUp = "api/signup";
@@ -26,8 +27,8 @@ class ApiConstants {
   static const String getTables = "api/tables";
   static const String updateTable = "api/tables";
 
-  static const String getTablesByOutlet =
-      "api/api/Setting/OrderChannelListByType";
+  // Table by outlet and type
+  static const String getTablesByOutlet = 'Setting/OrderChannelListByType';
 }
 
 class ApiMethods {

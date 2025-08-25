@@ -32,6 +32,9 @@ dependencies:
   
   # Navigation
   go_router: ^14.2.0
+
+  #Foundation library
+  foundation: ^0.0.5
   
   # UI components
   cupertino_icons: ^1.0.6

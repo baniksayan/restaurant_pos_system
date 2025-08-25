@@ -22,7 +22,7 @@ class AuthProvider with ChangeNotifier {
   String? get currentUser => _currentUser;
   String? get userRole => _userRole;
   bool get isLoading => _isLoading;
-  
+
   // New getters for login form
   bool get rememberMe => _rememberMe;
   String? get errorMessage => _errorMessage;
@@ -68,7 +68,12 @@ class AuthProvider with ChangeNotifier {
   }
 
   // Updated login method with API integration
-  Future<bool> login(BuildContext context, String username, String password, {bool rememberMe = false}) async {
+  Future<bool> login(
+    BuildContext context,
+    String username,
+    String password, {
+    bool rememberMe = false,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -76,8 +81,8 @@ class AuthProvider with ChangeNotifier {
     try {
       // Use your existing API call structure
       final body = {
-        "userId":  username,
-        "password":  password,
+        "userId": username,
+        "password": password,
         "companyCode": "",
         "connectionString": "",
         "url": "",
@@ -93,9 +98,8 @@ class AuthProvider with ChangeNotifier {
         method: 'POST',
       );
 
-      final model = AuthApiResModel.fromJson(response);
+      final model = AuthApiResModel.fromJson(response!);
 
-     
       if (model.isSuccess == true && model.data != null) {
         //saved token to hive
         await HiveService.saveAuthToken(model.data?.posToken ?? '');
@@ -118,7 +122,7 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        _errorMessage = 'Invalid credentials';
+        _errorMessage = 'Oops! Something doesn’t match. Try again.';
         _isLoading = false;
         notifyListeners();
         return false;
