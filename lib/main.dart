@@ -4,9 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/profile_provider.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/reservation_provider.dart';
+import 'package:restaurant_pos_system/presentation/view_models/providers/tax_provider.dart';
 import 'package:restaurant_pos_system/presentation/views/auth/login/login_view.dart';
 import 'package:restaurant_pos_system/presentation/views/main_navigation.dart';
-
 import 'app/app.dart';
 import 'core/themes/app_theme.dart';
 import 'data/local/hive_service.dart';
@@ -63,12 +63,31 @@ class RestaurantPOSApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => ReservationProvider()),
+        ChangeNotifierProvider(create: (_) => TaxProvider()),
       ],
-      child: MaterialApp(
-        title: 'WiZARD Restaurant POS',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        home: HiveService.getAuthToken()!=""?MainNavigation(): const LoginView(),
+      child: Builder(
+        builder: (context) {
+          // Initialize tax data after providers are available
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            final taxProvider = Provider.of<TaxProvider>(
+              context,
+              listen: false,
+            );
+            await taxProvider.initializeTaxData(
+              48,
+            ); // Replacing 48 which is actual companyId
+          });
+
+          return MaterialApp(
+            title: 'WiZARD Restaurant POS',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            home:
+                HiveService.getAuthToken() != ""
+                    ? MainNavigation()
+                    : const LoginView(),
+          );
+        },
       ),
     );
   }
