@@ -223,10 +223,11 @@ class _CartViewState extends State<CartView> {
                   'id': item.id,
                   'name': item.name,
                   'price': item.price,
-                  'cageoryId': item.categoryId,
-                  'categoryName': item.categoryName,
+                  // Fixed typo and ensure non-null values
+                  'categoryId': item.categoryId ?? '',
+                  'categoryName': item.categoryName ?? '',
                   'quantity': item.quantity,
-                  'specialNotes': item.specialNotes,
+                  'specialNotes': item.specialNotes ?? '',
                 },
               )
               .toList();

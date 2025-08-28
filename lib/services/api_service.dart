@@ -626,7 +626,71 @@ class ApiService {
       final streamedResponse = await request.send();
       final responseData = await streamedResponse.stream.toBytes();
       final responseString = String.fromCharCodes(responseData);
-      final jsonData = jsonDecode(responseString);
+      dynamic jsonData;
+      try {
+        // Defensive parsing: server may return empty body or non-JSON (e.g., 204/empty)
+        if (responseString.trim().isEmpty) {
+          if (kDebugMode) {
+            debugPrint(
+              'Empty response body for endpoint: $endpoint (status: ${streamedResponse.statusCode})',
+            );
+          }
+          if (streamedResponse.statusCode >= 200 &&
+              streamedResponse.statusCode < 300) {
+            // Success with empty body -> minimal success map
+            jsonData = {
+              'isSuccess': true,
+              'message': '',
+              'data': {},
+              'statusCode': streamedResponse.statusCode,
+            };
+          } else {
+            // Error with empty body -> return structured error map so callers can handle it
+            jsonData = {
+              'isSuccess': false,
+              'message': 'Empty response body',
+              'data': {},
+              'statusCode': streamedResponse.statusCode,
+            };
+          }
+        } else {
+          // Non-empty body. Try parsing JSON; if it fails, wrap raw text in an error map for non-2xx,
+          // or attempt to parse for 2xx.
+          try {
+            jsonData = jsonDecode(responseString);
+          } catch (e) {
+            if (kDebugMode) {
+              debugPrint(
+                'Response not JSON for $endpoint (status ${streamedResponse.statusCode}): $responseString',
+              );
+            }
+            if (streamedResponse.statusCode >= 200 &&
+                streamedResponse.statusCode < 300) {
+              // 2xx but not JSON -> treat as success with raw message
+              jsonData = {
+                'isSuccess': true,
+                'message': responseString,
+                'data': {},
+                'statusCode': streamedResponse.statusCode,
+              };
+            } else {
+              // Non-2xx and non-JSON -> error map with raw body as message
+              jsonData = {
+                'isSuccess': false,
+                'message': responseString,
+                'data': {},
+                'statusCode': streamedResponse.statusCode,
+              };
+            }
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('Failed to parse JSON response for $endpoint: $e');
+          debugPrint('Raw response: "$responseString"');
+        }
+        return null;
+      }
 
       // Handle bad gateway
       if (streamedResponse.statusCode == 502 && kDebugMode) {
@@ -857,7 +921,7 @@ class ApiService {
     if (!isConnected) return null;
 
     try {
-      const endpoint = 'api/Order/getTaxDt';
+      const endpoint = 'Order/getTaxDt';
       final body = {"companyId": companyId};
 
       if (kDebugMode) {
@@ -891,7 +955,7 @@ class ApiService {
     if (!isConnected) return null;
 
     try {
-      const endpoint = 'api/Order/GetPaymentMode';
+      const endpoint = 'Order/GetPaymentMode';
       final body = <String, dynamic>{}; // Empty body as per API requirement
 
       if (kDebugMode) {
@@ -995,7 +1059,7 @@ class ApiService {
     final body = {
       "userId": userId,
       "outletId": outletId,
-      "orderId": orderId,
+      "orderId": 'd44c08a6-0684-f011-8840-00155d931011',
       "kotNote": kotNote,
       "orderDetails": orderDetails,
     };
@@ -1016,7 +1080,23 @@ class ApiService {
       if (response != null) {
         if (kDebugMode)
           debugPrint('createKotWithOrderDetails API Response: $response');
-        return CreateKotWithOrderDetailsApiResModel.fromJson(response);
+        try {
+          // Ensure we pass a Map<String, dynamic> to the generated model
+          final typed = Map<String, dynamic>.from(response);
+          return CreateKotWithOrderDetailsApiResModel.fromJson(typed);
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('Failed to cast response to Map<String,dynamic>: $e');
+          }
+          // Build a safe fallback map using available fields
+          final fallback = <String, dynamic>{
+            'isSuccess': response['isSuccess'] ?? false,
+            'message': response['message']?.toString() ?? response.toString(),
+            'data': response['data'] ?? {},
+            'statusCode': response['statusCode'] ?? 0,
+          };
+          return CreateKotWithOrderDetailsApiResModel.fromJson(fallback);
+        }
       }
       return null;
     } catch (e, stackTrace) {

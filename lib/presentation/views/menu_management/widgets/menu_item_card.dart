@@ -13,7 +13,7 @@ class MenuItemCard extends StatelessWidget {
   final bool canOrder;
 
   final int quantity;
-  final Function(String, String, double,String,String, Offset)? onAddToCart;
+  final Function(String, String, double, String, String, Offset)? onAddToCart;
   final VoidCallback? onAdd;
   final VoidCallback? onRemove;
 
@@ -88,27 +88,29 @@ class MenuItemCard extends StatelessWidget {
                 topRight: Radius.circular(16),
               ),
             ),
-            child: imageUrl != null
-                ? ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
-                    child: Image.network(
-                      imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.restaurant,
-                        size: 40,
-                        color: Colors.grey,
+            child:
+                imageUrl != null
+                    ? ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
                       ),
+                      child: Image.network(
+                        imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder:
+                            (context, error, stackTrace) => const Icon(
+                              Icons.restaurant,
+                              size: 40,
+                              color: Colors.grey,
+                            ),
+                      ),
+                    )
+                    : const Icon(
+                      Icons.restaurant,
+                      size: 40,
+                      color: Colors.grey,
                     ),
-                  )
-                : const Icon(
-                    Icons.restaurant,
-                    size: 40,
-                    color: Colors.grey,
-                  ),
           ),
           _buildVegIndicator(),
         ],
@@ -126,10 +128,7 @@ class MenuItemCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(4),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 4,
-            ),
+            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4),
           ],
         ),
         child: Container(
@@ -162,10 +161,7 @@ class MenuItemCard extends StatelessWidget {
     return Flexible(
       child: Text(
         description ?? '',
-        style: const TextStyle(
-          fontSize: 11,
-          color: AppColors.textSecondary,
-        ),
+        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),
@@ -201,11 +197,7 @@ class MenuItemCard extends StatelessWidget {
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Icon(
-                Icons.add,
-                color: Colors.white,
-                size: 14,
-              ),
+              child: const Icon(Icons.add, color: Colors.white, size: 14),
             ),
           );
         },
@@ -224,11 +216,7 @@ class MenuItemCard extends StatelessWidget {
             onTap: onRemove,
             child: const Padding(
               padding: EdgeInsets.all(6),
-              child: Icon(
-                Icons.remove,
-                color: Colors.white,
-                size: 14,
-              ),
+              child: Icon(Icons.remove, color: Colors.white, size: 14),
             ),
           ),
           Text(
@@ -245,11 +233,7 @@ class MenuItemCard extends StatelessWidget {
                 onTap: () => _addToCartWithAnimation(context),
                 child: const Padding(
                   padding: EdgeInsets.all(6),
-                  child: Icon(
-                    Icons.add,
-                    color: Colors.white,
-                    size: 14,
-                  ),
+                  child: Icon(Icons.add, color: Colors.white, size: 14),
                 ),
               );
             },
@@ -263,8 +247,12 @@ class MenuItemCard extends StatelessWidget {
     final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox != null) {
       final buttonPosition = renderBox.localToGlobal(Offset.zero);
-      onAddToCart?.call(id, name, price,cid, cname, buttonPosition);
+      if (onAddToCart != null) {
+        onAddToCart!(id, name, price, cid, cname, buttonPosition);
+        return; // do not call onAdd as we've handled the add
+      }
     }
+    // Fallback: if no animation callback provided, call simple add
     onAdd?.call();
   }
 }

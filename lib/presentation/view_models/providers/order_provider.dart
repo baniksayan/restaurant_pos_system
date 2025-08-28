@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:restaurant_pos_system/data/models/create_kot_with_order_details_api_res_model.dart';
 import '../../../data/models/order.dart';
 import '../../../services/api_service.dart';
@@ -106,17 +107,28 @@ class OrderProvider with ChangeNotifier {
 
     try {
       // Convert your cart items to the orderDetails structure required by the API
-      final orderDetails = cartItems.map((item) => {
-        "productId": item['id'],
-        "productName": item['name'],
-        "categoryId": item['categoryId'] ?? "", // Get from item or use empty string
-        "categoryName": item['categoryName'] ?? "", // Get from item or use empty string
-        "productPrice": item['price'],
-        "discountPercentage": item['discountPercentage'] ?? 0,
-        "uom": item['uom'] ?? "Plate", // Get from item or default to "Plate"
-        "quantity": item['quantity'],
-        "note": item['specialNotes'] ?? "",
-      }).toList();
+      final orderDetails =
+          cartItems
+              .map(
+                (item) => {
+                  "productId": item['id'],
+                  "productName": item['name'],
+                  "categoryId":
+                      item['categoryId'] ??
+                      "", // Get from item or use empty string
+                  "categoryName":
+                      item['categoryName'] ??
+                      "", // Get from item or use empty string
+                  "productPrice": item['price'],
+                  "discountPercentage": item['discountPercentage'] ?? 0,
+                  "uom":
+                      item['uom'] ??
+                      "Plate", // Get from item or default to "Plate"
+                  "quantity": item['quantity'],
+                  "note": item['specialNotes'] ?? "",
+                },
+              )
+              .toList();
       // final orderDetails =
       //     cartItems
       //         .map(
@@ -134,6 +146,10 @@ class OrderProvider with ChangeNotifier {
       //           },
       //         )
       //         .toList();
+
+      if (kDebugMode) {
+        debugPrint('createKotWithOrderDetails payload: $orderDetails');
+      }
 
       final result = await ApiService.createKotWithOrderDetails(
         userId: userId,

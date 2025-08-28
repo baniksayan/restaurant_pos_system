@@ -52,11 +52,34 @@ class HiveService {
 
   //save auth data from api
   static Future<void> saveAuthData(data) async {
-    await posBox.put('auth_data', data);
+    // Store as a plain Map (JSON) to avoid requiring a Hive TypeAdapter
+    if (data is AuthApiResModel) {
+      await posBox.put('auth_data', data.toJson());
+    } else {
+      // Fallback: store whatever was provided (defensive)
+      await posBox.put('auth_data', data);
+    }
   }
 
   static AuthApiResModel? getAuthData() {
-    return posBox.get('auth_data');
+    final raw = posBox.get('auth_data');
+    if (raw == null) return null;
+
+    // If the stored value is already the model (unlikely), return it.
+    if (raw is AuthApiResModel) return raw;
+
+    // If it's a Map (stored JSON), convert and deserialize.
+    if (raw is Map) {
+      try {
+        final map = Map<String, dynamic>.from(raw);
+        return AuthApiResModel.fromJson(map);
+      } catch (e) {
+        // If casting fails, return null
+        return null;
+      }
+    }
+
+    return null;
   }
 
   //deleting auth data on logout
