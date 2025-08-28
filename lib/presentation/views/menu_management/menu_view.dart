@@ -151,7 +151,8 @@ class MenuView extends StatefulWidget {
   final String? selectedTableId;
   final String? tableName;
   final String? selectedLocation;
-  final Function(String itemId, String itemName, double price, Offset position)? onAddToCart;
+  final Function(String itemId, String itemName, double price,String categoryId,
+    String categoryName, Offset position)? onAddToCart;
 
   const MenuView({
     super.key,

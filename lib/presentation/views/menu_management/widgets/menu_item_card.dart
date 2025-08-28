@@ -7,10 +7,13 @@ class MenuItemCard extends StatelessWidget {
   final double price;
   final String? imageUrl;
   final String? description;
+  final String cid;
+  final String cname;
   final bool isVeg;
   final bool canOrder;
+
   final int quantity;
-  final Function(String, String, double, Offset)? onAddToCart;
+  final Function(String, String, double,String,String, Offset)? onAddToCart;
   final VoidCallback? onAdd;
   final VoidCallback? onRemove;
 
@@ -21,6 +24,8 @@ class MenuItemCard extends StatelessWidget {
     required this.price,
     this.imageUrl,
     this.description,
+    required this.cid,
+    required this.cname,
     required this.isVeg,
     required this.canOrder,
     required this.quantity,
@@ -258,7 +263,7 @@ class MenuItemCard extends StatelessWidget {
     final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox != null) {
       final buttonPosition = renderBox.localToGlobal(Offset.zero);
-      onAddToCart?.call(id, name, price, buttonPosition);
+      onAddToCart?.call(id, name, price,cid, cname, buttonPosition);
     }
     onAdd?.call();
   }

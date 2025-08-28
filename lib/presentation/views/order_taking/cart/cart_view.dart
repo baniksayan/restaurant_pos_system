@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../core/themes/app_colors.dart';
 import '../../../../core/utils/haptic_helper.dart';
 import '../../../view_models/providers/animated_cart_provider.dart';
@@ -14,6 +15,8 @@ import 'widgets/empty_cart_widget.dart';
 import 'widgets/edit_item_dialog.dart';
 import 'widgets/clear_cart_dialog.dart';
 import 'widgets/gst_info_dialog.dart';
+import '../../../view_models/providers/order_provider.dart';
+import '../../../../data/local/hive_service.dart';
 
 class CartView extends StatefulWidget {
   final String? tableId;
@@ -132,46 +135,159 @@ class _CartViewState extends State<CartView> {
     }
   }
 
-  //KOT Generation logic here
+  // KOT Generation with API Integration
   Future<void> _generateKOT(AnimatedCartProvider cartProvider) async {
     try {
-      final orderNumber = PDFService.generateOrderNumber();
       final items = cartProvider.cartItems.values.toList();
       if (items.isEmpty) return;
 
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const Center(child: CircularProgressIndicator()),
+        builder:
+            (_) => const AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Creating order head...'),
+                ],
+              ),
+            ),
       );
 
-      final kotBytes = await PDFService.generateKOT(
-        items: items,
-        tableId: items.first.tableId,
-        tableName: items.first.tableName,
-        orderNumber: orderNumber,
-        orderTime: DateTime.now(),
+      final orderProvider = context.read<OrderProvider>();
+
+      // Step 1: Create Order Head first if not already created
+      if (orderProvider.createdOrderId == null) {
+        final orderChannelId = items.first.tableId;
+        final waiterId =
+            HiveService.getWaiterId() ?? "a2f2849f-88b5-4849-a17d-a487d5e21627";
+        final userId =
+            HiveService.getUserId() ?? "a2f2849f-88b5-4849-a17d-a487d5e21627";
+        final outletId = HiveService.getOutletId() ?? 1;
+        final customerName = "Walk-in Customer";
+
+        final orderHeadSuccess = await orderProvider.createOrderHead(
+          orderChannelId: orderChannelId,
+          waiterId: waiterId,
+          customerName: customerName,
+          outletId: outletId,
+          userId: userId,
+        );
+
+        if (!orderHeadSuccess) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Error creating order: ${orderProvider.error ?? "Unknown error"}',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
+      // Update loading dialog
+      Navigator.of(context).pop();
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (_) => const AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Generating KOT...'),
+                ],
+              ),
+            ),
+      );
+
+      // Step 2: Generate KOT with order details
+      final userId =
+          HiveService.getUserId() ?? "a2f2849f-88b5-4849-a17d-a487d5e21627";
+      final outletId = HiveService.getOutletId() ?? 1;
+      final orderId = orderProvider.createdOrderId!;
+
+      // Convert cart items to the required format
+      final cartItemsData =
+          items
+              .map(
+                (item) => {
+                  'id': item.id,
+                  'name': item.name,
+                  'price': item.price,
+                  'cageoryId': item.categoryId,
+                  'categoryName': item.categoryName,
+                  'quantity': item.quantity,
+                  'specialNotes': item.specialNotes,
+                },
+              )
+              .toList();
+
+      print(cartItemsData.toString());
+
+      final kotResponse = await orderProvider.createKotWithOrderDetails(
+        userId: userId,
+        outletId: outletId,
+        orderId: orderId,
+        kotNote: "",
+        cartItems: cartItemsData,
       );
 
       Navigator.of(context).pop();
 
-      setState(() {
-        _kotGenerated = true;
-        _kotOrderNumber = orderNumber;
-      });
+      if (kotResponse != null && kotResponse.isSuccess == true) {
+        // Get KOT details from response
+        final kotNo = kotResponse.data?.kotDetail?.kotNo;
+        final orderNumber =
+            orderProvider.generatedOrderNo ??
+            orderProvider.orderNo?.toString() ??
+            kotNo ??
+            PDFService.generateOrderNumber();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('KOT #$orderNumber generated successfully!'),
-          backgroundColor: Colors.green,
-          action: SnackBarAction(
-            label: 'Share',
-            onPressed: () {
-              PDFService.sharePDF(kotBytes, 'KOT_$orderNumber');
-            },
+        setState(() {
+          _kotGenerated = true;
+          _kotOrderNumber = orderNumber;
+        });
+
+        // Generate PDF KOT for sharing/printing
+        final kotBytes = await PDFService.generateKOT(
+          items: items,
+          tableId: items.first.tableId,
+          tableName: items.first.tableName,
+          orderNumber: orderNumber,
+          orderTime: DateTime.now(),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('KOT #$orderNumber generated successfully!'),
+            backgroundColor: Colors.green,
+            action: SnackBarAction(
+              label: 'Share',
+              onPressed: () {
+                PDFService.sharePDF(kotBytes, 'KOT_$orderNumber');
+              },
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error generating KOT: ${kotResponse?.data?.response ?? "Unknown error"}',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(

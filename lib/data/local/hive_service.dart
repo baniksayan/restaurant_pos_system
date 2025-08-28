@@ -117,4 +117,13 @@ class HiveService {
       await syncBox.put(key, item);
     }
   }
+
+  // Adding these methods to our HiveService class
+  static String? getWaiterId() => posBox.get('waiterId');
+  static int? getOutletId() => posBox.get('outletId');
+  static String? getUserId() => posBox.get('userId');
+
+  // Methods to set these values
+  static void setWaiterId(String waiterId) => posBox.put('waiterId', waiterId);
+  static void setUserId(String userId) => posBox.put('userId', userId);
 }

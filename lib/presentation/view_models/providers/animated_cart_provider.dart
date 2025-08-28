@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../data/local/hive_service.dart';
+import 'package:uuid/uuid.dart';
 
 class AnimatedCartProvider extends ChangeNotifier {
   final Map<String, CartItem> _cartItems = {};
@@ -10,10 +12,7 @@ class AnimatedCartProvider extends ChangeNotifier {
     0,
     (sum, item) => sum + (item.price * item.quantity),
   );
-/*
 
-*/
-  // |  UPDATED: Add specialNotes parameter to fix the error
   void addItem(
     String itemId,
     String name,
@@ -21,10 +20,13 @@ class AnimatedCartProvider extends ChangeNotifier {
     String tableId,
     String tableName, {
     String? specialNotes,
+    String? categoryId,
+    String? categoryName,
+    String? uom,
+    double? discountPercentage,
   }) {
     if (_cartItems.containsKey(itemId)) {
       _cartItems[itemId]!.quantity++;
-      // Update special notes if provided
       if (specialNotes != null && specialNotes.isNotEmpty) {
         _cartItems[itemId]!.specialNotes = specialNotes;
       }
@@ -37,6 +39,10 @@ class AnimatedCartProvider extends ChangeNotifier {
         tableId: tableId,
         tableName: tableName,
         specialNotes: specialNotes,
+        categoryId: categoryId,
+        categoryName: categoryName,
+        uom: uom,
+        discountPercentage: discountPercentage,
       );
     }
     _updateTotalItems();
@@ -55,7 +61,6 @@ class AnimatedCartProvider extends ChangeNotifier {
     }
   }
 
-  // Add method to update special notes
   void updateItemNotes(String itemId, String notes) {
     if (_cartItems.containsKey(itemId)) {
       _cartItems[itemId]!.specialNotes = notes;
@@ -72,9 +77,33 @@ class AnimatedCartProvider extends ChangeNotifier {
     _totalItems = 0;
     notifyListeners();
   }
+
+  // --- Build order map for backend ---
+  Map<String, dynamic> buildOrderMap({
+    required String orderId,
+    String kotNote = "",
+  }) {
+    return {
+      "userId": HiveService.getUserId(),
+      "outletId": HiveService.getOutletId(),
+      "orderId": orderId,
+      "kotNote": kotNote,
+      "orderDetails": _cartItems.values.map((item) => {
+        "productId": item.id,
+        "productName": item.name,
+        "categoryId": item.categoryId ?? "",
+        "categoryName": item.categoryName ?? "",
+        "productPrice": item.price,
+        "discountPercentage": item.discountPercentage ?? 0,
+        "uom": item.uom ?? "",
+        "quantity": item.quantity,
+        "note": item.specialNotes ?? "",
+      }).toList(),
+    };
+  }
 }
 
-// Updated CartItem class with specialNotes
+// Updated CartItem class with all needed fields
 class CartItem {
   String id;
   String name;
@@ -82,7 +111,11 @@ class CartItem {
   int quantity;
   String tableId;
   String tableName;
-  String? specialNotes; // |  ADD this field
+  String? specialNotes;
+  String? categoryId;
+  String? categoryName;
+  String? uom;
+  double? discountPercentage;
 
   CartItem({
     required this.id,
@@ -91,6 +124,10 @@ class CartItem {
     required this.quantity,
     required this.tableId,
     required this.tableName,
-    this.specialNotes, // |  ADD this parameter
+    this.specialNotes,
+    this.categoryId,
+    this.categoryName,
+    this.uom,
+    this.discountPercentage,
   });
 }

@@ -1,0 +1,9 @@
+flutter_native_splash:
+  android: true
+  ios: true
+  web: false
+  # windows: true
+  # macos: true
+  # linux: true
+
+  color: "#eddfbb"

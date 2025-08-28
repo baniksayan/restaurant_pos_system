@@ -204,7 +204,9 @@ class CartItemCard extends StatelessWidget {
                               item.name,
                               item.price,
                               item.tableId,
+                          
                               item.tableName,
+                              
                             );
                           },
                           borderRadius: const BorderRadius.only(

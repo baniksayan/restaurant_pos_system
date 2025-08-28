@@ -11,24 +11,18 @@ class ApiConstants {
   // Auth endpoints
   static const String auth = "User/authenticate";
 
-  static const String register = "api/signup";
-  static const String googleLogin = "api/google-login";
-  static const String signUp = "api/signup";
-  static const String signOut = "api/signout";
-  static const String forgotPassword = "api/forget-password";
-  static const String resetPassword = "api/reset-password";
-  static const String updatePassword = "api/update-password";
-  static const String verifyOtp = "api/verify-otp";
-  static const String validateOtp = "api/validate-otp";
-
-  // Restaurant-specific endpoints (add as needed)
-  static const String getMenu = "api/menu";
-  static const String createOrder = "api/orders";
-  static const String getTables = "api/tables";
-  static const String updateTable = "api/tables";
+  // Payment modes endpoints
+  static const String getPaymentModes = 'api/Order/GetPaymentMode';
 
   // Table by outlet and type
   static const String getTablesByOutlet = 'Setting/OrderChannelListByType';
+
+  // Order endpoints
+  static const String createOrderHead = 'Order/saveOrderHead';
+
+  // KOT endpoints
+  static const String createKotWithOrderDetails = 'Order/CreateKotWithOrderDetails';
+
 }
 
 class ApiMethods {

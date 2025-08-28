@@ -5,6 +5,7 @@ import 'package:restaurant_pos_system/presentation/view_models/providers/animate
 import 'package:restaurant_pos_system/presentation/view_models/providers/profile_provider.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/reservation_provider.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/tax_provider.dart';
+import 'package:restaurant_pos_system/presentation/view_models/providers/billing_provider.dart';
 import 'package:restaurant_pos_system/presentation/views/auth/login/login_view.dart';
 import 'package:restaurant_pos_system/presentation/views/main_navigation.dart';
 import 'app/app.dart';
@@ -64,6 +65,7 @@ class RestaurantPOSApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => ReservationProvider()),
         ChangeNotifierProvider(create: (_) => TaxProvider()),
+        ChangeNotifierProvider(create: (_) => BillingProvider()), // Added BillingProvider
       ],
       child: Builder(
         builder: (context) {
@@ -82,10 +84,9 @@ class RestaurantPOSApp extends StatelessWidget {
             title: 'WiZARD Restaurant POS',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
-            home:
-                HiveService.getAuthToken() != ""
-                    ? MainNavigation()
-                    : const LoginView(),
+            home: HiveService.getAuthToken() != ""
+                ? MainNavigation()
+                : const LoginView(),
           );
         },
       ),
