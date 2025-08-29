@@ -63,8 +63,15 @@ class TableActionDialog extends StatelessWidget {
             Navigator.pop(context);
             onOccupy();
           },
-          icon: const Icon(Icons.restaurant_menu, size: 18),
-          label: const Text('Occupy & Order'),
+          icon: const Icon(
+            Icons.restaurant_menu,
+            size: 18,
+            color: Colors.white,
+          ),
+          label: const Text(
+            'Occupy & Order',
+            style: TextStyle(color: Colors.white),
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF3498DB),
           ),

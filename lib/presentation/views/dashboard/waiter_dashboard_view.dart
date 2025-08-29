@@ -45,9 +45,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
         statusBarBrightness: Brightness.light,
       ),
       child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => DashboardProvider()),
-        ],
+        providers: [ChangeNotifierProvider(create: (_) => DashboardProvider())],
         child: Consumer2<TableProvider, DashboardProvider>(
           builder: (context, tableProvider, dashboardProvider, child) {
             // Handle loading state
@@ -69,10 +67,8 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
             if (tables.isEmpty) {
               return DashboardEmptyState(
                 selectedLocation: dashboardProvider.selectedLocation,
-                onChangeLocation: () => _showLocationSelector(
-                  context,
-                  dashboardProvider,
-                ),
+                onChangeLocation:
+                    () => _showLocationSelector(context, dashboardProvider),
               );
             }
 
@@ -93,10 +89,9 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                   children: [
                     DashboardHeader(
                       scaffoldKey: _scaffoldKey,
-                      onLocationTap: () => _showLocationSelector(
-                        context,
-                        dashboardProvider,
-                      ),
+                      onLocationTap:
+                          () =>
+                              _showLocationSelector(context, dashboardProvider),
                       onSyncTap: () => _handleSync(dashboardProvider),
                     ),
                     LocationHeader(
@@ -107,12 +102,14 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                     Expanded(
                       child: TableGrid(
                         tables: tables,
-                        onTableTap: (table) => _handleTableClick(
-                          table,
-                          tableProvider,
-                          dashboardProvider,
-                        ),
-                        onTableLongPress: (table) => _handleTableLongPress(table),
+                        onTableTap:
+                            (table) => _handleTableClick(
+                              table,
+                              tableProvider,
+                              dashboardProvider,
+                            ),
+                        onTableLongPress:
+                            (table) => _handleTableLongPress(table),
                       ),
                     ),
                   ],
@@ -131,14 +128,15 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
   ) {
     showDialog(
       context: context,
-      builder: (context) => LocationSelectorDialog(
-        locations: dashboardProvider.locations,
-        selectedLocation: dashboardProvider.selectedLocation,
-        onLocationChanged: (location) {
-          dashboardProvider.changeLocation(location);
-          _showSnackBar('Switched to $location', Colors.blue);
-        },
-      ),
+      builder:
+          (context) => LocationSelectorDialog(
+            locations: dashboardProvider.locations,
+            selectedLocation: dashboardProvider.selectedLocation,
+            onLocationChanged: (location) {
+              dashboardProvider.changeLocation(location);
+              _showSnackBar('Switched to $location', Colors.blue);
+            },
+          ),
     );
   }
 
@@ -164,26 +162,27 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     if (table.status == TableStatus.available) {
       showDialog(
         context: context,
-        builder: (context) => TableActionDialog(
-          table: table,
-          onOccupy: () {
-            tableProvider.updateTableStatus(table.id, 'occupied');
-            context.read<NavigationProvider>().selectTable(
+        builder:
+            (context) => TableActionDialog(
+              table: table,
+              onOccupy: () {
+                tableProvider.updateTableStatus(table.id, 'occupied');
+                context.read<NavigationProvider>().selectTable(
                   table.id,
                   table.name,
                   dashboardProvider.selectedLocation,
                 );
-          },
-          onReserve: () => _showReservationPage(table, tableProvider),
-        ),
+              },
+              onReserve: () => _showReservationPage(table, tableProvider),
+            ),
       );
     } else if (table.status == TableStatus.occupied ||
         table.status == TableStatus.reserved) {
       context.read<NavigationProvider>().selectTable(
-            table.id,
-            table.name,
-            dashboardProvider.selectedLocation,
-          );
+        table.id,
+        table.name,
+        dashboardProvider.selectedLocation,
+      );
     }
   }
 
@@ -191,49 +190,61 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     await HapticHelper.triggerFeedback();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.cleaning_services, color: Colors.blue, size: 24),
-            const SizedBox(width: 8),
-            Expanded(child: Text('${table.name} - Cleaning Request')),
-          ],
-        ),
-        content: const Text(
-          'Send cleaning request to KOT team for this table?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _sendCleaningRequest(table);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-            child: const Text(
-              'Send Request',
-              style: TextStyle(color: Colors.white),
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                const Icon(
+                  Icons.cleaning_services,
+                  color: Colors.blue,
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Text('${table.name} - Cleaning Request')),
+              ],
             ),
+            content: const Text(
+              'Send cleaning request to KOT team for this table?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _sendCleaningRequest(table);
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                child: const Text(
+                  'Send Request',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
-  void _showReservationPage(RestaurantTable table, TableProvider tableProvider) {
+  void _showReservationPage(
+    RestaurantTable table,
+    TableProvider tableProvider,
+  ) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TableReservationView(
-          table: table,
-          onReservationConfirmed: (reservation) {
-            tableProvider.updateTableStatus(table.id, 'reserved');
-            _showSnackBar('${table.name} reserved successfully!', Colors.green);
-          },
-        ),
+        builder:
+            (context) => TableReservationView(
+              table: table,
+              onReservationConfirmed: (reservation) {
+                tableProvider.updateTableStatus(table.id, 'reserved');
+                _showSnackBar(
+                  '${table.name} reserved successfully!',
+                  Colors.green,
+                );
+              },
+            ),
       ),
     );
   }

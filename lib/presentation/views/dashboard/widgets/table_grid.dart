@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
+
 import 'enhanced_table_card.dart';
 
 class TableGrid extends StatelessWidget {
@@ -30,7 +31,13 @@ class TableGrid extends StatelessWidget {
         return EnhancedTableCard(
           table: table,
           onTap: () => onTableTap(table),
-          onLongPress: () => onTableLongPress(table),
+          onLongPress: () {
+            // Restrict cleaning request trigger to Reserved/Occupied only
+            if (table.status == TableStatus.reserved ||
+                table.status == TableStatus.occupied) {
+              onTableLongPress(table);
+            }
+          },
         );
       },
     );

@@ -19,7 +19,13 @@ class EnhancedTableCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      onLongPress: onLongPress,
+      onLongPress: () {
+        // Only trigger long press for Reserved/Occupied tables
+        if (table.status == TableStatus.reserved ||
+            table.status == TableStatus.occupied) {
+          onLongPress();
+        }
+      },
       child: Container(
         decoration: BoxDecoration(
           gradient: cardData['gradient'],
@@ -35,24 +41,24 @@ class EnhancedTableCard extends StatelessWidget {
         ),
         child: Container(
           height: 140,
-          padding: const EdgeInsets.all(4),
+          padding: const EdgeInsets.all(6), // Increased padding
           child: ClipRect(
             child: SingleChildScrollView(
               physics: const NeverScrollableScrollPhysics(),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildStatusIndicator(cardData),
-                  const SizedBox(height: 4),
+                  // Removed the status indicator (Live icon)
                   _buildTableIcon(cardData),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6), // Increased spacing
                   _buildTableName(cardData),
+                  const SizedBox(height: 6), // Increased spacing
                   _buildCapacity(),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 6), // Increased spacing
                   _buildStatusBadge(cardData),
                   if (table.status == TableStatus.reserved &&
                       table.reservationInfo != null) ...[
-                    const SizedBox(height: 1),
+                    const SizedBox(height: 6),
                     _buildReservationInfo(),
                   ],
                 ],
@@ -64,68 +70,36 @@ class EnhancedTableCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusIndicator(Map<String, dynamic> cardData) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 4,
-              height: 4,
-              decoration: BoxDecoration(
-                color: _getLiveStatusColor(),
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 2),
-            Text(
-              'LIVE',
-              style: TextStyle(
-                fontSize: 6,
-                fontWeight: FontWeight.bold,
-                color: _getLiveStatusColor(),
-              ),
-            ),
-          ],
-        ),
-        if (table.status == TableStatus.reserved)
-          const Icon(Icons.schedule, size: 8, color: Colors.orange),
-      ],
-    );
-  }
-
-  Widget _buildTableIcon(Map<String, dynamic> cardData) {
+  Widget _buildTableIcon(Map cardData) {
     return Stack(
       children: [
         Container(
-          width: 30,
-          height: 30,
+          width: 40, // Increased from 30
+          height: 40, // Increased from 30
           decoration: BoxDecoration(
             color: cardData['borderColor'].withOpacity(0.2),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10), // Increased border radius
           ),
           child: Icon(
             Icons.table_restaurant,
             color: cardData['borderColor'],
-            size: 16,
+            size: 30, // Increased from 16
           ),
         ),
         if (table.status == TableStatus.occupied)
           Positioned(
-            right: -1,
-            top: -1,
+            right: -2,
+            top: -2,
             child: Container(
-              width: 10,
-              height: 10,
+              width: 14, // Increased from 10
+              height: 14, // Increased from 10
               decoration: const BoxDecoration(
                 color: Colors.red,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.person,
-                size: 6,
+                size: 8, // Increased from 6
                 color: Colors.white,
               ),
             ),
@@ -134,11 +108,11 @@ class EnhancedTableCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTableName(Map<String, dynamic> cardData) {
+  Widget _buildTableName(Map cardData) {
     return Text(
       table.name,
       style: TextStyle(
-        fontSize: 12,
+        fontSize: 18, // Increased from 12
         fontWeight: FontWeight.bold,
         color: cardData['textColor'],
       ),
@@ -151,23 +125,26 @@ class EnhancedTableCard extends StatelessWidget {
     return Text(
       'Capacity: ${table.capacity}',
       style: const TextStyle(
-        fontSize: 8,
+        fontSize: 12, // Increased from 8
         color: Colors.grey,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600, // Made bolder
       ),
     );
   }
 
-  Widget _buildStatusBadge(Map<String, dynamic> cardData) {
+  Widget _buildStatusBadge(Map cardData) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 6,
+        vertical: 2,
+      ), // Increased padding
       decoration: BoxDecoration(
         color: cardData['borderColor'],
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10), // Increased border radius
         boxShadow: [
           BoxShadow(
             color: cardData['borderColor'].withOpacity(0.25),
-            blurRadius: 1,
+            blurRadius: 2,
             offset: const Offset(0, 1),
           ),
         ],
@@ -175,10 +152,10 @@ class EnhancedTableCard extends StatelessWidget {
       child: Text(
         table.status.name.toUpperCase(),
         style: const TextStyle(
-          fontSize: 6,
+          fontSize: 10, // Increased from 6
           color: Colors.white,
           fontWeight: FontWeight.bold,
-          letterSpacing: 0.1,
+          letterSpacing: 0.4, // Increased letter spacing
         ),
       ),
     );
@@ -190,7 +167,7 @@ class EnhancedTableCard extends StatelessWidget {
         Text(
           table.reservationInfo!.timeRange,
           style: const TextStyle(
-            fontSize: 4,
+            fontSize: 8, // Increased from 4
             color: Colors.orange,
             fontWeight: FontWeight.bold,
           ),
@@ -199,7 +176,11 @@ class EnhancedTableCard extends StatelessWidget {
         ),
         Text(
           table.reservationInfo!.customerName,
-          style: const TextStyle(fontSize: 4, color: Colors.orange),
+          style: const TextStyle(
+            fontSize: 8, // Increased from 4
+            color: Colors.orange,
+            fontWeight: FontWeight.w600, // Made bolder
+          ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -220,7 +201,7 @@ class EnhancedTableCard extends StatelessWidget {
     }
   }
 
-  Map<String, dynamic> _getEnhancedCardData() {
+  Map _getEnhancedCardData() {
     switch (table.status) {
       case TableStatus.available:
         return {

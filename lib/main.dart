@@ -65,7 +65,9 @@ class RestaurantPOSApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => ReservationProvider()),
         ChangeNotifierProvider(create: (_) => TaxProvider()),
-        ChangeNotifierProvider(create: (_) => BillingProvider()), // Added BillingProvider
+        ChangeNotifierProvider(
+          create: (_) => BillingProvider(),
+        ), // Added BillingProvider
       ],
       child: Builder(
         builder: (context) {
@@ -75,18 +77,19 @@ class RestaurantPOSApp extends StatelessWidget {
               context,
               listen: false,
             );
-            await taxProvider.initializeTaxData(
-              48,
-            ); // Replacing 48 which is actual companyId
+            // await taxProvider.initializeTaxData(
+            //   48,
+            // ); // Replacing 48 which is actual companyId
           });
 
           return MaterialApp(
             title: 'WiZARD Restaurant POS',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
-            home: HiveService.getAuthToken() != ""
-                ? MainNavigation()
-                : const LoginView(),
+            home:
+                HiveService.getAuthToken() != ""
+                    ? MainNavigation()
+                    : const LoginView(),
           );
         },
       ),
