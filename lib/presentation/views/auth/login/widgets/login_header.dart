@@ -16,34 +16,28 @@ class LoginHeader extends StatelessWidget {
           child: ScaleAnimation(
             duration: const Duration(milliseconds: 800),
             child: Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withValues(alpha: 0.15),
-                    blurRadius: 25,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Image.asset(
-                  'assets/images/logo/wizard_logo.png',
-                  width: 100,
-                  height: 100,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(
+              width: 120,
+              height: 120,
+              child: Image.asset(
+                'assets/images/logo/wizard_logo.png',
+                width: 120,
+                height: 120,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(
                       Icons.auto_awesome,
                       size: 60,
                       color: AppColors.primary,
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
