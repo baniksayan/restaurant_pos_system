@@ -10,29 +10,11 @@ class POSApp extends StatefulWidget {
 }
 
 class _POSAppState extends State<POSApp> {
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeApp();
-  }
-
-  Future<void> _initializeApp() async {
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
+  // This file is now optional since we handle splash in main.dart
+  // You can keep it for future modular app structures
+  
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const SplashView();
-    } else {
-      return const LoginView();
-    }
+    return const SplashView(); // Simply return splash view
   }
 }

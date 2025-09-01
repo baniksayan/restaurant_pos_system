@@ -4,18 +4,18 @@ class FadeInAnimation extends StatefulWidget {
   final Widget child;
   final Duration duration;
   final Duration delay;
-  final Offset? slideFrom;
-  final bool fadeIn;
-  final bool slideIn;
+  final Curve curve;
+  final double beginOpacity;
+  final double endOpacity;
 
   const FadeInAnimation({
     Key? key,
     required this.child,
     this.duration = const Duration(milliseconds: 600),
     this.delay = Duration.zero,
-    this.slideFrom,
-    this.fadeIn = true,
-    this.slideIn = true,
+    this.curve = Curves.easeInOut,
+    this.beginOpacity = 0.0,
+    this.endOpacity = 1.0,
   }) : super(key: key);
 
   @override
@@ -25,8 +25,7 @@ class FadeInAnimation extends StatefulWidget {
 class _FadeInAnimationState extends State<FadeInAnimation>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  late Animation<double> _opacityAnimation;
 
   @override
   void initState() {
@@ -36,20 +35,12 @@ class _FadeInAnimationState extends State<FadeInAnimation>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: widget.fadeIn ? 0.0 : 1.0,
-      end: 1.0,
+    _opacityAnimation = Tween<double>(
+      begin: widget.beginOpacity,
+      end: widget.endOpacity,
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutCubic,
-    ));
-
-    _slideAnimation = Tween<Offset>(
-      begin: widget.slideFrom ?? const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
+      curve: widget.curve,
     ));
 
     _startAnimation();
@@ -70,19 +61,9 @@ class _FadeInAnimationState extends State<FadeInAnimation>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return FadeTransition(
-          opacity: _fadeAnimation,
-          child: widget.slideIn
-              ? SlideTransition(
-                  position: _slideAnimation,
-                  child: widget.child,
-                )
-              : widget.child,
-        );
-      },
+    return FadeTransition(
+      opacity: _opacityAnimation,
+      child: widget.child,
     );
   }
 }
