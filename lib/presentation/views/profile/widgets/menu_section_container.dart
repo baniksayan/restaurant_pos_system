@@ -1,5 +1,3 @@
-// lib/presentation/view_models/providers/profile_provider.dart
-
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/data/models/waiter_profile.dart';
 import 'package:restaurant_pos_system/presentation/views/profile/services/profile_dialog_service.dart';

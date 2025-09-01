@@ -1,4 +1,3 @@
-// lib/data/models/waiter_profile.dart
 class WaiterProfile {
   final String id;
   final String employeeId;

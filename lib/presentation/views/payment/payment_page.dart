@@ -1,4 +1,3 @@
-// lib/presentation/views/payment/payment_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
@@ -99,13 +98,13 @@ class _PaymentPageState extends State<PaymentPage>
                     color: Colors.green.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    'LIVE',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: Colors.green.shade700,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  // child: Text(
+                  //   'LIVE',
+                  //   style: theme.textTheme.labelMedium?.copyWith(
+                  //     color: Colors.green.shade700,
+                  //     fontWeight: FontWeight.w700,
+                  //   ),
+                  // ),
                 ),
               ],
             ),

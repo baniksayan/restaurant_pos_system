@@ -1,5 +1,3 @@
-// lib/presentation/view_models/providers/auth_provider.dart
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';

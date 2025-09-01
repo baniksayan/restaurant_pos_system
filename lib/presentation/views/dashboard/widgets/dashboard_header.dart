@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/themes/app_colors.dart';
 import '../../../view_models/providers/dashboard_provider.dart';
-import '../../../view_models/providers/table_provider.dart';
 
 class DashboardHeader extends StatelessWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;

@@ -1,5 +1,3 @@
-// lib/presentation/views/profile/widgets/quick_stats_card.dart
-
 import 'package:flutter/material.dart';
 import '../../../../core/themes/app_colors.dart';
 

@@ -1,4 +1,3 @@
-// lib/services/reservation_bill_service.dart
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
@@ -39,7 +38,7 @@ class ReservationBillService {
                   child: pw.Column(
                     children: [
                       pw.Text(
-                        '🏪 WiZARD RESTAURANT',
+                        'WiZARD RESTAURANT',
                         style: pw.TextStyle(
                           fontSize: 24,
                           fontWeight: pw.FontWeight.bold,
@@ -218,7 +217,7 @@ class ReservationBillService {
                   ),
                   child: pw.Column(
                     children: [
-                      pw.Text('✅ ADVANCE PAYMENT RECEIVED', 
+                      pw.Text('ADVANCE PAYMENT RECEIVED', 
                         style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.green800)),
                       pw.SizedBox(height: 5),
                       pw.Text('Please arrive on time for your reservation'),
@@ -260,7 +259,7 @@ class ReservationBillService {
                     children: [
                       pw.Text('Thank You for Choosing', 
                         style: pw.TextStyle(fontSize: 12)),
-                      pw.Text('🏪 WiZARD RESTAURANT', 
+                      pw.Text('WiZARD RESTAURANT', 
                         style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16, color: PdfColors.blue800)),
                     ],
                   ),
@@ -285,26 +284,26 @@ class ReservationBillService {
   // Share PDF file to WhatsApp
   static Future<void> shareAdvanceBillToWhatsApp(Reservation reservation, File pdfFile) async {
     try {
-      final message = '''🎉 *Table Reservation Confirmed!* 🎉
+      final message = '''*Table Reservation Confirmed!*
 
 Dear ${reservation.customerName},
 
 Your table reservation has been confirmed at *WiZARD Restaurant*
 
-📋 *Reservation Details:*
+*Reservation Details:*
 • Table: ${reservation.tableName}
 • Date & Time: ${reservation.fromTime.day}/${reservation.fromTime.month} at ${reservation.fromTime.hour}:${reservation.fromTime.minute.toString().padLeft(2, '0')}
 • Duration: ${reservation.duration.inHours}h ${reservation.duration.inMinutes % 60}m
 • Persons: ${reservation.persons}
 
-💰 *Payment Summary:*
+*Payment Summary:*
 • Total Amount: ₹${reservation.finalPrice.toStringAsFixed(0)}
 • Advance Paid: ₹${reservation.advanceAmount.toStringAsFixed(0)}
 • Remaining: ₹${reservation.remainingAmount.toStringAsFixed(0)}
 
-📞 For any changes, call: +91-8768412832
+For any changes, call: +91-8768412832
 
-Thank you for choosing WiZARD Restaurant! 🍽️''';
+Thank you for choosing WiZARD Restaurant!''';
 
       // Share PDF file with WhatsApp
       await Share.shareXFiles(

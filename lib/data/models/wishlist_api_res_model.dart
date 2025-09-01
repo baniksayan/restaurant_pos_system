@@ -1,4 +1,3 @@
-// lib/data/models/wishlist_api_res_model.dart
 class WishListApiResModel {
   final bool success;
   final String message;

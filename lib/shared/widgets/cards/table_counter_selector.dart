@@ -1,5 +1,3 @@
-// shared/widgets/cards/table_counter_selector.dart
-
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

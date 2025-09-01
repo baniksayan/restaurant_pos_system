@@ -1,16 +1,6 @@
-// lib/presentation/views/reports/reports_view.dart
-
 import 'package:flutter/material.dart';
-
 import '../../../core/themes/app_colors.dart';
-
 import 'widgets/tabs/overview_tab.dart';
-
-// import 'widgets/tabs/sales_tab.dart';
-
-// import 'widgets/tabs/performance_tab.dart';
-
-// import 'widgets/tabs/customer_tab.dart';
 
 class ReportsView extends StatefulWidget {
   const ReportsView({super.key});
@@ -66,11 +56,6 @@ class _ReportsViewState extends State<ReportsView>
                 children: [
                   OverviewTab(selectedTimeFrame: _selectedTimeFrame),
 
-                  // SalesTab(selectedTimeFrame: _selectedTimeFrame),
-
-                  // PerformanceTab(selectedTimeFrame: _selectedTimeFrame),
-
-                  // CustomerTab(selectedTimeFrame: _selectedTimeFrame),
                 ],
               ),
             ),
@@ -218,12 +203,6 @@ class _ReportsViewState extends State<ReportsView>
 
         tabs: const [
           Tab(text: 'Overview'),
-
-          // Tab(text: 'Sales'),     // Commented out
-
-          // Tab(text: 'Performance'), // Commented out
-
-          // Tab(text: 'Customers'),   // Commented out
         ],
       ),
     );

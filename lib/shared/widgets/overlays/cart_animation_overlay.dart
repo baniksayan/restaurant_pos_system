@@ -1,4 +1,3 @@
-// lib/shared/widgets/overlays/cart_animation_overlay.dart
 import 'package:flutter/material.dart';
 import '../animations/flying_cart_animation.dart';
 

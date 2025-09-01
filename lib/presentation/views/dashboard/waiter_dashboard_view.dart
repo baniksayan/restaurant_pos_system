@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
 import 'package:restaurant_pos_system/presentation/views/reservations/table_reservation_view.dart';
-import '../../../core/themes/app_colors.dart';
 import '../../../core/utils/haptic_helper.dart';
 import '../../../shared/widgets/drawers/location_drawer.dart';
 import '../../../shared/widgets/layout/location_header.dart';

@@ -26,11 +26,11 @@ class SyncService {
       // Sync orders
       await _syncOrders();
       
-      print('✅ All data synced successfully');
+      print('All data synced successfully');
       return true;
       
     } catch (e) {
-      print('❌ Sync failed: ${e.toString()}');
+      print('Sync failed: ${e.toString()}');
       return false;
     }
   }
@@ -59,10 +59,10 @@ class SyncService {
         if (response.statusCode == 200 || response.statusCode == 201) {
           table.synced = true;
           await table.save();
-          print('✅ Table ${table.name} synced');
+          print('Table ${table.name} synced');
         }
       } catch (e) {
-        print('❌ Failed to sync table ${table.name}: $e');
+        print('Failed to sync table ${table.name}: $e');
       }
     }
   }
@@ -96,10 +96,10 @@ class SyncService {
         if (response.statusCode == 200 || response.statusCode == 201) {
           order.synced = true;
           await order.save();
-          print('✅ Order ${order.id} synced');
+          print('Order ${order.id} synced');
         }
       } catch (e) {
-        print('❌ Failed to sync order ${order.id}: $e');
+        print('Failed to sync order ${order.id}: $e');
       }
     }
   }
@@ -122,7 +122,7 @@ class SyncService {
       }
       
     } catch (e) {
-      print('❌ Failed to sync item: $e');
+      print('Failed to sync item: $e');
     }
   }
 
@@ -134,9 +134,9 @@ class SyncService {
     if (now.isAfter(endOfDay)) {
       // If it's past end of day, schedule for next day
       final tomorrow = endOfDay.add(const Duration(days: 1));
-      print('📅 Sync scheduled for: $tomorrow');
+      print('Sync scheduled for: $tomorrow');
     } else {
-      print('📅 Sync scheduled for: $endOfDay');
+      print('Sync scheduled for: $endOfDay');
     }
     
     // In a real app, you'd use a background task scheduler

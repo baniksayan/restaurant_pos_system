@@ -1,5 +1,3 @@
-// lib/presentation/views/profile/widgets/printer_settings_dialog.dart
-
 import 'package:flutter/material.dart';
 import '../../../../core/themes/app_colors.dart';
 

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/themes/app_colors.dart';
 import '../../../../core/utils/haptic_helper.dart';
 import '../../../view_models/providers/auth_provider.dart';
 

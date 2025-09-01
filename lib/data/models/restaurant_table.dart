@@ -1,6 +1,3 @@
-// lib/data/models/restaurant_table.dart
-// Replace your existing RestaurantTable class with this complete version:
-
 import 'package:flutter/material.dart';
 
 class RestaurantTable {

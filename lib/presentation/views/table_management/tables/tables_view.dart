@@ -1,5 +1,3 @@
-// lib/presentation/views/table_management/tables_view.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../view_models/providers/table_provider.dart';
@@ -25,7 +23,7 @@ class _TablesViewState extends State<TablesView> {
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb21wYW55X2lkIjoiaEdFOXAyTnMzdVVTdS9nM3dpdVpWQT09IiwibmJmIjoxNzU1NzY4NjI5LCJleHAiOjE3NTU4NTUwMjksImlhdCI6MTc1NTc2ODYyOX0.E46nK0KzuGHM6LPJop2tq3oq-eadiBoHIpLwAbtSaXg";
     const int outletId = 55;
 
-    print("🔥 CALLING API NOW...");
+    print("CALLING API NOW...");
     tableProvider.fetchTablesByOutlet(token: token, outletId: outletId);
   }
 
@@ -41,10 +39,10 @@ class _TablesViewState extends State<TablesView> {
       body: Consumer<TableProvider>(
         builder: (context, tableProvider, child) {
           print(
-            "🚀 Build called - isApiLoading: ${tableProvider.isApiLoading}",
+            "Build called - isApiLoading: ${tableProvider.isApiLoading}",
           );
-          print("🚀 Error: ${tableProvider.tableApiError}");
-          print("🚀 Tables count: ${tableProvider.orderChannels.length}");
+          print("Error: ${tableProvider.tableApiError}");
+          print("Tables count: ${tableProvider.orderChannels.length}");
 
           if (tableProvider.isApiLoading) {
             return const Center(
@@ -53,7 +51,7 @@ class _TablesViewState extends State<TablesView> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('🔄 Loading API...'),
+                  Text('Loading API...'),
                 ],
               ),
             );
@@ -66,11 +64,11 @@ class _TablesViewState extends State<TablesView> {
                 children: [
                   const Icon(Icons.error, size: 64, color: Colors.red),
                   const SizedBox(height: 16),
-                  Text('❌ Error: ${tableProvider.tableApiError}'),
+                  Text('Error: ${tableProvider.tableApiError}'),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _testAPI,
-                    child: const Text('🔄 Retry'),
+                    child: const Text('Retry'),
                   ),
                 ],
               ),
@@ -86,7 +84,7 @@ class _TablesViewState extends State<TablesView> {
                 children: [
                   Icon(Icons.table_restaurant, size: 64),
                   SizedBox(height: 16),
-                  Text('📋 No API data received'),
+                  Text('No API data received'),
                 ],
               ),
             );
@@ -98,7 +96,7 @@ class _TablesViewState extends State<TablesView> {
                 padding: const EdgeInsets.all(16),
                 color: Colors.green.withOpacity(0.1),
                 child: Text(
-                  '✅ API SUCCESS! Found ${tables.length} tables',
+                  'API SUCCESS! Found ${tables.length} tables',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -110,11 +108,11 @@ class _TablesViewState extends State<TablesView> {
                     return Card(
                       margin: const EdgeInsets.all(8),
                       child: ListTile(
-                        title: Text('🏷️ ${table.name}'),
+                        title: Text('${table.name}'),
                         subtitle: Text(
-                          '📍 ${table.channelType} | 👥 ${table.capacity}',
+                          '${table.channelType} | ${table.capacity}',
                         ),
-                        trailing: Text('📋 Orders: ${table.orderList.length}'),
+                        trailing: Text('Orders: ${table.orderList.length}'),
                       ),
                     );
                   },

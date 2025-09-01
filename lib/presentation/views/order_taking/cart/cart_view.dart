@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
-import '../../../../core/themes/app_colors.dart';
-import '../../../../core/utils/haptic_helper.dart';
 import '../../../view_models/providers/animated_cart_provider.dart';
 import '../../../view_models/providers/navigation_provider.dart';
 import '../../../../services/pdf_service.dart';

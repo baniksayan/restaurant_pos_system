@@ -1,5 +1,3 @@
-// lib/presentation/views/profile/widgets/cash_management_dialog.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/themes/app_colors.dart';

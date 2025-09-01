@@ -129,23 +129,6 @@ class OrderProvider with ChangeNotifier {
                 },
               )
               .toList();
-      // final orderDetails =
-      //     cartItems
-      //         .map(
-      //           (item) => {
-      //             "productId": item['id'],
-      //             "productName": item['name'],
-      //             "categoryId":
-      //                 "a8c7d0a5-e3d6-4749-9ff8-447b090523c8", // Main Course GUID
-      //             "categoryName": "Main Course",
-      //             "productPrice": item['price'],
-      //             "discountPercentage": 0,
-      //             "uom": "Plate",
-      //             "quantity": item['quantity'],
-      //             "note": item['specialNotes'] ?? "",
-      //           },
-      //         )
-      //         .toList();
 
       if (kDebugMode) {
         debugPrint('createKotWithOrderDetails payload: $orderDetails');

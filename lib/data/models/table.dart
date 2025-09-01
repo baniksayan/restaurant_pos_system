@@ -1,4 +1,3 @@
-// lib/data/models/table.dart
 enum TableStatus { available, occupied, reserved }
 
 class TableModel {

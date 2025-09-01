@@ -1,4 +1,3 @@
-// lib/core/constants/api_constants.dart
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 
 class ApiConstants {
