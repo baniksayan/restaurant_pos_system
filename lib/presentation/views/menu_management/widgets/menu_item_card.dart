@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 import '../../../../core/themes/app_colors.dart';
 
 class MenuItemCard extends StatelessWidget {
@@ -11,7 +13,6 @@ class MenuItemCard extends StatelessWidget {
   final String cname;
   final bool isVeg;
   final bool canOrder;
-
   final int quantity;
   final Function(String, String, double, String, String, Offset)? onAddToCart;
   final VoidCallback? onAdd;
@@ -88,33 +89,63 @@ class MenuItemCard extends StatelessWidget {
                 topRight: Radius.circular(16),
               ),
             ),
-            child:
-                imageUrl != null
-                    ? ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        topRight: Radius.circular(16),
-                      ),
-                      child: Image.network(
-                        imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder:
-                            (context, error, stackTrace) => const Icon(
-                              Icons.restaurant,
-                              size: 40,
-                              color: Colors.grey,
-                            ),
-                      ),
-                    )
-                    : const Icon(
-                      Icons.restaurant,
-                      size: 40,
-                      color: Colors.grey,
+            child: imageUrl != null
+                ? ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
                     ),
+                    child: _buildMenuItemImage(imageUrl!),
+                  )
+                : const Icon(
+                    Icons.restaurant,
+                    size: 40,
+                    color: Colors.grey,
+                  ),
           ),
           _buildVegIndicator(),
         ],
       ),
+    );
+  }
+
+  // Fixed image widget with URL cleanup
+  Widget _buildMenuItemImage(String imageUrl) {
+    // Clean up double URL paths
+    String cleanImageUrl = imageUrl;
+    if (imageUrl.contains('https://') && 
+        imageUrl.indexOf('https://') != imageUrl.lastIndexOf('https://')) {
+      // Extract the correct URL (take the second occurrence)
+      cleanImageUrl = imageUrl.substring(imageUrl.lastIndexOf('https://'));
+    }
+
+    return CachedNetworkImage(
+      imageUrl: cleanImageUrl,
+      placeholder: (context, url) => Container(
+        color: Colors.grey[200],
+        child: Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.grey[400],
+          ),
+        ),
+      ),
+      errorWidget: (context, url, error) => Container(
+        color: Colors.grey[200],
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.restaurant, color: Colors.grey[400], size: 30),
+            const SizedBox(height: 4),
+            Text(
+              'Image\nUnavailable',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+            ),
+          ],
+        ),
+      ),
+      fit: BoxFit.cover,
     );
   }
 

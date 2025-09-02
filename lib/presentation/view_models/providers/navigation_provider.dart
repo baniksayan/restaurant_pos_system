@@ -12,8 +12,11 @@ class NavigationProvider extends ChangeNotifier {
   String? get selectedLocation => _selectedLocation;
 
   void navigateToIndex(int index) {
-    _currentIndex = index;
-    notifyListeners();
+    // Ensure index is within valid range (0-3 instead of 0-4)
+    if (index >= 0 && index <= 3) {
+      _currentIndex = index;
+      notifyListeners();
+    }
   }
 
   void selectTable(String tableId, String tableName, String location) {
@@ -30,4 +33,10 @@ class NavigationProvider extends ChangeNotifier {
     _selectedLocation = null;
     notifyListeners();
   }
+
+  // Navigate to specific tabs by name
+  void navigateToTables() => navigateToIndex(0);
+  void navigateToMenu() => navigateToIndex(1);
+  void navigateToCart() => navigateToIndex(2);
+  void navigateToReports() => navigateToIndex(3);
 }

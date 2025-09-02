@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../data/local/hive_service.dart';
-import 'package:uuid/uuid.dart';
 
 class CartProvider with ChangeNotifier {
   Map<String, CartItem> _cartItems = {};

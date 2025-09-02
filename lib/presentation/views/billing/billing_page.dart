@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/utils/haptic_helper.dart';
-import '../../../data/models/payment_mode_api_res_model.dart';
 import '../../view_models/providers/billing_provider.dart';
 import 'widgets/order_summary_card.dart';
 import 'widgets/items_list_card.dart';

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
 import '../../../../core/themes/app_colors.dart';
-import '../../../../data/models/table.dart' hide TableStatus;
 import '../../../../shared/widgets/animations/fade_in_animation.dart';
 import '../../../../shared/widgets/buttons/animated_button.dart';
 

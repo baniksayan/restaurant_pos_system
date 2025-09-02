@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/themes/app_colors.dart';
-import '../../../../shared/widgets/animations/scale_animation.dart';
-import '../../../../shared/widgets/animations/fade_in_animation.dart';
-import '../../../../shared/widgets/animations/staggered_animation.dart';
 
 class SplashView extends StatefulWidget {
   const SplashView({super.key});

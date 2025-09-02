@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 
 import '../../../core/themes/app_colors.dart';

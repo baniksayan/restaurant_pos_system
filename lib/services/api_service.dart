@@ -79,6 +79,7 @@ class ApiService {
       final streamedResponse = await request.send();
       final responseData = await streamedResponse.stream.toBytes();
       final responseString = String.fromCharCodes(responseData);
+
       dynamic jsonData;
       try {
         // Defensive parsing: server may return empty body or non-JSON (e.g., 204/empty)
@@ -88,6 +89,7 @@ class ApiService {
               'Empty response body for endpoint: $endpoint (status: ${streamedResponse.statusCode})',
             );
           }
+
           if (streamedResponse.statusCode >= 200 &&
               streamedResponse.statusCode < 300) {
             // Success with empty body -> minimal success map
@@ -117,6 +119,7 @@ class ApiService {
                 'Response not JSON for $endpoint (status ${streamedResponse.statusCode}): $responseString',
               );
             }
+
             if (streamedResponse.statusCode >= 200 &&
                 streamedResponse.statusCode < 300) {
               // 2xx but not JSON -> treat as success with raw message
@@ -219,7 +222,6 @@ class ApiService {
           debugPrint('Error response: ${response.body}');
         }
       }
-
       return null;
     } catch (e, stackTrace) {
       if (kDebugMode) {
@@ -328,6 +330,139 @@ class ApiService {
       }
       return null;
     }
+  }
+
+  /// Enhanced method with better retry logic and error handling
+  static Future<Map<String, dynamic>?> getTablesByOutletEnhanced({
+    required int outletId,
+    String orderChannelType = "",
+    int maxRetries = 3,
+  }) async {
+    int attempts = 0;
+    
+    while (attempts < maxRetries) {
+      try {
+        final isConnected = await checkInternetAndGoForward();
+        if (!isConnected) {
+          if (kDebugMode) {
+            debugPrint('No internet connection available');
+          }
+          return null;
+        }
+
+        final Map<String, dynamic> requestBody = {
+          "orderChanelType": orderChannelType, // Note: keeping the API's typo
+          "outletId": outletId,
+        };
+
+        final response = await http.post(
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.getTablesByOutlet}'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ${ApiConstants.accessToken}',
+          },
+          body: json.encode(requestBody),
+        ).timeout(const Duration(seconds: 30)); // Add timeout
+
+        if (kDebugMode) {
+          debugPrint(
+            'getTablesByOutletEnhanced request URL: ${ApiConstants.baseUrl}${ApiConstants.getTablesByOutlet}',
+          );
+          debugPrint('getTablesByOutletEnhanced request body: $requestBody');
+          debugPrint(
+            'getTablesByOutletEnhanced response status: ${response.statusCode}',
+          );
+          debugPrint('getTablesByOutletEnhanced response: ${response.body}');
+        }
+
+        if (response.statusCode == 200) {
+          try {
+            final responseData = json.decode(response.body);
+            return responseData;
+          } catch (e) {
+            if (kDebugMode) {
+              debugPrint('Failed to parse JSON response: $e');
+            }
+            throw Exception('Invalid JSON response');
+          }
+        } else if (response.statusCode == 500 && attempts < maxRetries - 1) {
+          // Server error - retry with exponential backoff
+          if (kDebugMode) {
+            debugPrint(
+              'Server error (500) on attempt ${attempts + 1}. Retrying...',
+            );
+          }
+          attempts++;
+          await Future.delayed(Duration(milliseconds: 1000 * attempts));
+          continue;
+        } else {
+          if (kDebugMode) {
+            debugPrint('API request failed: ${response.statusCode}');
+            debugPrint('Response: ${response.body}');
+          }
+          throw Exception('API request failed with status: ${response.statusCode}');
+        }
+      } catch (e) {
+        attempts++;
+        if (kDebugMode) {
+          debugPrint('getTablesByOutletEnhanced error on attempt $attempts: $e');
+        }
+        
+        if (attempts >= maxRetries) {
+          if (kDebugMode) {
+            debugPrint('Max retries ($maxRetries) exceeded for tables API');
+          }
+          throw Exception('Failed to fetch tables after $maxRetries attempts: $e');
+        }
+        
+        // Wait before retry with exponential backoff
+        await Future.delayed(Duration(milliseconds: 1000 * attempts));
+      }
+    }
+    
+    return null;
+  }
+
+  /// Generic retry wrapper for any API call
+  static Future<T?> executeWithRetry<T>(
+    Future<T?> Function() apiCall, {
+    int maxRetries = 3,
+    Duration initialDelay = const Duration(seconds: 1),
+    String operationName = 'API call',
+  }) async {
+    int attempts = 0;
+    
+    while (attempts < maxRetries) {
+      try {
+        final result = await apiCall();
+        return result;
+      } catch (e) {
+        attempts++;
+        if (kDebugMode) {
+          debugPrint('$operationName failed on attempt $attempts: $e');
+        }
+        
+        if (attempts >= maxRetries) {
+          if (kDebugMode) {
+            debugPrint('$operationName failed after $maxRetries attempts');
+          }
+          rethrow;
+        }
+        
+        // Exponential backoff
+        final delay = Duration(
+          milliseconds: initialDelay.inMilliseconds * attempts,
+        );
+        
+        if (kDebugMode) {
+          debugPrint('Retrying $operationName in ${delay.inMilliseconds}ms...');
+        }
+        
+        await Future.delayed(delay);
+      }
+    }
+    
+    return null;
   }
 
   /// Get all product categories for an outlet
@@ -499,7 +634,7 @@ class ApiService {
 
   /// Create KOT with order details
   static Future<CreateKotWithOrderDetailsApiResModel?>
-  createKotWithOrderDetails({
+      createKotWithOrderDetails({
     required String userId,
     required int outletId,
     required String orderId,
@@ -530,19 +665,22 @@ class ApiService {
         body,
         method: 'POST',
       );
+
       if (response != null) {
-        if (kDebugMode)
+        if (kDebugMode) {
           debugPrint('createKotWithOrderDetails API Response: $response');
+        }
         try {
-          // Ensure we pass a Map<String, dynamic> to the generated model
+          // Ensure we pass a Map to the generated model
           final typed = Map<String, dynamic>.from(response);
           return CreateKotWithOrderDetailsApiResModel.fromJson(typed);
         } catch (e) {
           if (kDebugMode) {
-            debugPrint('Failed to cast response to Map<String,dynamic>: $e');
+            debugPrint('Failed to cast response to Map: $e');
           }
+
           // Build a safe fallback map using available fields
-          final fallback = <String, dynamic>{
+          final fallback = {
             'isSuccess': response['isSuccess'] ?? false,
             'message': response['message']?.toString() ?? response.toString(),
             'data': response['data'] ?? {},
@@ -551,6 +689,7 @@ class ApiService {
           return CreateKotWithOrderDetailsApiResModel.fromJson(fallback);
         }
       }
+
       return null;
     } catch (e, stackTrace) {
       if (kDebugMode) {

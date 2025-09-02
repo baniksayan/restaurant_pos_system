@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/themes/app_colors.dart';
 import '../login/login_view.dart';
 import 'widgets/auth_app_bar.dart';
 import 'widgets/forgot_password_logo.dart';
