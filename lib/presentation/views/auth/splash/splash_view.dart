@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/themes/app_colors.dart';
+import '../../../view_models/providers/auth_provider.dart';
 
 class SplashView extends StatefulWidget {
   const SplashView({super.key});
@@ -15,7 +18,7 @@ class _SplashViewState extends State<SplashView>
   late AnimationController _logoController;
   late AnimationController _textController;
   late AnimationController _progressController;
-  
+
   late Animation<double> _logoScaleAnimation;
   late Animation<double> _logoRotationAnimation;
   late Animation<double> _logoOpacityAnimation;
@@ -23,12 +26,13 @@ class _SplashViewState extends State<SplashView>
   late Animation<Offset> _textSlideAnimation;
   late Animation<double> _progressAnimation;
   late Animation<Color?> _backgroundAnimation;
-  
+
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
     _startAnimationSequence();
+    _checkAuthAndNavigate();
   }
 
   void _initializeAnimations() {
@@ -120,18 +124,57 @@ class _SplashViewState extends State<SplashView>
   void _startAnimationSequence() async {
     // Start background animation immediately
     _mainController.forward();
-    
+
     // Delay then start logo animation
     await Future.delayed(const Duration(milliseconds: 300));
-    _logoController.forward();
-    
+    if (mounted) _logoController.forward();
+
     // Start text animation after logo begins
     await Future.delayed(const Duration(milliseconds: 600));
-    _textController.forward();
-    
+    if (mounted) _textController.forward();
+
     // Start progress animation
     await Future.delayed(const Duration(milliseconds: 400));
-    _progressController.forward();
+    if (mounted) _progressController.forward();
+  }
+
+  Future<void> _checkAuthAndNavigate() async {
+    try {
+      // Show splash for a minimum time
+      await Future.delayed(const Duration(seconds: 2));
+      
+      if (mounted) {
+        // Check if user is already authenticated from saved state
+        final authProvider = context.read<AuthProvider>();
+        final isAuthenticated = await authProvider.checkAuthState();
+        
+        if (isAuthenticated) {
+          // User is logged in (state restored), go to dashboard
+          Navigator.of(context).pushReplacementNamed('/dashboard');
+          
+          if (kDebugMode) {
+            debugPrint('User restored from saved state - navigating to dashboard');
+          }
+        } else {
+          // User is not logged in, go to login
+          Navigator.of(context).pushReplacementNamed('/login');
+          
+          if (kDebugMode) {
+            debugPrint('No saved auth state - navigating to login');
+          }
+        }
+      }
+    } catch (e) {
+      // Handle any errors during authentication check
+      if (kDebugMode) {
+        debugPrint('Error checking auth state: $e');
+      }
+      
+      if (mounted) {
+        // Default to login page if there's an error
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    }
   }
 
   @override
@@ -181,12 +224,10 @@ class _SplashViewState extends State<SplashView>
                       children: [
                         // Logo section
                         _buildLogoSection(),
-                        
                         const SizedBox(height: 60),
                         
                         // Text section
                         _buildTextSection(),
-                        
                         const SizedBox(height: 80),
                         
                         // Progress indicator
@@ -214,7 +255,6 @@ class _SplashViewState extends State<SplashView>
           children: List.generate(6, (index) {
             final delay = index * 0.2;
             final animationValue = (_mainController.value - delay).clamp(0.0, 1.0);
-            
             return Positioned(
               left: (50 + index * 60).toDouble(),
               top: (100 + index * 80).toDouble(),
@@ -223,8 +263,8 @@ class _SplashViewState extends State<SplashView>
                 child: Transform.scale(
                   scale: animationValue,
                   child: Container(
-                    width: 20 + (index * 5),
-                    height: 20 + (index * 5),
+                    width: 20 + (index * 5).toDouble(),
+                    height: 20 + (index * 5).toDouble(),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: Colors.white.withOpacity(0.1),
@@ -294,7 +334,7 @@ class _SplashViewState extends State<SplashView>
 
   Widget _buildTextSection() {
     return AnimatedBuilder(
-      animation: Listenable.merge([_textController]),
+      animation: _textController,
       builder: (context, child) {
         return SlideTransition(
           position: _textSlideAnimation,
@@ -319,7 +359,6 @@ class _SplashViewState extends State<SplashView>
                     ),
                   ),
                 ),
-                
                 const SizedBox(height: 8),
                 
                 // Subtitle
@@ -332,7 +371,6 @@ class _SplashViewState extends State<SplashView>
                     letterSpacing: 1.2,
                   ),
                 ),
-                
                 const SizedBox(height: 20),
                 
                 // Restaurant POS tagline
@@ -403,18 +441,26 @@ class _SplashViewState extends State<SplashView>
                 ),
               ),
             ),
-            
             const SizedBox(height: 16),
             
-            // Loading text
-            Text(
-              'Initializing...',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: Colors.white.withOpacity(0.7),
-                letterSpacing: 0.5,
-              ),
+            // Loading text with auth status
+            Consumer<AuthProvider>(
+              builder: (context, authProvider, child) {
+                String statusText = 'Initializing...';
+                if (authProvider.isLoading) {
+                  statusText = 'Checking authentication...';
+                }
+
+                return Text(
+                  statusText,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white.withOpacity(0.7),
+                    letterSpacing: 0.5,
+                  ),
+                );
+              },
             ),
           ],
         );

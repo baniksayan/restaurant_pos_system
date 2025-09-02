@@ -163,7 +163,8 @@ class CartHeader extends StatelessWidget {
                 icon: const Icon(Icons.add_shopping_cart, size: 18),
                 label: const Text('Add More Items'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
+                  // ✅ CHANGED FROM BRIGHT YELLOW TO SOOTHING APP COLOR
+                  backgroundColor: AppColors.primary, // Was Colors.orange
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(

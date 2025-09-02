@@ -44,13 +44,13 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Column(
                   children: [
-                    _buildLocationFilters(),        // First: Locations
+                    _buildLocationFilters(), // First: Locations
                     const Divider(thickness: 1, height: 32),
-                    _buildTableStatusFilters(),     // Second: Table Status
+                    _buildTableStatusFilters(), // Second: Table Status
                     const Divider(thickness: 1, height: 32),
-                    _buildProfileSection(),         // Third: Profile
+                    _buildProfileSection(), // Third: Profile
                     const Divider(thickness: 1, height: 32),
-                    _buildSignOutSection(),         // Fourth: Sign Out
+                    // _buildSignOutSection(), // Fourth: Sign Out
                   ],
                 ),
               ),
@@ -108,10 +108,10 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
       builder: (context, dashboardProvider, tableProvider, child) {
         // Get locations that actually have tables
         final availableLocations = _getAvailableLocations(
-          dashboardProvider.locations, 
-          tableProvider.tables
+          dashboardProvider.locations,
+          tableProvider.tables,
         );
-        
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -133,7 +133,9 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
               ),
             ),
             // Show only specific locations (removed "All Tables" option)
-            ...availableLocations.map((location) => _buildLocationTile(location)),
+            ...availableLocations.map(
+              (location) => _buildLocationTile(location),
+            ),
           ],
         );
       },
@@ -141,7 +143,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
   }
 
   // Helper method to get available locations that have tables
-  List<LocationSection> _getAvailableLocations(List<LocationSection> allLocations, List tables) {
+  List _getAvailableLocations(List allLocations, List tables) {
     return allLocations.where((location) {
       return tables.any((table) => table.location == location.name);
     }).toList();
@@ -149,13 +151,16 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
 
   Widget _buildLocationTile(LocationSection location) {
     final isSelected = widget.selectedLocation == location.name;
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: isSelected ? location.color.withOpacity(0.1) : null,
-        border: isSelected ? Border.all(color: location.color.withOpacity(0.3), width: 1) : null,
+        border:
+            isSelected
+                ? Border.all(color: location.color.withOpacity(0.3), width: 1)
+                : null,
       ),
       child: ListTile(
         dense: true,
@@ -163,17 +168,19 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isSelected ? location.color : location.color.withOpacity(0.1),
+            color:
+                isSelected ? location.color : location.color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: location.color.withOpacity(0.3),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
+            boxShadow:
+                isSelected
+                    ? [
+                      BoxShadow(
+                        color: location.color.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                    : null,
           ),
           child: Icon(
             location.icon,
@@ -189,9 +196,10 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
             fontSize: 13,
           ),
         ),
-        trailing: isSelected
-            ? Icon(Icons.check_circle, color: location.color, size: 16)
-            : null,
+        trailing:
+            isSelected
+                ? Icon(Icons.check_circle, color: location.color, size: 16)
+                : null,
         onTap: () => widget.onLocationChanged(location.name),
       ),
     );
@@ -200,11 +208,36 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
   Widget _buildTableStatusFilters() {
     final statusFilters = [
       _StatusFilter('All Tables', 'all', Icons.table_restaurant, Colors.grey),
-      _StatusFilter('Available', 'available', Icons.check_circle, const Color(0xFF10B981)),
-      _StatusFilter('Occupied', 'occupied', Icons.people, const Color(0xFFEF4444)),
-      _StatusFilter('Reserved', 'reserved', Icons.event, const Color(0xFFF59E0B)),
-      _StatusFilter('KOT Generated', 'kot_generated', Icons.receipt, const Color(0xFF8B5CF6)),
-      _StatusFilter('Bill Generated', 'bill_generated', Icons.payment, const Color(0xFF06B6D4)),
+      _StatusFilter(
+        'Available',
+        'available',
+        Icons.check_circle,
+        const Color(0xFF10B981),
+      ),
+      _StatusFilter(
+        'Occupied',
+        'occupied',
+        Icons.people,
+        const Color(0xFFEF4444),
+      ),
+      _StatusFilter(
+        'Reserved',
+        'reserved',
+        Icons.event,
+        const Color(0xFFF59E0B),
+      ),
+      _StatusFilter(
+        'KOT Generated',
+        'kot_generated',
+        Icons.receipt,
+        const Color(0xFF8B5CF6),
+      ),
+      _StatusFilter(
+        'Bill Generated',
+        'bill_generated',
+        Icons.payment,
+        const Color(0xFF06B6D4),
+      ),
     ];
 
     return Column(
@@ -234,12 +267,16 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
 
   Widget _buildStatusFilterTile(_StatusFilter filter) {
     final isSelected = widget.selectedStatusFilter == filter.value;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: isSelected ? filter.color.withOpacity(0.1) : null,
-        border: isSelected ? Border.all(color: filter.color.withOpacity(0.3), width: 1) : null,
+        border:
+            isSelected
+                ? Border.all(color: filter.color.withOpacity(0.3), width: 1)
+                : null,
       ),
       child: ListTile(
         dense: true,
@@ -249,15 +286,16 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
           decoration: BoxDecoration(
             color: isSelected ? filter.color : filter.color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: filter.color.withOpacity(0.3),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
+            boxShadow:
+                isSelected
+                    ? [
+                      BoxShadow(
+                        color: filter.color.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                    : null,
           ),
           child: Icon(
             filter.icon,
@@ -273,9 +311,10 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
             fontSize: 13,
           ),
         ),
-        trailing: isSelected
-            ? Icon(Icons.check_circle, color: filter.color, size: 16)
-            : null,
+        trailing:
+            isSelected
+                ? Icon(Icons.check_circle, color: filter.color, size: 16)
+                : null,
         onTap: () => widget.onStatusFilterChanged(filter.value),
       ),
     );
@@ -288,30 +327,40 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: _isProfileExpanded ? AppColors.primary.withOpacity(0.1) : null,
-            border: _isProfileExpanded
-                ? Border.all(color: AppColors.primary.withOpacity(0.3), width: 1)
-                : null,
+            color:
+                _isProfileExpanded ? AppColors.primary.withOpacity(0.1) : null,
+            border:
+                _isProfileExpanded
+                    ? Border.all(
+                      color: AppColors.primary.withOpacity(0.3),
+                      width: 1,
+                    )
+                    : null,
           ),
           child: ListTile(
             dense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 2,
+            ),
             leading: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: _isProfileExpanded
-                    ? AppColors.primary
-                    : AppColors.primary.withOpacity(0.1),
+                color:
+                    _isProfileExpanded
+                        ? AppColors.primary
+                        : AppColors.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
-                boxShadow: _isProfileExpanded
-                    ? [
-                        BoxShadow(
-                          color: AppColors.primary.withOpacity(0.3),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : null,
+                boxShadow:
+                    _isProfileExpanded
+                        ? [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                        : null,
               ),
               child: Icon(
                 Icons.person,
@@ -322,8 +371,12 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
             title: Text(
               'Profile',
               style: TextStyle(
-                color: _isProfileExpanded ? AppColors.primary : AppColors.textPrimary,
-                fontWeight: _isProfileExpanded ? FontWeight.w600 : FontWeight.normal,
+                color:
+                    _isProfileExpanded
+                        ? AppColors.primary
+                        : AppColors.textPrimary,
+                fontWeight:
+                    _isProfileExpanded ? FontWeight.w600 : FontWeight.normal,
                 fontSize: 13,
               ),
             ),
@@ -354,36 +407,24 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
       ),
       child: Column(
         children: [
-          _buildProfileSubItem(
-            'View Profile',
-            Icons.person_outline,
-            () {
-              Navigator.pop(context); // Close drawer
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProfileView()),
-              );
-            },
-          ),
-          _buildProfileSubItem(
-            'Settings',
-            Icons.settings_outlined,
-            () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Settings coming soon!')),
-              );
-            },
-          ),
-          _buildProfileSubItem(
-            'Performance',
-            Icons.analytics_outlined,
-            () {
-              Navigator.pop(context);
-              // Navigate to Reports tab
-              context.read<NavigationProvider>().navigateToReports();
-            },
-          ),
+          _buildProfileSubItem('View Profile', Icons.person_outline, () {
+            Navigator.pop(context); // Close drawer
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ProfileView()),
+            );
+          }),
+          _buildProfileSubItem('Settings', Icons.settings_outlined, () {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Settings coming soon!')),
+            );
+          }),
+          _buildProfileSubItem('Performance', Icons.analytics_outlined, () {
+            Navigator.pop(context);
+            // Navigate to Reports tab
+            context.read<NavigationProvider>().navigateToReports();
+          }),
         ],
       ),
     );
@@ -396,10 +437,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
       leading: Icon(icon, color: Colors.grey[600], size: 16),
       title: Text(
         title,
-        style: TextStyle(
-          fontSize: 12,
-          color: Colors.grey[700],
-        ),
+        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
       ),
       onTap: onTap,
     );
@@ -417,66 +455,13 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
             color: Colors.red.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(
-            Icons.logout,
-            color: Colors.red,
-            size: 18,
-          ),
+          child: const Icon(Icons.logout, color: Colors.red, size: 18),
         ),
-        title: const Text(
-          'Sign Out',
-          style: TextStyle(
-            color: Colors.red,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-        onTap: () => _showSignOutDialog(),
+        
       ),
     );
   }
 
-  void _showSignOutDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false, // Prevent dismissing by tapping outside
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.logout, color: Colors.red, size: 24),
-            const SizedBox(width: 8),
-            const Text('Sign Out'),
-          ],
-        ),
-        content: const Text(
-          'Are you sure you want to sign out?\n\nYou will be redirected to the login screen.',
-          style: TextStyle(height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Close drawer
-              await _performLogout();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<void> _performLogout() async {
     try {
@@ -484,47 +469,43 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Signing out...'),
-            ],
-          ),
-        ),
+        builder:
+            (context) => const AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Signing out...'),
+                ],
+              ),
+            ),
       );
 
       // Perform logout operations
       final authProvider = context.read<AuthProvider>();
-      await authProvider.logout();
-      
-      // Clear all providers/data
-      await Future.delayed(const Duration(seconds: 1)); // Brief delay for UX
-      
+      await authProvider.logout(); // Clear tokens, user data, etc.
+
+   
+
+      // Small delay for UX
+      await Future.delayed(const Duration(milliseconds: 500));
+
       if (mounted) {
-        // Close loading dialog
-        Navigator.pop(context);
-        
-        // Navigate to login and clear all routes
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          '/login', // Adjust route name based on your routing setup
-          (Route<dynamic> route) => false,
-        );
-        
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Signed out successfully'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
+        // Close loading dialog first
+        Navigator.of(context, rootNavigator: true).pop();
+
+        // COMPLETE RESET: Navigate to splash/login and remove ALL routes
+        Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
+          '/', // This should go to your splash screen, then login
+          (Route<dynamic> route) => false, // Remove ALL previous routes
         );
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // Close loading dialog
+        // Close loading dialog on error
+        Navigator.of(context, rootNavigator: true).pop();
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Sign out failed: ${e.toString()}'),

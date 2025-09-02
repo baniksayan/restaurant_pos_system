@@ -54,6 +54,7 @@ class RestaurantPOSApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => MenuProvider()),
+        
         // Modified TableProvider initialization - no immediate API call
         ChangeNotifierProvider(
           create: (_) {
@@ -62,6 +63,7 @@ class RestaurantPOSApp extends StatelessWidget {
             return provider;
           },
         ),
+        
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => AnimatedCartProvider()),
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
@@ -77,7 +79,24 @@ class RestaurantPOSApp extends StatelessWidget {
             title: 'WiZARD Restaurant POS',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
-            home: const SplashScreen(),
+            
+            // Always start with splash screen first
+            initialRoute: '/',
+            
+            // Set up proper routing
+            routes: {
+              '/': (context) => const SplashScreen(), // Checks auth and routes accordingly
+              '/login': (context) => const LoginView(),
+              '/dashboard': (context) => const MainNavigation(),
+            },
+            
+            // Handle unknown routes
+            onUnknownRoute: (settings) {
+              return MaterialPageRoute(builder: (context) => const LoginView());
+            },
+            
+            // Global navigation key for programmatic navigation
+            navigatorKey: GlobalKey<NavigatorState>(),
           );
         },
       ),
@@ -107,7 +126,7 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       // Show splash screen for minimum time for animation completion
       await Future.delayed(const Duration(seconds: 3));
-
+      
       if (mounted) {
         setState(() {
           _initializationStatus = 'Loading configurations...';
@@ -116,89 +135,123 @@ class _SplashScreenState extends State<SplashScreen> {
 
       // Initialize providers in sequence to avoid API overload
       await _initializeProviders();
-
+      
       // Additional delay to ensure smooth transition
       await Future.delayed(const Duration(milliseconds: 800));
-
+      
       if (mounted) {
-        // Check if user is already logged in
-        final authToken = HiveService.getAuthToken();
-
-        if (authToken != null && authToken.isNotEmpty) {
-          // User is logged in, go to main navigation
-          Navigator.of(
-            context,
-          ).pushReplacement(_createRoute(const MainNavigation()));
+        // Check authentication state using AuthProvider
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final isAuthenticated = await authProvider.checkAuthState();
+        
+        if (isAuthenticated) {
+          // User is logged in, go to main navigation using named route
+          if (kDebugMode) {
+            debugPrint('User authenticated - navigating to dashboard');
+          }
+          Navigator.of(context).pushReplacementNamed('/dashboard');
         } else {
-          // User is not logged in, go to login page
-          Navigator.of(
-            context,
-          ).pushReplacement(_createRoute(const LoginView()));
+          // User is not logged in, go to login page using named route
+          if (kDebugMode) {
+            debugPrint('User not authenticated - navigating to login');
+          }
+          Navigator.of(context).pushReplacementNamed('/login');
         }
       }
     } catch (e) {
       if (mounted) {
-        // Even if initialization fails, continue to app
-        final authToken = HiveService.getAuthToken();
-        final targetPage =
-            (authToken != null && authToken.isNotEmpty)
-                ? const MainNavigation()
-                : const LoginView();
+        if (kDebugMode) {
+          debugPrint('App initialization error: $e');
+        }
 
-        Navigator.of(context).pushReplacement(_createRoute(targetPage));
+        // Even if initialization fails, continue to app
+        // Check local storage directly as fallback
+        final authToken = HiveService.getAuthToken();
+        final targetRoute = (authToken != null && authToken.isNotEmpty) 
+            ? '/dashboard' 
+            : '/login';
+        
+        Navigator.of(context).pushReplacementNamed(targetRoute);
       }
     }
   }
 
-  // Update your _initializeProviders method in main.dart
-Future<void> _initializeProviders() async {
-  try {
-    if (mounted) {
-      setState(() {
-        _initializationStatus = 'Loading configurations...';
-      });
-      
+  // Updated _initializeProviders method
+  Future<void> _initializeProviders() async {
+    try {
+      if (mounted) {
+        setState(() {
+          _initializationStatus = 'Loading configurations...';
+        });
+      }
+
+      // Initialize tax provider first
       final taxProvider = Provider.of<TaxProvider>(context, listen: false);
       await Future.delayed(const Duration(milliseconds: 500));
-
+      
       // Try table initialization but DON'T block app launch if it fails
       if (mounted) {
         setState(() {
           _initializationStatus = 'Loading table data...';
         });
-        
-        final tableProvider = Provider.of<TableProvider>(context, listen: false);
-        
-        // Try once, but don't block the app if it fails
-        try {
-          await tableProvider.fetchTables();
-        } catch (e) {
-          if (kDebugMode) {
-            debugPrint('Table initialization failed during splash: $e');
-            debugPrint('Will retry after app loads...');
-          }
-          // Continue with app launch - tables will retry later
+      }
+
+      final tableProvider = Provider.of<TableProvider>(context, listen: false);
+      // Try once, but don't block the app if it fails
+      try {
+        await tableProvider.fetchTables();
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('Table initialization failed during splash: $e');
+          debugPrint('Will retry after app loads...');
         }
+        // Continue with app launch - tables will retry later
       }
 
       await Future.delayed(const Duration(milliseconds: 300));
-
       if (mounted) {
         setState(() {
           _initializationStatus = 'Ready to go...';
         });
       }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Provider initialization error: $e');
+      }
+      // Don't throw error, let app continue
     }
-  } catch (e) {
-    if (kDebugMode) {
-      debugPrint('Provider initialization error: $e');
-    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const SplashView(); // Animated splash screen
   }
 }
 
+// Global route generator for more complex routing needs
+class RouteGenerator {
+  static Route<dynamic> generateRoute(RouteSettings settings) {
+    switch (settings.name) {
+      case '/':
+        return _createRoute(const SplashScreen());
+      case '/login':
+        return _createRoute(const LoginView());
+      case '/dashboard':
+        return _createRoute(const MainNavigation());
+      default:
+        // Handle unknown routes - redirect to login
+        return _createRoute(
+          const Scaffold(
+            body: Center(
+              child: Text('Page not found')
+            )
+          ),
+        );
+    }
+  }
 
   // Create smooth page transition
-  Route _createRoute(Widget page) {
+  static Route<dynamic> _createRoute(Widget page) {
     return PageRouteBuilder(
       pageBuilder: (context, animation, secondaryAnimation) => page,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -211,14 +264,36 @@ Future<void> _initializeProviders() async {
           end: end,
         ).chain(CurveTween(curve: curve));
 
-        return SlideTransition(position: animation.drive(tween), child: child);
+        return SlideTransition(
+          position: animation.drive(tween), 
+          child: child
+        );
       },
       transitionDuration: const Duration(milliseconds: 500),
     );
   }
+}
 
-  @override
-  Widget build(BuildContext context) {
-    return const SplashView(); // Animated splash screen
+// Extension for easy navigation throughout the app
+extension NavigationExtension on BuildContext {
+  Future<void> navigateToLogin() async {
+    await Navigator.of(this).pushNamedAndRemoveUntil(
+      '/login', 
+      (Route<dynamic> route) => false
+    );
+  }
+
+  Future<void> navigateToDashboard() async {
+    await Navigator.of(this).pushNamedAndRemoveUntil(
+      '/dashboard', 
+      (Route<dynamic> route) => false
+    );
+  }
+
+  Future<void> navigateToSplash() async {
+    await Navigator.of(this).pushNamedAndRemoveUntil(
+      '/', 
+      (Route<dynamic> route) => false
+    );
   }
 }

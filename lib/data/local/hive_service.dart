@@ -17,16 +17,16 @@ class HiveService {
     Hive.registerAdapter(OrderItemModelAdapter());
 
     // Open boxes
-    await Hive.openBox<TableModel>(_tablesBoxName);
-    await Hive.openBox<OrderModel>(_ordersBoxName);
-    await Hive.openBox<Map>(_syncBoxName);
+    await Hive.openBox(_tablesBoxName);
+    await Hive.openBox(_ordersBoxName);
+    await Hive.openBox(_syncBoxName);
     await Hive.openBox('pos'); // Box for storing auth token
   }
 
   // Get box instances
-  static Box<TableModel> get tablesBox => Hive.box<TableModel>(_tablesBoxName);
-  static Box<OrderModel> get ordersBox => Hive.box<OrderModel>(_ordersBoxName);
-  static Box<Map> get syncBox => Hive.box<Map>(_syncBoxName);
+  static Box get tablesBox => Hive.box(_tablesBoxName);
+  static Box get ordersBox => Hive.box(_ordersBoxName);
+  static Box get syncBox => Hive.box(_syncBoxName);
   static Box get posBox => Hive.box('pos');
 
   // Table CRUD operations
@@ -37,11 +37,12 @@ class HiveService {
     await _addToSyncQueue('table_update', table.id);
   }
 
+  // FIX: Add cast to return correct type
   static List<TableModel> getAllTables() {
-    return tablesBox.values.toList();
+    return tablesBox.values.cast<TableModel>().toList();
   }
 
-  // save auth token
+  // Save auth token
   static Future<void> saveAuthToken(String token) async {
     await posBox.put('token', token);
   }
@@ -50,7 +51,7 @@ class HiveService {
     return posBox.get('token', defaultValue: '');
   }
 
-  //save auth data from api
+  // Save auth data from api
   static Future<void> saveAuthData(data) async {
     // Store as a plain Map (JSON) to avoid requiring a Hive TypeAdapter
     if (data is AuthApiResModel) {
@@ -78,14 +79,18 @@ class HiveService {
         return null;
       }
     }
-
     return null;
   }
 
-  //deleting auth data on logout
+  // Deleting auth data on logout
   static Future<void> clearAuthData() async {
     await posBox.delete('token');
     await posBox.delete('auth_data');
+  }
+
+  // ADD THIS NEW METHOD:
+  static Future<void> clearAuthToken() async {
+    await posBox.delete('token');
   }
 
   static TableModel? getTable(String id) {
@@ -110,12 +115,17 @@ class HiveService {
     await _addToSyncQueue('order_create', order.id);
   }
 
+  // FIX: Add cast to return correct type
   static List<OrderModel> getAllOrders() {
-    return ordersBox.values.toList();
+    return ordersBox.values.cast<OrderModel>().toList();
   }
 
+  // FIX: Add cast to return correct type
   static List<OrderModel> getOrdersForTable(String tableId) {
-    return ordersBox.values.where((order) => order.tableId == tableId).toList();
+    return ordersBox.values
+        .cast<OrderModel>()
+        .where((order) => order.tableId == tableId)
+        .toList();
   }
 
   // Sync queue management
@@ -129,7 +139,7 @@ class HiveService {
     await syncBox.put('${action}_$entityId', syncItem);
   }
 
-  static List<Map> getUnsyncedItems() {
+  static List getUnsyncedItems() {
     return syncBox.values.where((item) => item['synced'] == false).toList();
   }
 

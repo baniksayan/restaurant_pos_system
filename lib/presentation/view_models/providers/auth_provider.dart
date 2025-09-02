@@ -36,7 +36,7 @@ class AuthProvider with ChangeNotifier {
   }
 
   // Initialize and check for saved login state
-  Future<void> checkAuthState() async {
+  Future<bool> checkAuthState() async {
     _isLoading = true;
     notifyListeners();
 
@@ -44,32 +44,50 @@ class AuthProvider with ChangeNotifier {
       // Simulate splash screen delay
       await Future.delayed(const Duration(seconds: 2));
 
+      // Check if user was previously logged in (persisted state)
       final prefs = await SharedPreferences.getInstance();
       final savedUser = prefs.getString('current_user');
       final savedRole = prefs.getString('user_role');
       final rememberMe = prefs.getBool('remember_me') ?? false;
+      final authToken = HiveService.getAuthToken();
 
-      if (rememberMe && savedUser != null) {
+      // FIX: If we have saved credentials AND valid token, user is still logged in
+      if (rememberMe && savedUser != null && authToken.isNotEmpty) {
         _isAuthenticated = true;
         _currentUser = savedUser;
         _userRole = savedRole ?? 'Manager';
         _rememberMe = true;
+
+        if (kDebugMode) {
+          debugPrint('User restored from saved state: $savedUser');
+        }
+
+        _isLoading = false;
+        notifyListeners();
+        return true; // User is authenticated
       }
+
+      // No valid saved state, user needs to login
+      _isAuthenticated = false;
+      _isLoading = false;
+      notifyListeners();
+      return false; // User needs to login
     } catch (e) {
       debugPrint('Error checking auth state: $e');
       _errorMessage = 'Error checking authentication state';
-    } finally {
+      _isAuthenticated = false;
       _isLoading = false;
       notifyListeners();
+      return false;
     }
   }
 
-  // Updated login method with API integration
+  // Update login to always save state for persistence
   Future<bool> login(
     BuildContext context,
     String username,
     String password, {
-    bool rememberMe = false,
+    bool rememberMe = true, // Default to true for development
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -96,30 +114,32 @@ class AuthProvider with ChangeNotifier {
       );
 
       final model = AuthApiResModel.fromJson(response!);
-
       if (model.isSuccess == true && model.data != null) {
-        //saved token to hive
+        // Save token to hive
         await HiveService.saveAuthToken(model.data?.posToken ?? '');
-        //saving auth data to hive
+        // Save auth data to hive
         await HiveService.saveAuthData(model);
+
         _isAuthenticated = true;
         _currentUser = username;
         _userRole = 'Manager'; // Set based on your API response
         _rememberMe = rememberMe;
 
-        // Save login state if remember me is checked
-        if (rememberMe) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('current_user', username);
-          await prefs.setString('user_role', _userRole ?? 'Manager');
-          await prefs.setBool('remember_me', true);
+        // ALWAYS save login state for persistence during development
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('current_user', username);
+        await prefs.setString('user_role', _userRole ?? 'Manager');
+        await prefs.setBool('remember_me', true); // Always true for persistence
+
+        if (kDebugMode) {
+          debugPrint('User logged in and state persisted: $username');
         }
 
         _isLoading = false;
         notifyListeners();
         return true;
       } else {
-        _errorMessage = 'Oops! Something doesn’t match. Try again.';
+        _errorMessage = 'Oops! Something doesn\'t match. Try again.';
         _isLoading = false;
         notifyListeners();
         return false;
@@ -135,18 +155,19 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  // ONLY clear auth state on manual logout - Updated method
   Future<void> logout() async {
-    _isLoading = true;
-    notifyListeners();
-
     try {
-      // Clear shared preferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('current_user');
-      await prefs.remove('user_role');
-      await prefs.setBool('remember_me', false);
+      _isLoading = true;
+      notifyListeners();
 
-      // Clear provider state
+      // Clear stored credentials from all sources
+      await _clearStoredCredentials();
+
+      // Clear user cache and data
+      await _clearUserCache();
+
+      // Reset user state
       _isAuthenticated = false;
       _currentUser = null;
       _userRole = null;
@@ -155,19 +176,103 @@ class AuthProvider with ChangeNotifier {
 
       // Small delay for better UX
       await Future.delayed(const Duration(milliseconds: 500));
+
+      if (kDebugMode) {
+        debugPrint('User manually logged out - state cleared');
+      }
     } catch (e) {
       debugPrint('Error during logout: $e');
-      _errorMessage = 'Error during logout';
+      throw Exception('Logout failed: ${e.toString()}');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
+  // Private method to clear stored credentials
+  Future<void> _clearStoredCredentials() async {
+    try {
+      // Clear SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('current_user');
+      await prefs.remove('user_role');
+      await prefs.setBool('remember_me', false);
+
+      // Clear Hive storage (auth token and data)
+      try {
+        await HiveService.clearAuthToken();
+        await HiveService.clearAuthData();
+      } catch (hiveError) {
+        if (kDebugMode) {
+          debugPrint('Error clearing Hive data: $hiveError');
+        }
+        // Don't throw error for Hive operations, continue with other cleanup
+      }
+
+      if (kDebugMode) {
+        debugPrint('Stored credentials cleared successfully');
+      }
+    } catch (e) {
+      debugPrint('Error clearing stored credentials: $e');
+      throw Exception('Failed to clear stored credentials: ${e.toString()}');
+    }
+  }
+
+  // Private method to clear user cache and temporary data
+  Future<void> _clearUserCache() async {
+    try {
+      // Reset any other user-related state that should not persist after logout
+      // This is where you would clear any other cached data specific to your app
+      // Example: Clear any temporary files, cached images, etc.
+      // You can add specific cache clearing logic here based on your app's needs
+
+      if (kDebugMode) {
+        debugPrint('User cache cleared successfully');
+      }
+    } catch (e) {
+      debugPrint('Error clearing user cache: $e');
+      // Don't throw error for cache clearing, it's not critical
+    }
+  }
+
+  // Method to check if logout is in progress
+  bool get isLoggingOut => _isLoading && !_isAuthenticated;
+
   // Method to update user profile
   void updateUserProfile(String name, String role) {
     _currentUser = name;
     _userRole = role;
     notifyListeners();
+  }
+
+  // Method to force logout (for emergency cases)
+  Future<void> forceLogout() async {
+    try {
+      // Immediately reset state
+      _isAuthenticated = false;
+      _currentUser = null;
+      _userRole = null;
+      _rememberMe = false;
+      _errorMessage = null;
+      _isLoading = false;
+      notifyListeners();
+
+      // Clear credentials in background
+      unawaited(_clearStoredCredentials());
+      unawaited(_clearUserCache());
+
+      if (kDebugMode) {
+        debugPrint('Force logout completed');
+      }
+    } catch (e) {
+      debugPrint('Error during force logout: $e');
+    }
+  }
+
+  // Helper method for unawaited futures
+  void unawaited(Future<void> future) {
+    future.catchError((error) {
+      debugPrint('Unawaited future error: $error');
+    });
   }
 }

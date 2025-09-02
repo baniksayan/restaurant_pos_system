@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../data/local/hive_service.dart';
 
 class AnimatedCartProvider extends ChangeNotifier {
@@ -7,8 +8,9 @@ class AnimatedCartProvider extends ChangeNotifier {
 
   Map<String, CartItem> get cartItems => _cartItems;
   int get totalItems => _totalItems;
+
   double get totalAmount => _cartItems.values.fold(
-    0,
+    0.0,
     (sum, item) => sum + (item.price * item.quantity),
   );
 
@@ -44,6 +46,7 @@ class AnimatedCartProvider extends ChangeNotifier {
         discountPercentage: discountPercentage,
       );
     }
+
     _updateTotalItems();
     notifyListeners();
   }
@@ -55,6 +58,16 @@ class AnimatedCartProvider extends ChangeNotifier {
       } else {
         _cartItems.remove(itemId);
       }
+    }
+
+    _updateTotalItems();
+    notifyListeners();
+  }
+
+  // Enhanced method - Delete all quantities of a specific item
+  void deleteAllOfItem(String itemId) {
+    if (_cartItems.containsKey(itemId)) {
+      _cartItems.remove(itemId);
       _updateTotalItems();
       notifyListeners();
     }
@@ -87,17 +100,22 @@ class AnimatedCartProvider extends ChangeNotifier {
       "outletId": HiveService.getOutletId(),
       "orderId": orderId,
       "kotNote": kotNote,
-      "orderDetails": _cartItems.values.map((item) => {
-        "productId": item.id,
-        "productName": item.name,
-        "categoryId": item.categoryId ?? "",
-        "categoryName": item.categoryName ?? "",
-        "productPrice": item.price,
-        "discountPercentage": item.discountPercentage ?? 0,
-        "uom": item.uom ?? "",
-        "quantity": item.quantity,
-        "note": item.specialNotes ?? "",
-      }).toList(),
+      "orderDetails":
+          _cartItems.values
+              .map(
+                (item) => {
+                  "productId": item.id,
+                  "productName": item.name,
+                  "categoryId": item.categoryId ?? "",
+                  "categoryName": item.categoryName ?? "",
+                  "productPrice": item.price,
+                  "discountPercentage": item.discountPercentage ?? 0,
+                  "uom": item.uom ?? "",
+                  "quantity": item.quantity,
+                  "note": item.specialNotes ?? "",
+                },
+              )
+              .toList(),
     };
   }
 }
