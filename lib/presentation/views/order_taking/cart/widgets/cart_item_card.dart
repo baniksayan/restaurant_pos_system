@@ -35,7 +35,7 @@ class CartItemCard extends StatelessWidget {
             // Top row - Food name, special instruction icon, delete all icon
             Row(
               children: [
-                // ✅ REMOVED LEFT-SIDE ICON - Show food name directly
+                // REMOVED LEFT-SIDE ICON - Show food name directly
                 Expanded(
                   child: Text(
                     item.name,
@@ -46,8 +46,7 @@ class CartItemCard extends StatelessWidget {
                     ),
                   ),
                 ),
-
-                // ✅ REPLACED EDIT ICON with meaningful special instruction icon
+                // REPLACED EDIT ICON with meaningful special instruction icon
                 IconButton(
                   onPressed: () async {
                     await HapticHelper.triggerFeedback();
@@ -64,13 +63,51 @@ class CartItemCard extends StatelessWidget {
                   ),
                   tooltip: 'Add special instructions',
                 ),
-
-                // ✅ DELETE ALL BUTTON for multiple items
+                // DELETE ALL BUTTON for multiple items - FIXED IMPLEMENTATION
                 if (item.quantity > 1)
                   IconButton(
                     onPressed: () async {
                       await HapticHelper.triggerFeedback();
-                      _showDeleteAllDialog(context, cartProvider);
+                      final shouldDelete = await showDialog<bool>(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            title: const Text('Delete All Items'),
+                            content: Text(
+                              'Remove all ${item.quantity} "${item.name}" items from cart?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Delete All',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                      if (shouldDelete == true) {
+                        cartProvider.deleteAllOfItem(
+                          item.id,
+                        ); // <-- Use deleteAllOfItem here
+                      }
                     },
                     icon: const Icon(
                       Icons.delete_sweep,
@@ -85,9 +122,7 @@ class CartItemCard extends StatelessWidget {
                   ),
               ],
             ),
-
             const SizedBox(height: 8),
-
             // Table info
             Text(
               'For ${item.tableName}',
@@ -96,15 +131,11 @@ class CartItemCard extends StatelessWidget {
                 color: AppColors.textSecondary,
               ),
             ),
-
             const SizedBox(height: 8),
-
-            // ✅ SPECIAL INSTRUCTIONS with truncation and eye icon
+            // SPECIAL INSTRUCTIONS with truncation and eye icon
             if (item.specialNotes != null && item.specialNotes!.isNotEmpty)
               _buildSpecialInstructions(context),
-
             const SizedBox(height: 12),
-
             // Bottom row - Price calculation and quantity controls
             Row(
               children: [
@@ -140,8 +171,7 @@ class CartItemCard extends StatelessWidget {
                     ],
                   ),
                 ),
-
-                // ✅ QUANTITY CONTROLS with confirmation for zero
+                // QUANTITY CONTROLS with confirmation for zero
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -164,8 +194,7 @@ class CartItemCard extends StatelessWidget {
                         child: InkWell(
                           onTap: () async {
                             await HapticHelper.triggerFeedback();
-
-                            // ✅ CONFIRMATION when decrementing to zero
+                            // CONFIRMATION when decrementing to zero
                             if (item.quantity == 1) {
                               final shouldRemove =
                                   await _showRemoveConfirmDialog(context);
@@ -193,7 +222,6 @@ class CartItemCard extends StatelessWidget {
                           ),
                         ),
                       ),
-
                       // Quantity display
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -218,7 +246,6 @@ class CartItemCard extends StatelessWidget {
                           ),
                         ),
                       ),
-
                       // Increment button
                       Material(
                         color: Colors.transparent,
@@ -263,7 +290,7 @@ class CartItemCard extends StatelessWidget {
     );
   }
 
-  // ✅ SPECIAL INSTRUCTIONS with truncation and modal view
+  // SPECIAL INSTRUCTIONS with truncation and modal view
   Widget _buildSpecialInstructions(BuildContext context) {
     final instruction = item.specialNotes!;
     final isLong = instruction.length > 40; // Truncate if longer than 40 chars
@@ -293,7 +320,7 @@ class CartItemCard extends StatelessWidget {
                 ),
               ),
             ),
-            // ✅ EYE ICON for long instructions
+            // EYE ICON for long instructions
             if (isLong) ...[
               const SizedBox(width: 8),
               Icon(Icons.visibility, color: Colors.blue[700], size: 16),
@@ -304,7 +331,7 @@ class CartItemCard extends StatelessWidget {
     );
   }
 
-  // ✅ CONFIRMATION DIALOG when decrementing to zero
+  // CONFIRMATION DIALOG when decrementing to zero
   Future<bool> _showRemoveConfirmDialog(BuildContext context) async {
     final result = await showDialog<bool>(
       context: context,
@@ -342,54 +369,7 @@ class CartItemCard extends StatelessWidget {
     return result ?? false;
   }
 
-  // ✅ DELETE ALL CONFIRMATION for multiple items
-  Future<void> _showDeleteAllDialog(
-    BuildContext context,
-    AnimatedCartProvider cartProvider,
-  ) async {
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text('Delete All Items'),
-          content: Text(
-            'Remove all ${item.quantity} "${item.name}" items from cart?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'Delete All',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldDelete == true) {
-      // Remove all quantity of this item
-      for (int i = 0; i < item.quantity; i++) {
-        cartProvider.removeItem(item.id);
-      }
-    }
-  }
-
-  // ✅ MODAL for viewing full special instructions
+  // MODAL for viewing full special instructions
   void _showFullInstructionModal(BuildContext context) {
     showDialog(
       context: context,
