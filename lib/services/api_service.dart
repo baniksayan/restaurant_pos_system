@@ -6,13 +6,15 @@ import 'package:restaurant_pos_system/data/models/payment_mode_api_res_model.dar
 import 'package:restaurant_pos_system/data/models/create_order_head_request_model.dart';
 import 'package:restaurant_pos_system/data/models/create_order_head_api_res_model.dart';
 import 'package:restaurant_pos_system/data/models/create_kot_with_order_details_api_res_model.dart';
+import 'package:restaurant_pos_system/data/models/order_channel_list_api_response_model.dart';
+import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
 import '../core/constants/api_constants.dart';
 
 class ApiService {
   ApiService._();
 
   /// Generic GET request method
-  static Future<Map<String, dynamic>?> apiGet(String endpoint) async {
+  static Future<dynamic>? apiGet(String endpoint) async {
     final isConnected = await checkInternetAndGoForward();
     if (!isConnected) return null;
 
@@ -54,7 +56,7 @@ class ApiService {
   }
 
   /// Generic POST/PUT/DELETE request method with raw body
-  static Future<Map<String, dynamic>?> apiRequestHttpRawBody(
+  static Future<dynamic>? apiRequestHttpRawBody(
     String endpoint,
     Map<String, dynamic> body, {
     String method = 'POST',
@@ -72,7 +74,6 @@ class ApiService {
         method,
         Uri.parse(ApiConstants.baseUrl + endpoint),
       );
-
       request.body = json.encode(body);
       request.headers.addAll(headers);
 
@@ -177,7 +178,242 @@ class ApiService {
     }
   }
 
-  /// Get tables by outlet ID - Updated and improved version
+  /// Save Order Head - Create new order (correct API for occupying table)
+  static Future<CreateOrderHeadApiResModel?> saveOrderHead({
+    required String token,
+    required String orderChannelId, // Table ID
+    required String waiterId,
+    required String customerName,
+    required int outletId,
+    required String userId,
+    String custPhoneNo = "",
+    int totalAdult = 1,
+    int totalChild = 0,
+    String custEmailId = "",
+  }) async {
+    final isConnected = await checkInternetAndGoForward();
+    if (!isConnected) return null;
+
+    try {
+      final requestModel = CreateOrderHeadRequestModel(
+        orderChannelId: orderChannelId,
+        waiterId: waiterId,
+        customerName: customerName,
+        outletId: outletId,
+        userId: userId,
+        custPhoneNo: custPhoneNo,
+        totalAdult: totalAdult,
+        totalChild: totalChild,
+        custEmailId: custEmailId,
+      );
+
+      if (kDebugMode) {
+        print('[API Call] saveOrderHead - Table: $orderChannelId');
+        print('[API Call] Request Body: ${requestModel.toJson()}');
+      }
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}${ApiConstants.createOrderHead}'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(requestModel.toJson()),
+      );
+
+      if (kDebugMode) {
+        print(
+          '[API Call] saveOrderHead Response Status: ${response.statusCode}',
+        );
+        print('[API Call] saveOrderHead Response: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return CreateOrderHeadApiResModel.fromJson(responseData);
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('[API Error] saveOrderHead: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Get tables using OrderChannelListByType API - Enhanced with improved models
+  static Future<OrderChannelListApiResponseModel?> getOrderChannelListByType({
+    required String token,
+    required int outletId,
+    String orderChannelType = "Table",
+  }) async {
+    final isConnected = await checkInternetAndGoForward();
+    if (!isConnected) return null;
+
+    try {
+      final Map<String, dynamic> requestBody = {
+        "orderChanelType": orderChannelType, // Keep the API typo
+        "outletId": outletId,
+      };
+
+      if (kDebugMode) {
+        print('[Table Manager] API Call - OrderChannelListByType');
+        print(
+          '[Table Manager] Request URL: ${ApiConstants.baseUrl}Setting/OrderChannelListByType',
+        );
+        print('[Table Manager] Request Body: $requestBody');
+      }
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}Setting/OrderChannelListByType'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(requestBody),
+      );
+
+      if (kDebugMode) {
+        print('[Table Manager] Response Status: ${response.statusCode}');
+        print('[Table Manager] Response Body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return OrderChannelListApiResponseModel.fromJson(responseData);
+      } else {
+        if (kDebugMode) {
+          print('[Table Manager] API Failed: ${response.statusCode}');
+        }
+        return null;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('[Table Manager] API Error: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Get Order Details by ID - Enhanced with proper model
+  static Future<OrderDetailApiResponseModel?> getOrderDetailById({
+    required String token,
+    required String orderId,
+  }) async {
+    final isConnected = await checkInternetAndGoForward();
+    if (!isConnected) return null;
+
+    try {
+      final Map<String, dynamic> requestBody = {"orderId": orderId};
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}Order/getOrderDetailById'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(requestBody),
+      );
+
+      if (kDebugMode) {
+        print('[API Call] getOrderDetailById - Order: $orderId');
+        print('[Cart Loaded] Response Status: ${response.statusCode}');
+      }
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (kDebugMode) print('[Cart Loaded] Order $orderId data retrieved');
+        return OrderDetailApiResponseModel.fromJson(responseData);
+      }
+
+      return null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('[API Error] getOrderDetailById: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Update Order Head Status - Enhanced with proper parameters
+  static Future<Map<String, dynamic>?> updateOrderHeadStatus({
+    required String token,
+    required String orderHeadId,
+    required int statusId,
+    required String userId,
+    int companyId = 18,
+    String? orderId, // Legacy support
+    String? status, // Legacy support
+    String? tableId, // Legacy support
+  }) async {
+    final isConnected = await checkInternetAndGoForward();
+    if (!isConnected) return null;
+
+    try {
+      Map<String, dynamic> requestBody;
+
+      // Support both old and new parameter formats
+      if (orderId != null && status != null) {
+        // Legacy format
+        requestBody = {
+          "orderId": orderId,
+          "status": status,
+          if (tableId != null) "tableId": tableId,
+        };
+      } else {
+        // New format
+        requestBody = {
+          "companyId": companyId,
+          "orderHeadId": orderHeadId,
+          "statusId": statusId,
+          "userId": userId,
+        };
+      }
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}Order/UpdateOrderHeadStatus'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(requestBody),
+      );
+
+      if (kDebugMode) {
+        if (orderId != null) {
+          print(
+            '[API Call] UpdateOrderHeadStatus - Table: $tableId -> $status',
+          );
+          print(
+            '[Order ${status == 'occupied' ? 'Created' : 'Removed'}] ID: $orderId',
+          );
+        } else {
+          print(
+            '[API Call] UpdateOrderHeadStatus - Order: $orderHeadId -> Status: $statusId',
+          );
+          print(
+            '[Order ${statusId == 6
+                ? 'Created'
+                : statusId == 7
+                ? 'Removed'
+                : 'Updated'}] ID: $orderHeadId',
+          );
+        }
+      }
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('[API Error] UpdateOrderHeadStatus: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Get tables by outlet ID - Original version maintained
   static Future<List<OrderChannel>?> getTablesByOutlet({
     required String token,
     required int outletId,
@@ -221,8 +457,8 @@ class ApiService {
           debugPrint('Failed to fetch tables: ${response.statusCode}');
           debugPrint('Error response: ${response.body}');
         }
+        return null;
       }
-      return null;
     } catch (e, stackTrace) {
       if (kDebugMode) {
         debugPrint('getTablesByOutlet error: $e');
@@ -230,6 +466,7 @@ class ApiService {
       }
       return null;
     }
+    return null;
   }
 
   /// Alternative method for getting tables (raw response)
@@ -339,7 +576,6 @@ class ApiService {
     int maxRetries = 3,
   }) async {
     int attempts = 0;
-    
     while (attempts < maxRetries) {
       try {
         final isConnected = await checkInternetAndGoForward();
@@ -355,14 +591,18 @@ class ApiService {
           "outletId": outletId,
         };
 
-        final response = await http.post(
-          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.getTablesByOutlet}'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ${ApiConstants.accessToken}',
-          },
-          body: json.encode(requestBody),
-        ).timeout(const Duration(seconds: 30)); // Add timeout
+        final response = await http
+            .post(
+              Uri.parse(
+                '${ApiConstants.baseUrl}${ApiConstants.getTablesByOutlet}',
+              ),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ${ApiConstants.accessToken}',
+              },
+              body: json.encode(requestBody),
+            )
+            .timeout(const Duration(seconds: 30)); // Add timeout
 
         if (kDebugMode) {
           debugPrint(
@@ -400,38 +640,42 @@ class ApiService {
             debugPrint('API request failed: ${response.statusCode}');
             debugPrint('Response: ${response.body}');
           }
-          throw Exception('API request failed with status: ${response.statusCode}');
+          throw Exception(
+            'API request failed with status: ${response.statusCode}',
+          );
         }
       } catch (e) {
         attempts++;
         if (kDebugMode) {
-          debugPrint('getTablesByOutletEnhanced error on attempt $attempts: $e');
+          debugPrint(
+            'getTablesByOutletEnhanced error on attempt $attempts: $e',
+          );
         }
-        
+
         if (attempts >= maxRetries) {
           if (kDebugMode) {
             debugPrint('Max retries ($maxRetries) exceeded for tables API');
           }
-          throw Exception('Failed to fetch tables after $maxRetries attempts: $e');
+          throw Exception(
+            'Failed to fetch tables after $maxRetries attempts: $e',
+          );
         }
-        
+
         // Wait before retry with exponential backoff
         await Future.delayed(Duration(milliseconds: 1000 * attempts));
       }
     }
-    
     return null;
   }
 
   /// Generic retry wrapper for any API call
   static Future<T?> executeWithRetry<T>(
-    Future<T?> Function() apiCall, {
+    Future<T> Function() apiCall, {
     int maxRetries = 3,
     Duration initialDelay = const Duration(seconds: 1),
     String operationName = 'API call',
   }) async {
     int attempts = 0;
-    
     while (attempts < maxRetries) {
       try {
         final result = await apiCall();
@@ -441,27 +685,24 @@ class ApiService {
         if (kDebugMode) {
           debugPrint('$operationName failed on attempt $attempts: $e');
         }
-        
+
         if (attempts >= maxRetries) {
           if (kDebugMode) {
             debugPrint('$operationName failed after $maxRetries attempts');
           }
           rethrow;
         }
-        
+
         // Exponential backoff
         final delay = Duration(
           milliseconds: initialDelay.inMilliseconds * attempts,
         );
-        
         if (kDebugMode) {
           debugPrint('Retrying $operationName in ${delay.inMilliseconds}ms...');
         }
-        
         await Future.delayed(delay);
       }
     }
-    
     return null;
   }
 
@@ -632,14 +873,15 @@ class ApiService {
     }
   }
 
-  /// Create KOT with order details
+  /// Create KOT with order details - Enhanced with proper endpoint support
   static Future<CreateKotWithOrderDetailsApiResModel?>
-      createKotWithOrderDetails({
+  createKotWithOrderDetails({
     required String userId,
     required int outletId,
     required String orderId,
     String kotNote = "",
     required List<Map<String, dynamic>> orderDetails,
+    String? token, // Added optional token parameter
   }) async {
     final isConnected = await checkInternetAndGoForward();
     if (!isConnected) return null;
@@ -647,7 +889,7 @@ class ApiService {
     final body = {
       "userId": userId,
       "outletId": outletId,
-      "orderId": 'd44c08a6-0684-f011-8840-00155d931011',
+      "orderId": orderId,
       "kotNote": kotNote,
       "orderDetails": orderDetails,
     };
@@ -660,16 +902,37 @@ class ApiService {
     }
 
     try {
-      final response = await apiRequestHttpRawBody(
-        ApiConstants.createKotWithOrderDetails,
-        body,
-        method: 'POST',
-      );
+      dynamic response;
+
+      // Use token-based request if token is provided, otherwise use the original method
+      if (token != null) {
+        final httpResponse = await http.post(
+          Uri.parse(
+            '${ApiConstants.baseUrl}${ApiConstants.createKotWithOrderDetails}',
+          ),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: json.encode(body),
+        );
+
+        if (httpResponse.statusCode == 200) {
+          response = json.decode(httpResponse.body);
+        }
+      } else {
+        response = await apiRequestHttpRawBody(
+          ApiConstants.createKotWithOrderDetails,
+          body,
+          method: 'POST',
+        );
+      }
 
       if (response != null) {
         if (kDebugMode) {
           debugPrint('createKotWithOrderDetails API Response: $response');
         }
+
         try {
           // Ensure we pass a Map to the generated model
           final typed = Map<String, dynamic>.from(response);

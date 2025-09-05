@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
 import 'package:restaurant_pos_system/presentation/views/reservations/table_reservation_view.dart';
@@ -13,6 +14,7 @@ import 'widgets/dashboard_header.dart';
 import 'widgets/dashboard_states.dart';
 import 'widgets/table_action_dialog.dart';
 import 'widgets/table_grid.dart';
+import 'widgets/multi_order_management_dialog.dart';
 
 class WaiterDashboardView extends StatefulWidget {
   final Function(String tableId, String tableName)? onTableSelected;
@@ -29,6 +31,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
   @override
   void initState() {
     super.initState();
+    // CRITICAL: Delay initialization to ensure provider is ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TableProvider>().initializeTables();
       final dashboardProvider = context.read<DashboardProvider>();
@@ -46,10 +49,37 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
         statusBarIconBrightness: Brightness.dark,
         statusBarBrightness: Brightness.light,
       ),
-      child: MultiProvider(
-        providers: [ChangeNotifierProvider(create: (_) => DashboardProvider())],
-        child: Consumer2<TableProvider, DashboardProvider>(
-          builder: (context, tableProvider, dashboardProvider, child) {
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: Colors.grey[50],
+        drawer: Consumer<DashboardProvider>(
+          builder: (context, dashboardProvider, child) {
+            return HamburgerDrawer(
+              selectedLocation: dashboardProvider.selectedLocation,
+              selectedStatusFilter: dashboardProvider.selectedStatusFilter,
+              onLocationChanged: (location) {
+                dashboardProvider.changeLocation(location);
+                Navigator.pop(context);
+                _showSnackBar('Showing: $location', Colors.blue);
+              },
+              onStatusFilterChanged: (statusFilter) {
+                dashboardProvider.changeStatusFilter(statusFilter);
+                Navigator.pop(context);
+                final filterName = _getStatusFilterDisplayName(statusFilter);
+                _showSnackBar('Filtered by: $filterName', Colors.green);
+              },
+            );
+          },
+        ),
+        // CRITICAL FIX: Use Consumer to listen for changes
+        body: Consumer<TableProvider>(
+          builder: (context, tableProvider, child) {
+            if (kDebugMode) {
+              print('[UI] Building with ${tableProvider.tables.length} tables');
+              print('[UI] Loading: ${tableProvider.isLoading}');
+              print('[UI] Error: ${tableProvider.error}');
+            }
+
             if (tableProvider.isLoading) {
               return const DashboardLoadingState();
             }
@@ -58,69 +88,60 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
               return DashboardErrorState(tableProvider: tableProvider);
             }
 
-            final tables = tableProvider.getTablesForLocation(
-              dashboardProvider.selectedLocation,
-              dashboardProvider.selectedStatusFilter,
-            );
+            // Use Consumer for DashboardProvider too
+            return Consumer<DashboardProvider>(
+              builder: (context, dashboardProvider, child) {
+                final tables = tableProvider.getTablesForLocation(
+                  dashboardProvider.selectedLocation,
+                  dashboardProvider.selectedStatusFilter,
+                );
 
-            return Scaffold(
-              key: _scaffoldKey,
-              backgroundColor: Colors.grey[50],
-              drawer: HamburgerDrawer(
-                selectedLocation: dashboardProvider.selectedLocation,
-                selectedStatusFilter: dashboardProvider.selectedStatusFilter,
-                onLocationChanged: (location) {
-                  dashboardProvider.changeLocation(location);
-                  Navigator.pop(context);
-                  _showSnackBar('Showing: $location', Colors.blue);
-                },
-                onStatusFilterChanged: (statusFilter) {
-                  dashboardProvider.changeStatusFilter(statusFilter);
-                  Navigator.pop(context);
-                  final filterName = _getStatusFilterDisplayName(statusFilter);
-                  _showSnackBar('Filtered by: $filterName', Colors.green);
-                },
-              ),
-              body: Container(
-                color: Colors.grey[50],
-                child: Column(
-                  children: [
-                    DashboardHeader(
-                      onMenuPressed:
-                          () => _scaffoldKey.currentState?.openDrawer(),
-                    ),
-                    LocationHeader(
-                      selectedLocation: dashboardProvider.selectedLocation,
-                      locations: dashboardProvider.locations ?? [],
-                      tables: tables ?? [],
-                    ),
-                    Expanded(
-                      child:
-                          tables.isEmpty
-                              ? DashboardEmptyState(
-                                selectedLocation:
-                                    dashboardProvider.selectedLocation.isEmpty
-                                        ? 'All Tables'
-                                        : dashboardProvider.selectedLocation,
-                                onChangeLocation:
-                                    () =>
-                                        _scaffoldKey.currentState?.openDrawer(),
-                              )
-                              : TableGrid(
-                                tables: tables,
-                                onTableTap:
-                                    (table) => _handleTableClick(
-                                      table,
-                                      tableProvider,
-                                      dashboardProvider,
-                                    ),
-                                onTableLongPress:
-                                    (table) => _handleTableLongPress(table),
-                              ),
-                    ),
-                  ],
-                ),
-              ),
+                if (kDebugMode) {
+                  print('[UI] Filtered tables: ${tables.length}');
+                }
+
+                return Container(
+                  color: Colors.grey[50],
+                  child: Column(
+                    children: [
+                      DashboardHeader(
+                        onMenuPressed:
+                            () => _scaffoldKey.currentState?.openDrawer(),
+                      ),
+                      LocationHeader(
+                        selectedLocation: dashboardProvider.selectedLocation,
+                        locations: dashboardProvider.locations ?? [],
+                        tables: tables,
+                      ),
+                      Expanded(
+                        child:
+                            tables.isEmpty
+                                ? DashboardEmptyState(
+                                  selectedLocation:
+                                      dashboardProvider.selectedLocation.isEmpty
+                                          ? 'All Tables'
+                                          : dashboardProvider.selectedLocation,
+                                  onChangeLocation:
+                                      () =>
+                                          _scaffoldKey.currentState
+                                              ?.openDrawer(),
+                                )
+                                : TableGrid(
+                                  tables: tables,
+                                  onTableTap:
+                                      (table) => _handleTableClick(
+                                        table,
+                                        tableProvider,
+                                        dashboardProvider,
+                                      ),
+                                  onTableLongPress:
+                                      (table) => _handleTableLongPress(table),
+                                ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             );
           },
         ),
@@ -147,88 +168,104 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     }
   }
 
+  /// Complete table click handler with API integration
   Future<void> _handleTableClick(
     RestaurantTable table,
     TableProvider tableProvider,
     DashboardProvider dashboardProvider,
   ) async {
     await HapticHelper.triggerFeedback();
+    if (kDebugMode) {
+      print(
+        '[Dashboard] Table ${table.name} clicked - Status: ${table.status}, Orders: ${table.orderCount}',
+      );
+    }
 
     if (table.status == TableStatus.available) {
+      // Available table - show occupy/reserve dialog
       showDialog(
         context: context,
         barrierDismissible: true,
         builder:
             (BuildContext context) => TableActionDialog(
               table: table,
-              onOccupy: () {
-                tableProvider.updateTableStatus(table.id, 'occupied');
-                context.read<NavigationProvider>().selectTable(
+              onOccupy: () async {
+                // API-driven table occupation
+                final success = await tableProvider.createOrderForTable(
                   table.id,
                   table.name,
-                  dashboardProvider.selectedLocation,
                 );
-                _showSnackBar('${table.name} is now occupied', Colors.green);
+                if (success) {
+                  context.read<NavigationProvider>().selectTable(
+                    table.id,
+                    table.name,
+                    dashboardProvider.selectedLocation,
+                  );
+                  _showSnackBar('${table.name} is now occupied', Colors.green);
+                  if (kDebugMode) {
+                    print(
+                      '[Dashboard] Table ${table.name} successfully occupied',
+                    );
+                  }
+                } else {
+                  _showSnackBar('Failed to occupy ${table.name}', Colors.red);
+                }
               },
               onReserve: () => _showReservationPage(table, tableProvider),
             ),
       );
-    } else if (table.status == TableStatus.occupied ||
-        table.status == TableStatus.reserved) {
-      context.read<NavigationProvider>().selectTable(
-        table.id,
-        table.name,
-        dashboardProvider.selectedLocation,
-      );
+    } else if (table.status == TableStatus.occupied) {
+      // Occupied table logic based on requirements
+      if (table.orderCount == 1) {
+        // Single order - navigate directly to menu
+        final orderId = table.activeOrders.first.orderId;
+        await tableProvider.loadCartStateForOrder(orderId);
+        context.read<NavigationProvider>().selectTable(
+          table.id,
+          table.name,
+          dashboardProvider.selectedLocation,
+        );
+        if (kDebugMode) {
+          print('[Dashboard] Single order table - direct navigation to menu');
+        }
+      } else if (table.orderCount > 1) {
+        // Multiple orders - show management dialog
+        showDialog(
+          context: context,
+          builder: (context) => MultiOrderManagementDialog(table: table),
+        );
+        if (kDebugMode) {
+          print(
+            '[Dashboard] Multiple orders table (${table.orderCount}) - showing management dialog',
+          );
+        }
+      }
+    } else if (table.status == TableStatus.reserved) {
+      // Reserved table - show info or navigate based on orders
+      if (table.hasActiveOrders) {
+        showDialog(
+          context: context,
+          builder: (context) => MultiOrderManagementDialog(table: table),
+        );
+      } else {
+        _showSnackBar('${table.name} is reserved', Colors.orange);
+      }
     }
   }
 
+  /// Complete table long press handler
   Future<void> _handleTableLongPress(RestaurantTable table) async {
     await HapticHelper.triggerFeedback();
+    if (kDebugMode) {
+      print(
+        '[Dashboard] Table ${table.name} long pressed - Status: ${table.status}, Orders: ${table.orderCount}',
+      );
+    }
+
+    // Always show management dialog for long press (as per requirements)
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                const Icon(
-                  Icons.cleaning_services,
-                  color: Colors.blue,
-                  size: 24,
-                ),
-                const SizedBox(width: 8),
-                Expanded(child: Text('${table.name} - Cleaning Request')),
-              ],
-            ),
-            content: const Text(
-              'Send cleaning request to KOT team for this table?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _sendCleaningRequest(table);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text(
-                  'Send Request',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
+      builder: (context) => MultiOrderManagementDialog(table: table),
     );
   }
 
@@ -252,12 +289,6 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
             ),
       ),
     );
-  }
-
-  void _sendCleaningRequest(RestaurantTable table) async {
-    await HapticHelper.triggerFeedback();
-    _showSnackBar('Cleaning request sent for ${table.name}', Colors.blue);
-    print('Cleaning request sent for table: ${table.id}');
   }
 
   void _showSnackBar(String message, Color color) {

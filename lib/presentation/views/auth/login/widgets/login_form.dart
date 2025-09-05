@@ -35,8 +35,8 @@ class _LoginFormState extends State<LoginForm> {
 
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
+      if (!mounted) return;
+      final authProvider = context.read<AuthProvider>();
       final success = await authProvider.login(
         context,
         _usernameController.text,
@@ -121,7 +121,8 @@ class _LoginFormState extends State<LoginForm> {
               children: [
                 Checkbox(
                   value: authProvider.rememberMe,
-                  onChanged: (value) => authProvider.setRememberMe(value ?? false),
+                  onChanged:
+                      (value) => authProvider.setRememberMe(value ?? false),
                   activeColor: AppColors.primary,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),

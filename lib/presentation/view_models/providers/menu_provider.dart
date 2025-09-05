@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:restaurant_pos_system/core/constants/api_constants.dart';
 import '../../../data/models/menu_api_res_model.dart';
 import '../../../data/models/category_model.dart';
 import '../../../services/api_service.dart';
+import '../../../data/local/hive_service.dart';
 
 class MenuProvider with ChangeNotifier {
   // Menu items from API
@@ -44,27 +46,25 @@ class MenuProvider with ChangeNotifier {
 
     // Filter by category
     if (_selectedCategory != 'All') {
-      filtered =
-          filtered.where((item) {
-            final itemCategory = item.categoryName;
-            if (itemCategory != null && itemCategory.isNotEmpty) {
-              return itemCategory.toLowerCase() ==
-                  _selectedCategory.toLowerCase();
-            }
-            return false;
-          }).toList();
+      filtered = filtered.where((item) {
+        final itemCategory = item.categoryName;
+        if (itemCategory != null && itemCategory.isNotEmpty) {
+          return itemCategory.toLowerCase() ==
+              _selectedCategory.toLowerCase();
+        }
+        return false;
+      }).toList();
     }
 
     // Filter by search query
     if (_searchQuery.isNotEmpty) {
-      filtered =
-          filtered.where((item) {
-            final productName = item.productName ?? '';
-            final description = item.description ?? '';
-            final searchLower = _searchQuery.toLowerCase();
-            return productName.toLowerCase().contains(searchLower) ||
-                description.toLowerCase().contains(searchLower);
-          }).toList();
+      filtered = filtered.where((item) {
+        final productName = item.productName ?? '';
+        final description = item.description ?? '';
+        final searchLower = _searchQuery.toLowerCase();
+        return productName.toLowerCase().contains(searchLower) ||
+            description.toLowerCase().contains(searchLower);
+      }).toList();
     }
 
     return filtered;
@@ -114,14 +114,25 @@ class MenuProvider with ChangeNotifier {
     }
   }
 
-  // Load menu items from API
+  // 🔥 MAIN FIX: Load menu items from API with token guard
   Future<void> loadMenuItems({int outletId = 10048}) async {
+    // ✅ TOKEN CHECK - THIS PREVENTS 500 ERRORS ON FIRST LAUNCH
+    final token = HiveService.getAuthToken();
+    if (token.isEmpty) {
+      debugPrint(
+        'No auth token available - skipping menu load in MenuProvider',
+      );
+      _apiMenuItems = [];
+      _errorMessage = null; // Don't show error for expected behavior
+      notifyListeners();
+      return;
+    }
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final endpoint = 'product/GetItemSearch';
       final body = {
         "itemCode": "",
         "itemName": "",
@@ -130,7 +141,7 @@ class MenuProvider with ChangeNotifier {
       };
 
       final response = await ApiService.apiRequestHttpRawBody(
-        endpoint,
+        ApiConstants.getItemSearch,
         body,
         method: 'POST',
       );
@@ -222,6 +233,7 @@ class MenuProvider with ChangeNotifier {
     for (var entry in _cart.entries) {
       final itemId = entry.key;
       final quantity = entry.value;
+
       if (itemId.isNotEmpty && quantity != null && quantity > 0) {
         try {
           final item = _apiMenuItems.firstWhere(

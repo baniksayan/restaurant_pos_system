@@ -19,13 +19,7 @@ class EnhancedTableCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      onLongPress: () {
-        // Only trigger long press for Reserved/Occupied tables
-        if (table.status == TableStatus.reserved ||
-            table.status == TableStatus.occupied) {
-          onLongPress();
-        }
-      },
+      onLongPress: onLongPress,
       child: Container(
         decoration: BoxDecoration(
           gradient: cardData['gradient'],
@@ -41,23 +35,26 @@ class EnhancedTableCard extends StatelessWidget {
         ),
         child: Container(
           height: 140,
-          padding: const EdgeInsets.all(6), // Increased padding
+          padding: const EdgeInsets.all(6),
           child: ClipRect(
             child: SingleChildScrollView(
               physics: const NeverScrollableScrollPhysics(),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Removed the status indicator (Live icon)
                   _buildTableIcon(cardData),
-                  const SizedBox(height: 6), // Increased spacing
+                  const SizedBox(height: 6),
                   _buildTableName(cardData),
-                  const SizedBox(height: 6), // Increased spacing
+                  const SizedBox(height: 6),
                   _buildCapacity(),
-                  const SizedBox(height: 6), // Increased spacing
+                  const SizedBox(height: 6),
                   _buildStatusBadge(cardData),
-                  if (table.status == TableStatus.reserved &&
-                      table.reservationInfo != null) ...[
+                  // NEW: Show multiple orders indicator
+                  if (table.isSharedTable) ...[
+                    const SizedBox(height: 4),
+                    _buildSharedTableIndicator(),
+                  ],
+                  if (table.status == TableStatus.reserved && table.reservationInfo != null) ...[
                     const SizedBox(height: 6),
                     _buildReservationInfo(),
                   ],
@@ -74,16 +71,16 @@ class EnhancedTableCard extends StatelessWidget {
     return Stack(
       children: [
         Container(
-          width: 40, // Increased from 30
-          height: 40, // Increased from 30
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             color: cardData['borderColor'].withOpacity(0.2),
-            borderRadius: BorderRadius.circular(10), // Increased border radius
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
             Icons.table_restaurant,
             color: cardData['borderColor'],
-            size: 30, // Increased from 16
+            size: 30,
           ),
         ),
         if (table.status == TableStatus.occupied)
@@ -91,16 +88,40 @@ class EnhancedTableCard extends StatelessWidget {
             right: -2,
             top: -2,
             child: Container(
-              width: 14, // Increased from 10
-              height: 14, // Increased from 10
+              width: 14,
+              height: 14,
               decoration: const BoxDecoration(
                 color: Colors.red,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.person,
-                size: 8, // Increased from 6
+                size: 8,
                 color: Colors.white,
+              ),
+            ),
+          ),
+        // NEW: Multiple orders indicator
+        if (table.isSharedTable)
+          Positioned(
+            right: -2,
+            bottom: -2,
+            child: Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: Colors.orange,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1),
+              ),
+              child: Text(
+                '${table.orderCount}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
           ),
@@ -112,7 +133,7 @@ class EnhancedTableCard extends StatelessWidget {
     return Text(
       table.name,
       style: TextStyle(
-        fontSize: 18, // Increased from 12
+        fontSize: 18,
         fontWeight: FontWeight.bold,
         color: cardData['textColor'],
       ),
@@ -125,22 +146,19 @@ class EnhancedTableCard extends StatelessWidget {
     return Text(
       'Capacity: ${table.capacity}',
       style: const TextStyle(
-        fontSize: 12, // Increased from 8
+        fontSize: 12,
         color: Colors.grey,
-        fontWeight: FontWeight.w600, // Made bolder
+        fontWeight: FontWeight.w600,
       ),
     );
   }
 
   Widget _buildStatusBadge(Map cardData) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 6,
-        vertical: 2,
-      ), // Increased padding
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: cardData['borderColor'],
-        borderRadius: BorderRadius.circular(10), // Increased border radius
+        borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
             color: cardData['borderColor'].withOpacity(0.25),
@@ -152,11 +170,37 @@ class EnhancedTableCard extends StatelessWidget {
       child: Text(
         table.status.name.toUpperCase(),
         style: const TextStyle(
-          fontSize: 10, // Increased from 6
+          fontSize: 10,
           color: Colors.white,
           fontWeight: FontWeight.bold,
-          letterSpacing: 0.4, // Increased letter spacing
+          letterSpacing: 0.4,
         ),
+      ),
+    );
+  }
+
+  // NEW: Shared table indicator
+  Widget _buildSharedTableIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: Colors.orange,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.share, size: 8, color: Colors.white),
+          const SizedBox(width: 2),
+          Text(
+            'SHARED (${table.orderCount})',
+            style: const TextStyle(
+              fontSize: 8,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -167,7 +211,7 @@ class EnhancedTableCard extends StatelessWidget {
         Text(
           table.reservationInfo!.timeRange,
           style: const TextStyle(
-            fontSize: 8, // Increased from 4
+            fontSize: 8,
             color: Colors.orange,
             fontWeight: FontWeight.bold,
           ),
@@ -177,28 +221,15 @@ class EnhancedTableCard extends StatelessWidget {
         Text(
           table.reservationInfo!.customerName,
           style: const TextStyle(
-            fontSize: 8, // Increased from 4
+            fontSize: 8,
             color: Colors.orange,
-            fontWeight: FontWeight.w600, // Made bolder
+            fontWeight: FontWeight.w600,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
       ],
     );
-  }
-
-  Color _getLiveStatusColor() {
-    switch (table.status) {
-      case TableStatus.available:
-        return Colors.green;
-      case TableStatus.occupied:
-        return Colors.red;
-      case TableStatus.reserved:
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
   }
 
   Map _getEnhancedCardData() {

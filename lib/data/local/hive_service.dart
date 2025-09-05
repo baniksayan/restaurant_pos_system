@@ -7,6 +7,8 @@ class HiveService {
   static const String _tablesBoxName = 'tables';
   static const String _ordersBoxName = 'orders';
   static const String _syncBoxName = 'sync_queue';
+  static const String _posBoxName = 'pos';
+  static const String _authBoxName = 'auth';
 
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -20,14 +22,16 @@ class HiveService {
     await Hive.openBox(_tablesBoxName);
     await Hive.openBox(_ordersBoxName);
     await Hive.openBox(_syncBoxName);
-    await Hive.openBox('pos'); // Box for storing auth token
+    await Hive.openBox(_posBoxName);
+    await Hive.openBox(_authBoxName);
   }
 
   // Get box instances
   static Box get tablesBox => Hive.box(_tablesBoxName);
   static Box get ordersBox => Hive.box(_ordersBoxName);
   static Box get syncBox => Hive.box(_syncBoxName);
-  static Box get posBox => Hive.box('pos');
+  static Box get posBox => Hive.box(_posBoxName);
+  static Box get authBox => Hive.box(_authBoxName);
 
   // Table CRUD operations
   static Future<void> saveTable(TableModel table) async {
@@ -37,60 +41,8 @@ class HiveService {
     await _addToSyncQueue('table_update', table.id);
   }
 
-  // FIX: Add cast to return correct type
   static List<TableModel> getAllTables() {
     return tablesBox.values.cast<TableModel>().toList();
-  }
-
-  // Save auth token
-  static Future<void> saveAuthToken(String token) async {
-    await posBox.put('token', token);
-  }
-
-  static String getAuthToken() {
-    return posBox.get('token', defaultValue: '');
-  }
-
-  // Save auth data from api
-  static Future<void> saveAuthData(data) async {
-    // Store as a plain Map (JSON) to avoid requiring a Hive TypeAdapter
-    if (data is AuthApiResModel) {
-      await posBox.put('auth_data', data.toJson());
-    } else {
-      // Fallback: store whatever was provided (defensive)
-      await posBox.put('auth_data', data);
-    }
-  }
-
-  static AuthApiResModel? getAuthData() {
-    final raw = posBox.get('auth_data');
-    if (raw == null) return null;
-
-    // If the stored value is already the model (unlikely), return it.
-    if (raw is AuthApiResModel) return raw;
-
-    // If it's a Map (stored JSON), convert and deserialize.
-    if (raw is Map) {
-      try {
-        final map = Map<String, dynamic>.from(raw);
-        return AuthApiResModel.fromJson(map);
-      } catch (e) {
-        // If casting fails, return null
-        return null;
-      }
-    }
-    return null;
-  }
-
-  // Deleting auth data on logout
-  static Future<void> clearAuthData() async {
-    await posBox.delete('token');
-    await posBox.delete('auth_data');
-  }
-
-  // ADD THIS NEW METHOD:
-  static Future<void> clearAuthToken() async {
-    await posBox.delete('token');
   }
 
   static TableModel? getTable(String id) {
@@ -115,17 +67,109 @@ class HiveService {
     await _addToSyncQueue('order_create', order.id);
   }
 
-  // FIX: Add cast to return correct type
   static List<OrderModel> getAllOrders() {
     return ordersBox.values.cast<OrderModel>().toList();
   }
 
-  // FIX: Add cast to return correct type
   static List<OrderModel> getOrdersForTable(String tableId) {
     return ordersBox.values
         .cast<OrderModel>()
         .where((order) => order.tableId == tableId)
         .toList();
+  }
+
+  // Auth Token Management
+  static Future<void> saveAuthToken(String token) async {
+    await posBox.put('token', token);
+  }
+
+  static String getAuthToken() {
+    return posBox.get('token', defaultValue: '');
+  }
+
+  static Future<void> clearAuthToken() async {
+    await posBox.delete('token');
+  }
+
+  // Auth Data Management
+  static Future<void> saveAuthData(dynamic data) async {
+    // Store as a plain Map (JSON) to avoid requiring a Hive TypeAdapter
+    if (data is AuthApiResModel) {
+      await posBox.put('auth_data', data.toJson());
+    } else {
+      // Fallback: store whatever was provided (defensive)
+      await posBox.put('auth_data', data);
+    }
+  }
+
+  static AuthApiResModel? getAuthData() {
+    final raw = posBox.get('auth_data');
+    if (raw == null) return null;
+    // If the stored value is already the model (unlikely), return it.
+    if (raw is AuthApiResModel) return raw;
+    // If it's a Map (stored JSON), convert and deserialize.
+    if (raw is Map) {
+      try {
+        final map = Map<String, dynamic>.from(raw);
+        return AuthApiResModel.fromJson(map);
+      } catch (e) {
+        // If casting fails, return null
+        return null;
+      }
+    }
+    return null;
+  }
+
+  static Future<void> clearAuthData() async {
+    await posBox.delete('token');
+    await posBox.delete('auth_data');
+  }
+
+  // User ID Management (Updated methods using both posBox and authBox)
+  static String? getUserId() {
+    try {
+      final box = Hive.box('auth');
+      return box.get('userId') ?? box.get('user_id');
+    } catch (e) {
+      print('[HiveService] Error getting userId: $e');
+      return null;
+    }
+  }
+
+  static void setUserId(String userId) {
+    // Store in both boxes for consistency
+    posBox.put('userId', userId);
+    authBox.put('userId', userId);
+  }
+
+  // Waiter ID Management (Updated methods using both posBox and authBox)
+  static String? getWaiterId() {
+    try {
+      final box = Hive.box('auth');
+      // Try multiple possible keys
+      return box.get('waiterId') ??
+          box.get('waiter_id') ??
+          box.get('staffId') ??
+          box.get('userId'); // Use userId as fallback
+    } catch (e) {
+      print('[HiveService] Error getting waiterId: $e');
+      return getUserId(); // Fallback to userId
+    }
+  }
+
+  static void setWaiterId(String waiterId) {
+    // Store in both boxes for consistency
+    posBox.put('waiterId', waiterId);
+    authBox.put('waiterId', waiterId);
+  }
+
+  // Outlet ID Management
+  static int? getOutletId() {
+    return posBox.get('outletId');
+  }
+
+  static void setOutletId(int outletId) {
+    posBox.put('outletId', outletId);
   }
 
   // Sync queue management
@@ -139,8 +183,11 @@ class HiveService {
     await syncBox.put('${action}_$entityId', syncItem);
   }
 
-  static List getUnsyncedItems() {
-    return syncBox.values.where((item) => item['synced'] == false).toList();
+  static List<Map<dynamic, dynamic>> getUnsyncedItems() {
+    return syncBox.values
+        .cast<Map<dynamic, dynamic>>()
+        .where((item) => item['synced'] == false)
+        .toList();
   }
 
   static Future<void> markAsSynced(String key) async {
@@ -151,12 +198,12 @@ class HiveService {
     }
   }
 
-  // Adding these methods to our HiveService class
-  static String? getWaiterId() => posBox.get('waiterId');
-  static int? getOutletId() => posBox.get('outletId');
-  static String? getUserId() => posBox.get('userId');
-
-  // Methods to set these values
-  static void setWaiterId(String waiterId) => posBox.put('waiterId', waiterId);
-  static void setUserId(String userId) => posBox.put('userId', userId);
+  // Utility method to clear all data (useful for logout)
+  static Future<void> clearAllData() async {
+    await posBox.clear();
+    await authBox.clear();
+    await tablesBox.clear();
+    await ordersBox.clear();
+    await syncBox.clear();
+  }
 }

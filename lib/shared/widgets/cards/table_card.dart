@@ -68,7 +68,12 @@ class TableCard extends StatelessWidget {
           borderColor: AppColors.tableReserved,
           statusText: 'Reserved',
         );
-   
+      case TableStatus.outOfOrder:
+        return TableCardData(
+          backgroundColor: Colors.grey.withValues(alpha: 0.1),
+          borderColor: Colors.grey,
+          statusText: 'Out of Order',
+        );
     }
   }
 

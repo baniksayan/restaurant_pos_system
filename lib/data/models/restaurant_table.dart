@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'order_channel_list_api_response_model.dart' as new_api;
+import 'tables_api_response_model.dart' as legacy_api;
+
 class RestaurantTable {
   final String id;
   final String name;
@@ -8,7 +11,8 @@ class RestaurantTable {
   final TableStatus status;
   final bool kotGenerated;
   final bool billGenerated;
-  final ReservationInfo? reservationInfo; // FIX: Add this property
+  final ReservationInfo? reservationInfo;
+  final List<ActiveOrder> activeOrders; // NEW: Multiple orders support
 
   const RestaurantTable({
     required this.id,
@@ -18,8 +22,18 @@ class RestaurantTable {
     required this.status,
     required this.kotGenerated,
     required this.billGenerated,
-    this.reservationInfo, // FIX: Add to constructor
+    this.reservationInfo,
+    this.activeOrders = const [], // NEW: Default empty list
   });
+
+  // NEW: Check if table has multiple orders (shared table)
+  bool get isSharedTable => activeOrders.length > 1;
+
+  // NEW: Check if table has any orders
+  bool get hasActiveOrders => activeOrders.isNotEmpty;
+
+  // NEW: Get order count
+  int get orderCount => activeOrders.length;
 
   RestaurantTable copyWith({
     String? id,
@@ -30,6 +44,7 @@ class RestaurantTable {
     bool? kotGenerated,
     bool? billGenerated,
     ReservationInfo? reservationInfo,
+    List<ActiveOrder>? activeOrders,
   }) {
     return RestaurantTable(
       id: id ?? this.id,
@@ -40,10 +55,10 @@ class RestaurantTable {
       kotGenerated: kotGenerated ?? this.kotGenerated,
       billGenerated: billGenerated ?? this.billGenerated,
       reservationInfo: reservationInfo ?? this.reservationInfo,
+      activeOrders: activeOrders ?? this.activeOrders,
     );
   }
 
-  // Helper method to get status color
   Color get statusColor {
     switch (status) {
       case TableStatus.available:
@@ -52,18 +67,64 @@ class RestaurantTable {
         return Colors.red;
       case TableStatus.reserved:
         return Colors.orange;
+      case TableStatus.outOfOrder:
+        return Colors.grey;
     }
   }
 
-  // Helper method to check if table is bookable
   bool get isBookable {
     return status == TableStatus.available;
   }
 }
 
-enum TableStatus { available, occupied, reserved }
+// NEW: Active Order class for multiple orders per table
+class ActiveOrder {
+  final String orderId;
+  final String generatedOrderNo;
+  final String orderStatus;
+  final bool isBilled;
 
-// |  FIX: Complete ReservationInfo class
+  const ActiveOrder({
+    required this.orderId,
+    required this.generatedOrderNo,
+    required this.orderStatus,
+    required this.isBilled,
+  });
+
+  // Factory for NEW API (OrderChannelListByType)
+  factory ActiveOrder.fromNewApiOrderList(new_api.OrderList orderList) {
+    return ActiveOrder(
+      orderId: orderList.orderId ?? '',
+      generatedOrderNo: orderList.generatedOrderNo ?? '',
+      orderStatus: orderList.orderStatus ?? '',
+      isBilled: orderList.isBilled ?? false,
+    );
+  }
+
+  // Factory for LEGACY API (TablesApiResponseModel)
+  factory ActiveOrder.fromLegacyApiOrderList(legacy_api.OrderList orderList) {
+    return ActiveOrder(
+      orderId: orderList.orderId ?? '',
+      generatedOrderNo: orderList.generatedOrderNo ?? '',
+      orderStatus: orderList.orderStatus ?? '',
+      isBilled: orderList.isBilled ?? false,
+    );
+  }
+
+  // Generic factory method for backward compatibility
+  factory ActiveOrder.fromOrderList(dynamic orderList) {
+    return ActiveOrder(
+      orderId: orderList.orderId ?? '',
+      generatedOrderNo: orderList.generatedOrderNo ?? '',
+      orderStatus: orderList.orderStatus ?? '',
+      isBilled: orderList.isBilled ?? false,
+    );
+  }
+}
+
+// ✅ FIXED: Added outOfOrder to enum
+enum TableStatus { available, occupied, reserved, outOfOrder }
+
 class ReservationInfo {
   final String startTime;
   final String endTime;
@@ -107,10 +168,8 @@ class ReservationInfo {
     );
   }
 
-  // Helper to format reservation time display
   String get timeRange => '$startTime - $endTime';
 
-  // Helper to check if reservation is today
   bool get isToday {
     final now = DateTime.now();
     return reservationDate.year == now.year &&

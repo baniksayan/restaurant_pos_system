@@ -12,13 +12,11 @@ class SplashView extends StatefulWidget {
   State<SplashView> createState() => _SplashViewState();
 }
 
-class _SplashViewState extends State<SplashView>
-    with TickerProviderStateMixin {
+class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
   late AnimationController _mainController;
   late AnimationController _logoController;
   late AnimationController _textController;
   late AnimationController _progressController;
-
   late Animation<double> _logoScaleAnimation;
   late Animation<double> _logoRotationAnimation;
   late Animation<double> _logoOpacityAnimation;
@@ -26,6 +24,8 @@ class _SplashViewState extends State<SplashView>
   late Animation<Offset> _textSlideAnimation;
   late Animation<double> _progressAnimation;
   late Animation<Color?> _backgroundAnimation;
+
+  String _statusText = 'Initializing...';
 
   @override
   void initState() {
@@ -61,64 +61,51 @@ class _SplashViewState extends State<SplashView>
     );
 
     // Logo animations
-    _logoScaleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _logoController,
-      curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
-    ));
+    _logoScaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _logoController,
+        curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
+      ),
+    );
 
-    _logoRotationAnimation = Tween<double>(
-      begin: -0.5,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _logoController,
-      curve: const Interval(0.0, 0.8, curve: Curves.easeOutBack),
-    ));
+    _logoRotationAnimation = Tween<double>(begin: -0.5, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _logoController,
+        curve: const Interval(0.0, 0.8, curve: Curves.easeOutBack),
+      ),
+    );
 
-    _logoOpacityAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _logoController,
-      curve: const Interval(0.0, 0.4, curve: Curves.easeIn),
-    ));
+    _logoOpacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _logoController,
+        curve: const Interval(0.0, 0.4, curve: Curves.easeIn),
+      ),
+    );
 
     // Text animations
-    _textFadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _textController,
-      curve: Curves.easeInOut,
-    ));
+    _textFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _textController, curve: Curves.easeInOut),
+    );
 
     _textSlideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.5),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _textController,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(
+      CurvedAnimation(parent: _textController, curve: Curves.easeOutCubic),
+    );
 
     // Progress animation
-    _progressAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _progressController,
-      curve: Curves.easeInOut,
-    ));
+    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
+    );
 
     // Background color animation
     _backgroundAnimation = ColorTween(
       begin: AppColors.backgroundStart,
       end: AppColors.backgroundEnd,
-    ).animate(CurvedAnimation(
-      parent: _mainController,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(
+      CurvedAnimation(parent: _mainController, curve: Curves.easeInOut),
+    );
   }
 
   void _startAnimationSequence() async {
@@ -140,27 +127,38 @@ class _SplashViewState extends State<SplashView>
 
   Future<void> _checkAuthAndNavigate() async {
     try {
+      // Update status text
+      if (mounted) {
+        setState(() {
+          _statusText = 'Checking authentication...';
+        });
+      }
+
       // Show splash for a minimum time
       await Future.delayed(const Duration(seconds: 2));
-      
+
       if (mounted) {
         // Check if user is already authenticated from saved state
         final authProvider = context.read<AuthProvider>();
         final isAuthenticated = await authProvider.checkAuthState();
-        
+
         if (isAuthenticated) {
           // User is logged in (state restored), go to dashboard
-          Navigator.of(context).pushReplacementNamed('/dashboard');
-          
-          if (kDebugMode) {
-            debugPrint('User restored from saved state - navigating to dashboard');
+          if (mounted) {
+            Navigator.of(context).pushReplacementNamed('/dashboard');
+            if (kDebugMode) {
+              debugPrint(
+                'User restored from saved state - navigating to dashboard',
+              );
+            }
           }
         } else {
           // User is not logged in, go to login
-          Navigator.of(context).pushReplacementNamed('/login');
-          
-          if (kDebugMode) {
-            debugPrint('No saved auth state - navigating to login');
+          if (mounted) {
+            Navigator.of(context).pushReplacementNamed('/login');
+            if (kDebugMode) {
+              debugPrint('No saved auth state - navigating to login');
+            }
           }
         }
       }
@@ -169,7 +167,7 @@ class _SplashViewState extends State<SplashView>
       if (kDebugMode) {
         debugPrint('Error checking auth state: $e');
       }
-      
+
       if (mounted) {
         // Default to login page if there's an error
         Navigator.of(context).pushReplacementNamed('/login');
@@ -216,7 +214,6 @@ class _SplashViewState extends State<SplashView>
                 children: [
                   // Animated background particles/dots
                   _buildBackgroundParticles(),
-                  
                   // Main content
                   Center(
                     child: Column(
@@ -225,17 +222,14 @@ class _SplashViewState extends State<SplashView>
                         // Logo section
                         _buildLogoSection(),
                         const SizedBox(height: 60),
-                        
                         // Text section
                         _buildTextSection(),
                         const SizedBox(height: 80),
-                        
                         // Progress indicator
                         _buildProgressIndicator(),
                       ],
                     ),
                   ),
-                  
                   // Bottom branding
                   _buildBottomBranding(),
                 ],
@@ -254,7 +248,10 @@ class _SplashViewState extends State<SplashView>
         return Stack(
           children: List.generate(6, (index) {
             final delay = index * 0.2;
-            final animationValue = (_mainController.value - delay).clamp(0.0, 1.0);
+            final animationValue = (_mainController.value - delay).clamp(
+              0.0,
+              1.0,
+            );
             return Positioned(
               left: (50 + index * 60).toDouble(),
               top: (100 + index * 80).toDouble(),
@@ -300,10 +297,7 @@ class _SplashViewState extends State<SplashView>
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white,
-                      Color(0xFFF0F0F0),
-                    ],
+                    colors: [Colors.white, Color(0xFFF0F0F0)],
                   ),
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
@@ -344,11 +338,12 @@ class _SplashViewState extends State<SplashView>
               children: [
                 // Main title
                 ShaderMask(
-                  shaderCallback: (bounds) => const LinearGradient(
-                    colors: [Colors.white, Color(0xFFE3F2FD)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ).createShader(bounds),
+                  shaderCallback:
+                      (bounds) => const LinearGradient(
+                        colors: [Colors.white, Color(0xFFE3F2FD)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ).createShader(bounds),
                   child: const Text(
                     'WiZARD',
                     style: TextStyle(
@@ -360,7 +355,6 @@ class _SplashViewState extends State<SplashView>
                   ),
                 ),
                 const SizedBox(height: 8),
-                
                 // Subtitle
                 Text(
                   'Communications',
@@ -372,7 +366,6 @@ class _SplashViewState extends State<SplashView>
                   ),
                 ),
                 const SizedBox(height: 20),
-                
                 // Restaurant POS tagline
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -424,10 +417,7 @@ class _SplashViewState extends State<SplashView>
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [
-                        Colors.white,
-                        Color(0xFFE3F2FD),
-                      ],
+                      colors: [Colors.white, Color(0xFFE3F2FD)],
                     ),
                     borderRadius: BorderRadius.circular(2),
                     boxShadow: [
@@ -442,25 +432,15 @@ class _SplashViewState extends State<SplashView>
               ),
             ),
             const SizedBox(height: 16),
-            
-            // Loading text with auth status
-            Consumer<AuthProvider>(
-              builder: (context, authProvider, child) {
-                String statusText = 'Initializing...';
-                if (authProvider.isLoading) {
-                  statusText = 'Checking authentication...';
-                }
-
-                return Text(
-                  statusText,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.white.withOpacity(0.7),
-                    letterSpacing: 0.5,
-                  ),
-                );
-              },
+            // Loading text with status
+            Text(
+              _statusText,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: Colors.white.withOpacity(0.7),
+                letterSpacing: 0.5,
+              ),
             ),
           ],
         );

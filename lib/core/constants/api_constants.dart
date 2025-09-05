@@ -8,20 +8,24 @@ class ApiConstants {
   static String accessToken = HiveService.getAuthToken();
 
   // Auth endpoints
-  static const String auth = "User/authenticate";
+  static const String auth = "User/authenticate"; //done
 
   // Payment modes endpoints
-  static const String getPaymentModes = 'api/Order/GetPaymentMode';
+  static const String getPaymentModes = 'api/Order/GetPaymentMode'; //done
 
   // Table by outlet and type
-  static const String getTablesByOutlet = 'Setting/OrderChannelListByType';
+  static const String getTablesByOutlet =
+      'Setting/OrderChannelListByType'; //done
 
   // Order endpoints
-  static const String createOrderHead = 'Order/saveOrderHead';
+  static const String createOrderHead = 'Order/saveOrderHead'; //done
 
   // KOT endpoints
-  static const String createKotWithOrderDetails = 'Order/CreateKotWithOrderDetails';
+  static const String createKotWithOrderDetails =
+      'Order/CreateKotWithOrderDetails';
 
+  // Product endpoints
+  static const String getItemSearch = 'Product/GetItemSearch'; //done
 }
 
 class ApiMethods {

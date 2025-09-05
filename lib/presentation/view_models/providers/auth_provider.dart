@@ -1,10 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:restaurant_pos_system/core/constants/api_constants.dart';
 import 'package:restaurant_pos_system/data/models/auth_api_res_model.dart';
 import 'package:restaurant_pos_system/services/api_service.dart';
+import 'package:restaurant_pos_system/presentation/view_models/providers/table_provider.dart';
+import 'package:restaurant_pos_system/presentation/view_models/providers/menu_provider.dart';
+import 'package:restaurant_pos_system/presentation/view_models/providers/tax_provider.dart';
 
 class AuthProvider with ChangeNotifier {
   bool _isAuthenticated = false;
@@ -114,9 +118,11 @@ class AuthProvider with ChangeNotifier {
       );
 
       final model = AuthApiResModel.fromJson(response!);
+
       if (model.isSuccess == true && model.data != null) {
         // Save token to hive
         await HiveService.saveAuthToken(model.data?.posToken ?? '');
+
         // Save auth data to hive
         await HiveService.saveAuthData(model);
 
@@ -135,6 +141,9 @@ class AuthProvider with ChangeNotifier {
           debugPrint('User logged in and state persisted: $username');
         }
 
+        // **NEW: Initialize data providers after successful login**
+        await _initializeDataProviders(context);
+
         _isLoading = false;
         notifyListeners();
         return true;
@@ -148,10 +157,48 @@ class AuthProvider with ChangeNotifier {
       _errorMessage = 'Login failed: $e';
       _isLoading = false;
       notifyListeners();
+
       if (kDebugMode) {
         debugPrint('Error in login: $e');
       }
+
       return false;
+    }
+  }
+
+  // **NEW: Private method to initialize data providers after authentication**
+  // **NEW: Private method to initialize data providers after authentication**
+  Future<void> _initializeDataProviders(BuildContext context) async {
+    try {
+      if (kDebugMode) {
+        debugPrint('Initializing authenticated data providers...');
+      }
+
+      // Get providers from context
+      final tableProvider = Provider.of<TableProvider>(context, listen: false);
+
+      // Only initialize TableProvider for now (the main issue)
+      await tableProvider.fetchTables().catchError((error) {
+        debugPrint('Failed to load tables: $error');
+        return; // Continue even if tables fail
+      });
+
+      // TODO: Add other providers when their methods are available
+      // Example:
+      // final menuProvider = Provider.of<MenuProvider>(context, listen: false);
+      // await menuProvider.loadMenu(); // Use the actual method name
+
+      // final taxProvider = Provider.of<TaxProvider>(context, listen: false);
+      // await taxProvider.fetchTaxes(); // Use the actual method name
+
+      if (kDebugMode) {
+        debugPrint('Post-login table data loaded successfully');
+      }
+    } catch (e) {
+      // Don't throw error, just log it
+      if (kDebugMode) {
+        debugPrint('Error loading post-login data: $e');
+      }
     }
   }
 
@@ -270,7 +317,7 @@ class AuthProvider with ChangeNotifier {
   }
 
   // Helper method for unawaited futures
-  void unawaited(Future<void> future) {
+  void unawaited(Future future) {
     future.catchError((error) {
       debugPrint('Unawaited future error: $error');
     });

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:restaurant_pos_system/main.dart';
 
 void main() {
@@ -10,7 +9,7 @@ void main() {
 
     // Verify that the app starts properly
     expect(find.byType(MaterialApp), findsOneWidget);
-    
+
     // Add more specific tests as needed
   });
 }

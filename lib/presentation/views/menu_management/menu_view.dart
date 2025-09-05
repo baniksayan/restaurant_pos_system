@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
+
 import '../../view_models/providers/menu_provider.dart';
 import 'widgets/menu_header.dart';
 import 'widgets/menu_search_bar.dart';
@@ -11,8 +13,15 @@ class MenuView extends StatefulWidget {
   final String? selectedTableId;
   final String? tableName;
   final String? selectedLocation;
-  final Function(String itemId, String itemName, double price,String categoryId,
-    String categoryName, Offset position)? onAddToCart;
+  final Function(
+    String itemId,
+    String itemName,
+    double price,
+    String categoryId,
+    String categoryName,
+    Offset position,
+  )?
+  onAddToCart;
 
   const MenuView({
     super.key,
@@ -30,10 +39,17 @@ class _MenuViewState extends State<MenuView> {
   @override
   void initState() {
     super.initState();
-    // Load menu data when the widget initializes
+    // Load menu data when the widget initializes - BUT ONLY IF AUTHENTICATED
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final menuProvider = Provider.of<MenuProvider>(context, listen: false);
-      menuProvider.loadMenuData();
+
+      // Check if user is authenticated before loading menu
+      final token = HiveService.getAuthToken();
+      if (token.isNotEmpty) {
+        menuProvider.loadMenuData();
+      } else {
+        debugPrint('No auth token available - skipping menu load in MenuView');
+      }
     });
   }
 
@@ -60,7 +76,8 @@ class _MenuViewState extends State<MenuView> {
                     onAddToCart: widget.onAddToCart,
                   ),
                 ),
-                if (widget.selectedTableId != null && menuProvider.totalCartItems > 0)
+                if (widget.selectedTableId != null &&
+                    menuProvider.totalCartItems > 0)
                   CartFooter(onPlaceOrder: () {}),
               ],
             );
