@@ -6,13 +6,23 @@ class NavigationProvider extends ChangeNotifier {
   String? _selectedTableName;
   String? _selectedLocation;
 
+  // Added properties
+  String? _selectedOrderType;
+  String? _customerName;
+  String? _customerPhone;
+
   int get currentIndex => _currentIndex;
   String? get selectedTableId => _selectedTableId;
   String? get selectedTableName => _selectedTableName;
   String? get selectedLocation => _selectedLocation;
 
+  // Added getters
+  String? get selectedOrderType => _selectedOrderType;
+  String? get customerName => _customerName;
+  String? get customerPhone => _customerPhone;
+
   void navigateToIndex(int index) {
-    // Ensure index is within valid range (0-3 instead of 0-4)
+    // Ensure index is within valid range (0-3)
     if (index >= 0 && index <= 3) {
       _currentIndex = index;
       notifyListeners();
@@ -24,6 +34,19 @@ class NavigationProvider extends ChangeNotifier {
     _selectedTableName = tableName;
     _selectedLocation = location;
     _currentIndex = 1; // Menu tab
+    notifyListeners();
+  }
+
+  // Added method
+  void selectOrderTypeAndNavigate(
+    String orderType,
+    String customerName,
+    String phoneNumber,
+  ) {
+    _selectedOrderType = orderType;
+    _customerName = customerName;
+    _customerPhone = phoneNumber;
+    _currentIndex = 1; // Navigate to menu
     notifyListeners();
   }
 

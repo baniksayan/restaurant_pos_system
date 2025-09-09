@@ -15,10 +15,12 @@ import 'widgets/dashboard_states.dart';
 import 'widgets/table_action_dialog.dart';
 import 'widgets/table_grid.dart';
 import 'widgets/multi_order_management_dialog.dart';
+import 'package:restaurant_pos_system/data/models/order_channel_types_model.dart';
+import 'widgets/order_type_selector_dialog.dart';
+import 'widgets/customer_details_dialog.dart';
 
 class WaiterDashboardView extends StatefulWidget {
   final Function(String tableId, String tableName)? onTableSelected;
-
   const WaiterDashboardView({super.key, this.onTableSelected});
 
   @override
@@ -107,10 +109,11 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                       DashboardHeader(
                         onMenuPressed:
                             () => _scaffoldKey.currentState?.openDrawer(),
+                        onAddOrderPressed: _handleAddOrderPressed,
                       ),
                       LocationHeader(
                         selectedLocation: dashboardProvider.selectedLocation,
-                        locations: dashboardProvider.locations ?? [],
+                        locations: dashboardProvider.locations,
                         tables: tables,
                       ),
                       Expanded(
@@ -165,6 +168,70 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
         return 'Bill Generated';
       default:
         return statusFilter;
+    }
+  }
+
+  /// Handle Add Order button press - NEW METHOD
+  void _handleAddOrderPressed() {
+    showDialog(
+      context: context,
+      builder:
+          (context) => OrderTypeSelectorDialog(
+            onOrderTypeSelected: _handleOrderTypeSelected,
+          ),
+    );
+  }
+
+  /// Handle order type selection - FIXED METHOD
+  void _handleOrderTypeSelected(OrderType orderType) {
+    if (orderType == OrderType.dineIn) {
+      // For dine-in, just show table selection (existing behavior)
+      _showSnackBar('Select a table for dine-in order', Colors.blue);
+    } else {
+      // For phone order and takeaway, show customer details dialog
+      showDialog(
+        context: context,
+        builder:
+            (context) => CustomerDetailsDialog(
+              orderType: orderType,
+              onConfirm:
+                  (name, phone) =>
+                      _handleCustomerDetailsConfirm(orderType, name, phone),
+            ),
+      );
+    }
+  }
+
+  /// Handle customer details confirmation - FIXED METHOD
+  void _handleCustomerDetailsConfirm(
+    OrderType orderType,
+    String customerName,
+    String phoneNumber,
+  ) {
+    try {
+      // Store the order type and customer details
+      context.read<DashboardProvider>().setOrderType(orderType);
+      context.read<DashboardProvider>().setCustomerDetails(
+        customerName,
+        phoneNumber,
+      );
+
+      // Navigate to menu with the order details
+      context.read<NavigationProvider>().selectOrderTypeAndNavigate(
+        orderType.channelType,
+        customerName,
+        phoneNumber,
+      );
+
+      _showSnackBar(
+        '${orderType.displayName} order created for $customerName',
+        Colors.green,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error handling customer details: $e');
+      }
+      _showSnackBar('Error creating order', Colors.red);
     }
   }
 

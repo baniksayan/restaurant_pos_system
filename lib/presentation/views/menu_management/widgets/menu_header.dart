@@ -58,11 +58,6 @@ class MenuHeader extends StatelessWidget {
             ),
           ),
           if (canOrder) ...[
-            IconButton(
-              onPressed: onPrintKOT,
-              icon: const Icon(Icons.print, color: AppColors.primary),
-              tooltip: 'Print KOT',
-            ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(

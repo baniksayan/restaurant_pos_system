@@ -26,6 +26,10 @@ class ApiConstants {
 
   // Product endpoints
   static const String getItemSearch = 'Product/GetItemSearch'; //done
+
+  // Order Channel Types
+  static const String getOrderChannelTypes = 'Setting/GetOrderChannelTypes';
+
 }
 
 class ApiMethods {

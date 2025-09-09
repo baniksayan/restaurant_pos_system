@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
 import 'package:restaurant_pos_system/services/sync_service.dart';
+import 'package:restaurant_pos_system/data/models/order_channel_types_model.dart';
 import 'table_provider.dart';
 
 class LocationSection {
@@ -13,15 +14,26 @@ class LocationSection {
 }
 
 class DashboardProvider extends ChangeNotifier {
-  String _selectedLocation = 'Main Hall'; // Default to Main Hall instead of empty
+  String _selectedLocation =
+      'Main Hall'; // Default to Main Hall instead of empty
   String _selectedStatusFilter = 'all';
   bool _isSyncing = false;
   String? _syncMessage;
+
+  // New properties for order management - using the correct OrderType
+  OrderType? _selectedOrderType;
+  String? _customerName;
+  String? _customerPhone;
 
   String get selectedLocation => _selectedLocation;
   String get selectedStatusFilter => _selectedStatusFilter;
   bool get isSyncing => _isSyncing;
   String? get syncMessage => _syncMessage;
+
+  // New getters
+  OrderType? get selectedOrderType => _selectedOrderType;
+  String? get customerName => _customerName;
+  String? get customerPhone => _customerPhone;
 
   // Removed 'All' from locations list as requested
   final List<LocationSection> locations = [
@@ -43,6 +55,25 @@ class DashboardProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // New methods for order management - using correct OrderType
+  void setOrderType(OrderType orderType) {
+    _selectedOrderType = orderType;
+    notifyListeners();
+  }
+
+  void setCustomerDetails(String name, String phone) {
+    _customerName = name;
+    _customerPhone = phone;
+    notifyListeners();
+  }
+
+  void clearOrderSelection() {
+    _selectedOrderType = null;
+    _customerName = null;
+    _customerPhone = null;
+    notifyListeners();
+  }
+
   // Show Main Hall by default (when app first opens)
   bool get isShowingMainHall => _selectedLocation == 'Main Hall';
 
@@ -53,27 +84,39 @@ class DashboardProvider extends ChangeNotifier {
 
   // Get available locations that have tables
   List<LocationSection> getAvailableLocations(List<RestaurantTable> allTables) {
-    return locations.where((location) =>
-      hasTablesForLocation(location.name, allTables)
-    ).toList();
+    return locations
+        .where((location) => hasTablesForLocation(location.name, allTables))
+        .toList();
   }
 
   // Get table count for a specific location
-  int getTableCountForLocation(String location, List<RestaurantTable> allTables) {
+  int getTableCountForLocation(
+    String location,
+    List<RestaurantTable> allTables,
+  ) {
     return allTables.where((table) => table.location == location).length;
   }
 
   // Get status counts for a location
-  Map<String, int> getStatusCountsForLocation(String location, List<RestaurantTable> allTables) {
-    List<RestaurantTable> filteredTables = allTables.where((table) => table.location == location).toList();
+  Map<String, int> getStatusCountsForLocation(
+    String location,
+    List<RestaurantTable> allTables,
+  ) {
+    List<RestaurantTable> filteredTables =
+        allTables.where((table) => table.location == location).toList();
 
     return {
       'total': filteredTables.length,
-      'available': filteredTables.where((t) => t.status == TableStatus.available).length,
-      'occupied': filteredTables.where((t) => t.status == TableStatus.occupied).length,
-      'reserved': filteredTables.where((t) => t.status == TableStatus.reserved).length,
-      'kot_generated': filteredTables.where((t) => t.kotGenerated == true).length,
-      'bill_generated': filteredTables.where((t) => t.billGenerated == true).length,
+      'available':
+          filteredTables.where((t) => t.status == TableStatus.available).length,
+      'occupied':
+          filteredTables.where((t) => t.status == TableStatus.occupied).length,
+      'reserved':
+          filteredTables.where((t) => t.status == TableStatus.reserved).length,
+      'kot_generated':
+          filteredTables.where((t) => t.kotGenerated == true).length,
+      'bill_generated':
+          filteredTables.where((t) => t.billGenerated == true).length,
     };
   }
 
@@ -138,15 +181,16 @@ class DashboardProvider extends ChangeNotifier {
     try {
       // Sync general data
       final success = await SyncService.syncAllData();
-      
+
       // Also refresh tables if provider is available
       if (tableProvider != null) {
         await tableProvider.refreshTables();
       }
 
-      _syncMessage = success
-          ? 'Data synced successfully!'
-          : 'Sync failed. Please try again.';
+      _syncMessage =
+          success
+              ? 'Data synced successfully!'
+              : 'Sync failed. Please try again.';
     } catch (e) {
       _syncMessage = 'Sync error: ${e.toString()}';
     } finally {

@@ -19,6 +19,9 @@ dependencies:
   # Native Splash Screen
   flutter_native_splash: ^2.4.6
 
+  #SVG support
+  flutter_svg: ^2.2.1
+
   # State Management
   provider: ^6.1.2
   
@@ -79,7 +82,11 @@ dependencies:
   # PDF Generation and Sharing
   pdf: ^3.10.4
   printing: ^5.11.0
+  csv: ^6.0.0
   share_plus: ^7.2.1
+
+  #Permission handling
+  permission_handler: ^12.0.1
 
 dev_dependencies:
   flutter_test:
@@ -102,3 +109,4 @@ flutter:
   assets:
     - assets/images/
     - assets/images/logo/wizard_logo.png
+    - assets/images/analytics/food/grilled-burger-french-fries-food-generative-ai.jpg

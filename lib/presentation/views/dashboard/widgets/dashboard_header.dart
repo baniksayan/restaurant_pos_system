@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../../../core/themes/app_colors.dart';
+import 'package:restaurant_pos_system/core/themes/app_colors.dart';
 
 class DashboardHeader extends StatelessWidget {
   final VoidCallback onMenuPressed;
+  final VoidCallback onAddOrderPressed; // Add this
 
   const DashboardHeader({
     super.key,
     required this.onMenuPressed,
+    required this.onAddOrderPressed, // Add this
   });
 
   @override
@@ -50,7 +52,20 @@ class DashboardHeader extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            // Removed map icon and sync icon as requested
+            // Add the plus button here
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.add, size: 22, color: Colors.white),
+                onPressed: onAddOrderPressed,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                padding: const EdgeInsets.all(6),
+                tooltip: 'New Order',
+              ),
+            ),
           ],
         ),
       ),

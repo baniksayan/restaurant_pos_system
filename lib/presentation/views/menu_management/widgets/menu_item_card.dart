@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-
 import '../../../../core/themes/app_colors.dart';
 
 class MenuItemCard extends StatelessWidget {
@@ -89,19 +88,20 @@ class MenuItemCard extends StatelessWidget {
                 topRight: Radius.circular(16),
               ),
             ),
-            child: imageUrl != null
-                ? ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
+            child:
+                imageUrl != null
+                    ? ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
+                      child: _buildMenuItemImage(imageUrl!),
+                    )
+                    : const Icon(
+                      Icons.restaurant,
+                      size: 40,
+                      color: Colors.grey,
                     ),
-                    child: _buildMenuItemImage(imageUrl!),
-                  )
-                : const Icon(
-                    Icons.restaurant,
-                    size: 40,
-                    color: Colors.grey,
-                  ),
           ),
           _buildVegIndicator(),
         ],
@@ -113,7 +113,7 @@ class MenuItemCard extends StatelessWidget {
   Widget _buildMenuItemImage(String imageUrl) {
     // Clean up double URL paths
     String cleanImageUrl = imageUrl;
-    if (imageUrl.contains('https://') && 
+    if (imageUrl.contains('https://') &&
         imageUrl.indexOf('https://') != imageUrl.lastIndexOf('https://')) {
       // Extract the correct URL (take the second occurrence)
       cleanImageUrl = imageUrl.substring(imageUrl.lastIndexOf('https://'));
@@ -121,30 +121,32 @@ class MenuItemCard extends StatelessWidget {
 
     return CachedNetworkImage(
       imageUrl: cleanImageUrl,
-      placeholder: (context, url) => Container(
-        color: Colors.grey[200],
-        child: Center(
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Colors.grey[400],
-          ),
-        ),
-      ),
-      errorWidget: (context, url, error) => Container(
-        color: Colors.grey[200],
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.restaurant, color: Colors.grey[400], size: 30),
-            const SizedBox(height: 4),
-            Text(
-              'Image\nUnavailable',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+      placeholder:
+          (context, url) => Container(
+            color: Colors.grey[200],
+            child: Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.grey[400],
+              ),
             ),
-          ],
-        ),
-      ),
+          ),
+      errorWidget:
+          (context, url, error) => Container(
+            color: Colors.grey[200],
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.restaurant, color: Colors.grey[400], size: 30),
+                const SizedBox(height: 4),
+                Text(
+                  'Image\nUnavailable',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          ),
       fit: BoxFit.cover,
     );
   }
@@ -154,22 +156,63 @@ class MenuItemCard extends StatelessWidget {
       top: 8,
       left: 8,
       child: Container(
-        padding: const EdgeInsets.all(4),
+        width: 16,
+        height: 16,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(2),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 2,
+              offset: const Offset(0, 1),
+            ),
           ],
         ),
-        child: Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: isVeg ? Colors.green : Colors.red,
-            shape: isVeg ? BoxShape.rectangle : BoxShape.circle,
-            borderRadius: isVeg ? BorderRadius.circular(2) : null,
-          ),
+        child: Stack(
+          children: [
+            // Outer square border
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color:
+                      isVeg
+                          ? const Color(0xFF4CAF50)
+                          : const Color(
+                            0xFF8D6E63,
+                          ), // Green for veg, brown for non-veg
+                  width: 1,
+                ),
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+            // Inner symbol
+            Center(
+              child:
+                  isVeg
+                      ? Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF4CAF50), // Green filled circle
+                          shape: BoxShape.circle,
+                        ),
+                      )
+                      : Container(
+                        width: 8,
+                        height: 8,
+                        child: CustomPaint(
+                          painter: TrianglePainter(
+                            color: const Color(
+                              0xFF8D6E63,
+                            ), // Brown filled triangle
+                          ),
+                        ),
+                      ),
+            ),
+          ],
         ),
       ),
     );
@@ -283,7 +326,35 @@ class MenuItemCard extends StatelessWidget {
         return; // do not call onAdd as we've handled the add
       }
     }
+
     // Fallback: if no animation callback provided, call simple add
     onAdd?.call();
   }
+}
+
+// Custom painter class for drawing triangle
+class TrianglePainter extends CustomPainter {
+  final Color color;
+
+  TrianglePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.fill;
+
+    final path = Path();
+    // Create an equilateral triangle pointing upward
+    path.moveTo(size.width * 0.5, 0); // Top point
+    path.lineTo(0, size.height); // Bottom left
+    path.lineTo(size.width, size.height); // Bottom right
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

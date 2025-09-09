@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:restaurant_pos_system/data/models/order_channel.dart';
+import 'package:restaurant_pos_system/data/models/order_channel_types_model.dart';
 import 'package:restaurant_pos_system/data/models/payment_mode_api_res_model.dart';
 import 'package:restaurant_pos_system/data/models/create_order_head_request_model.dart';
 import 'package:restaurant_pos_system/data/models/create_order_head_api_res_model.dart';
@@ -178,6 +179,46 @@ class ApiService {
     }
   }
 
+  /// Get Order Channel Types
+  static Future<OrderChannelTypesModel?> getOrderChannelTypes({
+    required int companyId,
+  }) async {
+    final isConnected = await checkInternetAndGoForward();
+    if (!isConnected) return null;
+
+    try {
+      final Map<String, dynamic> requestBody = {"companyId": companyId};
+
+      if (kDebugMode) {
+        debugPrint(
+          'Calling getOrderChannelTypes API: ${ApiConstants.getOrderChannelTypes}',
+        );
+        debugPrint('Request Body: $requestBody');
+      }
+
+      final response = await apiRequestHttpRawBody(
+        ApiConstants.getOrderChannelTypes,
+        requestBody,
+        method: 'POST',
+      );
+
+      if (response != null) {
+        if (kDebugMode) {
+          debugPrint('getOrderChannelTypes API Response: $response');
+        }
+        return OrderChannelTypesModel.fromJson(response);
+      }
+
+      return null;
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Error in getOrderChannelTypes: $e');
+        debugPrint('StackTrace: $stackTrace');
+      }
+      return null;
+    }
+  }
+
   /// Save Order Head - Create new order (correct API for occupying table)
   static Future<CreateOrderHeadApiResModel?> saveOrderHead({
     required String token,
@@ -232,6 +273,7 @@ class ApiService {
         final responseData = json.decode(response.body);
         return CreateOrderHeadApiResModel.fromJson(responseData);
       }
+
       return null;
     } catch (e) {
       if (kDebugMode) {
@@ -404,6 +446,7 @@ class ApiService {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }
+
       return null;
     } catch (e) {
       if (kDebugMode) {
@@ -457,8 +500,9 @@ class ApiService {
           debugPrint('Failed to fetch tables: ${response.statusCode}');
           debugPrint('Error response: ${response.body}');
         }
-        return null;
       }
+
+      return null;
     } catch (e, stackTrace) {
       if (kDebugMode) {
         debugPrint('getTablesByOutlet error: $e');
@@ -466,7 +510,6 @@ class ApiService {
       }
       return null;
     }
-    return null;
   }
 
   /// Alternative method for getting tables (raw response)
@@ -903,7 +946,6 @@ class ApiService {
 
     try {
       dynamic response;
-
       // Use token-based request if token is provided, otherwise use the original method
       if (token != null) {
         final httpResponse = await http.post(
@@ -916,7 +958,6 @@ class ApiService {
           },
           body: json.encode(body),
         );
-
         if (httpResponse.statusCode == 200) {
           response = json.decode(httpResponse.body);
         }
