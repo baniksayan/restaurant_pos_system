@@ -7,10 +7,7 @@ import '../../../../view_models/providers/animated_cart_provider.dart';
 class EditItemDialog extends StatefulWidget {
   final CartItem item;
 
-  const EditItemDialog({
-    super.key,
-    required this.item,
-  });
+  const EditItemDialog({super.key, required this.item});
 
   @override
   State<EditItemDialog> createState() => _EditItemDialogState();
@@ -22,7 +19,9 @@ class _EditItemDialogState extends State<EditItemDialog> {
   @override
   void initState() {
     super.initState();
-    _notesController = TextEditingController(text: widget.item.specialNotes ?? '');
+    _notesController = TextEditingController(
+      text: widget.item.specialNotes ?? '',
+    );
   }
 
   @override
@@ -33,8 +32,10 @@ class _EditItemDialogState extends State<EditItemDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final cartProvider = Provider.of<AnimatedCartProvider>(context, listen: false);
-
+    final cartProvider = Provider.of<AnimatedCartProvider>(
+      context,
+      listen: false,
+    );
     return Dialog(
       child: Container(
         constraints: BoxConstraints(
@@ -78,10 +79,7 @@ class _EditItemDialogState extends State<EditItemDialog> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.restaurant,
-                            color: Colors.orange,
-                          ),
+                          const Icon(Icons.restaurant, color: Colors.orange),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -123,12 +121,12 @@ class _EditItemDialogState extends State<EditItemDialog> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _showRemoveConfirmation(context, cartProvider),
+                    onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
+                      foregroundColor: Colors.grey[600],
+                      side: BorderSide(color: Colors.grey[300]!),
                     ),
-                    child: const Text('Remove'),
+                    child: const Text('Cancel'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -151,52 +149,17 @@ class _EditItemDialogState extends State<EditItemDialog> {
     );
   }
 
-  void _saveChanges(BuildContext context, AnimatedCartProvider cartProvider) async {
+  void _saveChanges(
+    BuildContext context,
+    AnimatedCartProvider cartProvider,
+  ) async {
     await HapticHelper.triggerFeedback();
-    cartProvider.updateItemNotes(
-      widget.item.id,
-      _notesController.text.trim(),
-    );
+    cartProvider.updateItemNotes(widget.item.id, _notesController.text.trim());
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${widget.item.name} updated!'),
         backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  void _showRemoveConfirmation(BuildContext context, AnimatedCartProvider cartProvider) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove Item'),
-        content: Text('Remove ${widget.item.name} from cart?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              await HapticHelper.triggerFeedback();
-              cartProvider.removeItem(widget.item.id);
-              Navigator.pop(context); // Close confirmation
-              Navigator.pop(context); // Close edit dialog
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${widget.item.name} removed from cart'),
-                  backgroundColor: Colors.orange,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text(
-              'Remove',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
       ),
     );
   }
