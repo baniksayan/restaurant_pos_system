@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:restaurant_pos_system/presentation/views/orders/orders_management_view.dart';
 
 import '../../../core/themes/app_colors.dart';
 import '../../../presentation/view_models/providers/dashboard_provider.dart';
@@ -49,6 +50,8 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                     _buildTableStatusFilters(), // Second: Table Status
                     const Divider(thickness: 1, height: 32),
                     _buildProfileSection(), // Third: Profile
+                    const Divider(thickness: 1, height: 32),
+                    _buildOrdersSection(), // NEW: Orders Management
                     const Divider(thickness: 1, height: 32),
                     // _buildSignOutSection(), // Fourth: Sign Out
                   ],
@@ -143,7 +146,10 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
   }
 
   // Helper method to get available locations that have tables
-  List _getAvailableLocations(List allLocations, List tables) {
+  List<LocationSection> _getAvailableLocations(
+    List<LocationSection> allLocations,
+    List tables,
+  ) {
     return allLocations.where((location) {
       return tables.any((table) => table.location == location.name);
     }).toList();
@@ -443,6 +449,50 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
     );
   }
 
+  Widget _buildOrdersSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(
+            Icons.receipt_long,
+            color: AppColors.primary,
+            size: 18,
+          ),
+        ),
+        title: const Text(
+          'Orders Management',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+        subtitle: const Text(
+          'View all orders',
+          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
+        onTap: () {
+          Navigator.pop(context); // Close drawer
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const OrdersManagementView(),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildSignOutSection() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -457,11 +507,9 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
           ),
           child: const Icon(Icons.logout, color: Colors.red, size: 18),
         ),
-        
       ),
     );
   }
-
 
   Future<void> _performLogout() async {
     try {
@@ -486,8 +534,6 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
       final authProvider = context.read<AuthProvider>();
       await authProvider.logout(); // Clear tokens, user data, etc.
 
-   
-
       // Small delay for UX
       await Future.delayed(const Duration(milliseconds: 500));
 
@@ -505,7 +551,6 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
       if (mounted) {
         // Close loading dialog on error
         Navigator.of(context, rootNavigator: true).pop();
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Sign out failed: ${e.toString()}'),
