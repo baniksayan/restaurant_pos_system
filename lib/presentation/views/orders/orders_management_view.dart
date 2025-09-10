@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/themes/app_colors.dart';
 
 import '../../../data/models/order_management_model.dart';
+import '../../view_models/providers/orders_management_provider.dart';
+import 'package:provider/provider.dart';
 
 import '../../../shared/widgets/animations/blinking_widget.dart';
 
@@ -21,7 +23,7 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
     with TickerProviderStateMixin {
   late TabController _tabController;
   List<OrderItem> allOrders = [];
-  bool isLoading = true;
+  // local loading handled by provider
 
   // Variables for blinking functionality
   bool _hasNewChannelPartnerOrders = true; // Set based on your logic
@@ -31,7 +33,13 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _loadOrders();
+    // Fetch real orders
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<OrdersManagementProvider>(
+        context,
+        listen: false,
+      ).fetchAllOrders();
+    });
   }
 
   @override
@@ -41,26 +49,13 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
   }
 
   Future<void> _loadOrders() async {
-    setState(() => isLoading = true);
-    // Simulate loading - replace with your actual API call
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() {
-      allOrders = _getMockOrders();
-      isLoading = false;
-    });
+    await Provider.of<OrdersManagementProvider>(
+      context,
+      listen: false,
+    ).fetchAllOrders();
   }
 
-  List<OrderItem> get tableOrders =>
-      allOrders.where((o) => o.orderType == 'Table Orders').toList();
-
-  List<OrderItem> get phoneOrders =>
-      allOrders.where((o) => o.orderType == 'Phone Orders').toList();
-
-  List<OrderItem> get takeawayOrders =>
-      allOrders.where((o) => o.orderType == 'Takeaway').toList();
-
-  List<OrderItem> get channelPartnerOrders =>
-      allOrders.where((o) => o.orderType == 'Channel Partner').toList();
+  // Lists are provided by OrdersManagementProvider
 
   @override
   Widget build(BuildContext context) {
@@ -142,38 +137,43 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
           ],
         ),
       ),
-      body:
-          isLoading
-              ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                ),
-              )
-              : TabBarView(
-                controller: _tabController,
-                children: [
-                  OrderTabView(
-                    orders: tableOrders,
-                    orderType: 'Table Orders',
-                    onOrderTap: _showOrderDetail,
-                  ),
-                  OrderTabView(
-                    orders: phoneOrders,
-                    orderType: 'Phone Orders',
-                    onOrderTap: _showOrderDetail,
-                  ),
-                  OrderTabView(
-                    orders: takeawayOrders,
-                    orderType: 'Takeaway',
-                    onOrderTap: _showOrderDetail,
-                  ),
-                  OrderTabView(
-                    orders: channelPartnerOrders,
-                    orderType: 'Channel Partner',
-                    onOrderTap: _showOrderDetail,
-                  ),
-                ],
+      body: Consumer<OrdersManagementProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoading) {
+            return Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
               ),
+            );
+          }
+
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              OrderTabView(
+                orders: provider.tableOrders,
+                orderType: 'Table Orders',
+                onOrderTap: _showOrderDetail,
+              ),
+              OrderTabView(
+                orders: provider.phoneOrders,
+                orderType: 'Phone Orders',
+                onOrderTap: _showOrderDetail,
+              ),
+              OrderTabView(
+                orders: provider.takeawayOrders,
+                orderType: 'Takeaway',
+                onOrderTap: _showOrderDetail,
+              ),
+              OrderTabView(
+                orders: const [], // Channel handled later
+                orderType: 'Channel Partner',
+                onOrderTap: _showOrderDetail,
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -185,196 +185,6 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
   }
 
   List<OrderItem> _getMockOrders() {
-    return [
-      OrderItem(
-        orderId: '12345',
-        customerName: 'Savan Banik',
-        phoneNumber: '+91 87684 12832',
-        orderType: 'Phone Orders',
-        status: OrderStatusType.pending,
-        totalAmount: 25.50,
-        orderTime: DateTime.now(),
-        items: const [
-          OrderItemDetail(
-            productId: '1',
-            productName: 'Chicken Butter Masala',
-            quantity: 1,
-            price: 25.50,
-            imageUrl:
-                'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400',
-          ),
-        ],
-      ),
-      OrderItem(
-        orderId: '12346',
-        customerName: 'Kawshik Roy',
-        phoneNumber: '+91 76795 15130',
-        orderType: 'Phone Orders',
-        status: OrderStatusType.accepted,
-        totalAmount: 32.75,
-        orderTime: DateTime.now(),
-        items: const [
-          OrderItemDetail(
-            productId: '2',
-            productName: 'Biryani Special',
-            quantity: 1,
-            price: 32.75,
-            imageUrl:
-                'https://images.unsplash.com/photo-1563379091339-03246963d25a?w=400',
-          ),
-        ],
-      ),
-      OrderItem(
-        orderId: '12347',
-        customerName: 'Pikan Das',
-        orderType: 'Takeaway',
-        status: OrderStatusType.ready,
-        totalAmount: 18.99,
-        orderTime: DateTime.now(),
-        items: const [
-          OrderItemDetail(
-            productId: '3',
-            productName: 'Pancakes',
-            quantity: 2,
-            price: 18.99,
-            imageUrl:
-                'https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=400',
-          ),
-        ],
-      ),
-      OrderItem(
-        orderId: '67890',
-        customerName: 'Table Service',
-        tableNumber: '3',
-        waiterName: 'Pikan',
-        orderType: 'Table Orders',
-        status: OrderStatusType.preparing,
-        totalAmount: 35.00,
-        orderTime: DateTime.now(),
-        items: const [
-          OrderItemDetail(
-            productId: '4',
-            productName: 'Mixed Salad',
-            quantity: 1,
-            price: 35.00,
-            imageUrl:
-                'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
-          ),
-        ],
-      ),
-      // Channel Partner Orders with Platform Names
-      OrderItem(
-        orderId: '123456',
-        customerName: 'Swiggy Order',
-        orderType: 'Channel Partner',
-        platformName: 'Swiggy', // Added platform name
-        status: OrderStatusType.pending,
-        totalAmount: 25.00,
-        orderTime: DateTime.now().subtract(const Duration(minutes: 5)),
-        expectedDeliveryTime: null, // Will be set when accepted
-        items: const [
-          OrderItemDetail(
-            productId: '5',
-            productName: 'Burger Combo',
-            quantity: 1,
-            price: 25.00,
-            imageUrl:
-                'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400',
-          ),
-        ],
-      ),
-      OrderItem(
-        orderId: '123457',
-        customerName: 'Zomato Order',
-        orderType: 'Channel Partner',
-        platformName: 'Zomato', // Added platform name
-        status: OrderStatusType.accepted,
-        totalAmount: 42.50,
-        orderTime: DateTime.now().subtract(const Duration(minutes: 8)),
-        expectedDeliveryTime: DateTime.now().add(const Duration(minutes: 25)),
-        items: const [
-          OrderItemDetail(
-            productId: '6',
-            productName: 'Pizza Margherita',
-            quantity: 1,
-            price: 32.50,
-            imageUrl:
-                'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400',
-          ),
-          OrderItemDetail(
-            productId: '7',
-            productName: 'Garlic Bread',
-            quantity: 1,
-            price: 10.00,
-            imageUrl:
-                'https://images.unsplash.com/photo-1549007953-2f2dc0b24019?w=400',
-          ),
-        ],
-      ),
-      OrderItem(
-        orderId: '123458',
-        customerName: 'Uber Eats Order',
-        orderType: 'Channel Partner',
-        platformName: 'Uber Eats', // Added platform name
-        status: OrderStatusType.preparing,
-        totalAmount: 28.75,
-        orderTime: DateTime.now().subtract(const Duration(minutes: 12)),
-        expectedDeliveryTime: DateTime.now().add(const Duration(minutes: 18)),
-        items: const [
-          OrderItemDetail(
-            productId: '8',
-            productName: 'Chicken Tikka',
-            quantity: 1,
-            price: 28.75,
-            imageUrl:
-                'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=400',
-          ),
-        ],
-      ),
-      OrderItem(
-        orderId: '123459',
-        customerName: 'Foodpanda Order',
-        orderType: 'Channel Partner',
-        platformName: 'Foodpanda', // Added platform name
-        status: OrderStatusType.ready,
-        totalAmount: 35.25,
-        orderTime: DateTime.now().subtract(const Duration(minutes: 20)),
-        expectedDeliveryTime: DateTime.now().add(const Duration(minutes: 5)),
-        items: const [
-          OrderItemDetail(
-            productId: '9',
-            productName: 'Mutton Curry',
-            quantity: 1,
-            price: 35.25,
-            imageUrl:
-                'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400',
-          ),
-        ],
-      ),
-      OrderItem(
-        orderId: '123460',
-        customerName: 'Dunzo Order',
-        orderType: 'Channel Partner',
-        platformName: 'Dunzo', // Added platform name
-        status: OrderStatusType.delivered,
-        totalAmount: 22.00,
-        orderTime: DateTime.now().subtract(
-          const Duration(hours: 1, minutes: 30),
-        ),
-        expectedDeliveryTime: DateTime.now().subtract(
-          const Duration(minutes: 45),
-        ),
-        items: const [
-          OrderItemDetail(
-            productId: '10',
-            productName: 'Samosa Chaat',
-            quantity: 2,
-            price: 22.00,
-            imageUrl:
-                'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400',
-          ),
-        ],
-      ),
-    ];
+    return [];
   }
 }

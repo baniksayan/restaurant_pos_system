@@ -15,6 +15,7 @@ import 'core/themes/app_theme.dart';
 import 'data/local/hive_service.dart';
 import 'presentation/view_models/providers/auth_provider.dart';
 import 'presentation/view_models/providers/order_provider.dart';
+import 'presentation/view_models/providers/orders_management_provider.dart';
 import 'presentation/view_models/providers/menu_provider.dart';
 import 'presentation/view_models/providers/table_provider.dart';
 import 'presentation/view_models/providers/cart_provider.dart';
@@ -54,6 +55,7 @@ class RestaurantPOSApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
+        ChangeNotifierProvider(create: (_) => OrdersManagementProvider()),
         ChangeNotifierProvider(create: (_) => MenuProvider()),
         ChangeNotifierProvider(create: (_) => TableProvider()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),

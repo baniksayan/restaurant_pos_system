@@ -337,6 +337,52 @@ class ApiService {
     }
   }
 
+  /// Get running orders for a specific channel
+  static Future<Map<String, dynamic>?> getRunningTable({
+    required String token,
+    required int outletId,
+    required String orderChannelId,
+    bool isDesc = true,
+  }) async {
+    final isConnected = await checkInternetAndGoForward();
+    if (!isConnected) return null;
+
+    try {
+      final Map<String, dynamic> requestBody = {
+        'searchString': '',
+        'outletId': outletId,
+        'orderChannelId': orderChannelId,
+        'isDesc': isDesc,
+      };
+
+      if (kDebugMode) {
+        print('[API] getRunningTable request: $requestBody');
+      }
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}Order/getRunningTable'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(requestBody),
+      );
+
+      if (kDebugMode) {
+        print('[API] getRunningTable status: ${response.statusCode}');
+        print('[API] getRunningTable body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) print('[API] getRunningTable error: $e');
+      return null;
+    }
+  }
+
   /// Get Order Details by ID - Enhanced with proper model
   static Future<OrderDetailApiResponseModel?> getOrderDetailById({
     required String token,
