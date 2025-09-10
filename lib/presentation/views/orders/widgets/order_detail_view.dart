@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:restaurant_pos_system/presentation/views/billing/billing_page.dart';
+import 'package:restaurant_pos_system/presentation/views/payment/payment_page.dart';
 import '../../../../core/themes/app_colors.dart';
 import '../../../../data/models/order_management_model.dart';
+import '../../../../services/pdf_service.dart';
 
 class OrderDetailView extends StatefulWidget {
   final OrderItem order;
@@ -13,76 +14,40 @@ class OrderDetailView extends StatefulWidget {
   State<OrderDetailView> createState() => _OrderDetailViewState();
 }
 
-class _OrderDetailViewState extends State<OrderDetailView>
-    with TickerProviderStateMixin {
-  late AnimationController _progressController;
-  late Animation<double> _progressAnimation;
-  Timer? _progressTimer;
+class _OrderDetailViewState extends State<OrderDetailView> {
+  // Static API data as per your requirements
+  final Map<String, dynamic> _apiData = {
+    "orderNo": "OD/MA/080925/0023",
+    "fullOrderStatus": "Order Placed",
+    "channelName": "Table 1",
+    "waiterName": "Kaushik Roy",
+    "productName": "Chicken Butter Masala",
+    "createdOn": "09/09/2025, 12:27:13",
+    "statusSystemName": "KOT_GENERATED",
+    "status": "KOT Generated",
+    "instruction": "",
+    "kotNo": "KT/MA/090925/0011",
+    "itemPrice": 500.00,
+    "totPrice": 1000.00,
+    "gstAmount": 80.00,
+    "serviceCharge": 50.00,
+    "discount": 0.0, // Can be 0 - won't show if 0
+    "grandTotal": 1130.00,
+  };
 
   bool _isBilled = false;
   bool _isKOTGenerated = true;
   String _paymentMode = 'Cash';
-  String _billNumber = 'BILL001234';
 
   @override
   void initState() {
     super.initState();
-    _setupProgressAnimation();
-    _startProgressSimulation();
-
-    // Set billing status based on order status
     _isBilled =
         widget.order.status == OrderStatusType.completed ||
         widget.order.status == OrderStatusType.delivered;
-  }
-
-  @override
-  void dispose() {
-    _progressController.dispose();
-    _progressTimer?.cancel();
-    super.dispose();
-  }
-
-  void _setupProgressAnimation() {
-    _progressController = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
-    _progressAnimation = Tween<double>(
-      begin: 0.0,
-      end: _getProgressValue(),
-    ).animate(
-      CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
-    );
-    _progressController.forward();
-  }
-
-  void _startProgressSimulation() {
-    _progressTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (mounted && widget.order.status == OrderStatusType.preparing) {
-        setState(() {
-          // Simulate progress updates
-        });
-      }
-    });
-  }
-
-  double _getProgressValue() {
-    switch (widget.order.status) {
-      case OrderStatusType.pending:
-        return 0.1;
-      case OrderStatusType.accepted:
-        return 0.3;
-      case OrderStatusType.preparing:
-        return 0.6;
-      case OrderStatusType.ready:
-        return 0.9;
-      case OrderStatusType.delivered:
-      case OrderStatusType.completed:
-        return 1.0;
-      default:
-        return 0.0;
-    }
+    // Set KOT status based on order status
+    _isKOTGenerated =
+        widget.order.status.index >= OrderStatusType.accepted.index;
   }
 
   @override
@@ -91,228 +56,75 @@ class _OrderDetailViewState extends State<OrderDetailView>
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
-        elevation: 2,
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textOnDark),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Order #${widget.order.orderId}',
-          style: const TextStyle(
+        title: const Text(
+          'Order Details',
+          style: TextStyle(
             color: AppColors.textOnDark,
-            fontSize: 18,
+            fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
         ),
         centerTitle: true,
       ),
-      body: Row(
-        children: [
-          // Status Sidebar
-          _buildStatusSidebar(),
-
-          // Main Content
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildOrderHeader(),
-                  const SizedBox(height: 20),
-                  _buildAnimatedProgress(),
-                  const SizedBox(height: 20),
-                  _buildBillingSection(),
-                  const SizedBox(height: 20),
-                  _buildPriceBreakdown(),
-                  const SizedBox(height: 20),
-                  _buildOrderItems(),
-                  const SizedBox(height: 20),
-                  _buildCustomerInfo(),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusSidebar() {
-    return Container(
-      width: 120,
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 4,
-            offset: const Offset(2, 0),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            const Text(
-              'Status',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Order Status
-            _buildStatusBadge(
-              'Order',
-              widget.order.statusDisplayText,
-              _getStatusColor(),
-            ),
-            const SizedBox(height: 12),
-
-            // KOT Status
-            _buildStatusBadge(
-              'KOT',
-              _isKOTGenerated ? 'Generated' : 'Pending',
-              _isKOTGenerated ? AppColors.success : AppColors.warning,
-            ),
-            const SizedBox(height: 12),
-
-            // Billing Status
-            GestureDetector(
-              onTap: _isBilled ? null : () => _navigateToBilling(context),
-              child: _buildStatusBadge(
-                'Billing',
-                _isBilled ? 'Paid' : 'Unpaid',
-                _isBilled ? AppColors.success : AppColors.error,
-              ),
-            ),
-
-            if (_isBilled) ...[
-              const SizedBox(height: 12),
-              _buildStatusBadge('Payment', _paymentMode, AppColors.info),
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildOrderHeader(),
+              const SizedBox(height: 20),
+              _buildBillingSection(),
+              const SizedBox(height: 20),
+              _buildPriceBreakdown(),
+              const SizedBox(height: 20),
+              _buildOrderItems(),
+              const SizedBox(height: 20),
+              _buildCustomerInfo(),
             ],
-
-            const Spacer(),
-
-            // Table Info
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                children: [
-                  const Icon(
-                    Icons.table_restaurant,
-                    color: AppColors.primary,
-                    size: 24,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.order.tableNumber != null
-                        ? 'Table ${widget.order.tableNumber}'
-                        : 'No Table',
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildStatusBadge(String label, String status, Color color) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            status,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
+  Future<void> _onRefresh() async {
+    // Simulate refresh delay
+    await Future.delayed(const Duration(seconds: 1));
+    setState(() {
+      // Refresh order data here
+    });
   }
 
   Widget _buildOrderHeader() {
     return Card(
       color: AppColors.cardBackground,
-      elevation: 2,
+      elevation: 4,
       shadowColor: AppColors.cardShadow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Customer Name and Status
             Row(
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.order.customerName,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildInfoRow('Order Number', '#${widget.order.orderId}'),
-                      _buildInfoRow(
-                        'Bill Number',
-                        _isBilled ? _billNumber : 'Not Generated',
-                      ),
-                      _buildInfoRow(
-                        'Table',
-                        widget.order.tableNumber != null
-                            ? 'Table ${widget.order.tableNumber}'
-                            : 'No Table',
-                      ),
-                      _buildInfoRow(
-                        'Waiter',
-                        widget.order.waiterName ?? 'System',
-                      ),
-                      _buildInfoRow(
-                        'Order Time',
-                        _formatDateTime(widget.order.orderTime),
-                      ),
-                    ],
+                  child: Text(
+                    widget.order.customerName,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 Container(
@@ -321,107 +133,86 @@ class _OrderDetailViewState extends State<OrderDetailView>
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: _getStatusColor().withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    color: _getStatusColor().withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: _getStatusColor().withOpacity(0.3),
+                      color: _getStatusColor().withOpacity(0.4),
                     ),
                   ),
                   child: Text(
-                    widget.order.statusDisplayText,
+                    _apiData['fullOrderStatus'],
                     style: TextStyle(
                       color: _getStatusColor(),
-                      fontSize: 14,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
+            const SizedBox(height: 20),
 
-  Widget _buildAnimatedProgress() {
-    return Card(
-      color: AppColors.cardBackground,
-      elevation: 2,
-      shadowColor: AppColors.cardShadow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.timeline, color: AppColors.primary, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  'Order Progress',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+            // Order Information - Top section instead of sidebar
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildHeaderInfo(
+                          'Order ID',
+                          _apiData['orderNo'],
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildHeaderInfo(
+                          'KOT Status',
+                          _isKOTGenerated ? 'Generated' : 'Pending',
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Animated Progress Bar
-            AnimatedBuilder(
-              animation: _progressAnimation,
-              builder: (context, child) {
-                return Column(
-                  children: [
-                    LinearProgressIndicator(
-                      value: _progressAnimation.value,
-                      backgroundColor: AppColors.textHint.withOpacity(0.3),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        _getStatusColor(),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildHeaderInfo(
+                          'Billing Status',
+                          _isBilled ? 'Paid' : 'Unpaid',
+                        ),
                       ),
-                      minHeight: 6,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${(_progressAnimation.value * 100).toInt()}% Complete',
-                      style: TextStyle(
-                        color: _getStatusColor(),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      if (widget.order.orderType == 'Table Orders')
+                        Expanded(
+                          child: _buildHeaderInfo(
+                            'Table',
+                            _apiData['channelName'],
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (widget.order.orderType == 'Table Orders') ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildHeaderInfo(
+                            'Waiter',
+                            _apiData['waiterName'],
+                          ),
+                        ),
+                        Expanded(
+                          child: _buildHeaderInfo('KOT No', _apiData['kotNo']),
+                        ),
+                      ],
                     ),
                   ],
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Progress Steps
-            _buildProgressStep('Order Received', true, AppColors.success),
-            _buildProgressStep(
-              'Order Accepted',
-              widget.order.status.index >= OrderStatusType.accepted.index,
-              AppColors.info,
-            ),
-            _buildProgressStep(
-              'Food Preparing',
-              widget.order.status.index >= OrderStatusType.preparing.index,
-              AppColors.warning,
-            ),
-            _buildProgressStep(
-              'Ready to Serve',
-              widget.order.status.index >= OrderStatusType.ready.index,
-              AppColors.success,
-            ),
-            _buildProgressStep(
-              'Completed',
-              widget.order.status == OrderStatusType.completed,
-              AppColors.success,
-              isLast: true,
+                ],
+              ),
             ),
           ],
         ),
@@ -429,330 +220,130 @@ class _OrderDetailViewState extends State<OrderDetailView>
     );
   }
 
-  Widget _buildProgressStep(
-    String title,
-    bool isCompleted,
-    Color color, {
-    bool isLast = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: isCompleted ? color : Colors.transparent,
-              border: Border.all(color: color, width: 2),
-              shape: BoxShape.circle,
-            ),
-            child:
-                isCompleted
-                    ? const Icon(Icons.check, color: Colors.white, size: 10)
-                    : null,
+  Widget _buildHeaderInfo(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
           ),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: TextStyle(
-              color:
-                  isCompleted ? AppColors.textPrimary : AppColors.textSecondary,
-              fontSize: 14,
-              fontWeight: isCompleted ? FontWeight.w600 : FontWeight.normal,
-            ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
           ),
-          if (isCompleted && !isLast) ...[
-            const Spacer(),
-            const Icon(Icons.check_circle, color: AppColors.success, size: 16),
-          ],
-        ],
-      ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 
   Widget _buildBillingSection() {
     return Card(
       color: AppColors.cardBackground,
-      elevation: 2,
+      elevation: 4,
       shadowColor: AppColors.cardShadow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(Icons.receipt, color: AppColors.primary, size: 20),
-                const SizedBox(width: 8),
-                const Text(
-                  'Billing Information',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.receipt_long,
+                    color: AppColors.primary,
+                    size: 20,
                   ),
                 ),
-                const Spacer(),
-                if (!_isBilled)
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Billing Information',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+                // Conditional buttons based on status
+                if (!_isKOTGenerated)
+                  const Text(
+                    'KOT Required First',
+                    style: TextStyle(
+                      color: AppColors.warning,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                else if (_isKOTGenerated && !_isBilled)
                   ElevatedButton.icon(
-                    onPressed: () => _navigateToBilling(context),
+                    onPressed: () => _navigateToPayment(context),
                     icon: const Icon(Icons.payment, size: 16),
-                    label: const Text('Generate Bill'),
+                    label: const Text('Go to Payment'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: AppColors.success,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
-                        vertical: 8,
+                        vertical: 6,
                       ),
-                      textStyle: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildInfoRow(
-                    'Bill Status',
-                    _isBilled ? 'Generated' : 'Pending',
-                  ),
-                ),
-                Expanded(
-                  child: _buildInfoRow(
-                    'Payment Status',
-                    _isBilled ? 'Paid' : 'Unpaid',
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildInfoRow(
-                    'Payment Mode',
-                    _isBilled ? _paymentMode : 'Not Selected',
-                  ),
-                ),
-                Expanded(
-                  child: _buildInfoRow(
-                    'KOT Generated',
-                    _isKOTGenerated ? 'Yes' : 'No',
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPriceBreakdown() {
-    // Calculate breakdown
-    double itemTotal = widget.order.items.fold(
-      0.0,
-      (sum, item) => sum + (item.price * item.quantity),
-    );
-    double gstRate = 0.05; // 5% GST
-    double gstAmount = itemTotal * gstRate;
-    double discount = 25.0; // Static discount
-    double finalTotal = itemTotal + gstAmount - discount;
-
-    return Card(
-      color: AppColors.cardBackground,
-      elevation: 2,
-      shadowColor: AppColors.cardShadow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.calculate, color: AppColors.primary, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  'Price Breakdown',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildPriceRow('Item Total', itemTotal),
-            _buildPriceRow('GST (5%)', gstAmount),
-            _buildPriceRow('Service Charge', 20.0),
-            _buildPriceRow('Discount', -discount, isDiscount: true),
-            const Divider(),
-            _buildPriceRow('Grand Total', finalTotal, isFinal: true),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPriceRow(
-    String label,
-    double amount, {
-    bool isDiscount = false,
-    bool isFinal = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color:
-                    isFinal ? AppColors.textPrimary : AppColors.textSecondary,
-                fontSize: isFinal ? 16 : 14,
-                fontWeight: isFinal ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ),
-          Text(
-            '${isDiscount ? '-' : ''}₹${amount.abs().toStringAsFixed(2)}',
-            style: TextStyle(
-              color:
-                  isDiscount
-                      ? AppColors.success
-                      : isFinal
-                      ? AppColors.primary
-                      : AppColors.textPrimary,
-              fontSize: isFinal ? 16 : 14,
-              fontWeight: isFinal ? FontWeight.bold : FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOrderItems() {
-    return Card(
-      color: AppColors.cardBackground,
-      elevation: 2,
-      shadowColor: AppColors.cardShadow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.restaurant_menu, color: AppColors.primary, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  'Order Items',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ...widget.order.items.map(
-              (item) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.productName,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            '${item.quantity} × ₹${item.price.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '₹${(item.quantity * item.price).toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          '+ 5% GST',
-                          style: const TextStyle(
-                            color: AppColors.textHint,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                  )
+                else if (_isBilled)
+                  ElevatedButton.icon(
+                    onPressed: () => _regenerateBill(context),
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('Regenerate Bill'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.info,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCustomerInfo() {
-    return Card(
-      color: AppColors.cardBackground,
-      elevation: 2,
-      shadowColor: AppColors.cardShadow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.person, color: AppColors.primary, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  'Customer Information',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
                   ),
-                ),
               ],
             ),
-            const SizedBox(height: 16),
-            _buildInfoRow('Customer Name', widget.order.customerName),
-            if (widget.order.phoneNumber != null)
-              _buildInfoRow('Phone Number', widget.order.phoneNumber!),
-            _buildInfoRow('Order Type', widget.order.orderType),
-            if (widget.order.platformName != null)
-              _buildInfoRow('Platform', widget.order.platformName!),
+            const SizedBox(height: 20),
+
+            // Billing details in a more organized way
+            Column(
+              children: [
+                _buildInfoRow(
+                  'Bill Number',
+                  _isBilled ? 'BILL001234' : 'Not Generated',
+                ),
+                _buildInfoRow('Payment Status', _isBilled ? 'Paid' : 'Unpaid'),
+                if (_isBilled) _buildInfoRow('Payment Mode', _paymentMode),
+                _buildInfoRow('Created On', _apiData['createdOn']),
+              ],
+            ),
           ],
         ),
       ),
@@ -767,7 +358,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
           SizedBox(
             width: 120,
             child: Text(
-              label,
+              '$label:',
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
@@ -775,7 +366,6 @@ class _OrderDetailViewState extends State<OrderDetailView>
               ),
             ),
           ),
-          const Text(' : ', style: TextStyle(color: AppColors.textSecondary)),
           Expanded(
             child: Text(
               value,
@@ -787,6 +377,293 @@ class _OrderDetailViewState extends State<OrderDetailView>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPriceBreakdown() {
+    double discount = _apiData['discount'];
+    bool hasDiscount = discount > 0;
+
+    return Card(
+      color: AppColors.cardBackground,
+      elevation: 4,
+      shadowColor: AppColors.cardShadow,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.calculate,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Price Breakdown',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            _buildPriceRow('Item Price', _apiData['itemPrice']),
+            _buildPriceRow('GST (8%)', _apiData['gstAmount']),
+            _buildPriceRow('Service Charge', _apiData['serviceCharge']),
+
+            // Only show discount if it exists
+            if (hasDiscount)
+              _buildPriceRow('Discount', discount, isDiscount: true),
+
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Divider(),
+            ),
+
+            _buildPriceRow(
+              'Grand Total',
+              _apiData['grandTotal'],
+              isFinal: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPriceRow(
+    String label,
+    double amount, {
+    bool isDiscount = false,
+    bool isFinal = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color:
+                    isFinal ? AppColors.textPrimary : AppColors.textSecondary,
+                fontSize: isFinal ? 18 : 16,
+                fontWeight: isFinal ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ),
+          Text(
+            '${isDiscount ? '-' : ''}₹${amount.abs().toStringAsFixed(2)}',
+            style: TextStyle(
+              color:
+                  isDiscount
+                      ? AppColors.success
+                      : isFinal
+                      ? AppColors.primary
+                      : AppColors.textPrimary,
+              fontSize: isFinal ? 18 : 16,
+              fontWeight: isFinal ? FontWeight.bold : FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderItems() {
+    return Card(
+      color: AppColors.cardBackground,
+      elevation: 4,
+      shadowColor: AppColors.cardShadow,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.restaurant_menu,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Order Items',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Static item from API data
+            _buildItemRow(_apiData['productName'], 3, 80.0, 240.0),
+
+            // Dynamic items from order
+            ...widget.order.items.map(
+              (item) => _buildItemRow(
+                item.productName,
+                item.quantity,
+                item.price,
+                item.quantity * item.price,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemRow(String name, int quantity, double price, double total) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.textHint.withOpacity(0.2)),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              flex: 3,
+              child: Text(
+                name,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: Text(
+                '$quantity × ₹${price.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Use a fixed width for price to avoid wrapping
+            SizedBox(
+              width: 80,
+              child: Text(
+                '₹${total.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.right,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomerInfo() {
+    return Card(
+      color: AppColors.cardBackground,
+      elevation: 4,
+      shadowColor: AppColors.cardShadow,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.person,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Customer Information',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Different info based on order type
+            Column(
+              children: [
+                _buildInfoRow('Customer Name', widget.order.customerName),
+
+                // Phone number for all types
+                if (widget.order.phoneNumber != null)
+                  _buildInfoRow('Phone Number', widget.order.phoneNumber!),
+
+                // Order type info
+                _buildInfoRow('Order Type', widget.order.orderType),
+
+                // Platform name for channel partners
+                if (widget.order.platformName != null)
+                  _buildInfoRow('Platform', widget.order.platformName!),
+
+                // Instructions if any
+                if (_apiData['instruction'].isNotEmpty)
+                  _buildInfoRow('Instructions', _apiData['instruction']),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -810,34 +687,56 @@ class _OrderDetailViewState extends State<OrderDetailView>
     }
   }
 
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
-  }
-
-  void _navigateToBilling(BuildContext context) {
+  void _navigateToPayment(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder:
-            (context) => BillingPage(
+            (context) => PaymentPage(
               orderNumber: widget.order.orderId.toString(),
-              cartItems: widget.order.items,
-              onBillGenerated: () {
+              totalAmount: widget.order.totalAmount,
+              onPaymentCompleted: () {
                 setState(() {
                   _isBilled = true;
-                  // Optionally update _paymentMode if available from billing
+                  _paymentMode = 'Cash'; // This should come from payment page
                 });
-                Navigator.pop(context, true);
               },
             ),
       ),
-    ).then((result) {
-      if (result == true) {
-        setState(() {
-          _isBilled = true;
-          // Optionally update _paymentMode if available from billing
-        });
-      }
-    });
+    );
+  }
+
+  void _regenerateBill(BuildContext context) async {
+    try {
+      // Generate bill using PDFService
+      final billBytes = await PDFService.generateCustomerBill(
+        items: widget.order.items,
+        tableId: widget.order.tableNumber ?? '1',
+        tableName:
+            widget.order.tableNumber != null
+                ? 'Table ${widget.order.tableNumber}'
+                : 'Table 1',
+        orderNumber: widget.order.orderId.toString(),
+        orderTime: widget.order.orderTime,
+        subtotal: _apiData['itemPrice'],
+        gstAmount: _apiData['gstAmount'],
+        total: _apiData['grandTotal'],
+        specialNotes: _apiData['instruction'],
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bill regenerated successfully!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error regenerating bill: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 }
