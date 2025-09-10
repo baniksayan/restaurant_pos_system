@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/presentation/views/billing/billing_page.dart';
 import '../../../../core/themes/app_colors.dart';
 import '../../../../data/models/order_management_model.dart';
-import '../billing/billing_page.dart';
 
 class OrderDetailView extends StatefulWidget {
   final OrderItem order;
@@ -19,7 +18,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
   Timer? _progressTimer;
-  
+
   bool _isBilled = false;
   bool _isKOTGenerated = true;
   String _paymentMode = 'Cash';
@@ -30,10 +29,11 @@ class _OrderDetailViewState extends State<OrderDetailView>
     super.initState();
     _setupProgressAnimation();
     _startProgressSimulation();
-    
+
     // Set billing status based on order status
-    _isBilled = widget.order.status == OrderStatusType.completed ||
-               widget.order.status == OrderStatusType.delivered;
+    _isBilled =
+        widget.order.status == OrderStatusType.completed ||
+        widget.order.status == OrderStatusType.delivered;
   }
 
   @override
@@ -51,10 +51,9 @@ class _OrderDetailViewState extends State<OrderDetailView>
     _progressAnimation = Tween<double>(
       begin: 0.0,
       end: _getProgressValue(),
-    ).animate(CurvedAnimation(
-      parent: _progressController,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(
+      CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
+    );
     _progressController.forward();
   }
 
@@ -111,7 +110,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
         children: [
           // Status Sidebar
           _buildStatusSidebar(),
-          
+
           // Main Content
           Expanded(
             child: SingleChildScrollView(
@@ -165,7 +164,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
               ),
             ),
             const SizedBox(height: 20),
-            
+
             // Order Status
             _buildStatusBadge(
               'Order',
@@ -173,7 +172,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
               _getStatusColor(),
             ),
             const SizedBox(height: 12),
-            
+
             // KOT Status
             _buildStatusBadge(
               'KOT',
@@ -181,7 +180,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
               _isKOTGenerated ? AppColors.success : AppColors.warning,
             ),
             const SizedBox(height: 12),
-            
+
             // Billing Status
             GestureDetector(
               onTap: _isBilled ? null : () => _navigateToBilling(context),
@@ -191,18 +190,14 @@ class _OrderDetailViewState extends State<OrderDetailView>
                 _isBilled ? AppColors.success : AppColors.error,
               ),
             ),
-            
+
             if (_isBilled) ...[
               const SizedBox(height: 12),
-              _buildStatusBadge(
-                'Payment',
-                _paymentMode,
-                AppColors.info,
-              ),
+              _buildStatusBadge('Payment', _paymentMode, AppColors.info),
             ],
-            
+
             const Spacer(),
-            
+
             // Table Info
             Container(
               padding: const EdgeInsets.all(8),
@@ -219,7 +214,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    widget.order.tableNumber != null 
+                    widget.order.tableNumber != null
                         ? 'Table ${widget.order.tableNumber}'
                         : 'No Table',
                     style: const TextStyle(
@@ -299,21 +294,38 @@ class _OrderDetailViewState extends State<OrderDetailView>
                       ),
                       const SizedBox(height: 8),
                       _buildInfoRow('Order Number', '#${widget.order.orderId}'),
-                      _buildInfoRow('Bill Number', _isBilled ? _billNumber : 'Not Generated'),
-                      _buildInfoRow('Table', widget.order.tableNumber != null 
-                          ? 'Table ${widget.order.tableNumber}' 
-                          : 'No Table'),
-                      _buildInfoRow('Waiter', widget.order.waiterName ?? 'System'),
-                      _buildInfoRow('Order Time', _formatDateTime(widget.order.orderTime)),
+                      _buildInfoRow(
+                        'Bill Number',
+                        _isBilled ? _billNumber : 'Not Generated',
+                      ),
+                      _buildInfoRow(
+                        'Table',
+                        widget.order.tableNumber != null
+                            ? 'Table ${widget.order.tableNumber}'
+                            : 'No Table',
+                      ),
+                      _buildInfoRow(
+                        'Waiter',
+                        widget.order.waiterName ?? 'System',
+                      ),
+                      _buildInfoRow(
+                        'Order Time',
+                        _formatDateTime(widget.order.orderTime),
+                      ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: _getStatusColor().withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _getStatusColor().withOpacity(0.3)),
+                    border: Border.all(
+                      color: _getStatusColor().withOpacity(0.3),
+                    ),
                   ),
                   child: Text(
                     widget.order.statusDisplayText,
@@ -358,7 +370,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Animated Progress Bar
             AnimatedBuilder(
               animation: _progressAnimation,
@@ -368,7 +380,9 @@ class _OrderDetailViewState extends State<OrderDetailView>
                     LinearProgressIndicator(
                       value: _progressAnimation.value,
                       backgroundColor: AppColors.textHint.withOpacity(0.3),
-                      valueColor: AlwaysStoppedAnimation<Color>(_getStatusColor()),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        _getStatusColor(),
+                      ),
                       minHeight: 6,
                     ),
                     const SizedBox(height: 8),
@@ -385,28 +399,42 @@ class _OrderDetailViewState extends State<OrderDetailView>
               },
             ),
             const SizedBox(height: 16),
-            
+
             // Progress Steps
             _buildProgressStep('Order Received', true, AppColors.success),
-            _buildProgressStep('Order Accepted', 
-                widget.order.status.index >= OrderStatusType.accepted.index, 
-                AppColors.info),
-            _buildProgressStep('Food Preparing', 
-                widget.order.status.index >= OrderStatusType.preparing.index, 
-                AppColors.warning),
-            _buildProgressStep('Ready to Serve', 
-                widget.order.status.index >= OrderStatusType.ready.index, 
-                AppColors.success),
-            _buildProgressStep('Completed', 
-                widget.order.status == OrderStatusType.completed, 
-                AppColors.success, isLast: true),
+            _buildProgressStep(
+              'Order Accepted',
+              widget.order.status.index >= OrderStatusType.accepted.index,
+              AppColors.info,
+            ),
+            _buildProgressStep(
+              'Food Preparing',
+              widget.order.status.index >= OrderStatusType.preparing.index,
+              AppColors.warning,
+            ),
+            _buildProgressStep(
+              'Ready to Serve',
+              widget.order.status.index >= OrderStatusType.ready.index,
+              AppColors.success,
+            ),
+            _buildProgressStep(
+              'Completed',
+              widget.order.status == OrderStatusType.completed,
+              AppColors.success,
+              isLast: true,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProgressStep(String title, bool isCompleted, Color color, {bool isLast = false}) {
+  Widget _buildProgressStep(
+    String title,
+    bool isCompleted,
+    Color color, {
+    bool isLast = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -419,26 +447,24 @@ class _OrderDetailViewState extends State<OrderDetailView>
               border: Border.all(color: color, width: 2),
               shape: BoxShape.circle,
             ),
-            child: isCompleted
-                ? const Icon(Icons.check, color: Colors.white, size: 10)
-                : null,
+            child:
+                isCompleted
+                    ? const Icon(Icons.check, color: Colors.white, size: 10)
+                    : null,
           ),
           const SizedBox(width: 12),
           Text(
             title,
             style: TextStyle(
-              color: isCompleted ? AppColors.textPrimary : AppColors.textSecondary,
+              color:
+                  isCompleted ? AppColors.textPrimary : AppColors.textSecondary,
               fontSize: 14,
               fontWeight: isCompleted ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
           if (isCompleted && !isLast) ...[
             const Spacer(),
-            const Icon(
-              Icons.check_circle,
-              color: AppColors.success,
-              size: 16,
-            ),
+            const Icon(Icons.check_circle, color: AppColors.success, size: 16),
           ],
         ],
       ),
@@ -477,7 +503,10 @@ class _OrderDetailViewState extends State<OrderDetailView>
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       textStyle: const TextStyle(fontSize: 12),
                     ),
                   ),
@@ -486,14 +515,34 @@ class _OrderDetailViewState extends State<OrderDetailView>
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildInfoRow('Bill Status', _isBilled ? 'Generated' : 'Pending')),
-                Expanded(child: _buildInfoRow('Payment Status', _isBilled ? 'Paid' : 'Unpaid')),
+                Expanded(
+                  child: _buildInfoRow(
+                    'Bill Status',
+                    _isBilled ? 'Generated' : 'Pending',
+                  ),
+                ),
+                Expanded(
+                  child: _buildInfoRow(
+                    'Payment Status',
+                    _isBilled ? 'Paid' : 'Unpaid',
+                  ),
+                ),
               ],
             ),
             Row(
               children: [
-                Expanded(child: _buildInfoRow('Payment Mode', _isBilled ? _paymentMode : 'Not Selected')),
-                Expanded(child: _buildInfoRow('KOT Generated', _isKOTGenerated ? 'Yes' : 'No')),
+                Expanded(
+                  child: _buildInfoRow(
+                    'Payment Mode',
+                    _isBilled ? _paymentMode : 'Not Selected',
+                  ),
+                ),
+                Expanded(
+                  child: _buildInfoRow(
+                    'KOT Generated',
+                    _isKOTGenerated ? 'Yes' : 'No',
+                  ),
+                ),
               ],
             ),
           ],
@@ -504,7 +553,10 @@ class _OrderDetailViewState extends State<OrderDetailView>
 
   Widget _buildPriceBreakdown() {
     // Calculate breakdown
-    double itemTotal = widget.order.items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
+    double itemTotal = widget.order.items.fold(
+      0.0,
+      (sum, item) => sum + (item.price * item.quantity),
+    );
     double gstRate = 0.05; // 5% GST
     double gstAmount = itemTotal * gstRate;
     double discount = 25.0; // Static discount
@@ -547,7 +599,12 @@ class _OrderDetailViewState extends State<OrderDetailView>
     );
   }
 
-  Widget _buildPriceRow(String label, double amount, {bool isDiscount = false, bool isFinal = false}) {
+  Widget _buildPriceRow(
+    String label,
+    double amount, {
+    bool isDiscount = false,
+    bool isFinal = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -556,7 +613,8 @@ class _OrderDetailViewState extends State<OrderDetailView>
             child: Text(
               label,
               style: TextStyle(
-                color: isFinal ? AppColors.textPrimary : AppColors.textSecondary,
+                color:
+                    isFinal ? AppColors.textPrimary : AppColors.textSecondary,
                 fontSize: isFinal ? 16 : 14,
                 fontWeight: isFinal ? FontWeight.bold : FontWeight.normal,
               ),
@@ -565,10 +623,11 @@ class _OrderDetailViewState extends State<OrderDetailView>
           Text(
             '${isDiscount ? '-' : ''}₹${amount.abs().toStringAsFixed(2)}',
             style: TextStyle(
-              color: isDiscount 
-                  ? AppColors.success 
-                  : isFinal 
-                      ? AppColors.primary 
+              color:
+                  isDiscount
+                      ? AppColors.success
+                      : isFinal
+                      ? AppColors.primary
                       : AppColors.textPrimary,
               fontSize: isFinal ? 16 : 14,
               fontWeight: isFinal ? FontWeight.bold : FontWeight.w600,
@@ -605,55 +664,57 @@ class _OrderDetailViewState extends State<OrderDetailView>
               ],
             ),
             const SizedBox(height: 16),
-            ...widget.order.items.map((item) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            ...widget.order.items.map(
+              (item) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.productName,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '${item.quantity} × ₹${item.price.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          item.productName,
+                          '₹${(item.quantity * item.price).toStringAsFixed(2)}',
                           style: const TextStyle(
-                            color: AppColors.textPrimary,
+                            color: AppColors.primary,
                             fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                         Text(
-                          '${item.quantity} × ₹${item.price.toStringAsFixed(2)}',
+                          '+ 5% GST',
                           style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
+                            color: AppColors.textHint,
+                            fontSize: 12,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '₹${(item.quantity * item.price).toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '+ 5% GST',
-                        style: const TextStyle(
-                          color: AppColors.textHint,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
-            )),
+            ),
           ],
         ),
       ),
@@ -756,14 +817,25 @@ class _OrderDetailViewState extends State<OrderDetailView>
   void _navigateToBilling(BuildContext context) {
     Navigator.push(
       context,
-      // MaterialPageRoute(
-      //   builder: (context) => BillingPage(order: widget.order),
-      // ),
+      MaterialPageRoute(
+        builder:
+            (context) => BillingPage(
+              orderNumber: widget.order.orderId.toString(),
+              cartItems: widget.order.items,
+              onBillGenerated: () {
+                setState(() {
+                  _isBilled = true;
+                  // Optionally update _paymentMode if available from billing
+                });
+                Navigator.pop(context, true);
+              },
+            ),
+      ),
     ).then((result) {
       if (result == true) {
         setState(() {
           _isBilled = true;
-          _paymentMode = 'Cash'; // Or get from billing page
+          // Optionally update _paymentMode if available from billing
         });
       }
     });
