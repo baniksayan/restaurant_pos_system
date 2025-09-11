@@ -63,15 +63,15 @@ class Data {
 class KotDetail {
   String? kotNo;
   String? kotDateTime;
-  Null? customerName;
-  Null? customerPhoneNo;
+  String? customerName;
+  String? customerPhoneNo;
   String? waiterName;
   String? channelName;
   String? orderId;
   String? orderNo;
   String? kotDateTimeLocal;
   String? kotNote;
-  Null? orderIdentifier;
+  String? orderIdentifier;
   List<ItemList>? itemList;
 
   KotDetail({

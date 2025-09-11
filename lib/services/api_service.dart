@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/data/models/order_channel.dart';
 import 'package:restaurant_pos_system/data/models/order_channel_types_model.dart';
 import 'package:restaurant_pos_system/data/models/payment_mode_api_res_model.dart';
@@ -310,7 +311,7 @@ class ApiService {
         Uri.parse('${ApiConstants.baseUrl}Setting/OrderChannelListByType'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer ${ApiConstants.accessToken}',
         },
         body: json.encode(requestBody),
       );
@@ -922,10 +923,10 @@ class ApiService {
     try {
       final requestModel = CreateOrderHeadRequestModel(
         orderChannelId: orderChannelId,
-        waiterId: waiterId,
+        waiterId: HiveService.getWaiterId() ?? "",
         customerName: customerName,
         outletId: outletId,
-        userId: userId,
+        userId: HiveService.getUserId() ?? "",
         custPhoneNo: custPhoneNo ?? "",
         totalAdult: totalAdult ?? 0,
         totalChild: totalChild ?? 0,

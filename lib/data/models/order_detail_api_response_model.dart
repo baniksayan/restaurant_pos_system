@@ -4,7 +4,12 @@ class OrderDetailApiResponseModel {
   bool? isSuccess;
   int? statusCode;
 
-  OrderDetailApiResponseModel({this.data, this.message, this.isSuccess, this.statusCode});
+  OrderDetailApiResponseModel({
+    this.data,
+    this.message,
+    this.isSuccess,
+    this.statusCode,
+  });
 
   OrderDetailApiResponseModel.fromJson(Map<String, dynamic> json) {
     if (json['data'] != null) {
@@ -49,7 +54,7 @@ class OrderDetailData {
     this.isBilled,
     this.isPaid,
     this.orderDetailList,
-    this.billId
+    this.billId,
   });
 
   OrderDetailData.fromJson(Map<String, dynamic> json) {
@@ -79,7 +84,7 @@ class OrderDetailList {
   String? orderDetailId;
   String? createdOn;
   String? productName;
-  int? productQty;
+  double? productQty;
   String? uom;
   int? orderStatusId;
   String? statusSystemName;
@@ -88,10 +93,10 @@ class OrderDetailList {
   String? kotNo;
   String? kotSystemName;
   String? kotStatusName;
-  int? itemPrice;
-  int? totPrice;
-  int? discountPerc;
-  int? discountAmount;
+  num? itemPrice;
+  num? totPrice;
+  num? discountPerc;
+  num? discountAmount;
   String? customerPhNumber;
   String? orderTokenNo;
   String? kotId;
@@ -119,7 +124,7 @@ class OrderDetailList {
     this.orderTokenNo,
     this.kotId,
     this.generatedBillNo,
-    this.productId
+    this.productId,
   });
 
   OrderDetailList.fromJson(Map<String, dynamic> json) {
