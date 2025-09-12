@@ -14,7 +14,15 @@ class MenuProvider with ChangeNotifier {
 
   String _searchQuery = '';
   String _selectedCategory = 'All';
-  final Map<String, int> _cart = {};
+
+  // Multi-table cart and state management
+  final Map<String, Map<String, int>> _tableWiseCarts = {}; // Table ID -> Cart
+  final Map<String, String> _tableWiseSearchQuery =
+      {}; // Table ID -> Search Query
+  final Map<String, String> _tableWiseCategory =
+      {}; // Table ID -> Selected Category
+  String? _currentTableId;
+
   bool _isLoading = false;
   bool _isCategoriesLoading = false;
   String? _errorMessage;
@@ -22,12 +30,42 @@ class MenuProvider with ChangeNotifier {
   // Getters
   List<Data> get apiMenuItems => _apiMenuItems;
   List<CategoryModel> get categories => _categories;
-  String get searchQuery => _searchQuery;
-  String get selectedCategory => _selectedCategory;
-  Map<String, int> get cart => Map.unmodifiable(_cart);
+  String get searchQuery =>
+      _currentTableId != null
+          ? (_tableWiseSearchQuery[_currentTableId] ?? '')
+          : _searchQuery;
+  String get selectedCategory =>
+      _currentTableId != null
+          ? (_tableWiseCategory[_currentTableId] ?? 'All')
+          : _selectedCategory;
+  Map<String, int> get cart =>
+      _currentTableId != null
+          ? Map.unmodifiable(_tableWiseCarts[_currentTableId] ?? {})
+          : const <String, int>{};
   bool get isLoading => _isLoading;
   bool get isCategoriesLoading => _isCategoriesLoading;
   String? get errorMessage => _errorMessage;
+
+  // Helper methods for current table cart
+  Map<String, int> _getCurrentCart() {
+    if (_currentTableId == null) return <String, int>{};
+    return _tableWiseCarts[_currentTableId!] ??= <String, int>{};
+  }
+
+  // Table management
+  void switchToTable(String? tableId) {
+    _currentTableId = tableId;
+    notifyListeners();
+  }
+
+  void clearTableData(String tableId) {
+    _tableWiseCarts.remove(tableId);
+    _tableWiseSearchQuery.remove(tableId);
+    _tableWiseCategory.remove(tableId);
+    notifyListeners();
+  }
+
+  String? get currentTableId => _currentTableId;
 
   // Get all categories including "All"
   List<String> get categoryNames {
@@ -46,25 +84,27 @@ class MenuProvider with ChangeNotifier {
 
     // Filter by category
     if (_selectedCategory != 'All') {
-      filtered = filtered.where((item) {
-        final itemCategory = item.categoryName;
-        if (itemCategory != null && itemCategory.isNotEmpty) {
-          return itemCategory.toLowerCase() ==
-              _selectedCategory.toLowerCase();
-        }
-        return false;
-      }).toList();
+      filtered =
+          filtered.where((item) {
+            final itemCategory = item.categoryName;
+            if (itemCategory != null && itemCategory.isNotEmpty) {
+              return itemCategory.toLowerCase() ==
+                  _selectedCategory.toLowerCase();
+            }
+            return false;
+          }).toList();
     }
 
     // Filter by search query
     if (_searchQuery.isNotEmpty) {
-      filtered = filtered.where((item) {
-        final productName = item.productName ?? '';
-        final description = item.description ?? '';
-        final searchLower = _searchQuery.toLowerCase();
-        return productName.toLowerCase().contains(searchLower) ||
-            description.toLowerCase().contains(searchLower);
-      }).toList();
+      filtered =
+          filtered.where((item) {
+            final productName = item.productName ?? '';
+            final description = item.description ?? '';
+            final searchLower = _searchQuery.toLowerCase();
+            return productName.toLowerCase().contains(searchLower) ||
+                description.toLowerCase().contains(searchLower);
+          }).toList();
     }
 
     return filtered;
@@ -152,7 +192,14 @@ class MenuProvider with ChangeNotifier {
           final menuApiRes = MenuApiResModel.fromJson(response);
           final data = menuApiRes.data;
           if (data != null) {
-            _apiMenuItems = data;
+            // Deduplicate items by productId to prevent duplicates
+            final uniqueItems = <String, Data>{};
+            for (final item in data) {
+              if (item.productId != null) {
+                uniqueItems[item.productId!] = item;
+              }
+            }
+            _apiMenuItems = uniqueItems.values.toList();
           } else {
             _apiMenuItems = [];
           }
@@ -180,61 +227,75 @@ class MenuProvider with ChangeNotifier {
 
   // Update search query
   void updateSearchQuery(String query) {
-    _searchQuery = query;
+    if (_currentTableId != null) {
+      _tableWiseSearchQuery[_currentTableId!] = query;
+    } else {
+      _searchQuery = query;
+    }
     notifyListeners();
   }
 
   // Select category
   void selectCategory(String category) {
-    _selectedCategory = category;
+    if (_currentTableId != null) {
+      _tableWiseCategory[_currentTableId!] = category;
+    } else {
+      _selectedCategory = category;
+    }
     notifyListeners();
   }
 
   // Cart operations
   void addToCart(String itemId) {
-    if (itemId.isNotEmpty) {
-      final currentQuantity = _cart[itemId] ?? 0;
-      _cart[itemId] = currentQuantity + 1;
+    try {
+      final cart = _getCurrentCart();
+      final currentQuantity = cart[itemId] ?? 0;
+      cart[itemId] = currentQuantity + 1;
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = "Failed to add item to cart: $e";
       notifyListeners();
     }
   }
 
   void removeFromCart(String itemId) {
-    if (itemId.isNotEmpty && _cart.containsKey(itemId)) {
-      final currentQuantity = _cart[itemId];
+    final cart = _getCurrentCart();
+    if (itemId.isNotEmpty && cart.containsKey(itemId)) {
+      final currentQuantity = cart[itemId];
       if (currentQuantity != null) {
         if (currentQuantity > 1) {
-          _cart[itemId] = currentQuantity - 1;
+          cart[itemId] = currentQuantity - 1;
         } else {
-          _cart.remove(itemId);
+          cart.remove(itemId);
         }
+        notifyListeners();
       }
-      notifyListeners();
     }
   }
 
   int getCartQuantity(String itemId) {
     if (itemId.isEmpty) return 0;
-    return _cart[itemId] ?? 0;
+    final cart = _getCurrentCart();
+    return cart[itemId] ?? 0;
   }
 
   int get totalCartItems {
     int total = 0;
-    for (var quantity in _cart.values) {
-      if (quantity != null) {
-        total += quantity;
-      }
+    final cart = _getCurrentCart();
+    for (var quantity in cart.values) {
+      total += quantity;
     }
     return total;
   }
 
   double calculateTotal() {
     double total = 0.0;
-    for (var entry in _cart.entries) {
+    final cart = _getCurrentCart();
+    for (var entry in cart.entries) {
       final itemId = entry.key;
       final quantity = entry.value;
 
-      if (itemId.isNotEmpty && quantity != null && quantity > 0) {
+      if (itemId.isNotEmpty && quantity > 0) {
         try {
           final item = _apiMenuItems.firstWhere(
             (item) => item.productId == itemId,
@@ -254,8 +315,10 @@ class MenuProvider with ChangeNotifier {
   }
 
   void clearCart() {
-    _cart.clear();
-    notifyListeners();
+    if (_currentTableId != null) {
+      _tableWiseCarts[_currentTableId!]?.clear();
+      notifyListeners();
+    }
   }
 
   // Clear error message

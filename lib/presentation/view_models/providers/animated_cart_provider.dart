@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/local/hive_service.dart';
+import '../../../services/api_service.dart';
+import '../../../data/models/order_detail_api_response_model.dart';
 
 class AnimatedCartProvider extends ChangeNotifier {
   final Map<String, CartItem> _cartItems = {};
   final Map<String, Map<String, CartItem>> _tableWiseCarts =
       {}; // Store cart per table
+  final Map<String, List<OrderDetailList>> _tableWiseServerKotItems = 
+      {}; // Store server KOT items per table
   int _totalItems = 0;
   String? _currentTableId;
+  List<OrderDetailList> _serverKotItems = []; // Current table's server KOT items
 
   Map<String, CartItem> get cartItems => _cartItems;
   int get totalItems => _totalItems;
   String? get currentTableId => _currentTableId;
+  List<OrderDetailList> get serverKotItems => _serverKotItems;
 
   // Get items that are not yet KOT'd
   Map<String, CartItem> get newItems => Map.fromEntries(
@@ -36,14 +42,19 @@ class AnimatedCartProvider extends ChangeNotifier {
     (sum, item) => sum + (item.price * item.quantity),
   );
 
-  // Switch to a different table's cart
-  void switchToTable(String tableId, String tableName) {
-    // Save current cart state if we have a current table
+  // Switch to a different table's cart and sync with server state
+  Future<void> switchToTable(
+    String tableId,
+    String tableName, {
+    String? orderId,
+  }) async {
+    // Save current cart state and server KOT items if we have a current table
     if (_currentTableId != null) {
       _tableWiseCarts[_currentTableId!] = Map.from(_cartItems);
+      _tableWiseServerKotItems[_currentTableId!] = List.from(_serverKotItems);
     }
 
-    // Load the target table's cart
+    // Load the target table's cart and server KOT items
     _currentTableId = tableId;
     if (_tableWiseCarts.containsKey(tableId)) {
       _cartItems.clear();
@@ -51,9 +62,143 @@ class AnimatedCartProvider extends ChangeNotifier {
     } else {
       _cartItems.clear();
     }
+    
+    // Load table-specific server KOT items
+    if (_tableWiseServerKotItems.containsKey(tableId)) {
+      _serverKotItems = List.from(_tableWiseServerKotItems[tableId]!);
+    } else {
+      _serverKotItems.clear();
+    }
+
+    // Sync with server state if orderId is provided
+    if (orderId != null && orderId.isNotEmpty) {
+      await _syncWithServerState(orderId);
+    }
 
     _updateTotalItems();
     notifyListeners();
+  }
+
+  // Sync local cart state with server state to handle KOT status correctly
+  Future<void> _syncWithServerState(String orderId) async {
+    try {
+      final authToken = HiveService.getAuthToken();
+      if (authToken.isEmpty) return;
+
+      final orderDetails = await ApiService.getOrderDetailById(
+        token: authToken,
+        orderId: orderId,
+      );
+
+      if (orderDetails?.isSuccess == true &&
+          orderDetails?.data?.isNotEmpty == true) {
+        final serverItems = orderDetails!.data!.first.orderDetailList ?? [];
+
+        // Create a map to track server items by product ID
+        final Map<String, OrderDetailList> serverItemsMap = {};
+        for (final item in serverItems) {
+          if (item.productId != null) {
+            serverItemsMap[item.productId!] = item;
+          }
+        }
+
+        // Separate KOT'd and non-KOT'd items from server
+        final List<OrderDetailList> kotItems = [];
+        final Map<String, CartItem> updatedCart = {};
+
+        for (final serverItem in serverItems) {
+          final bool isKotGenerated =
+              serverItem.kotNo != null &&
+              serverItem.kotNo!.isNotEmpty &&
+              serverItem.kotId != null &&
+              serverItem.kotId!.isNotEmpty;
+
+          if (isKotGenerated) {
+            // This item is KOT'd - add to server KOT items for display
+            kotItems.add(serverItem);
+          }
+        }
+
+        // Update local cart - keep ALL items but sync their KOT status correctly
+        for (final cartItem in _cartItems.values) {
+          final serverItem = serverItemsMap[cartItem.id];
+
+          if (serverItem != null) {
+            // Item exists on server - sync KOT status from server
+            final bool isKotGenerated =
+                serverItem.kotNo != null &&
+                serverItem.kotNo!.isNotEmpty &&
+                serverItem.kotId != null &&
+                serverItem.kotId!.isNotEmpty;
+
+            // Keep ALL items in cart but with correct KOT status from server
+            updatedCart[cartItem.id] = CartItem(
+              id: cartItem.id,
+              name: cartItem.name,
+              price: cartItem.price,
+              quantity: serverItem.productQty?.toInt() ?? cartItem.quantity,
+              tableId: cartItem.tableId,
+              tableName: cartItem.tableName,
+              specialNotes: cartItem.specialNotes,
+              categoryId: cartItem.categoryId,
+              categoryName: cartItem.categoryName,
+              uom: cartItem.uom,
+              discountPercentage: cartItem.discountPercentage,
+              isKotGenerated: isKotGenerated,
+              kotNumber: isKotGenerated ? serverItem.kotNo : null,
+              kotGeneratedAt: isKotGenerated ? DateTime.now() : null,
+            );
+          } else {
+            // Item doesn't exist on server yet - keep as new item
+            updatedCart[cartItem.id] = cartItem;
+          }
+        }
+
+        // Add any server items that aren't in local cart
+        for (final serverItem in serverItems) {
+          if (serverItem.productId != null && 
+              !updatedCart.containsKey(serverItem.productId!)) {
+            final bool isKotGenerated =
+                serverItem.kotNo != null &&
+                serverItem.kotNo!.isNotEmpty &&
+                serverItem.kotId != null &&
+                serverItem.kotId!.isNotEmpty;
+
+            // Add ALL server items to maintain consistency
+            updatedCart[serverItem.productId!] = CartItem(
+              id: serverItem.productId!,
+              name: serverItem.productName ?? 'Unknown Item',
+              price: (serverItem.itemPrice ?? 0).toDouble(),
+              quantity: serverItem.productQty?.toInt() ?? 1,
+              tableId: _currentTableId ?? '',
+              tableName: '',
+              specialNotes: serverItem.instruction,
+              categoryId: null, // Not available in OrderDetailList
+              categoryName: null, // Not available in OrderDetailList  
+              uom: serverItem.uom,
+              discountPercentage: (serverItem.discountPerc ?? 0).toDouble(),
+              isKotGenerated: isKotGenerated,
+              kotNumber: isKotGenerated ? serverItem.kotNo : null,
+              kotGeneratedAt: isKotGenerated ? DateTime.now() : null,
+            );
+          }
+        }
+
+        // Update state - now _serverKotItems is only for display purposes
+        _serverKotItems = kotItems;
+        _cartItems.clear();
+        _cartItems.addAll(updatedCart);
+
+        // Update table-wise cache for both cart and server KOT items
+        if (_currentTableId != null) {
+          _tableWiseCarts[_currentTableId!] = Map.from(_cartItems);
+          _tableWiseServerKotItems[_currentTableId!] = List.from(_serverKotItems);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error syncing with server state: $e');
+      // Continue with local state if server sync fails
+    }
   }
 
   void addItem(
@@ -181,6 +326,13 @@ class AnimatedCartProvider extends ChangeNotifier {
   void clearCart() {
     _cartItems.clear();
     _totalItems = 0;
+    notifyListeners();
+  }
+
+  // Clear only new (non-KOT'd) items while keeping KOT'd items for billing
+  void clearNewItems() {
+    _cartItems.removeWhere((key, item) => !item.isKotGenerated);
+    _updateTotalItems();
     notifyListeners();
   }
 

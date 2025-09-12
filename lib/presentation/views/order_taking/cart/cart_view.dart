@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../view_models/providers/animated_cart_provider.dart';
 import '../../../view_models/providers/navigation_provider.dart';
 import '../../../view_models/providers/table_provider.dart';
+import '../../../../data/models/order_detail_api_response_model.dart';
 
 import '../../../../services/pdf_service.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -41,14 +42,26 @@ class _CartViewState extends State<CartView> {
   @override
   void initState() {
     super.initState();
-    // Switch to current table's cart when entering cart view
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Switch to current table's cart when entering cart view and sync with server
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (widget.tableId != null && widget.tableName != null) {
         final cartProvider = Provider.of<AnimatedCartProvider>(
           context,
           listen: false,
         );
-        cartProvider.switchToTable(widget.tableId!, widget.tableName!);
+        final tableProvider = Provider.of<TableProvider>(
+          context,
+          listen: false,
+        );
+
+        // Get the current order ID for this table to sync with server
+        final orderId = tableProvider.currentOrderId;
+
+        await cartProvider.switchToTable(
+          widget.tableId!,
+          widget.tableName!,
+          orderId: orderId,
+        );
       }
     });
   }
@@ -64,7 +77,10 @@ class _CartViewState extends State<CartView> {
             final newItems = cartProvider.newItems.values.toList();
             final kotGeneratedItems =
                 cartProvider.kotGeneratedItems.values.toList();
-            final hasKotItems = kotGeneratedItems.isNotEmpty;
+            final serverKotItems = cartProvider.serverKotItems;
+            final hasLocalKotItems = kotGeneratedItems.isNotEmpty;
+            final hasServerKotItems = serverKotItems.isNotEmpty;
+            final hasKotItems = hasLocalKotItems || hasServerKotItems;
             final hasNewItems = newItems.isNotEmpty;
 
             return Column(
@@ -88,9 +104,12 @@ class _CartViewState extends State<CartView> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       child: Column(
                         children: [
-                          // Show KOT generated items section
-                          if (kotGeneratedItems.isNotEmpty)
-                            _buildKotGeneratedSection(kotGeneratedItems),
+                          // Show KOT generated items section (from both local and server)
+                          if (hasKotItems)
+                            _buildKotGeneratedSection(
+                              kotGeneratedItems,
+                              serverKotItems,
+                            ),
                           // Show new items section
                           if (newItems.isNotEmpty)
                             _buildNewItemsSection(newItems),
@@ -122,7 +141,10 @@ class _CartViewState extends State<CartView> {
   }
 
   // Build section for KOT generated items (read-only)
-  Widget _buildKotGeneratedSection(List<CartItem> kotGeneratedItems) {
+  Widget _buildKotGeneratedSection(
+    List<CartItem> kotGeneratedItems,
+    List<OrderDetailList> serverKotItems,
+  ) {
     return Card(
       margin: const EdgeInsets.all(16),
       child: Column(
@@ -158,7 +180,7 @@ class _CartViewState extends State<CartView> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    '${kotGeneratedItems.length} items',
+                    '${serverKotItems.length + kotGeneratedItems.where((localItem) => !serverKotItems.any((serverItem) => serverItem.productId == localItem.id)).length} items',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -169,10 +191,18 @@ class _CartViewState extends State<CartView> {
               ],
             ),
           ),
-          CartItemsList(
-            items: kotGeneratedItems,
-            onEditItem: (item) => _showKotItemInfo(item),
-          ),
+          // Show server KOT items (authoritative source to prevent duplicates)
+          if (serverKotItems.isNotEmpty)
+            _buildServerKotItemsList(serverKotItems),
+          // Show any local-only KOT items that aren't in server yet (should be rare)
+          if (kotGeneratedItems.isNotEmpty) 
+            CartItemsList(
+              items: kotGeneratedItems
+                .where((localItem) => !serverKotItems.any((serverItem) => 
+                    serverItem.productId == localItem.id))
+                .toList(),
+              onEditItem: (item) => _showKotItemInfo(item),
+            ),
         ],
       ),
     );
@@ -233,6 +263,110 @@ class _CartViewState extends State<CartView> {
           CartItemsList(items: newItems, onEditItem: _showEditItemDialog),
         ],
       ),
+    );
+  }
+
+  // Build widget for server KOT items
+  Widget _buildServerKotItemsList(List<OrderDetailList> serverKotItems) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: serverKotItems.length,
+      itemBuilder: (context, index) {
+        final item = serverKotItems[index];
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.green.withOpacity(0.2)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.productName ?? 'Unknown Item',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          'Qty: ${item.productQty?.toInt() ?? 0}',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          'Price: ₹${item.itemPrice?.toStringAsFixed(2) ?? '0.00'}',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (item.instruction != null &&
+                        item.instruction!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Note: ${item.instruction}',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'KOT: ${item.kotNo ?? ''}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '₹${item.totPrice?.toStringAsFixed(2) ?? '0.00'}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -481,6 +615,15 @@ class _CartViewState extends State<CartView> {
         // Mark the new items as KOT generated
         final newItemIds = newItems.map((item) => item.id).toList();
         cartProvider.markItemsAsKotGenerated(newItemIds, orderNumber);
+
+        // Refresh server state to get updated KOT items
+        if (widget.tableId != null && widget.tableName != null) {
+          await cartProvider.switchToTable(
+            widget.tableId!,
+            widget.tableName!,
+            orderId: backendOrderId,
+          );
+        }
 
         // Add to our KOT numbers set
         setState(() {

@@ -44,6 +44,11 @@ class _MenuViewState extends State<MenuView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final menuProvider = Provider.of<MenuProvider>(context, listen: false);
 
+      // Switch to selected table for proper state isolation
+      if (widget.selectedTableId != null) {
+        menuProvider.switchToTable(widget.selectedTableId);
+      }
+
       // Check if user is authenticated before loading menu
       final token = HiveService.getAuthToken();
       if (token.isNotEmpty) {
@@ -52,6 +57,16 @@ class _MenuViewState extends State<MenuView> {
         debugPrint('No auth token available - skipping menu load in MenuView');
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(MenuView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Switch to new table when table selection changes
+    if (widget.selectedTableId != oldWidget.selectedTableId) {
+      final menuProvider = Provider.of<MenuProvider>(context, listen: false);
+      menuProvider.switchToTable(widget.selectedTableId);
+    }
   }
 
   @override
@@ -82,8 +97,10 @@ class _MenuViewState extends State<MenuView> {
                   CartFooter(
                     onPlaceOrder: () {
                       // Navigate to Cart tab (index 2)
-                      Provider.of<NavigationProvider>(context, listen: false)
-                          .navigateToIndex(2);
+                      Provider.of<NavigationProvider>(
+                        context,
+                        listen: false,
+                      ).navigateToIndex(2);
                     },
                   ),
               ],

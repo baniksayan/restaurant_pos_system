@@ -21,7 +21,8 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  final GlobalKey<CartAnimationOverlayState> _overlayKey = GlobalKey<CartAnimationOverlayState>();
+  final GlobalKey<CartAnimationOverlayState> _overlayKey =
+      GlobalKey<CartAnimationOverlayState>();
 
   // Updated navigation items - removed Profile
   final List<NavigationItem> _navigationItems = [
@@ -57,18 +58,41 @@ class _MainNavigationState extends State<MainNavigation> {
   ) {
     // Immediate add-to-cart (no flying animation). Keep providers in sync.
     final navProvider = Provider.of<NavigationProvider>(context, listen: false);
-    Provider.of<AnimatedCartProvider>(context, listen: false).addItem(
+    final menuProvider = Provider.of<MenuProvider>(context, listen: false);
+    final animatedCartProvider = Provider.of<AnimatedCartProvider>(
+      context,
+      listen: false,
+    );
+
+    // Ensure both providers are on the same table for proper state isolation
+    final tableId = navProvider.selectedTableId ?? '';
+    final tableName = navProvider.selectedTableName ?? '';
+
+    if (tableId.isNotEmpty) {
+      // Switch menu provider to current table if not already
+      if (menuProvider.currentTableId != tableId) {
+        menuProvider.switchToTable(tableId);
+      }
+
+      // Switch cart provider to current table if not already
+      if (animatedCartProvider.currentTableId != tableId) {
+        animatedCartProvider.switchToTable(tableId, tableName);
+      }
+    }
+
+    // Add item to both providers
+    animatedCartProvider.addItem(
       itemId,
       itemName,
       price,
-      navProvider.selectedTableId ?? '',
-      navProvider.selectedTableName ?? '',
+      tableId,
+      tableName,
       categoryId: categoryId,
       categoryName: categoryName,
     );
 
     // Keep Menu view quantities in sync
-    Provider.of<MenuProvider>(context, listen: false).addToCart(itemId);
+    menuProvider.addToCart(itemId);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -125,7 +149,10 @@ class _MainNavigationState extends State<MainNavigation> {
                 ],
               ),
             ),
-            bottomNavigationBar: _buildBottomNavigationBar(context, navProvider),
+            bottomNavigationBar: _buildBottomNavigationBar(
+              context,
+              navProvider,
+            ),
           );
         },
       ),
@@ -174,10 +201,14 @@ class _MainNavigationState extends State<MainNavigation> {
                                 children: [
                                   Icon(
                                     _navigationItems[index].icon,
-                                    size: navProvider.currentIndex == index ? 0 : 20,
-                                    color: navProvider.currentIndex == index
-                                        ? Colors.transparent
-                                        : Colors.grey[600],
+                                    size:
+                                        navProvider.currentIndex == index
+                                            ? 0
+                                            : 20,
+                                    color:
+                                        navProvider.currentIndex == index
+                                            ? Colors.transparent
+                                            : Colors.grey[600],
                                   ),
                                   if (index == 2 && // Cart tab
                                       cartProvider.totalItems > 0 &&
@@ -199,10 +230,14 @@ class _MainNavigationState extends State<MainNavigation> {
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
                                           ),
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: const Color(0xFFFF6B6B).withOpacity(0.4),
+                                              color: const Color(
+                                                0xFFFF6B6B,
+                                              ).withOpacity(0.4),
                                               blurRadius: 8,
                                               offset: const Offset(0, 2),
                                             ),
@@ -235,12 +270,14 @@ class _MainNavigationState extends State<MainNavigation> {
                                 _navigationItems[index].label,
                                 style: TextStyle(
                                   fontSize: 11,
-                                  fontWeight: navProvider.currentIndex == index
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                  color: navProvider.currentIndex == index
-                                      ? _navigationItems[index].activeColor
-                                      : Colors.grey[600],
+                                  fontWeight:
+                                      navProvider.currentIndex == index
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                  color:
+                                      navProvider.currentIndex == index
+                                          ? _navigationItems[index].activeColor
+                                          : Colors.grey[600],
                                 ),
                               ),
                             ],
@@ -255,8 +292,12 @@ class _MainNavigationState extends State<MainNavigation> {
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
-                left: (navProvider.currentIndex * MediaQuery.of(context).size.width / 4) +
-                    (MediaQuery.of(context).size.width / 4 / 2) - 25,
+                left:
+                    (navProvider.currentIndex *
+                        MediaQuery.of(context).size.width /
+                        4) +
+                    (MediaQuery.of(context).size.width / 4 / 2) -
+                    25,
                 top: 8,
                 child: _buildFloatingActiveTab(cartProvider, navProvider),
               ),
