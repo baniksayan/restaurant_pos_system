@@ -67,10 +67,13 @@ class ApiService {
     if (!isConnected) return null;
 
     try {
-      final headers = {
-        'Content-Type': 'application/json',
-        'Authorization': '${ApiConstants.accessToken}',
-      };
+      final headers = <String, String>{'Content-Type': 'application/json'};
+
+      // Only add Authorization header if we have a token and it's not the auth endpoint
+      final authToken = HiveService.getAuthToken();
+      if (authToken.isNotEmpty && endpoint != ApiConstants.auth) {
+        headers['Authorization'] = 'Bearer $authToken';
+      }
 
       final request = http.Request(
         method,
@@ -248,7 +251,7 @@ class ApiService {
         totalChild: totalChild,
         custEmailId: custEmailId,
       );
-
+      print('[API Call] Request Body: ${requestModel.toJson()}');
       if (kDebugMode) {
         print('[API Call] saveOrderHead - Table: $orderChannelId');
         print('[API Call] Request Body: ${requestModel.toJson()}');
@@ -971,7 +974,6 @@ class ApiService {
     required String orderId,
     String kotNote = "",
     required List<Map<String, dynamic>> orderDetails,
-    String? token, // Added optional token parameter
   }) async {
     final isConnected = await checkInternetAndGoForward();
     if (!isConnected) return null;
@@ -985,60 +987,34 @@ class ApiService {
     };
 
     if (kDebugMode) {
+      debugPrint('=== KOT Creation Debug ===');
       debugPrint(
-        'Calling createKotWithOrderDetails API: ${ApiConstants.createKotWithOrderDetails}',
+        'Endpoint: ${ApiConstants.baseUrl}${ApiConstants.createKotWithOrderDetails}',
       );
-      debugPrint('Request Body: $body');
+      debugPrint('userId: $userId');
+      debugPrint('outletId: $outletId');
+      debugPrint('orderId: $orderId');
+      debugPrint('kotNote: "$kotNote"');
+      debugPrint('orderDetails count: ${orderDetails.length}');
+      debugPrint('orderDetails: $orderDetails');
+      debugPrint('Full body: $body');
+      debugPrint('Auth token: ${HiveService.getAuthToken()}');
+      debugPrint('========================');
     }
 
     try {
-      dynamic response;
-      // Use token-based request if token is provided, otherwise use the original method
-      if (token != null) {
-        final httpResponse = await http.post(
-          Uri.parse(
-            '${ApiConstants.baseUrl}${ApiConstants.createKotWithOrderDetails}',
-          ),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: json.encode(body),
-        );
-        if (httpResponse.statusCode == 200) {
-          response = json.decode(httpResponse.body);
-        }
-      } else {
-        response = await apiRequestHttpRawBody(
-          ApiConstants.createKotWithOrderDetails,
-          body,
-          method: 'POST',
-        );
-      }
+      // Use the standardized API request method for consistency
+      final response = await apiRequestHttpRawBody(
+        ApiConstants.createKotWithOrderDetails,
+        body,
+        method: 'POST',
+      );
 
       if (response != null) {
         if (kDebugMode) {
           debugPrint('createKotWithOrderDetails API Response: $response');
         }
-
-        try {
-          // Ensure we pass a Map to the generated model
-          final typed = Map<String, dynamic>.from(response);
-          return CreateKotWithOrderDetailsApiResModel.fromJson(typed);
-        } catch (e) {
-          if (kDebugMode) {
-            debugPrint('Failed to cast response to Map: $e');
-          }
-
-          // Build a safe fallback map using available fields
-          final fallback = {
-            'isSuccess': response['isSuccess'] ?? false,
-            'message': response['message']?.toString() ?? response.toString(),
-            'data': response['data'] ?? {},
-            'statusCode': response['statusCode'] ?? 0,
-          };
-          return CreateKotWithOrderDetailsApiResModel.fromJson(fallback);
-        }
+        return CreateKotWithOrderDetailsApiResModel.fromJson(response);
       }
 
       return null;

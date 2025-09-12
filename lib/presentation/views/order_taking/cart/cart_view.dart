@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../../view_models/providers/animated_cart_provider.dart';
 import '../../../view_models/providers/navigation_provider.dart';
+import '../../../view_models/providers/table_provider.dart';
+
 import '../../../../services/pdf_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../billing/billing_page.dart';
@@ -32,8 +35,23 @@ class CartView extends StatefulWidget {
 }
 
 class _CartViewState extends State<CartView> {
-  bool _kotGenerated = false;
-  String? _kotOrderNumber;
+  Set<String> _kotNumbers =
+      {}; // Track all KOT numbers generated for this table
+
+  @override
+  void initState() {
+    super.initState();
+    // Switch to current table's cart when entering cart view
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.tableId != null && widget.tableName != null) {
+        final cartProvider = Provider.of<AnimatedCartProvider>(
+          context,
+          listen: false,
+        );
+        cartProvider.switchToTable(widget.tableId!, widget.tableName!);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,12 +61,18 @@ class _CartViewState extends State<CartView> {
         child: Consumer<AnimatedCartProvider>(
           builder: (context, cartProvider, child) {
             final items = cartProvider.cartItems.values.toList();
+            final newItems = cartProvider.newItems.values.toList();
+            final kotGeneratedItems =
+                cartProvider.kotGeneratedItems.values.toList();
+            final hasKotItems = kotGeneratedItems.isNotEmpty;
+            final hasNewItems = newItems.isNotEmpty;
 
             return Column(
               children: [
                 CartHeader(
-                  kotGenerated: _kotGenerated,
-                  kotOrderNumber: _kotOrderNumber,
+                  kotGenerated: hasKotItems,
+                  kotOrderNumber:
+                      _kotNumbers.isNotEmpty ? _kotNumbers.join(', ') : null,
                   tableName: widget.tableName,
                   selectedLocation: widget.selectedLocation,
                   totalItems: cartProvider.totalItems,
@@ -62,19 +86,31 @@ class _CartViewState extends State<CartView> {
                   Expanded(
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      child: CartItemsList(
-                        items: items,
-                        onEditItem: _showEditItemDialog,
+                      child: Column(
+                        children: [
+                          // Show KOT generated items section
+                          if (kotGeneratedItems.isNotEmpty)
+                            _buildKotGeneratedSection(kotGeneratedItems),
+                          // Show new items section
+                          if (newItems.isNotEmpty)
+                            _buildNewItemsSection(newItems),
+                        ],
                       ),
                     ),
                   ),
                 if (items.isNotEmpty)
                   CartFooter(
                     subtotal: cartProvider.totalAmount,
-                    kotGenerated: _kotGenerated,
-                    onGenerateKOT: () => _generateKOT(cartProvider),
+                    kotGenerated:
+                        hasKotItems &&
+                        !hasNewItems, // KOT generated and no new items
+                    onGenerateKOT:
+                        hasNewItems ? () => _generateKOT(cartProvider) : () {},
                     onSendToKitchen: () => _sendToKitchen(cartProvider),
-                    onGenerateBill: () => _navigateToBillingPage(cartProvider),
+                    onGenerateBill:
+                        cartProvider.canProceedToBilling
+                            ? () => _navigateToBillingPage(cartProvider)
+                            : () => _showCannotBillDialog(),
                     onShowGSTInfo: _showGSTInfoDialog,
                   ),
               ],
@@ -85,10 +121,198 @@ class _CartViewState extends State<CartView> {
     );
   }
 
+  // Build section for KOT generated items (read-only)
+  Widget _buildKotGeneratedSection(List<CartItem> kotGeneratedItems) {
+    return Card(
+      margin: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'KOT Generated Items',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green[700],
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${kotGeneratedItems.length} items',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          CartItemsList(
+            items: kotGeneratedItems,
+            onEditItem: (item) => _showKotItemInfo(item),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build section for new items (editable)
+  Widget _buildNewItemsSection(List<CartItem> newItems) {
+    return Card(
+      margin: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.shopping_cart_outlined,
+                  color: Colors.orange,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'New Items (Pending KOT)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange[700],
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${newItems.length} items',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          CartItemsList(items: newItems, onEditItem: _showEditItemDialog),
+        ],
+      ),
+    );
+  }
+
   void _showEditItemDialog(CartItem item) {
+    // Only allow editing if item is not KOT'd
+    if (!item.canEdit) {
+      _showKotItemInfo(item);
+      return;
+    }
     showDialog(
       context: context,
       builder: (context) => EditItemDialog(item: item),
+    );
+  }
+
+  void _showKotItemInfo(CartItem item) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green),
+                const SizedBox(width: 8),
+                const Text('KOT Generated'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Item: ${item.name}'),
+                Text('Quantity: ${item.quantity}'),
+                if (item.kotNumber != null) Text('KOT #: ${item.kotNumber}'),
+                if (item.kotGeneratedAt != null)
+                  Text(
+                    'Generated: ${item.kotGeneratedAt!.toString().substring(0, 16)}',
+                  ),
+                const SizedBox(height: 16),
+                const Text(
+                  'This item has been sent to kitchen and cannot be modified.',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  void _showCannotBillDialog() {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.warning, color: Colors.orange),
+                const SizedBox(width: 8),
+                const Text('Cannot Generate Bill'),
+              ],
+            ),
+            content: const Text(
+              'All items must have KOT generated before proceeding to billing. Please generate KOT for pending items first.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
     );
   }
 
@@ -132,109 +356,115 @@ class _CartViewState extends State<CartView> {
     }
   }
 
-  // KOT Generation with API Integration
+  // KOT Generation for new items only
   Future<void> _generateKOT(AnimatedCartProvider cartProvider) async {
     try {
-      final items = cartProvider.cartItems.values.toList();
-      if (items.isEmpty) return;
+      final newItems = cartProvider.newItems.values.toList();
+
+      if (newItems.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No new items to generate KOT for'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
 
       showDialog(
         context: context,
         barrierDismissible: false,
         builder:
-            (_) => const AlertDialog(
+            (_) => AlertDialog(
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Creating order head...'),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text('Generating KOT for ${newItems.length} new items...'),
                 ],
               ),
             ),
       );
 
       final orderProvider = context.read<OrderProvider>();
+      final tableProvider = context.read<TableProvider>();
 
-      // Step 1: Create Order Head first if not already created
-      if (orderProvider.createdOrderId == null) {
-        final orderChannelId = items.first.tableId;
-        final waiterId = HiveService.getWaiterId() ?? "";
-        final userId = HiveService.getUserId() ?? "";
-        final outletId = HiveService.getOutletId() ?? 1;
-        final customerName = "Walk-in Customer";
+      // Use the actual orderId from backend (created during table selection)
+      // The order is created in TableProvider, not OrderProvider
+      final backendOrderId = tableProvider.currentOrderId;
 
-        final orderHeadSuccess = await orderProvider.createOrderHead(
-          orderChannelId: "c947c44f-a0eb-4160-b186-8f1959a47f31",
-          waiterId: waiterId,
-          customerName: customerName,
-          outletId: outletId,
-          userId: userId,
-        );
-
-        if (!orderHeadSuccess) {
-          Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Error creating order: ${orderProvider.error ?? "Unknown error"}',
-              ),
-              backgroundColor: Colors.red,
+      if (backendOrderId == null) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Error: No order ID found. Please select table again.',
             ),
-          );
-          return;
-        }
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
       }
 
-      // Update loading dialog
-      Navigator.of(context).pop();
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder:
-            (_) => const AlertDialog(
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Generating KOT...'),
-                ],
-              ),
-            ),
+      if (kDebugMode) {
+        print('=== New Items KOT Generation ===');
+        print('Using backend order ID: $backendOrderId');
+        print('OrderProvider createdOrderId: ${orderProvider.createdOrderId}');
+        print('TableProvider currentOrderId: ${tableProvider.currentOrderId}');
+        print('Generated Order No: ${orderProvider.generatedOrderNo}');
+        print('Order No: ${orderProvider.orderNo}');
+        print('New items count: ${newItems.length}');
+        print('Table ID: ${newItems.first.tableId}');
+        print('User ID: ${HiveService.getUserId()}');
+        print('Outlet ID: ${HiveService.getOutletId()}');
+        print('================================');
+      }
+
+      // Convert ONLY new items to match Postman format exactly
+      final newItemsData =
+          newItems.map((item) {
+            return <String, dynamic>{
+              'id': item.id,
+              'name': item.name,
+              'categoryId': item.categoryId ?? '',
+              'categoryName': item.categoryName ?? '',
+              'price': item.price,
+              'quantity': item.quantity,
+              'specialNotes': item.specialNotes ?? '',
+              'discountPercentage': item.discountPercentage ?? 0,
+              'uom': item.uom ?? 'Plate',
+            };
+          }).toList();
+
+      if (kDebugMode) {
+        print('=== New Items Data for KOT ===');
+        print('Items count: ${newItemsData.length}');
+        print('Sample item structure (should match Postman):');
+        if (newItemsData.isNotEmpty) {
+          print(newItemsData.first);
+        }
+        print('Full data: $newItemsData');
+        print('===============================');
+      }
+
+      // Use the proper order map format from AnimatedCartProvider
+      final kotPayload = cartProvider.buildNewItemsOrderMap(
+        orderId: backendOrderId,
+        kotNote: "",
       );
 
-      // Step 2: Generate KOT with order details
-      final userId =
-          HiveService.getUserId() ?? "a2f2849f-88b5-4849-a17d-a487d5e21627";
-      final outletId = HiveService.getOutletId() ?? 1;
-      final orderId = orderProvider.createdOrderId!;
+      if (kDebugMode) {
+        print('KOT Payload: $kotPayload');
+      }
 
-      // Convert cart items to the required format
-      final cartItemsData =
-          items
-              .map(
-                (item) => {
-                  'id': item.id,
-                  'name': item.name,
-                  'price': item.price,
-                  // Fixed typo and ensure non-null values
-                  'categoryId': item.categoryId ?? '',
-                  'categoryName': item.categoryName ?? '',
-                  'quantity': item.quantity,
-                  'specialNotes': item.specialNotes ?? '',
-                },
-              )
-              .toList();
-
-      print(cartItemsData.toString());
-
+      // Use the existing order ID from backend (table selection)
       final kotResponse = await orderProvider.createKotWithOrderDetails(
-        userId: userId,
-        outletId: outletId,
-        orderId: orderId,
+        userId: HiveService.getUserId() ?? "",
+        outletId: HiveService.getOutletId() ?? 1,
+        orderId: backendOrderId,
         kotNote: "",
-        cartItems: cartItemsData,
+        cartItems: newItemsData,
       );
 
       Navigator.of(context).pop();
@@ -248,26 +478,34 @@ class _CartViewState extends State<CartView> {
             kotNo ??
             PDFService.generateOrderNumber();
 
+        // Mark the new items as KOT generated
+        final newItemIds = newItems.map((item) => item.id).toList();
+        cartProvider.markItemsAsKotGenerated(newItemIds, orderNumber);
+
+        // Add to our KOT numbers set
         setState(() {
-          _kotGenerated = true;
-          _kotOrderNumber = orderNumber;
+          _kotNumbers.add(orderNumber);
         });
 
-        // Generate PDF KOT for sharing/printing
+        // Generate PDF KOT for the new items only
         final kotBytes = await PDFService.generateKOT(
-          items: items,
-          tableId: items.first.tableId,
-          tableName: items.first.tableName,
+          items: newItems,
+          tableId: newItems.first.tableId,
+          tableName: newItems.first.tableName,
           orderNumber: orderNumber,
           orderTime: DateTime.now(),
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('KOT #$orderNumber generated successfully!'),
+            content: Text(
+              '✅ KOT #$orderNumber generated successfully for ${newItems.length} items!',
+            ),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
             action: SnackBarAction(
               label: 'Share',
+              textColor: Colors.white,
               onPressed: () {
                 PDFService.sharePDF(kotBytes, 'KOT_$orderNumber');
               },
@@ -275,21 +513,122 @@ class _CartViewState extends State<CartView> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Error generating KOT: ${kotResponse?.data?.response ?? "Unknown error"}',
-            ),
-            backgroundColor: Colors.red,
-          ),
+        // Enhanced error handling with backend context
+        String errorMessage = 'Backend server error (HTTP 500)';
+        String detailedMessage =
+            'The server encountered an internal error while processing the KOT request.';
+
+        if (kotResponse != null) {
+          if (kotResponse.message != null && kotResponse.message!.isNotEmpty) {
+            errorMessage = kotResponse.message!;
+          } else if (kotResponse.data?.response != null &&
+              kotResponse.data!.response!.isNotEmpty) {
+            errorMessage = kotResponse.data!.response!;
+          }
+
+          if (kotResponse.statusCode != null) {
+            detailedMessage =
+                'Server returned status code: ${kotResponse.statusCode}';
+            if (kotResponse.statusCode == 500) {
+              detailedMessage +=
+                  '\n\nThis suggests a backend database or logic issue. The order ID and items are valid, but the server cannot process the KOT creation.';
+            }
+          }
+
+          if (kDebugMode) {
+            print('=== KOT Creation Failed ===');
+            print('Status Code: ${kotResponse.statusCode}');
+            print('Is Success: ${kotResponse.isSuccess}');
+            print('Message: ${kotResponse.message}');
+            print('Data Response: ${kotResponse.data?.response}');
+            print('Full Response: ${kotResponse.toJson()}');
+            print('Order ID used: $backendOrderId');
+            print('===========================');
+          }
+        } else {
+          errorMessage = 'No response from server';
+          detailedMessage =
+              'The KOT creation request returned no response. This may indicate a network issue or server timeout.';
+        }
+
+        // Show detailed error dialog instead of just snackbar
+        showDialog(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: const Row(
+                  children: [
+                    Icon(Icons.error, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('KOT Creation Failed'),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Error: $errorMessage',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(detailedMessage),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Possible Solutions:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const Text(
+                      '• Try generating the KOT again in a few moments',
+                    ),
+                    const Text('• Check if the items are still in your cart'),
+                    const Text('• Contact support if the issue persists'),
+                    if (kDebugMode) ...[
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Debug Info:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text('Order ID: $backendOrderId'),
+                      Text('Items Count: ${newItems.length}'),
+                      Text('User ID: ${HiveService.getUserId()}'),
+                      Text('Outlet ID: ${HiveService.getOutletId()}'),
+                    ],
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('OK'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      // Retry KOT generation
+                      _generateKOT(cartProvider);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                    ),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       Navigator.of(context).pop();
+
+      if (kDebugMode) {
+        print('Exception during KOT generation: $e');
+        print('Stack trace: $stackTrace');
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error generating KOT: $e'),
+          content: Text('Error generating KOT: ${e.toString()}'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
     }
@@ -297,7 +636,8 @@ class _CartViewState extends State<CartView> {
 
   // Send to Kitchen logic here
   Future<void> _sendToKitchen(AnimatedCartProvider cartProvider) async {
-    if (!_kotGenerated || _kotOrderNumber == null) {
+    final kotGeneratedItems = cartProvider.kotGeneratedItems.values.toList();
+    if (kotGeneratedItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please generate KOT first'),
@@ -308,6 +648,10 @@ class _CartViewState extends State<CartView> {
     }
 
     try {
+      // Get the latest KOT number (most recently generated)
+      final latestKotNumber =
+          _kotNumbers.isNotEmpty ? _kotNumbers.last : 'Unknown';
+
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -318,23 +662,23 @@ class _CartViewState extends State<CartView> {
                 children: [
                   const CircularProgressIndicator(),
                   const SizedBox(height: 16),
-                  Text('Sending Order #$_kotOrderNumber to Kitchen...'),
+                  Text('Sending KOTs to Kitchen...'),
                 ],
               ),
             ),
       );
 
-      final items = cartProvider.cartItems.values.toList();
+      // Generate combined KOT for all KOT'd items
       final kotBytes = await PDFService.generateKOT(
-        items: items,
-        tableId: items.first.tableId,
-        tableName: items.first.tableName,
-        orderNumber: _kotOrderNumber!,
+        items: kotGeneratedItems,
+        tableId: kotGeneratedItems.first.tableId,
+        tableName: kotGeneratedItems.first.tableName,
+        orderNumber: latestKotNumber,
         orderTime: DateTime.now(),
       );
 
       Navigator.of(context).pop();
-      _showSendKitchenOptions(kotBytes);
+      _showSendKitchenOptions(kotBytes, latestKotNumber);
     } catch (e) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -346,18 +690,18 @@ class _CartViewState extends State<CartView> {
     }
   }
 
-  void _showSendKitchenOptions(dynamic kotBytes) {
+  void _showSendKitchenOptions(dynamic kotBytes, String kotNumber) {
     showDialog(
       context: context,
       builder:
           (_) => AlertDialog(
-            title: Text('Send Order #$_kotOrderNumber to Kitchen'),
+            title: Text('Send KOT #$kotNumber to Kitchen'),
             content: const Text('Choose how to send the KOT to kitchen:'),
             actions: [
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop();
-                  _sendViaWhatsApp(kotBytes);
+                  _sendViaWhatsApp(kotBytes, kotNumber);
                 },
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -371,7 +715,7 @@ class _CartViewState extends State<CartView> {
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop();
-                  _printKOT(kotBytes);
+                  _printKOT(kotBytes, kotNumber);
                 },
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -385,7 +729,7 @@ class _CartViewState extends State<CartView> {
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).pop();
-                  _shareKOT(kotBytes);
+                  _shareKOT(kotBytes, kotNumber);
                 },
                 child: const Text('Share'),
               ),
@@ -394,11 +738,11 @@ class _CartViewState extends State<CartView> {
     );
   }
 
-  Future<void> _sendViaWhatsApp(dynamic kotBytes) async {
+  Future<void> _sendViaWhatsApp(dynamic kotBytes, String kotNumber) async {
     try {
-      await PDFService.sharePDF(kotBytes, 'KOT_$_kotOrderNumber');
+      await PDFService.sharePDF(kotBytes, 'KOT_$kotNumber');
       final whatsappMessage =
-          "New order from restaurant! Please check the KOT.";
+          "New order from restaurant! Please check KOT #$kotNumber.";
       final whatsappUrl =
           "https://wa.me/+918768412832?text=${Uri.encodeComponent(whatsappMessage)}";
 
@@ -408,7 +752,7 @@ class _CartViewState extends State<CartView> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('KOT #$_kotOrderNumber sent via WhatsApp!'),
+          content: Text('KOT #$kotNumber sent via WhatsApp!'),
           backgroundColor: Colors.green,
         ),
       );
@@ -422,12 +766,12 @@ class _CartViewState extends State<CartView> {
     }
   }
 
-  Future<void> _printKOT(dynamic kotBytes) async {
+  Future<void> _printKOT(dynamic kotBytes, String kotNumber) async {
     try {
-      await PDFService.sharePDF(kotBytes, 'KOT_$_kotOrderNumber');
+      await PDFService.sharePDF(kotBytes, 'KOT_$kotNumber');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('KOT #$_kotOrderNumber ready to print!'),
+          content: Text('KOT #$kotNumber ready to print!'),
           backgroundColor: Colors.blue,
         ),
       );
@@ -441,12 +785,12 @@ class _CartViewState extends State<CartView> {
     }
   }
 
-  Future<void> _shareKOT(dynamic kotBytes) async {
+  Future<void> _shareKOT(dynamic kotBytes, String kotNumber) async {
     try {
-      await PDFService.sharePDF(kotBytes, 'KOT_$_kotOrderNumber');
+      await PDFService.sharePDF(kotBytes, 'KOT_$kotNumber');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('KOT #$_kotOrderNumber shared!'),
+          content: Text('KOT #$kotNumber shared!'),
           backgroundColor: Colors.green,
         ),
       );
@@ -462,29 +806,32 @@ class _CartViewState extends State<CartView> {
 
   // Navigate to Billing Page logic here
   void _navigateToBillingPage(AnimatedCartProvider cartProvider) {
-    if (!_kotGenerated || _kotOrderNumber == null) {
+    // Check if all items have been KOT'd
+    if (!cartProvider.canProceedToBilling) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please generate and send KOT first'),
+          content: Text('All items must have KOT generated before billing'),
           backgroundColor: Colors.orange,
         ),
       );
       return;
     }
 
+    // Use the first KOT number for billing reference
+    final orderNumber = _kotNumbers.isNotEmpty ? _kotNumbers.first : 'Unknown';
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder:
             (_) => BillingPage(
-              orderNumber: _kotOrderNumber!,
+              orderNumber: orderNumber,
               cartItems: cartProvider.cartItems.values.toList(),
               onBillGenerated: () {
                 // This will be called after payment is completed
                 cartProvider.clearCart();
                 setState(() {
-                  _kotGenerated = false;
-                  _kotOrderNumber = null;
+                  _kotNumbers.clear();
                 });
               },
             ),

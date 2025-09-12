@@ -47,24 +47,32 @@ class CartItemCard extends StatelessWidget {
                   ),
                 ),
                 // ✅ REPLACED EDIT ICON with meaningful special instruction icon
+                // Show different icon based on KOT status
                 IconButton(
                   onPressed: () async {
                     await HapticHelper.triggerFeedback();
                     onEdit();
                   },
-                  icon: const Icon(
-                    Icons.sticky_note_2, // Better icon for special instructions
+                  icon: Icon(
+                    item.isKotGenerated
+                        ? Icons
+                            .info_outline // Info icon for KOT'd items
+                        : Icons.sticky_note_2, // Edit icon for new items
                     size: 20,
-                    color: AppColors.primary,
+                    color:
+                        item.isKotGenerated ? Colors.green : AppColors.primary,
                   ),
                   constraints: const BoxConstraints(
                     minWidth: 30,
                     minHeight: 30,
                   ),
-                  tooltip: 'Add special instructions',
+                  tooltip:
+                      item.isKotGenerated
+                          ? 'View KOT info'
+                          : 'Add special instructions',
                 ),
-                // ✅ DELETE ALL BUTTON for multiple items - FIXED IMPLEMENTATION
-                if (item.quantity > 1)
+                // ✅ DELETE ALL BUTTON for multiple items - Only show for editable items
+                if (item.quantity > 1 && item.canEdit)
                   IconButton(
                     onPressed: () async {
                       await HapticHelper.triggerFeedback();
@@ -76,26 +84,37 @@ class CartItemCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(16),
                             ),
                             title: const Text('Delete All Items'),
-                            content: Text('Remove all ${item.quantity} "${item.name}" items from cart?'),
+                            content: Text(
+                              'Remove all ${item.quantity} "${item.name}" items from cart?',
+                            ),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.of(context).pop(false),
+                                onPressed:
+                                    () => Navigator.of(context).pop(false),
                                 child: const Text('Cancel'),
                               ),
                               ElevatedButton(
-                                onPressed: () => Navigator.of(context).pop(true),
+                                onPressed:
+                                    () => Navigator.of(context).pop(true),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.red,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
-                                child: const Text('Delete All', style: TextStyle(color: Colors.white)),
+                                child: const Text(
+                                  'Delete All',
+                                  style: TextStyle(color: Colors.white),
+                                ),
                               ),
                             ],
                           );
                         },
                       );
                       if (shouldDelete == true) {
-                        cartProvider.deleteAllOfItem(item.id);  // <-- Use deleteAllOfItem here
+                        cartProvider.deleteAllOfItem(
+                          item.id,
+                        ); // <-- Use deleteAllOfItem here
                       }
                     },
                     icon: const Icon(
@@ -108,6 +127,26 @@ class CartItemCard extends StatelessWidget {
                       minHeight: 30,
                     ),
                     tooltip: 'Delete all ${item.quantity} items',
+                  ),
+                // Show KOT status for KOT'd items
+                if (item.isKotGenerated)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'KOT #${item.kotNumber ?? 'N/A'}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -160,116 +199,139 @@ class CartItemCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // ✅ QUANTITY CONTROLS with confirmation for zero
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.primary, width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Decrement button
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () async {
-                            await HapticHelper.triggerFeedback();
-                            // ✅ CONFIRMATION when decrementing to zero
-                            if (item.quantity == 1) {
-                              final shouldRemove = await _showRemoveConfirmDialog(context);
-                              if (shouldRemove) {
+                // ✅ QUANTITY CONTROLS - Disable for KOT'd items
+                if (item.canEdit)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primary, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Decrement button
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () async {
+                              await HapticHelper.triggerFeedback();
+                              // ✅ CONFIRMATION when decrementing to zero
+                              if (item.quantity == 1) {
+                                final shouldRemove =
+                                    await _showRemoveConfirmDialog(context);
+                                if (shouldRemove) {
+                                  cartProvider.removeItem(item.id);
+                                }
+                              } else {
                                 cartProvider.removeItem(item.id);
                               }
-                            } else {
-                              cartProvider.removeItem(item.id);
-                            }
-                          },
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(12),
-                            bottomLeft: Radius.circular(12),
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
+                            },
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(12),
+                              bottomLeft: Radius.circular(12),
                             ),
-                            child: const Icon(
-                              Icons.remove,
-                              color: AppColors.primary,
-                              size: 18,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              child: const Icon(
+                                Icons.remove,
+                                color: AppColors.primary,
+                                size: 18,
+                              ),
                             ),
                           ),
                         ),
+                        // Quantity display
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            border: Border.symmetric(
+                              vertical: BorderSide(
+                                color: AppColors.primary,
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            item.quantity.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        // Increment button
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () async {
+                              await HapticHelper.triggerFeedback();
+                              cartProvider.addItem(
+                                item.id,
+                                item.name,
+                                item.price,
+                                item.tableId,
+                                item.tableName,
+                                categoryId: item.categoryId,
+                                categoryName: item.categoryName,
+                              );
+                            },
+                            borderRadius: const BorderRadius.only(
+                              topRight: Radius.circular(12),
+                              bottomRight: Radius.circular(12),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              child: const Icon(
+                                Icons.add,
+                                color: AppColors.primary,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  // Show read-only quantity for KOT'd items
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!, width: 1),
+                    ),
+                    child: Text(
+                      'Qty: ${item.quantity}',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
                       ),
-                      // Quantity display
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          border: Border.symmetric(
-                            vertical: BorderSide(
-                              color: AppColors.primary,
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        child: Text(
-                          item.quantity.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      // Increment button
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () async {
-                            await HapticHelper.triggerFeedback();
-                            cartProvider.addItem(
-                              item.id,
-                              item.name,
-                              item.price,
-                              item.tableId,
-                              item.tableName,
-                              categoryId: item.categoryId,
-                              categoryName: item.categoryName,
-                            );
-                          },
-                          borderRadius: const BorderRadius.only(
-                            topRight: Radius.circular(12),
-                            bottomRight: Radius.circular(12),
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            child: const Icon(
-                              Icons.add,
-                              color: AppColors.primary,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
               ],
             ),
           ],
