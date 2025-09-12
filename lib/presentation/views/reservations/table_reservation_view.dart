@@ -5,6 +5,7 @@ import 'package:vibration/vibration.dart';
 import 'dart:io';
 
 import '../../../core/themes/app_colors.dart';
+import '../../../core/constants/currency_constants.dart';
 import '../../../data/models/restaurant_table.dart';
 import '../../../data/models/reservation.dart';
 import '../../view_models/providers/reservation_provider.dart';
@@ -808,11 +809,11 @@ class _TableReservationViewState extends State<TableReservationView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.currency_rupee, color: AppColors.primary, size: 20),
-              SizedBox(width: 8),
-              Text(
+              Icon(Icons.attach_money, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              const Text(
                 'Pricing & Payment',
                 style: TextStyle(
                   fontSize: 18,
@@ -856,18 +857,18 @@ class _TableReservationViewState extends State<TableReservationView> {
             children: [
               const Text('Base Amount:', style: TextStyle(fontSize: 14)),
               Text(
-                '₹${_calculatedPrice.toStringAsFixed(0)}',
+                '${CurrencyConstants.symbol}${_calculatedPrice.toStringAsFixed(0)}',
                 style: const TextStyle(fontSize: 14),
               ),
             ],
           ),
           if (_decoration) ...[
             const SizedBox(height: 4),
-            const Row(
+                const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Decoration:', style: TextStyle(fontSize: 14)),
-                Text('₹500', style: TextStyle(fontSize: 14)),
+                Text('\$500', style: TextStyle(fontSize: 14)),
               ],
             ),
           ],
@@ -884,7 +885,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                 ),
               ),
               Text(
-                '₹${_calculatedPrice.toStringAsFixed(0)}',
+                '${CurrencyConstants.symbol}${_calculatedPrice.toStringAsFixed(0)}',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -913,7 +914,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                       ),
                     ),
                     Text(
-                      '₹${advanceAmount.toStringAsFixed(0)}',
+                      '${CurrencyConstants.symbol}${advanceAmount.toStringAsFixed(0)}',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -931,7 +932,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     Text(
-                      '₹${remainingAmount.toStringAsFixed(0)}',
+                      '${CurrencyConstants.symbol}${remainingAmount.toStringAsFixed(0)}',
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
@@ -963,8 +964,8 @@ class _TableReservationViewState extends State<TableReservationView> {
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           decoration: InputDecoration(
             hintText: 'Enter advance amount',
-            prefixIcon: const Icon(Icons.currency_rupee_outlined),
-            suffixText: 'INR',
+            prefixIcon: const Icon(Icons.attach_money),
+            suffixText: 'USD',
             filled: true,
             fillColor: Colors.grey[50],
             border: OutlineInputBorder(
@@ -975,8 +976,8 @@ class _TableReservationViewState extends State<TableReservationView> {
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
-            helperText:
-                'Minimum: ₹${_minAdvanceAmount.toStringAsFixed(0)} • Maximum: ₹${_calculatedPrice.toStringAsFixed(0)}',
+      helperText:
+        'Minimum: ${CurrencyConstants.symbol}${_minAdvanceAmount.toStringAsFixed(0)} • Maximum: ${CurrencyConstants.symbol}${_calculatedPrice.toStringAsFixed(0)}',
             helperStyle: const TextStyle(fontSize: 11),
           ),
           onChanged: (value) {
@@ -991,7 +992,7 @@ class _TableReservationViewState extends State<TableReservationView> {
               return 'Please enter valid amount';
             }
             if (amount < _minAdvanceAmount) {
-              return 'Minimum advance: ₹${_minAdvanceAmount.toStringAsFixed(0)}';
+              return 'Minimum advance: ${CurrencyConstants.symbol}${_minAdvanceAmount.toStringAsFixed(0)}';
             }
             if (amount > _calculatedPrice) {
               return 'Cannot exceed total amount';
@@ -1021,7 +1022,7 @@ class _TableReservationViewState extends State<TableReservationView> {
             ),
           ],
         ),
-        subtitle: const Text('₹500 - Balloons, flowers & table setup'),
+            subtitle: const Text('400 - Balloons, flowers & table setup'),
         value: _decoration,
         activeColor: AppColors.primary,
         onChanged: (value) {
@@ -1225,9 +1226,9 @@ class _TableReservationViewState extends State<TableReservationView> {
                   description: 'Minimum 30 minutes, Maximum 6 hours',
                 ),
                 _buildInfoItem(
-                  icon: Icons.currency_rupee,
+                  icon: Icons.attach_money,
                   title: 'Advance Payment',
-                  description: 'Minimum 20% of total amount, ₹100 minimum',
+                  description: 'Minimum 20% of total amount, ${CurrencyConstants.symbol}100 minimum',
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -1416,7 +1417,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Table: ${reservation.tableName}\nAdvance: ₹${reservation.advanceAmount.toStringAsFixed(0)}\nBill: ${reservation.billNumber}',
+                      'Table: ${reservation.tableName}\nAdvance: ${CurrencyConstants.symbol}${reservation.advanceAmount.toStringAsFixed(0)}\nBill: ${reservation.billNumber}',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey[600]),
                     ),

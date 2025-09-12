@@ -117,30 +117,46 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                         locations: dashboardProvider.locations,
                         tables: tables,
                       ),
+                      // Pull-to-refresh for tables area
                       Expanded(
-                        child:
-                            tables.isEmpty
-                                ? DashboardEmptyState(
-                                  selectedLocation:
-                                      dashboardProvider.selectedLocation.isEmpty
-                                          ? 'All Tables'
-                                          : dashboardProvider.selectedLocation,
-                                  onChangeLocation:
-                                      () =>
-                                          _scaffoldKey.currentState
-                                              ?.openDrawer(),
+                        child: RefreshIndicator(
+                          onRefresh: () async {
+                            try {
+                              // Re-initialize / reload tables from provider (API)
+                              context.read<TableProvider>().initializeTables();
+                              _showSnackBar('Tables refreshed', Colors.green);
+                            } catch (e) {
+                              if (kDebugMode) print('Refresh error: $e');
+                              _showSnackBar('Failed to refresh tables', Colors.red);
+                            }
+                          },
+                          // The TableGrid likely uses a scrollable (GridView). For empty state,
+                          // provide a scrollable ListView so pull-to-refresh still works.
+                          child: tables.isEmpty
+                              ? ListView(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  children: [
+                                    DashboardEmptyState(
+                                      selectedLocation:
+                                          dashboardProvider.selectedLocation.isEmpty
+                                              ? 'All Tables'
+                                              : dashboardProvider.selectedLocation,
+                                      onChangeLocation: () =>
+                                          _scaffoldKey.currentState?.openDrawer(),
+                                    ),
+                                  ],
                                 )
-                                : TableGrid(
+                              : TableGrid(
                                   tables: tables,
-                                  onTableTap:
-                                      (table) => _handleTableClick(
-                                        table,
-                                        tableProvider,
-                                        dashboardProvider,
-                                      ),
-                                  onTableLongPress:
-                                      (table) => _handleTableLongPress(table),
+                                  onTableTap: (table) => _handleTableClick(
+                                    table,
+                                    tableProvider,
+                                    dashboardProvider,
+                                  ),
+                                  onTableLongPress: (table) =>
+                                      _handleTableLongPress(table),
                                 ),
+                        ),
                       ),
                     ],
                   ),

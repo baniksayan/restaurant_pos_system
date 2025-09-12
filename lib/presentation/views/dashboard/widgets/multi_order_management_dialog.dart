@@ -62,6 +62,8 @@ class MultiOrderManagementDialog extends StatelessWidget {
         children: [
           Row(
             children: [
+              // Temporarily hide circular icon (share/table) - UI only.
+              /*
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -74,6 +76,10 @@ class MultiOrderManagementDialog extends StatelessWidget {
                   size: 24,
                 ),
               ),
+              */
+              // Placeholder to keep spacing consistent while icon is paused:
+              const SizedBox(width: 10),
+
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -88,6 +94,8 @@ class MultiOrderManagementDialog extends StatelessWidget {
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
+                    // Temporarily hide the SHARED label (UI only).
+                    /*
                     if (table.isSharedTable)
                       Container(
                         margin: const EdgeInsets.only(top: 4),
@@ -108,10 +116,12 @@ class MultiOrderManagementDialog extends StatelessWidget {
                           ),
                         ),
                       ),
+                    */
                   ],
                 ),
               ),
-              // Compact Plus Button
+              // Temporarily hide the compact plus button (UI only).
+              /*
               Container(
                 decoration: BoxDecoration(
                   color: Colors.green,
@@ -129,6 +139,9 @@ class MultiOrderManagementDialog extends StatelessWidget {
                   ),
                 ),
               ),
+              */
+              // Placeholder to keep spacing consistent while plus-button is paused:
+              const SizedBox(width: 8),
             ],
           ),
           const SizedBox(height: 12),

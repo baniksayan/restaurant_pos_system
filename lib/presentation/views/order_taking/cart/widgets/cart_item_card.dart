@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/themes/app_colors.dart';
+import '../../../../../core/constants/currency_constants.dart';
 import '../../../../../core/utils/haptic_helper.dart';
 import '../../../../view_models/providers/animated_cart_provider.dart';
 
@@ -112,16 +113,9 @@ class CartItemCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            // Table info
-            Text(
-              'For ${item.tableName}',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
-            ),
+            // Table info removed
             const SizedBox(height: 8),
-            // ✅ SPECIAL INSTRUCTIONS with truncation and eye icon
+            // SPECIAL INSTRUCTIONS with truncation and eye icon
             if (item.specialNotes != null && item.specialNotes!.isNotEmpty)
               _buildSpecialInstructions(context),
             const SizedBox(height: 12),
@@ -133,7 +127,7 @@ class CartItemCard extends StatelessWidget {
                   child: Row(
                     children: [
                       Text(
-                        '₹${item.price.toStringAsFixed(2)}',
+                        '${CurrencyConstants.symbol}${item.price.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 14,
                           color: AppColors.primary,
@@ -150,7 +144,7 @@ class CartItemCard extends StatelessWidget {
                       ),
                       const Text(' = '),
                       Text(
-                        '₹${(item.price * item.quantity).toStringAsFixed(2)}',
+                        '${CurrencyConstants.symbol}${(item.price * item.quantity).toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 14,
                           color: AppColors.primary,
@@ -160,7 +154,7 @@ class CartItemCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // ✅ QUANTITY CONTROLS with confirmation for zero
+                // QUANTITY CONTROLS with confirmation for zero
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,

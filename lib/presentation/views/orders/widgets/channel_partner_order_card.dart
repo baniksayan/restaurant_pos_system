@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../../core/themes/app_colors.dart';
+import '../../../../core/constants/currency_constants.dart';
 import '../../../../data/models/order_management_model.dart';
 import '../../../../shared/widgets/animations/countdown_timer.dart';
 
@@ -163,7 +164,7 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
 
                     // Price - Clean display
                     Text(
-                      '₹${_currentOrder.totalAmount.toStringAsFixed(2)}',
+                      '${CurrencyConstants.symbol}${_currentOrder.totalAmount.toStringAsFixed(2)}',
                       style: const TextStyle(
                         color: AppColors.primary,
                         fontSize: 18,

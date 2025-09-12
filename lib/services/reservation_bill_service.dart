@@ -7,6 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/models/reservation.dart';
+import '../core/constants/currency_constants.dart';
 
 class ReservationBillService {
   static String generateBillNumber() {
@@ -153,7 +154,7 @@ class ReservationBillService {
                               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                               children: [
                                 pw.Text('Base Amount:'),
-                                pw.Text('₹${reservation.basePrice.toStringAsFixed(0)}'),
+                                pw.Text('${CurrencyConstants.symbol}${reservation.basePrice.toStringAsFixed(0)}'),
                               ],
                             ),
                             if (reservation.decoration) ...[
@@ -162,7 +163,7 @@ class ReservationBillService {
                                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                                 children: [
                                   pw.Text('Table Decoration:'),
-                                  pw.Text('₹500'),
+                                  pw.Text('500'),
                                 ],
                               ),
                             ],
@@ -174,7 +175,7 @@ class ReservationBillService {
                               children: [
                                 pw.Text('Total Amount:', 
                                   style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
-                                pw.Text('₹${reservation.finalPrice.toStringAsFixed(0)}', 
+                                pw.Text('${CurrencyConstants.symbol}${reservation.finalPrice.toStringAsFixed(0)}', 
                                   style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
                               ],
                             ),
@@ -184,7 +185,7 @@ class ReservationBillService {
                               children: [
                                 pw.Text('Advance Paid:', 
                                   style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.green800)),
-                                pw.Text('₹${reservation.advanceAmount.toStringAsFixed(0)}', 
+                                pw.Text('${CurrencyConstants.symbol}${reservation.advanceAmount.toStringAsFixed(0)}', 
                                   style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.green800)),
                               ],
                             ),
@@ -193,7 +194,7 @@ class ReservationBillService {
                               children: [
                                 pw.Text('Remaining:', 
                                   style: pw.TextStyle(color: PdfColors.red800)),
-                                pw.Text('₹${reservation.remainingAmount.toStringAsFixed(0)}', 
+                                pw.Text('${CurrencyConstants.symbol}${reservation.remainingAmount.toStringAsFixed(0)}', 
                                   style: pw.TextStyle(color: PdfColors.red800)),
                               ],
                             ),
@@ -297,9 +298,9 @@ Your table reservation has been confirmed at *WiZARD Restaurant*
 • Persons: ${reservation.persons}
 
 *Payment Summary:*
-• Total Amount: ₹${reservation.finalPrice.toStringAsFixed(0)}
-• Advance Paid: ₹${reservation.advanceAmount.toStringAsFixed(0)}
-• Remaining: ₹${reservation.remainingAmount.toStringAsFixed(0)}
+  • Total Amount: ${CurrencyConstants.symbol}${reservation.finalPrice.toStringAsFixed(0)}
+  • Advance Paid: ${CurrencyConstants.symbol}${reservation.advanceAmount.toStringAsFixed(0)}
+  • Remaining: ${CurrencyConstants.symbol}${reservation.remainingAmount.toStringAsFixed(0)}
 
 For any changes, call: +91-8768412832
 
@@ -336,7 +337,7 @@ Thank you for choosing WiZARD Restaurant!''';
       
       // For iOS or if direct sharing fails, copy file and open WhatsApp
       final message = Uri.encodeComponent(
-        'Dear ${reservation.customerName}, your table reservation is confirmed! Check the attached bill. Total: ₹${reservation.finalPrice.toStringAsFixed(0)}, Advance: ₹${reservation.advanceAmount.toStringAsFixed(0)}'
+        'Dear ${reservation.customerName}, your table reservation is confirmed! Check the attached bill. Total: ${CurrencyConstants.symbol}${reservation.finalPrice.toStringAsFixed(0)}, Advance: ${CurrencyConstants.symbol}${reservation.advanceAmount.toStringAsFixed(0)}'
       );
       
       final phoneNumber = reservation.customerPhone.startsWith('+91') 

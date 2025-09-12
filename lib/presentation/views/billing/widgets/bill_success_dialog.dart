@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../services/pdf_service.dart';
 import '../../payment/payment_page.dart';
+import '../../../../core/constants/currency_constants.dart';
 
 class BillSuccessDialog extends StatelessWidget {
   final String orderNumber;
@@ -40,7 +41,7 @@ class BillSuccessDialog extends StatelessWidget {
           children: [
             Text('Order #$orderNumber bill ready'),
             const SizedBox(height: 8),
-            Text('Total: ₹${total.toStringAsFixed(2)}'),
+            Text('Total: ${CurrencyConstants.symbol}${total.toStringAsFixed(2)}'),
             if (customerPhone?.isNotEmpty == true) ...[
               const SizedBox(height: 12),
               Container(
@@ -130,8 +131,8 @@ class BillSuccessDialog extends StatelessWidget {
       final cleanPhone = customerPhone!
           .replaceAll('+', '')
           .replaceAll(' ', '');
-      final message =
-          'Hello! Your restaurant bill for Order #$orderNumber is ready. Total: ₹${total.toStringAsFixed(2)}';
+    final message =
+      'Hello! Your restaurant bill for Order #$orderNumber is ready. Total: ${CurrencyConstants.symbol}${total.toStringAsFixed(2)}';
       final whatsappUrl =
           'https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}';
 

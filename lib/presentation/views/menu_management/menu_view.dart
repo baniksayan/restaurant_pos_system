@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 
 import '../../view_models/providers/menu_provider.dart';
+import '../../view_models/providers/navigation_provider.dart';
 import 'widgets/menu_header.dart';
 import 'widgets/menu_search_bar.dart';
 import 'widgets/category_tabs.dart';
@@ -78,7 +79,13 @@ class _MenuViewState extends State<MenuView> {
                 ),
                 if (widget.selectedTableId != null &&
                     menuProvider.totalCartItems > 0)
-                  CartFooter(onPlaceOrder: () {}),
+                  CartFooter(
+                    onPlaceOrder: () {
+                      // Navigate to Cart tab (index 2)
+                      Provider.of<NavigationProvider>(context, listen: false)
+                          .navigateToIndex(2);
+                    },
+                  ),
               ],
             );
           },

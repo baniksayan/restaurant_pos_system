@@ -92,7 +92,7 @@ class _EditItemDialogState extends State<EditItemDialog> {
                                   ),
                                 ),
                                 Text(
-                                  'Price: ₹${widget.item.price} | Qty: ${widget.item.quantity}',
+                                  'Price: ${widget.item.price} | Qty: ${widget.item.quantity}',
                                 ),
                                 Text('Table: ${widget.item.tableName}'),
                               ],

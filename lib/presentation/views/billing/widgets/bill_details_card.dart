@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/currency_constants.dart';
 
 class BillDetailsCard extends StatelessWidget {
   final double subtotal;
@@ -35,15 +36,15 @@ class BillDetailsCard extends StatelessWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          _buildAmountRow('Subtotal:', '₹${subtotal.toStringAsFixed(2)}'),
+          _buildAmountRow('Subtotal:', '${CurrencyConstants.symbol}${subtotal.toStringAsFixed(2)}'),
           const SizedBox(height: 8),
-          _buildAmountRow('GST (18%):', '₹${gstAmount.toStringAsFixed(2)}'),
+          _buildAmountRow('GST (18%):', '${CurrencyConstants.symbol}${gstAmount.toStringAsFixed(2)}'),
           const SizedBox(height: 12),
           const Divider(thickness: 1),
           const SizedBox(height: 8),
           _buildAmountRow(
             'Total Amount:',
-            '₹${total.toStringAsFixed(2)}',
+            '${CurrencyConstants.symbol}${total.toStringAsFixed(2)}',
             isTotal: true,
           ),
         ],

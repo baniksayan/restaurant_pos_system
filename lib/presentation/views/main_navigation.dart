@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../view_models/providers/navigation_provider.dart';
 import '../view_models/providers/animated_cart_provider.dart';
+import '../view_models/providers/menu_provider.dart';
 import 'dashboard/waiter_dashboard_view.dart';
 import 'menu_management/menu_view.dart';
 import 'order_taking/cart/cart_view.dart';
@@ -54,69 +55,28 @@ class _MainNavigationState extends State<MainNavigation> {
     String categoryName,
     Offset buttonPosition,
   ) {
-    final flyingItem = Container(
-      width: 50,
-      height: 50,
-      decoration: BoxDecoration(
-        color: Colors.orange,
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: const Icon(Icons.restaurant, color: Colors.white, size: 25),
+    // Immediate add-to-cart (no flying animation). Keep providers in sync.
+    final navProvider = Provider.of<NavigationProvider>(context, listen: false);
+    Provider.of<AnimatedCartProvider>(context, listen: false).addItem(
+      itemId,
+      itemName,
+      price,
+      navProvider.selectedTableId ?? '',
+      navProvider.selectedTableName ?? '',
+      categoryId: categoryId,
+      categoryName: categoryName,
     );
 
-    // Check if the overlay is available and has the animateToCart method
-    final overlayState = _overlayKey.currentState;
-    if (overlayState != null && overlayState is CartAnimationOverlayState) {
-      overlayState.animateToCart(
-        item: flyingItem,
-        startPosition: buttonPosition,
-        onComplete: () {
-          final navProvider = Provider.of<NavigationProvider>(context, listen: false);
-          Provider.of<AnimatedCartProvider>(context, listen: false).addItem(
-            itemId,
-            itemName,
-            price,
-            navProvider.selectedTableId ?? '',
-            navProvider.selectedTableName ?? '',
-            categoryId: categoryId,
-            categoryName: categoryName,
-          );
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('$itemName added to cart!'),
-              backgroundColor: Colors.green,
-              duration: const Duration(milliseconds: 800),
-            ),
-          );
-        },
-      );
-    } else {
-      // Fallback if animation overlay is not available
-      final navProvider = Provider.of<NavigationProvider>(context, listen: false);
-      Provider.of<AnimatedCartProvider>(context, listen: false).addItem(
-        itemId,
-        itemName,
-        price,
-        navProvider.selectedTableId ?? '',
-        navProvider.selectedTableName ?? '',
-        categoryId: categoryId,
-        categoryName: categoryName,
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$itemName added to cart!'),
-          backgroundColor: Colors.green,
-          duration: const Duration(milliseconds: 800),
-        ),
-      );
-    }
+    // Keep Menu view quantities in sync
+    Provider.of<MenuProvider>(context, listen: false).addToCart(itemId);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$itemName added to cart!'),
+        backgroundColor: Colors.green,
+        duration: const Duration(milliseconds: 700),
+      ),
+    );
   }
 
   @override

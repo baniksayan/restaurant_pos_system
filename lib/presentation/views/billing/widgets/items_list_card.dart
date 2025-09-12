@@ -1,3 +1,5 @@
+import '../../../../core/themes/app_colors.dart';
+import '../../../../core/constants/currency_constants.dart';
 import 'package:flutter/material.dart';
 
 class ItemsListCard extends StatelessWidget {
@@ -83,11 +85,11 @@ class ItemsListCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '₹${item.price.toStringAsFixed(2)} × ${item.quantity}',
+                        '${CurrencyConstants.symbol}${item.price.toStringAsFixed(2)} × ${item.quantity}',
                         style: const TextStyle(fontSize: 12),
                       ),
                       Text(
-                        '₹${(item.price * item.quantity).toStringAsFixed(2)}',
+                        '${CurrencyConstants.symbol}${(item.price * item.quantity).toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Colors.blue,

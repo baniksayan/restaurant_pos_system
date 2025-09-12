@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../presentation/view_models/providers/animated_cart_provider.dart';
+import '../core/constants/currency_constants.dart';
 
 class PDFService {
   static const String restaurantName = "WiZARD Restaurant";
@@ -17,8 +18,8 @@ class PDFService {
   static const String restaurantEmail = "orders@wizardrestaurant.com";
   static const String gstNumber = "22AAAAA0000A1Z5";
 
-  // Add Unicode rupee symbol
-  static const String rupeeSymbol = '\u{20B9}'; // ₹ symbol
+  // Use centralized currency symbol
+  static const String rupeeSymbol = CurrencyConstants.symbol; // kept name for backward-compat in-file
 
   // Generate KOT (Kitchen Order Ticket) for Chef - Updated with Special Notes
   static Future<Uint8List> generateKOT({
@@ -537,14 +538,14 @@ class PDFService {
                       pw.Expanded(
                         flex: 2,
                         child: pw.Text(
-                          "$rupeeSymbol${item.price.toStringAsFixed(2)}",
+                          "${CurrencyConstants.symbol}${item.price.toStringAsFixed(2)}",
                           textAlign: pw.TextAlign.center,
                         ),
                       ),
                       pw.Expanded(
                         flex: 2,
                         child: pw.Text(
-                          "$rupeeSymbol${itemTotal.toStringAsFixed(2)}",
+                          "${CurrencyConstants.symbol}${itemTotal.toStringAsFixed(2)}",
                           textAlign: pw.TextAlign.right,
                           style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                         ),
@@ -594,19 +595,19 @@ class PDFService {
                   children: [
                     _buildTotalRow(
                       "Subtotal:",
-                      "$rupeeSymbol${subtotal.toStringAsFixed(2)}",
+                      "${CurrencyConstants.symbol}${subtotal.toStringAsFixed(2)}",
                     ),
                     pw.SizedBox(height: 8),
                     _buildTotalRow(
                       "GST (18%):",
-                      "$rupeeSymbol${gstAmount.toStringAsFixed(2)}",
+                      "${CurrencyConstants.symbol}${gstAmount.toStringAsFixed(2)}",
                     ),
                     pw.SizedBox(height: 8),
                     pw.Divider(thickness: 2),
                     pw.SizedBox(height: 8),
                     _buildTotalRow(
                       "TOTAL AMOUNT:",
-                      "$rupeeSymbol${total.toStringAsFixed(2)}",
+                      "${CurrencyConstants.symbol}${total.toStringAsFixed(2)}",
                       isTotal: true,
                     ),
                   ],

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../../core/themes/app_colors.dart';
+import '../../../core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/presentation/views/reports/services/reports_csv_service.dart';
 import 'package:restaurant_pos_system/presentation/views/reports/services/reports_pdf_service.dart';
 
@@ -381,7 +382,7 @@ class _ReportsViewState extends State<ReportsView>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Revenue vs Orders',
+                'Revenues',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -542,7 +543,7 @@ class _ReportsViewState extends State<ReportsView>
           getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
             return touchedBarSpots.map((barSpot) {
               return LineTooltipItem(
-                '₹${NumberFormat('#,##,###').format(barSpot.y.toInt())}',
+                '${NumberFormat('#,##,###').format(barSpot.y.toInt())}',
                 const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -950,66 +951,66 @@ class _ReportsViewState extends State<ReportsView>
     switch (_selectedTimeFrame) {
       case 'Today':
         return {
-          'revenue': '₹3,245',
+          'revenue': '${CurrencyConstants.symbol}3,245',
           'revenueChange': '+5%',
           'orders': '47',
           'ordersChange': '+12%',
-          'avgOrder': '₹69.04',
+          'avgOrder': '69.04',
           'avgOrderChange': '+3%',
           'turnover': '1.8x',
           'turnoverChange': '+8%',
         };
       case 'Last 7 Days':
         return {
-          'revenue': '₹12,450',
+          'revenue': '${CurrencyConstants.symbol}12,450',
           'revenueChange': '+12%',
           'orders': '320',
           'ordersChange': '-5%',
-          'avgOrder': '₹38.91',
+          'avgOrder': '38.91',
           'avgOrderChange': '+8%',
           'turnover': '2.1x',
           'turnoverChange': '+15%',
         };
       case 'Last 30 Days':
         return {
-          'revenue': '₹54,780',
+          'revenue': '${CurrencyConstants.symbol}54,780',
           'revenueChange': '+18%',
           'orders': '1,245',
           'ordersChange': '+22%',
-          'avgOrder': '₹44.02',
+          'avgOrder': '44.02',
           'avgOrderChange': '+15%',
           'turnover': '2.4x',
           'turnoverChange': '+25%',
         };
       case 'This Month':
         return {
-          'revenue': '₹48,920',
+          'revenue': '${CurrencyConstants.symbol}48,920',
           'revenueChange': '+14%',
           'orders': '1,089',
           'ordersChange': '+8%',
-          'avgOrder': '₹44.93',
+          'avgOrder': '44.93',
           'avgOrderChange': '+12%',
           'turnover': '2.3x',
           'turnoverChange': '+18%',
         };
       case 'Last 3 Months':
         return {
-          'revenue': '₹1,84,350',
+          'revenue': '${CurrencyConstants.symbol}1,84,350',
           'revenueChange': '+28%',
           'orders': '4,567',
           'ordersChange': '+35%',
-          'avgOrder': '₹40.38',
+          'avgOrder': '40.38',
           'avgOrderChange': '+18%',
           'turnover': '2.6x',
           'turnoverChange': '+32%',
         };
       default:
         return {
-          'revenue': '₹12,450',
+          'revenue': '${CurrencyConstants.symbol}12,450',
           'revenueChange': '+12%',
           'orders': '320',
           'ordersChange': '-5%',
-          'avgOrder': '₹38.91',
+          'avgOrder': '38.91',
           'avgOrderChange': '+8%',
           'turnover': '2.1x',
           'turnoverChange': '+15%',
@@ -1020,17 +1021,17 @@ class _ReportsViewState extends State<ReportsView>
   Map<String, String> _getChartData() {
     switch (_selectedTimeFrame) {
       case 'Today':
-        return {'totalRevenue': '₹3,245', 'change': '+5%'};
+        return {'totalRevenue': '${CurrencyConstants.symbol}3,245', 'change': '+5%'};
       case 'Last 7 Days':
-        return {'totalRevenue': '₹12,450', 'change': '+12%'};
+        return {'totalRevenue': '${CurrencyConstants.symbol}12,450', 'change': '+12%'};
       case 'Last 30 Days':
-        return {'totalRevenue': '₹54,780', 'change': '+18%'};
+        return {'totalRevenue': '${CurrencyConstants.symbol}54,780', 'change': '+18%'};
       case 'This Month':
-        return {'totalRevenue': '₹48,920', 'change': '+14%'};
+        return {'totalRevenue': '${CurrencyConstants.symbol}48,920', 'change': '+14%'};
       case 'Last 3 Months':
-        return {'totalRevenue': '₹1,84,350', 'change': '+28%'};
+        return {'totalRevenue': '${CurrencyConstants.symbol}1,84,350', 'change': '+28%'};
       default:
-        return {'totalRevenue': '₹12,450', 'change': '+12%'};
+        return {'totalRevenue': '${CurrencyConstants.symbol}12,450', 'change': '+12%'};
     }
   }
 

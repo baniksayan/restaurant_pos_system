@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/themes/app_colors.dart';
 import '../../../view_models/providers/menu_provider.dart';
+import '../../../../core/constants/currency_constants.dart';
 
 class CartFooter extends StatelessWidget {
   final VoidCallback onPlaceOrder;
@@ -42,7 +43,7 @@ class CartFooter extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '₹${menuProvider.calculateTotal().toStringAsFixed(0)}',
+                      '${CurrencyConstants.symbol}${menuProvider.calculateTotal().toStringAsFixed(0)}',
                       style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.textSecondary,
@@ -58,7 +59,7 @@ class CartFooter extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
                 child: const Text(
-                  'Place Order',
+                  'Go to Cart',
                   style: TextStyle(color: Colors.white),
                 ),
               ),

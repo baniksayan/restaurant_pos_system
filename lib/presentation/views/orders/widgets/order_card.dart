@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/themes/app_colors.dart';
+import '../../../../core/constants/currency_constants.dart';
 import '../../../../data/models/order_management_model.dart';
 
 class OrderCard extends StatelessWidget {
@@ -90,7 +91,7 @@ class OrderCard extends StatelessWidget {
 
                 // Price - No arrow, clean text
                 Text(
-                  '₹${order.totalAmount.toStringAsFixed(2)}',
+                  '${CurrencyConstants.symbol}${order.totalAmount.toStringAsFixed(2)}',
                   style: const TextStyle(
                     color: AppColors.primary,
                     fontSize: 18,

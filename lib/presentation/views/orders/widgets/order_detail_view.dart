@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/presentation/views/payment/payment_page.dart';
 import '../../../../core/themes/app_colors.dart';
+import '../../../../core/constants/currency_constants.dart';
 import '../../../../data/models/order_management_model.dart';
 import '../../../../services/pdf_service.dart';
 import '../../../../services/api_service.dart';
@@ -494,9 +495,9 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             ),
             const SizedBox(height: 20),
 
-            _buildPriceRow('Item Price', _subtotal),
-            _buildPriceRow('GST (8%)', _gstAmount),
-            _buildPriceRow('Service Charge', _serviceCharge),
+          _buildPriceRow('Item Price', _subtotal),
+          _buildPriceRow('GST (8%)', _gstAmount),
+          _buildPriceRow('Service Charge', _serviceCharge),
 
             // Only show discount if it exists
             if (hasDiscount)
@@ -536,7 +537,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             ),
           ),
           Text(
-            '${isDiscount ? '-' : ''}₹${amount.abs().toStringAsFixed(2)}',
+            '${isDiscount ? '-' : ''}${CurrencyConstants.symbol}${amount.abs().toStringAsFixed(2)}',
             style: TextStyle(
               color:
                   isDiscount
@@ -645,7 +646,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             Expanded(
               flex: 2,
               child: Text(
-                '$quantity × ₹${price.toStringAsFixed(2)}',
+                '$quantity × ${CurrencyConstants.symbol}${price.toStringAsFixed(2)}',
                 style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 14,
@@ -660,7 +661,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             SizedBox(
               width: 80,
               child: Text(
-                '₹${total.toStringAsFixed(2)}',
+                '${CurrencyConstants.symbol}${total.toStringAsFixed(2)}',
                 style: const TextStyle(
                   color: AppColors.primary,
                   fontSize: 16,

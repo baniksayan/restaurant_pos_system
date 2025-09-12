@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/themes/app_colors.dart';
+import '../../../../core/constants/currency_constants.dart';
 import '../../../view_models/providers/profile_provider.dart';
 import '../../../view_models/providers/auth_provider.dart';
 import '../../auth/login/login_view.dart';
@@ -360,8 +361,8 @@ class _ProfileViewState extends State<ProfileView> with SingleTickerProviderStat
               Expanded(
                 child: _buildShiftStat(
                   'Sales',
-                  '₹${currentShift.shiftSales.toStringAsFixed(0)}',
-                  Icons.currency_rupee,
+                  '${CurrencyConstants.symbol}${currentShift.shiftSales.toStringAsFixed(0)}',
+                  Icons.attach_money,
                 ),
               ),
             ],
@@ -450,7 +451,7 @@ class _ProfileViewState extends State<ProfileView> with SingleTickerProviderStat
               Expanded(
                 child: _buildStatCard(
                   'Total Sales',
-                  '₹${(stats.totalSalesAmount / 1000).toStringAsFixed(0)}K',
+                  '${CurrencyConstants.symbol}${(stats.totalSalesAmount / 1000).toStringAsFixed(0)}K',
                   Icons.monetization_on,
                   Colors.orange,
                 ),
@@ -459,7 +460,7 @@ class _ProfileViewState extends State<ProfileView> with SingleTickerProviderStat
               Expanded(
                 child: _buildStatCard(
                   'Avg Order',
-                  '₹${stats.averageOrderValue.toStringAsFixed(0)}',
+                  '${CurrencyConstants.symbol}${stats.averageOrderValue.toStringAsFixed(0)}',
                   Icons.trending_up,
                   Colors.purple,
                 ),
@@ -585,7 +586,7 @@ class _ProfileViewState extends State<ProfileView> with SingleTickerProviderStat
                   ),
                 ),
                 Text(
-                  '${order.items} items • ₹${order.amount.toStringAsFixed(2)}',
+                  '${order.items} items • ${CurrencyConstants.symbol}${order.amount.toStringAsFixed(2)}',
                   style: const TextStyle(
                     color: Colors.grey,
                     fontSize: 12,
@@ -813,7 +814,7 @@ class _ProfileViewState extends State<ProfileView> with SingleTickerProviderStat
               Expanded(
                 child: _buildMetricCard(
                   'Revenue/Day',
-                  '₹${(stats.totalSalesAmount / 30).toStringAsFixed(0)}',
+                  '${(stats.totalSalesAmount / 30).toStringAsFixed(0)}',
                   Icons.monetization_on,
                   Colors.purple,
                 ),
@@ -932,10 +933,10 @@ class _ProfileViewState extends State<ProfileView> with SingleTickerProviderStat
           
           const SizedBox(height: 16),
           
-          _buildRankingItem('You', 2, '₹12,450', true),
-          _buildRankingItem('Priya Sharma', 1, '₹14,230', false),
-          _buildRankingItem('Ahmed Khan', 3, '₹11,890', false),
-          _buildRankingItem('Sneha Patel', 4, '₹9,670', false),
+          _buildRankingItem('You', 2, '${CurrencyConstants.symbol}12,450', true),
+          _buildRankingItem('Priya Sharma', 1, '${CurrencyConstants.symbol}14,230', false),
+          _buildRankingItem('Ahmed Khan', 3, '${CurrencyConstants.symbol}11,890', false),
+          _buildRankingItem('Sneha Patel', 4, '${CurrencyConstants.symbol}9,670', false),
         ],
       ),
     );

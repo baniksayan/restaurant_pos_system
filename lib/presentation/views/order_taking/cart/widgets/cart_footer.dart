@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/themes/app_colors.dart';
+import '../../../../../core/constants/currency_constants.dart';
 import '../../../../../core/utils/haptic_helper.dart';
 import '../../../../../presentation/view_models/providers/tax_provider.dart';
 
@@ -83,18 +84,18 @@ class CartFooter extends StatelessWidget {
                   ),
                 ),
               ),
-              _buildPriceRow("Subtotal:", "₹${subtotal.toStringAsFixed(2)}"),
+              _buildPriceRow("Subtotal:", "${CurrencyConstants.symbol}${subtotal.toStringAsFixed(2)}"),
               const SizedBox(height: 8),
-              _buildPriceRow(
-                "GST (${gstPercentage.toStringAsFixed(1)}%):",
-                "₹${gstAmount.toStringAsFixed(2)}",
-              ),
+                _buildPriceRow(
+                  "GST (${gstPercentage.toStringAsFixed(1)}%):",
+                  "${CurrencyConstants.symbol}${gstAmount.toStringAsFixed(2)}",
+                ),
               const SizedBox(height: 12),
               const Divider(thickness: 2),
               const SizedBox(height: 8),
               _buildPriceRow(
                 "TOTAL AMOUNT:",
-                "₹${total.toStringAsFixed(2)}",
+                "${CurrencyConstants.symbol}${total.toStringAsFixed(2)}",
                 isTotal: true,
               ),
               const SizedBox(height: 20),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/themes/app_colors.dart';
+import '../../../../core/constants/currency_constants.dart';
 
 class CashManagementDialog extends StatefulWidget {
   const CashManagementDialog({super.key});
@@ -23,7 +24,7 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
   @override
   void initState() {
     super.initState();
-    _openingBalanceController.text = _openingBalance.toStringAsFixed(0);
+  _openingBalanceController.text = _openingBalance.toStringAsFixed(0);
   }
 
   @override
@@ -167,8 +168,8 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
                         labelText: 'Opening Balance',
-                        prefixIcon: const Icon(Icons.account_balance, size: 20),
-                        prefixText: '₹',
+                        prefixIcon: const Icon(Icons.attach_money, size: 20),
+                        prefixText: CurrencyConstants.symbol,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 12,
@@ -205,7 +206,7 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
                           color: Colors.green,
                           size: 20,
                         ),
-                        prefixText: '₹',
+                        prefixText: '',
                         hintText: 'Other receipts, loans, etc.',
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -239,7 +240,7 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
                           color: Colors.red,
                           size: 20,
                         ),
-                        prefixText: '₹',
+                        prefixText: '',
                         hintText: 'Withdrawals, petty cash, etc.',
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -291,7 +292,7 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '₹${_calculatedClosingBalance.toStringAsFixed(0)}',
+                            '${CurrencyConstants.symbol}${_calculatedClosingBalance.toStringAsFixed(0)}',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -365,7 +366,7 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
         Flexible(
           flex: 1,
           child: Text(
-            '₹${amount.toStringAsFixed(0)}',
+              '${CurrencyConstants.symbol}${amount.toStringAsFixed(0)}',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: color,

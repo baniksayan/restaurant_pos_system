@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../core/themes/app_colors.dart';
+import '../../../../core/constants/currency_constants.dart';
 
 class MenuItemCard extends StatefulWidget {
   final String id;
@@ -254,7 +255,7 @@ class _MenuItemCardState extends State<MenuItemCard>
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '₹${widget.price.toInt()} • Qty: ${widget.quantity}',
+                            '${widget.price.toInt()} • Qty: ${widget.quantity}',
                             style: TextStyle(
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold,
@@ -541,7 +542,7 @@ class _MenuItemCardState extends State<MenuItemCard>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '₹${widget.price.toInt()}',
+                        '${CurrencyConstants.symbol}${widget.price.toInt()}',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

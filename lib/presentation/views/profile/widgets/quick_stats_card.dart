@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/themes/app_colors.dart';
+import '../../../../core/constants/currency_constants.dart';
 
 class QuickStatsCard extends StatelessWidget {
   const QuickStatsCard({super.key});
@@ -35,9 +36,9 @@ class QuickStatsCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildStatItem(
-                  icon: Icons.currency_rupee,
+                  icon: Icons.attach_money,
                   title: 'Sales',
-                  value: '₹15,240',
+                  value: '${CurrencyConstants.symbol}15,240',
                   color: Colors.green,
                 ),
               ),

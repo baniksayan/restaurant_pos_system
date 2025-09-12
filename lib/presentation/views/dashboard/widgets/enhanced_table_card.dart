@@ -49,11 +49,15 @@ class EnhancedTableCard extends StatelessWidget {
                   _buildCapacity(),
                   const SizedBox(height: 6),
                   _buildStatusBadge(cardData),
-                  // NEW: Show multiple orders indicator
+                  // Temporarily hide shared-table UI (icon + badge).
+                  /*
                   if (table.isSharedTable) ...[
                     const SizedBox(height: 4),
                     _buildSharedTableIndicator(),
                   ],
+                  */
+                  // Keep layout stable while paused:
+                  const SizedBox.shrink(),
                   if (table.status == TableStatus.reserved && table.reservationInfo != null) ...[
                     const SizedBox(height: 6),
                     _buildReservationInfo(),
@@ -101,7 +105,8 @@ class EnhancedTableCard extends StatelessWidget {
               ),
             ),
           ),
-        // NEW: Multiple orders indicator
+        // Temporarily hide the small shared-order count indicator.
+        /*
         if (table.isSharedTable)
           Positioned(
             right: -2,
@@ -125,6 +130,13 @@ class EnhancedTableCard extends StatelessWidget {
               ),
             ),
           ),
+        */
+        // Keep an empty spacer so layout stays same while icon is paused:
+        Positioned(
+          right: 8,
+          top: 8,
+          child: const SizedBox.shrink(),
+        ),
       ],
     );
   }

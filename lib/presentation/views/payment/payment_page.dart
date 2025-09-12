@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../../../../core/constants/currency_constants.dart';
 
 class PaymentPage extends StatefulWidget {
   final String orderNumber;
@@ -207,7 +208,7 @@ class _PaymentPageState extends State<PaymentPage>
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '₹${widget.totalAmount.toStringAsFixed(2)} • ${_selectedPaymentMethod.toUpperCase()}',
+                  '${CurrencyConstants.symbol}${widget.totalAmount.toStringAsFixed(2)} • ${_selectedPaymentMethod.toUpperCase()}',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
@@ -228,7 +229,7 @@ class _PaymentPageState extends State<PaymentPage>
                       const SizedBox(height: 6),
                       _kv(
                         'Amount',
-                        '₹${widget.totalAmount.toStringAsFixed(2)}',
+                        '${CurrencyConstants.symbol}${widget.totalAmount.toStringAsFixed(2)}',
                         context,
                       ),
                       const SizedBox(height: 6),
@@ -334,7 +335,7 @@ class _AmountCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '₹${amount.toStringAsFixed(2)}',
+            '${CurrencyConstants.symbol}${amount.toStringAsFixed(2)}',
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w800,
               letterSpacing: 0.2,
@@ -538,12 +539,12 @@ class _QRSection extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  Icons.currency_rupee,
+                  Icons.attach_money,
                   size: 16,
                   color: Colors.green.shade700,
                 ),
                 Text(
-                  amount.toStringAsFixed(2),
+                  '${CurrencyConstants.symbol}${amount.toStringAsFixed(2)}',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: Colors.green.shade700,
                     fontWeight: FontWeight.w700,

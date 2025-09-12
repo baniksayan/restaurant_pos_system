@@ -163,14 +163,14 @@ class _TableDetailViewState extends State<TableDetailView> {
 
   Widget _buildMenuItemCard(int index) {
     final sampleItems = [
-      {'name': 'Butter Chicken', 'price': '₹280', 'type': 'non-veg'},
-      {'name': 'Paneer Tikka', 'price': '₹220', 'type': 'veg'},
-      {'name': 'Biryani', 'price': '₹320', 'type': 'non-veg'},
-      {'name': 'Dal Tadka', 'price': '₹180', 'type': 'veg'},
-      {'name': 'Chicken Curry', 'price': '₹260', 'type': 'non-veg'},
-      {'name': 'Naan', 'price': '₹60', 'type': 'veg'},
-      {'name': 'Fish Fry', 'price': '₹300', 'type': 'non-veg'},
-      {'name': 'Raita', 'price': '₹80', 'type': 'veg'},
+      {'name': 'Butter Chicken', 'price': '280', 'type': 'non-veg'},
+      {'name': 'Paneer Tikka', 'price': '220', 'type': 'veg'},
+      {'name': 'Biryani', 'price': '320', 'type': 'non-veg'},
+      {'name': 'Dal Tadka', 'price': '180', 'type': 'veg'},
+      {'name': 'Chicken Curry', 'price': '260', 'type': 'non-veg'},
+      {'name': 'Naan', 'price': '60', 'type': 'veg'},
+      {'name': 'Fish Fry', 'price': '300', 'type': 'non-veg'},
+      {'name': 'Raita', 'price': '80', 'type': 'veg'},
     ];
 
     if (index >= sampleItems.length) return const SizedBox();
