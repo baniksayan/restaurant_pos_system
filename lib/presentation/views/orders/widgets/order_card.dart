@@ -30,25 +30,33 @@ class OrderCard extends StatelessWidget {
                 // Top Row: Status badge
                 Row(
                   children: [
-                    if (order.status == OrderStatusType.pending)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'New',
-                          style: TextStyle(
-                            color: AppColors.warning,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                    // if (order.status == OrderStatusType.pending)
+                    //   Container(
+                    //     padding: const EdgeInsets.symmetric(
+                    //       horizontal: 8,
+                    //       vertical: 2,
+                    //     ),
+                    //     decoration: BoxDecoration(
+                    //       color: AppColors.warning.withOpacity(0.1),
+                    //       borderRadius: BorderRadius.circular(4),
+                    //     ),
+                    //     child: const Text(
+                    //       'New',
+                    //       style: TextStyle(
+                    //         color: AppColors.warning,
+                    //         fontSize: 12,
+                    //         fontWeight: FontWeight.w600,
+                    //       ),
+                    //     ),
+                    //   ),
+                    Text(
+                      order.customerName,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
                       ),
+                    ),
                     const Spacer(),
                     _buildStatusBadge(),
                   ],
@@ -56,14 +64,6 @@ class OrderCard extends StatelessWidget {
                 const SizedBox(height: 8),
 
                 // Customer Name
-                Text(
-                  order.customerName,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
                 const SizedBox(height: 4),
 
                 // Order Number - Moved below customer name

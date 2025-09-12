@@ -106,29 +106,24 @@ class OrderProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Convert your cart items to the orderDetails structure required by the API
+      // Convert cart items to match the exact Postman format that works
       final orderDetails =
-          cartItems
-              .map(
-                (item) => {
-                  "productId": item['id'],
-                  "productName": item['name'],
-                  "categoryId":
-                      item['categoryId'] ??
-                      "", // Get from item or use empty string
-                  "categoryName":
-                      item['categoryName'] ??
-                      "", // Get from item or use empty string
-                  "productPrice": item['price'],
-                  "discountPercentage": item['discountPercentage'] ?? 0,
-                  "uom":
-                      item['uom'] ??
-                      "Plate", // Get from item or default to "Plate"
-                  "quantity": item['quantity'],
-                  "note": item['specialNotes'] ?? "",
-                },
-              )
-              .toList();
+          cartItems.map((item) {
+            // Match exact Postman format and field order
+            final orderDetail = <String, dynamic>{
+              "productId": item['id'],
+              "productName": item['name'],
+              "categoryId": item['categoryId'] ?? "",
+              "categoryName": item['categoryName'] ?? "",
+              "productPrice": item['price'],
+              "discountPercentage": item['discountPercentage'] ?? 0,
+              "uom": item['uom'] ?? "Plate",
+              "quantity": item['quantity'],
+              "note": item['specialNotes'] ?? "",
+            };
+
+            return orderDetail;
+          }).toList();
 
       if (kDebugMode) {
         debugPrint('createKotWithOrderDetails payload: $orderDetails');

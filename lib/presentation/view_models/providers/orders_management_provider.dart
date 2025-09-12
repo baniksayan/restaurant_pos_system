@@ -26,7 +26,7 @@ class OrdersManagementProvider extends ChangeNotifier {
     notifyListeners();
 
     final token = HiveService.getAuthToken();
-    final outletId = 47;
+    final outletId = HiveService.getOutletId();
     final maskedToken =
         token.isNotEmpty
             ? '${token.substring(0, token.length > 10 ? 10 : token.length)}...'
@@ -214,23 +214,16 @@ class OrdersManagementProvider extends ChangeNotifier {
   bool _isFromToday(Map item) {
     final today = DateTime.now();
     // Try a few keys that may contain dates
-    final candidates = <String>[
-      'custDOB',
-      'orderTime',
-      'orderDate',
-      'createdDate',
-      'generatedDate',
-    ];
+    final candidates = <String>['createdOn'];
     for (final key in candidates) {
       if (item.containsKey(key) && item[key] is String) {
         try {
           final dt = DateTime.parse(item[key]).toLocal();
           if (dt.year == today.year &&
               dt.month == today.month &&
-              dt.day == today.day){
-                 return true;
-              }
-           
+              dt.day == today.day) {
+            return true;
+          }
         } catch (_) {
           // ignore parse errors
         }
@@ -257,17 +250,17 @@ class OrdersManagementProvider extends ChangeNotifier {
           (item['customerName'] ?? item['channelName'] ?? '').toString();
       final phone =
           (item['customerPhNumber'] ?? item['customerPhNo'] ?? '').toString();
-      final statusStr = (item['orderStatus'] ?? '').toString();
-      final amountRaw = item['amount'];
+      final statusStr = (item['status'] ?? '').toString();
+      final amountRaw = item['totPrice'];
       final amount =
           amountRaw is num
               ? amountRaw.toDouble()
               : double.tryParse(amountRaw?.toString() ?? '0') ?? 0.0;
 
       DateTime orderTime = DateTime.now();
-      if (item.containsKey('custDOB') && item['custDOB'] is String) {
+      if (item.containsKey('createdOn') && item['createdOn'] is String) {
         try {
-          orderTime = DateTime.parse(item['custDOB']).toLocal();
+          orderTime = DateTime.parse(item['createdOn']).toLocal();
         } catch (_) {}
       }
 

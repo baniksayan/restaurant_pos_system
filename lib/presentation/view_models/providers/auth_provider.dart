@@ -7,8 +7,6 @@ import 'package:restaurant_pos_system/core/constants/api_constants.dart';
 import 'package:restaurant_pos_system/data/models/auth_api_res_model.dart';
 import 'package:restaurant_pos_system/services/api_service.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/table_provider.dart';
-import 'package:restaurant_pos_system/presentation/view_models/providers/menu_provider.dart';
-import 'package:restaurant_pos_system/presentation/view_models/providers/tax_provider.dart';
 
 class AuthProvider with ChangeNotifier {
   bool _isAuthenticated = false;
@@ -117,7 +115,26 @@ class AuthProvider with ChangeNotifier {
         method: 'POST',
       );
 
-      final model = AuthApiResModel.fromJson(response!);
+      if (response == null) {
+        _errorMessage =
+            'No response from server. Please check your connection.';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Safe casting to handle both Map<dynamic, dynamic> and Map<String, dynamic>
+      final Map<String, dynamic> safeResponse = Map<String, dynamic>.from(
+        response,
+      );
+      final model = AuthApiResModel.fromJson(safeResponse);
+
+      if (kDebugMode) {
+        debugPrint('Auth API Response: $safeResponse');
+        debugPrint('Model isSuccess: ${model.isSuccess}');
+        debugPrint('Model message: ${model.message}');
+        debugPrint('Status Code: ${model.statusCode}');
+      }
 
       if (model.isSuccess == true && model.data != null) {
         // Save token to hive
@@ -126,8 +143,9 @@ class AuthProvider with ChangeNotifier {
         debugPrint('Saved Token: ${HiveService.getAuthToken()}');
         debugPrint('Saved Token from api const.: ${ApiConstants.accessToken}');
         HiveService.setUserId(model.data?.userDetails?.userId ?? '');
-        HiveService.setWaiterId("041f765b-658c-47a4-b1a7-9dedf6e980b9");
-        HiveService.setOutletId(model.data?.location?.locationId ?? 1);
+        HiveService.setWaiterId("cceb307f-2f01-4e0e-8f28-e07ba8e941ac");
+        HiveService.setOutletId(model.data?.location?.locationId ?? 0);
+        debugPrint('Saved OutletId: ${HiveService.getOutletId()}');
 
         // Save auth data to hive
         await HiveService.saveAuthData(model);
@@ -154,18 +172,47 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        _errorMessage = 'Oops! Something doesn\'t match. Try again.';
+        // Handle different error scenarios
+        if (model.statusCode == 500) {
+          _errorMessage =
+              'Server error. Please try again later or contact support.';
+        } else if (model.message != null && model.message!.isNotEmpty) {
+          _errorMessage = model.message!;
+        } else {
+          _errorMessage =
+              'Authentication failed. Please check your credentials.';
+        }
+
+        if (kDebugMode) {
+          debugPrint('Login failed: ${model.message}');
+          debugPrint('Status Code: ${model.statusCode}');
+        }
+
         _isLoading = false;
         notifyListeners();
         return false;
       }
-    } catch (e) {
-      _errorMessage = 'Login failed: $e';
+    } catch (e, stackTrace) {
+      // More user-friendly error messages
+      if (e.toString().contains(
+        'type \'_Map<dynamic, dynamic>\' is not a subtype',
+      )) {
+        _errorMessage = 'Server response error. Please try again.';
+      } else if (e.toString().contains('SocketException') ||
+          e.toString().contains('NetworkImageLoadException')) {
+        _errorMessage = 'No internet connection. Please check your network.';
+      } else if (e.toString().contains('TimeoutException')) {
+        _errorMessage = 'Connection timeout. Please try again.';
+      } else {
+        _errorMessage = 'Login failed. Please try again.';
+      }
+
       _isLoading = false;
       notifyListeners();
 
       if (kDebugMode) {
         debugPrint('Error in login: $e');
+        debugPrint('Stack trace: $stackTrace');
       }
 
       return false;
