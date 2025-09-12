@@ -127,40 +127,22 @@ class HiveService {
 
   // User ID Management (Updated methods using both posBox and authBox)
   static String? getUserId() {
-    try {
-      final box = Hive.box('auth');
-      return box.get('userId') ?? box.get('user_id');
-    } catch (e) {
-      print('[HiveService] Error getting userId: $e');
-      return null;
-    }
+    return posBox.get('userId');
   }
 
   static void setUserId(String userId) {
-    // Store in both boxes for consistency
+    // Store in both boxes for consistenc
     posBox.put('userId', userId);
-    authBox.put('userId', userId);
   }
 
   // Waiter ID Management (Updated methods using both posBox and authBox)
   static String? getWaiterId() {
-    try {
-      final box = Hive.box('auth');
-      // Try multiple possible keys
-      return box.get('waiterId') ??
-          box.get('waiter_id') ??
-          box.get('staffId') ??
-          box.get('userId'); // Use userId as fallback
-    } catch (e) {
-      print('[HiveService] Error getting waiterId: $e');
-      return getUserId(); // Fallback to userId
-    }
+    return posBox.get('waiterId'); // Fallback to userId
   }
 
   static void setWaiterId(String waiterId) {
     // Store in both boxes for consistency
     posBox.put('waiterId', waiterId);
-    authBox.put('waiterId', waiterId);
   }
 
   // Outlet ID Management

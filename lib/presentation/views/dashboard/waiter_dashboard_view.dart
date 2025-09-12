@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
+import 'package:restaurant_pos_system/presentation/view_models/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/presentation/views/reservations/table_reservation_view.dart';
 import '../../../core/utils/haptic_helper.dart';
 import '../../../shared/widgets/drawers/hamburger_drawer.dart';
@@ -283,15 +284,34 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
       );
     } else if (table.status == TableStatus.occupied) {
       // Occupied table logic based on requirements
-      if (table.orderCount == 1) {
+      if (table.orderCount == 1 || table.orderCount > 1) {
+        final tableProvider = context.read<TableProvider>();
+        final animatedCart = context.read<AnimatedCartProvider>();
+        final orderId = table.activeOrders.last.orderId;
+        if (orderId != null) {
+          // Load from API (this will also update TableProvider state)
+          final items = await tableProvider.loadCartStateForOrder(orderId);
+
+          // Import into AnimatedCartProvider so UI shows them
+          animatedCart.importFromOrderCart(
+            items,
+            tableId: 'TABLE_ID_IF_KNOWN', // optional
+            tableName: 'Table X', // optional
+            clearExisting: true,
+          );
+        }
+        debugPrint(
+          '[Dashboard] Occupied table with ${table.orderCount} orders - showing management dialog',
+        );
         // Single order - navigate directly to menu
-        final orderId = table.activeOrders.first.orderId;
-        await tableProvider.loadCartStateForOrder(orderId);
+
+        // await tableProvider.loadCartStateForOrder(orderId);
+
         context.read<NavigationProvider>().selectTable(
           table.id,
           table.name,
           dashboardProvider.selectedLocation,
-        );
+        ); // to-do
         if (kDebugMode) {
           print('[Dashboard] Single order table - direct navigation to menu');
         }

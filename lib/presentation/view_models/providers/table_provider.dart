@@ -86,12 +86,17 @@ class TableProvider extends ChangeNotifier {
       _tables = List<RestaurantTable>.from(tables); // Create new list instance
 
       if (_tables.isEmpty) {
-        _error = 'No tables found for this outlet. Check backend configuration.';
+        _error =
+            'No tables found for this outlet. Check backend configuration.';
         print('[TableProvider] API returned no tables - Check backend data');
       } else {
-        print('[TableProvider] Successfully loaded ${_tables.length} REAL tables from API');
+        print(
+          '[TableProvider] Successfully loaded ${_tables.length} REAL tables from API',
+        );
         for (final table in _tables) {
-          print('[TableProvider] API Table: ${table.name} (${table.location}) - Orders: ${table.activeOrders.length}');
+          print(
+            '[TableProvider] API Table: ${table.name} (${table.location}) - Orders: ${table.activeOrders.length}',
+          );
         }
       }
     } catch (e) {
@@ -125,18 +130,20 @@ class TableProvider extends ChangeNotifier {
 
       if (response != null && response.isSuccess == true) {
         // Map API response to OrderChannel objects for legacy compatibility
-        _orderChannels = response.data
+        _orderChannels =
+            response.data
                 ?.map(
                   (tableData) => OrderChannel(
                     orderChannelId: tableData.orderChannelId ?? '',
                     channelType: tableData.channelType ?? '',
                     name: tableData.name ?? '',
                     capacity: tableData.capacity ?? 0,
-                    orderList: tableData.orderList
+                    orderList:
+                        tableData.orderList
                             ?.map(
                               (order) =>
-                                  // FIXED: Properly convert to OrderChannel's OrderList structure
-                                  OrderInfo(
+                              // FIXED: Properly convert to OrderChannel's OrderList structure
+                              OrderInfo(
                                 orderId: order.orderId ?? '',
                                 isBilled: order.isBilled ?? false,
                                 orderStatus: order.orderStatus ?? '',
@@ -153,11 +160,15 @@ class TableProvider extends ChangeNotifier {
         // Also update the main tables list
         await fetchTablesWithAuth(token, outletId);
 
-        print('[TableProvider] fetchTablesByOutlet Success - Found ${_orderChannels.length} tables');
+        print(
+          '[TableProvider] fetchTablesByOutlet Success - Found ${_orderChannels.length} tables',
+        );
       } else {
         _tableApiError = 'API returned unsuccessful response';
         _orderChannels = [];
-        print('[TableProvider] fetchTablesByOutlet Failed - ${response?.message}');
+        print(
+          '[TableProvider] fetchTablesByOutlet Failed - ${response?.message}',
+        );
       }
     } catch (e) {
       _tableApiError = 'Error: $e';
@@ -177,19 +188,31 @@ class TableProvider extends ChangeNotifier {
     List<RestaurantTable> filteredTables = List.from(_tables);
 
     // Filter by location
-    filteredTables = filteredTables.where((table) => table.location == locationName).toList();
+    filteredTables =
+        filteredTables
+            .where((table) => table.location == locationName)
+            .toList();
 
     // Filter by status if provided
     if (statusFilter != null && statusFilter != 'all') {
       switch (statusFilter) {
         case 'available':
-          filteredTables = filteredTables.where((table) => table.status == TableStatus.available).toList();
+          filteredTables =
+              filteredTables
+                  .where((table) => table.status == TableStatus.available)
+                  .toList();
           break;
         case 'occupied':
-          filteredTables = filteredTables.where((table) => table.status == TableStatus.occupied).toList();
+          filteredTables =
+              filteredTables
+                  .where((table) => table.status == TableStatus.occupied)
+                  .toList();
           break;
         case 'reserved':
-          filteredTables = filteredTables.where((table) => table.status == TableStatus.reserved).toList();
+          filteredTables =
+              filteredTables
+                  .where((table) => table.status == TableStatus.reserved)
+                  .toList();
           break;
       }
     }
@@ -249,7 +272,9 @@ class TableProvider extends ChangeNotifier {
           return true;
         }
 
-        print('[Error] Failed to create order - API response: ${orderResponse?.message}');
+        print(
+          '[Error] Failed to create order - API response: ${orderResponse?.message}',
+        );
         return false;
       }
     } catch (e) {
@@ -274,7 +299,9 @@ class TableProvider extends ChangeNotifier {
         orders.add(
           ActiveOrder(
             orderId: newOrderId,
-            generatedOrderNo: generatedOrderNo ?? 'ORD/${DateTime.now().millisecondsSinceEpoch}',
+            generatedOrderNo:
+                generatedOrderNo ??
+                'ORD/${DateTime.now().millisecondsSinceEpoch}',
             orderStatus: 'Order Placed',
             isBilled: false,
           ),
@@ -291,10 +318,12 @@ class TableProvider extends ChangeNotifier {
   }
 
   /// Load cart state for specific order (API-driven)
-  Future<void> loadCartStateForOrder(String orderId) async {
+  Future<List<Map<String, dynamic>>> loadCartStateForOrder(
+    String orderId,
+  ) async {
     try {
       final token = _getAuthToken();
-      if (token == null) return;
+      if (token == null) return [];
       print('[Table Manager] Loading cart for order: $orderId');
       print('[API Call] getOrderDetailById - Order $orderId');
       final orderDetails = await ApiService.getOrderDetailById(
@@ -302,30 +331,41 @@ class TableProvider extends ChangeNotifier {
         orderId: orderId,
       );
 
-      if (orderDetails != null && orderDetails.isSuccess == true && orderDetails.data != null) {
+      if (orderDetails != null &&
+          orderDetails.isSuccess == true &&
+          orderDetails.data != null) {
         // Convert order details to cart items
-        final cartItems = orderDetails.data!.first.orderDetailList
+        final cartItems =
+            orderDetails.data!.first.orderDetailList
                 ?.map(
                   (item) => {
                     'productId': item.productId,
                     'productName': item.productName,
                     'quantity': item.productQty,
                     'price': item.itemPrice,
-                    'totalPrice': item.totPrice,
+                    'totalPrice': item.totPrice, // to do
                   },
                 )
                 ?.toList() ??
             [];
+        // print cart items
+        print(
+          '[Cart Items] Loaded ${cartItems.length} items for order $orderId',
+        );
 
         _orderCartStates[orderId] = cartItems;
         _currentOrderId = orderId;
 
         print('[Cart Loaded] Order $orderId with ${cartItems.length} items');
         notifyListeners(); // CRITICAL: Notify when cart state changes
+
+        // Return loaded items so caller (UI) can sync AnimatedCartProvider
+        return cartItems;
       }
     } catch (e) {
       print('[Error] Loading cart state: $e');
     }
+    return [];
   }
 
   /// Remove order from table (API-driven) - FIXED
@@ -349,8 +389,14 @@ class TableProvider extends ChangeNotifier {
         // Update local state immediately
         final tableIndex = _tables.indexWhere((t) => t.id == tableId);
         if (tableIndex != -1) {
-          final currentOrders = _tables[tableIndex].activeOrders.where((order) => order.orderId != orderId).toList();
-          final newStatus = currentOrders.isEmpty ? TableStatus.available : TableStatus.occupied;
+          final currentOrders =
+              _tables[tableIndex].activeOrders
+                  .where((order) => order.orderId != orderId)
+                  .toList();
+          final newStatus =
+              currentOrders.isEmpty
+                  ? TableStatus.available
+                  : TableStatus.occupied;
 
           _tables[tableIndex] = _tables[tableIndex].copyWith(
             activeOrders: currentOrders,
@@ -415,7 +461,9 @@ class TableProvider extends ChangeNotifier {
     if (_orderCartStates[orderId] == null) return;
 
     final items = _orderCartStates[orderId]!;
-    final itemIndex = items.indexWhere((item) => item['productId'] == productId);
+    final itemIndex = items.indexWhere(
+      (item) => item['productId'] == productId,
+    );
 
     if (itemIndex != -1) {
       if (quantity > 0) {
@@ -432,7 +480,9 @@ class TableProvider extends ChangeNotifier {
   void removeItemFromCart(String orderId, String productId) {
     if (_orderCartStates[orderId] == null) return;
 
-    _orderCartStates[orderId]!.removeWhere((item) => item['productId'] == productId);
+    _orderCartStates[orderId]!.removeWhere(
+      (item) => item['productId'] == productId,
+    );
     print('[Cart] Removed item from order $orderId: $productId');
     notifyListeners();
   }

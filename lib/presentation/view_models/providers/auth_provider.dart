@@ -123,6 +123,12 @@ class AuthProvider with ChangeNotifier {
         // Save token to hive
         await HiveService.saveAuthToken(model.data?.posToken ?? '');
 
+        debugPrint('Saved Token: ${HiveService.getAuthToken()}');
+        debugPrint('Saved Token from api const.: ${ApiConstants.accessToken}');
+        HiveService.setUserId(model.data?.userDetails?.userId ?? '');
+        HiveService.setWaiterId("041f765b-658c-47a4-b1a7-9dedf6e980b9");
+        HiveService.setOutletId(model.data?.location?.locationId ?? 1);
+
         // Save auth data to hive
         await HiveService.saveAuthData(model);
 

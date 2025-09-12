@@ -118,6 +118,77 @@ class AnimatedCartProvider extends ChangeNotifier {
               .toList(),
     };
   }
+
+  // --- NEW: import from order cart state (List<Map<String,dynamic>>) ---
+  void importFromOrderCart(
+    List<Map<String, dynamic>> items, {
+    String tableId = '',
+    String tableName = '',
+    bool clearExisting = true,
+  }) {
+    if (clearExisting) {
+      _cartItems.clear();
+    }
+
+    for (final raw in items) {
+      final id = (raw['productId'] ?? raw['id'] ?? '').toString();
+      if (id.isEmpty) continue;
+
+      final name =
+          (raw['productName'] ?? raw['productName'] ?? raw['name'] ?? '')
+              .toString();
+
+      // price -> ensure double
+      double price = 0;
+      final p = raw['price'] ?? raw['productPrice'] ?? raw['itemPrice'];
+      if (p is num) {
+        price = p.toDouble();
+      } else if (p is String) {
+        price = double.tryParse(p) ?? 0;
+      }
+
+      // quantity -> ensure int
+      int quantity = 1;
+      final q = raw['quantity'] ?? raw['productQty'] ?? raw['qty'];
+      if (q is int) {
+        quantity = q;
+      } else if (q is double) {
+        quantity = q.toInt();
+      } else if (q is String) {
+        quantity = int.tryParse(q) ?? 1;
+      }
+
+      final specialNotes =
+          (raw['specialNotes'] ?? raw['note'] ?? '').toString();
+      final categoryId = (raw['categoryId'] ?? '').toString();
+      final categoryName = (raw['categoryName'] ?? '').toString();
+      final uom = (raw['uom'] ?? '').toString();
+      final discount = raw['discountPercentage'];
+      double? discountPercentage;
+      if (discount is num)
+        discountPercentage = discount.toDouble();
+      else if (discount is String)
+        discountPercentage = double.tryParse(discount);
+
+      // Create CartItem and set quantity exactly
+      _cartItems[id] = CartItem(
+        id: id,
+        name: name,
+        price: price,
+        quantity: quantity,
+        tableId: tableId,
+        tableName: tableName,
+        specialNotes: specialNotes.isNotEmpty ? specialNotes : null,
+        categoryId: categoryId.isNotEmpty ? categoryId : null,
+        categoryName: categoryName.isNotEmpty ? categoryName : null,
+        uom: uom.isNotEmpty ? uom : null,
+        discountPercentage: discountPercentage,
+      );
+    }
+
+    _updateTotalItems();
+    notifyListeners();
+  }
 }
 
 // Updated CartItem class with all needed fields

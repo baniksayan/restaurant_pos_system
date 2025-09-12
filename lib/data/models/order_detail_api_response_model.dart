@@ -97,6 +97,7 @@ class OrderDetailList {
   num? totPrice;
   num? discountPerc;
   num? discountAmount;
+
   String? customerPhNumber;
   String? orderTokenNo;
   String? kotId;

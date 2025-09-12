@@ -159,15 +159,13 @@ class _CartViewState extends State<CartView> {
       // Step 1: Create Order Head first if not already created
       if (orderProvider.createdOrderId == null) {
         final orderChannelId = items.first.tableId;
-        final waiterId =
-            HiveService.getWaiterId() ?? "a2f2849f-88b5-4849-a17d-a487d5e21627";
-        final userId =
-            HiveService.getUserId() ?? "a2f2849f-88b5-4849-a17d-a487d5e21627";
+        final waiterId = HiveService.getWaiterId() ?? "";
+        final userId = HiveService.getUserId() ?? "";
         final outletId = HiveService.getOutletId() ?? 1;
         final customerName = "Walk-in Customer";
 
         final orderHeadSuccess = await orderProvider.createOrderHead(
-          orderChannelId: orderChannelId,
+          orderChannelId: "c947c44f-a0eb-4160-b186-8f1959a47f31",
           waiterId: waiterId,
           customerName: customerName,
           outletId: outletId,
