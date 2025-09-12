@@ -4,6 +4,9 @@ import 'package:restaurant_pos_system/presentation/views/payment/payment_page.da
 import '../../../../core/themes/app_colors.dart';
 import '../../../../data/models/order_management_model.dart';
 import '../../../../services/pdf_service.dart';
+import '../../../../services/api_service.dart';
+import '../../../../data/local/hive_service.dart';
+import '../../../../data/models/order_detail_api_response_model.dart';
 
 class OrderDetailView extends StatefulWidget {
   final OrderItem order;
@@ -15,29 +18,50 @@ class OrderDetailView extends StatefulWidget {
 }
 
 class _OrderDetailViewState extends State<OrderDetailView> {
-  // Static API data as per your requirements
-  final Map<String, dynamic> _apiData = {
-    "orderNo": "OD/MA/080925/0023",
-    "fullOrderStatus": "Order Placed",
-    "channelName": "Table 1",
-    "waiterName": "Kaushik Roy",
-    "productName": "Chicken Butter Masala",
-    "createdOn": "09/09/2025, 12:27:13",
-    "statusSystemName": "KOT_GENERATED",
-    "status": "KOT Generated",
-    "instruction": "",
-    "kotNo": "KT/MA/090925/0011",
-    "itemPrice": 500.00,
-    "totPrice": 1000.00,
-    "gstAmount": 80.00,
-    "serviceCharge": 50.00,
-    "discount": 0.0, // Can be 0 - won't show if 0
-    "grandTotal": 1130.00,
-  };
+  // API-backed state
+  bool _loading = true;
+  String? _error;
+  OrderDetailApiResponseModel? _detailModel;
 
   bool _isBilled = false;
   bool _isKOTGenerated = true;
   String _paymentMode = 'Cash';
+
+  // Derived values computed from API response (fallback to widget.order where appropriate)
+  double get _subtotal {
+    if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
+      final list = _detailModel!.data!.first.orderDetailList ?? [];
+      double s = 0.0;
+      for (final d in list) {
+        s += (d.totPrice ?? 0).toDouble();
+      }
+      return s;
+    }
+    return widget.order.totalAmount;
+  }
+
+  double get _gstAmount =>
+      0.0; // backend not providing GST field in this endpoint
+  double get _serviceCharge => 0.0; // backend not providing
+  double get _discount => 0.0;
+  double get _grandTotal => _subtotal + _gstAmount + _serviceCharge - _discount;
+
+  String get _createdOnString {
+    final d = _detailModel?.data?.first.orderDetailList?.first.createdOn;
+    if (d != null && d.isNotEmpty) return d;
+    return widget.order.orderTime.toString();
+  }
+
+  String? get _kotNo => _detailModel?.data?.first.orderDetailList?.first.kotNo;
+  String? get _orderNo => _detailModel?.data?.first.orderNo;
+  String? get _channelName => _detailModel?.data?.first.channelName;
+  String? get _waiterName => _detailModel?.data?.first.waiterName;
+  String? get _fullOrderStatus => _detailModel?.data?.first.fullOrderStatus;
+  String? get _instructions {
+    final list = _detailModel?.data?.first.orderDetailList;
+    if (list != null && list.isNotEmpty) return list.first.instruction ?? '';
+    return '';
+  }
 
   @override
   void initState() {
@@ -48,6 +72,54 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     // Set KOT status based on order status
     _isKOTGenerated =
         widget.order.status.index >= OrderStatusType.accepted.index;
+
+    // Load order detail from API
+    _loadOrderDetail();
+  }
+
+  Future<void> _loadOrderDetail() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    final token = HiveService.getAuthToken();
+    final orderId = widget.order.orderId;
+
+    if (token.isEmpty || orderId.isEmpty) {
+      setState(() {
+        _error = 'Missing token or order id';
+        _loading = false;
+      });
+      return;
+    }
+
+    try {
+      final resp = await ApiService.getOrderDetailById(
+        token: token,
+        orderId: orderId,
+      );
+
+      if (resp != null &&
+          resp.isSuccess == true &&
+          resp.data != null &&
+          resp.data!.isNotEmpty) {
+        setState(() {
+          _detailModel = resp;
+          _loading = false;
+        });
+      } else {
+        setState(() {
+          _error = resp?.message ?? 'No details found';
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to load order details: $e';
+        _loading = false;
+      });
+    }
   }
 
   @override
@@ -72,35 +144,40 @@ class _OrderDetailViewState extends State<OrderDetailView> {
         centerTitle: true,
       ),
       body: RefreshIndicator(
-        onRefresh: _onRefresh,
+        onRefresh: () async {
+          await _loadOrderDetail();
+        },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildOrderHeader(),
-              const SizedBox(height: 20),
-              _buildBillingSection(),
-              const SizedBox(height: 20),
-              _buildPriceBreakdown(),
-              const SizedBox(height: 20),
-              _buildOrderItems(),
-              const SizedBox(height: 20),
-              _buildCustomerInfo(),
+              if (_loading)
+                const Center(child: CircularProgressIndicator())
+              else if (_error != null)
+                Center(
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: AppColors.error),
+                  ),
+                )
+              else ...[
+                _buildOrderHeader(),
+                const SizedBox(height: 20),
+                _buildBillingSection(),
+                const SizedBox(height: 20),
+                _buildPriceBreakdown(),
+                const SizedBox(height: 20),
+                _buildOrderItems(),
+                const SizedBox(height: 20),
+                _buildCustomerInfo(),
+              ],
             ],
           ),
         ),
       ),
     );
-  }
-
-  Future<void> _onRefresh() async {
-    // Simulate refresh delay
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() {
-      // Refresh order data here
-    });
   }
 
   Widget _buildOrderHeader() {
@@ -140,7 +217,8 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                     ),
                   ),
                   child: Text(
-                    _apiData['fullOrderStatus'],
+                    // prefer API value if available
+                    _fullOrderStatus ?? '',
                     style: TextStyle(
                       color: _getStatusColor(),
                       fontSize: 12,
@@ -164,10 +242,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildHeaderInfo(
-                          'Order ID',
-                          _apiData['orderNo'],
-                        ),
+                        child: _buildHeaderInfo('Order ID', _orderNo ?? ''),
                       ),
                       Expanded(
                         child: _buildHeaderInfo(
@@ -183,15 +258,15 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                       Expanded(
                         child: _buildHeaderInfo(
                           'Billing Status',
-                          _isBilled ? 'Paid' : 'Unpaid',
+                          (_detailModel?.data?.first.isBilled == true ||
+                                  _isBilled)
+                              ? 'Paid'
+                              : 'Unpaid',
                         ),
                       ),
                       if (widget.order.orderType == 'Table Orders')
                         Expanded(
-                          child: _buildHeaderInfo(
-                            'Table',
-                            _apiData['channelName'],
-                          ),
+                          child: _buildHeaderInfo('Table', _channelName ?? ''),
                         ),
                     ],
                   ),
@@ -200,13 +275,10 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildHeaderInfo(
-                            'Waiter',
-                            _apiData['waiterName'],
-                          ),
+                          child: _buildHeaderInfo('Waiter', _waiterName ?? ''),
                         ),
                         Expanded(
-                          child: _buildHeaderInfo('KOT No', _apiData['kotNo']),
+                          child: _buildHeaderInfo('KOT No', _kotNo ?? ''),
                         ),
                       ],
                     ),
@@ -341,7 +413,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                 ),
                 _buildInfoRow('Payment Status', _isBilled ? 'Paid' : 'Unpaid'),
                 if (_isBilled) _buildInfoRow('Payment Mode', _paymentMode),
-                _buildInfoRow('Created On', _apiData['createdOn']),
+                _buildInfoRow('Created On', _createdOnString),
               ],
             ),
           ],
@@ -382,7 +454,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
   }
 
   Widget _buildPriceBreakdown() {
-    double discount = _apiData['discount'];
+    double discount = _discount;
     bool hasDiscount = discount > 0;
 
     return Card(
@@ -422,9 +494,9 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             ),
             const SizedBox(height: 20),
 
-            _buildPriceRow('Item Price', _apiData['itemPrice']),
-            _buildPriceRow('GST (8%)', _apiData['gstAmount']),
-            _buildPriceRow('Service Charge', _apiData['serviceCharge']),
+            _buildPriceRow('Item Price', _subtotal),
+            _buildPriceRow('GST (8%)', _gstAmount),
+            _buildPriceRow('Service Charge', _serviceCharge),
 
             // Only show discount if it exists
             if (hasDiscount)
@@ -435,11 +507,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
               child: Divider(),
             ),
 
-            _buildPriceRow(
-              'Grand Total',
-              _apiData['grandTotal'],
-              isFinal: true,
-            ),
+            _buildPriceRow('Grand Total', _grandTotal, isFinal: true),
           ],
         ),
       ),
@@ -523,18 +591,24 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             ),
             const SizedBox(height: 20),
 
-            // Static item from API data
-            _buildItemRow(_apiData['productName'], 3, 80.0, 240.0),
-
-            // Dynamic items from order
-            ...widget.order.items.map(
-              (item) => _buildItemRow(
-                item.productName,
-                item.quantity,
-                item.price,
-                item.quantity * item.price,
+            // Render items from API detail if available, otherwise fall back to existing items
+            if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty)
+              ...?_detailModel!.data!.first.orderDetailList?.map((d) {
+                final qtyStr = d.productQty?.toString() ?? '0';
+                final qty = int.tryParse(qtyStr) ?? 0;
+                final price = (d.itemPrice ?? 0).toDouble();
+                final total = (d.totPrice ?? 0).toDouble();
+                return _buildItemRow(d.productName ?? '', qty, price, total);
+              })
+            else
+              ...widget.order.items.map(
+                (item) => _buildItemRow(
+                  item.productName,
+                  item.quantity,
+                  item.price,
+                  item.quantity * item.price,
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -658,8 +732,18 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                   _buildInfoRow('Platform', widget.order.platformName!),
 
                 // Instructions if any
-                if (_apiData['instruction'].isNotEmpty)
-                  _buildInfoRow('Instructions', _apiData['instruction']),
+                if ((_detailModel?.data?.first.orderDetailList != null &&
+                    _detailModel!.data!.first.orderDetailList!.isNotEmpty))
+                  _buildInfoRow(
+                    'Instructions',
+                    _detailModel!
+                            .data!
+                            .first
+                            .orderDetailList!
+                            .first
+                            .instruction ??
+                        '',
+                  ),
               ],
             ),
           ],
@@ -709,7 +793,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
   void _regenerateBill(BuildContext context) async {
     try {
       // Generate bill using PDFService
-      final billBytes = await PDFService.generateCustomerBill(
+      await PDFService.generateCustomerBill(
         items: widget.order.items,
         tableId: widget.order.tableNumber ?? '1',
         tableName:
@@ -718,10 +802,10 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                 : 'Table 1',
         orderNumber: widget.order.orderId.toString(),
         orderTime: widget.order.orderTime,
-        subtotal: _apiData['itemPrice'],
-        gstAmount: _apiData['gstAmount'],
-        total: _apiData['grandTotal'],
-        specialNotes: _apiData['instruction'],
+        subtotal: _subtotal,
+        gstAmount: _gstAmount,
+        total: _grandTotal,
+        specialNotes: _instructions,
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
