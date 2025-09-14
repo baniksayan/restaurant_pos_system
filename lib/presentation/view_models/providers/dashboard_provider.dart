@@ -111,12 +111,20 @@ class DashboardProvider extends ChangeNotifier {
           filteredTables.where((t) => t.status == TableStatus.available).length,
       'occupied':
           filteredTables.where((t) => t.status == TableStatus.occupied).length,
+      'kot_generated':
+          filteredTables
+              .where((t) => t.status == TableStatus.kotGenerated)
+              .length,
+      'bill_generated':
+          filteredTables
+              .where((t) => t.status == TableStatus.billGenerated)
+              .length,
+      'bill_settled':
+          filteredTables
+              .where((t) => t.status == TableStatus.billSettled)
+              .length,
       'reserved':
           filteredTables.where((t) => t.status == TableStatus.reserved).length,
-      'kot_generated':
-          filteredTables.where((t) => t.kotGenerated == true).length,
-      'bill_generated':
-          filteredTables.where((t) => t.billGenerated == true).length,
     };
   }
 
@@ -156,6 +164,8 @@ class DashboardProvider extends ChangeNotifier {
         return 'KOT generated';
       case 'bill_generated':
         return 'bill generated';
+      case 'bill_settled':
+        return 'bill settled';
       default:
         return statusFilter;
     }

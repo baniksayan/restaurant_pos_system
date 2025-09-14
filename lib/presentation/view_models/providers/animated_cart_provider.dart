@@ -8,11 +8,12 @@ class AnimatedCartProvider extends ChangeNotifier {
   final Map<String, CartItem> _cartItems = {};
   final Map<String, Map<String, CartItem>> _tableWiseCarts =
       {}; // Store cart per table
-  final Map<String, List<OrderDetailList>> _tableWiseServerKotItems = 
+  final Map<String, List<OrderDetailList>> _tableWiseServerKotItems =
       {}; // Store server KOT items per table
   int _totalItems = 0;
   String? _currentTableId;
-  List<OrderDetailList> _serverKotItems = []; // Current table's server KOT items
+  List<OrderDetailList> _serverKotItems =
+      []; // Current table's server KOT items
 
   Map<String, CartItem> get cartItems => _cartItems;
   int get totalItems => _totalItems;
@@ -62,7 +63,7 @@ class AnimatedCartProvider extends ChangeNotifier {
     } else {
       _cartItems.clear();
     }
-    
+
     // Load table-specific server KOT items
     if (_tableWiseServerKotItems.containsKey(tableId)) {
       _serverKotItems = List.from(_tableWiseServerKotItems[tableId]!);
@@ -156,7 +157,7 @@ class AnimatedCartProvider extends ChangeNotifier {
 
         // Add any server items that aren't in local cart
         for (final serverItem in serverItems) {
-          if (serverItem.productId != null && 
+          if (serverItem.productId != null &&
               !updatedCart.containsKey(serverItem.productId!)) {
             final bool isKotGenerated =
                 serverItem.kotNo != null &&
@@ -174,7 +175,7 @@ class AnimatedCartProvider extends ChangeNotifier {
               tableName: '',
               specialNotes: serverItem.instruction,
               categoryId: null, // Not available in OrderDetailList
-              categoryName: null, // Not available in OrderDetailList  
+              categoryName: null, // Not available in OrderDetailList
               uom: serverItem.uom,
               discountPercentage: (serverItem.discountPerc ?? 0).toDouble(),
               isKotGenerated: isKotGenerated,
@@ -192,7 +193,9 @@ class AnimatedCartProvider extends ChangeNotifier {
         // Update table-wise cache for both cart and server KOT items
         if (_currentTableId != null) {
           _tableWiseCarts[_currentTableId!] = Map.from(_cartItems);
-          _tableWiseServerKotItems[_currentTableId!] = List.from(_serverKotItems);
+          _tableWiseServerKotItems[_currentTableId!] = List.from(
+            _serverKotItems,
+          );
         }
       }
     } catch (e) {

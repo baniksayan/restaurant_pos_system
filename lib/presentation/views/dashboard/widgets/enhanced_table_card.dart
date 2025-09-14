@@ -58,7 +58,8 @@ class EnhancedTableCard extends StatelessWidget {
                   */
                   // Keep layout stable while paused:
                   const SizedBox.shrink(),
-                  if (table.status == TableStatus.reserved && table.reservationInfo != null) ...[
+                  if (table.status == TableStatus.reserved &&
+                      table.reservationInfo != null) ...[
                     const SizedBox(height: 6),
                     _buildReservationInfo(),
                   ],
@@ -98,11 +99,7 @@ class EnhancedTableCard extends StatelessWidget {
                 color: Colors.red,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.person,
-                size: 8,
-                color: Colors.white,
-              ),
+              child: const Icon(Icons.person, size: 8, color: Colors.white),
             ),
           ),
         // Temporarily hide the small shared-order count indicator.
@@ -132,11 +129,7 @@ class EnhancedTableCard extends StatelessWidget {
           ),
         */
         // Keep an empty spacer so layout stays same while icon is paused:
-        Positioned(
-          right: 8,
-          top: 8,
-          child: const SizedBox.shrink(),
-        ),
+        Positioned(right: 8, top: 8, child: const SizedBox.shrink()),
       ],
     );
   }
@@ -266,6 +259,36 @@ class EnhancedTableCard extends StatelessWidget {
           'borderColor': const Color(0xFFEF4444),
           'textColor': const Color(0xFFDC2626),
         };
+      case TableStatus.kotGenerated:
+        return {
+          'gradient': const LinearGradient(
+            colors: [Colors.white, Color(0xFFF3F0FF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          'borderColor': const Color(0xFF8B5CF6),
+          'textColor': const Color(0xFF7C3AED),
+        };
+      case TableStatus.billGenerated:
+        return {
+          'gradient': const LinearGradient(
+            colors: [Colors.white, Color(0xFFEFF6FF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          'borderColor': const Color(0xFF3B82F6),
+          'textColor': const Color(0xFF2563EB),
+        };
+      case TableStatus.billSettled:
+        return {
+          'gradient': const LinearGradient(
+            colors: [Colors.white, Color(0xFFECFDF5)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          'borderColor': const Color(0xFF06B6D4),
+          'textColor': const Color(0xFF0891B2),
+        };
       case TableStatus.reserved:
         return {
           'gradient': const LinearGradient(
@@ -276,15 +299,15 @@ class EnhancedTableCard extends StatelessWidget {
           'borderColor': const Color(0xFFF59E0B),
           'textColor': const Color(0xFFD97706),
         };
-      default:
+      case TableStatus.outOfOrder:
         return {
           'gradient': const LinearGradient(
-            colors: [Colors.white, Colors.grey],
+            colors: [Colors.white, Color(0xFFF9FAFB)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          'borderColor': Colors.grey,
-          'textColor': Colors.grey,
+          'borderColor': const Color(0xFF6B7280),
+          'textColor': const Color(0xFF4B5563),
         };
     }
   }

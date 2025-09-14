@@ -119,16 +119,30 @@ class TableRepository {
             '[TableRepo] Table ${table.name}: ${activeOrders.length} active orders',
           );
 
-          // Determine table status
-          final tableStatus =
-              activeOrders.isEmpty
-                  ? TableStatus.available
-                  : TableStatus.occupied;
+          // Determine enhanced table status based on order progression
+          final TableStatus tableStatus;
           final kotGenerated = activeOrders.isNotEmpty;
           final billGenerated = activeOrders.any((order) => order.isBilled);
+          final allBillsSettled =
+              activeOrders.isNotEmpty &&
+              activeOrders.every((order) => order.isBilled);
+
+          if (activeOrders.isEmpty) {
+            tableStatus = TableStatus.available;
+          } else if (allBillsSettled) {
+            // All bills are paid - table is settled and ready to be cleared
+            tableStatus = TableStatus.billSettled;
+          } else if (billGenerated) {
+            // At least one bill generated but not all settled
+            tableStatus = TableStatus.billGenerated;
+          } else {
+            // Orders exist but status depends on whether KOT was generated
+            // Default to occupied - status will be updated via manual triggers
+            tableStatus = TableStatus.occupied;
+          }
 
           print(
-            '[TableRepo] Table ${table.name}: status=$tableStatus, kotGenerated=$kotGenerated, billGenerated=$billGenerated',
+            '[TableRepo] Table ${table.name}: status=$tableStatus, orders=${activeOrders.length}, billed=${billGenerated}',
           );
 
           return RestaurantTable(
@@ -139,6 +153,7 @@ class TableRepository {
             status: tableStatus,
             kotGenerated: kotGenerated,
             billGenerated: billGenerated,
+            billAmount: null, // Will be set when bill is generated
             activeOrders: activeOrders,
           );
         })
@@ -187,6 +202,21 @@ class TableRepository {
           break;
         case TableStatus.occupied:
           stats['occupied'] = (stats['occupied'] ?? 0) + 1;
+          break;
+        case TableStatus.kotGenerated:
+          stats['occupied'] =
+              (stats['occupied'] ?? 0) +
+              1; // Count as occupied for backward compatibility
+          break;
+        case TableStatus.billGenerated:
+          stats['occupied'] =
+              (stats['occupied'] ?? 0) +
+              1; // Count as occupied for backward compatibility
+          break;
+        case TableStatus.billSettled:
+          stats['occupied'] =
+              (stats['occupied'] ?? 0) +
+              1; // Count as occupied for backward compatibility
           break;
         case TableStatus.reserved:
           stats['reserved'] = (stats['reserved'] ?? 0) + 1;

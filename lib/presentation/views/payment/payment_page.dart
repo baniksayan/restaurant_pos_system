@@ -1,19 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import '../../../../../core/constants/currency_constants.dart';
+import '../../../core/constants/currency_constants.dart';
+import '../../view_models/providers/table_provider.dart';
+import '../../view_models/providers/billing_provider.dart';
+import '../../../services/api_service.dart';
+import '../../../data/models/bill_generation_models.dart';
 
 class PaymentPage extends StatefulWidget {
   final String orderNumber;
   final double totalAmount;
   final VoidCallback onPaymentCompleted;
+  final String? tableId;
+  final String? billId; // Add billId parameter
 
   const PaymentPage({
     super.key,
     required this.orderNumber,
     required this.totalAmount,
     required this.onPaymentCompleted,
+    this.tableId,
+    this.billId, // Add billId parameter
   });
 
   @override
@@ -32,6 +41,7 @@ class _PaymentPageState extends State<PaymentPage>
   @override
   void initState() {
     super.initState();
+    debugPrint('[PaymentPage] Initialized with amount: ${widget.totalAmount}, order: ${widget.orderNumber}, tableId: ${widget.tableId}');
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -160,10 +170,96 @@ class _PaymentPageState extends State<PaymentPage>
     await _triggerHapticHeavy();
     setState(() => _processing = true);
 
-    // Simulate small processing ticks with soft haptics
-    for (int i = 0; i < 2; i++) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      await _triggerHapticLight();
+    try {
+      debugPrint('=== PAYMENT PROCESSING DEBUG START ===');
+      debugPrint('Payment Page - Total Amount: ${CurrencyConstants.symbol}${widget.totalAmount}');
+      debugPrint('Payment Page - Order Number: ${widget.orderNumber}');
+      debugPrint('Payment Page - Table ID: ${widget.tableId}');
+      debugPrint('Payment Page - Selected Payment Method: $_selectedPaymentMethod');
+      debugPrint('Payment Page - BillId passed as parameter: ${widget.billId}');
+
+      // Use billId from widget parameter (passed from BillSuccessDialog) or fallback to provider
+      String? billId = widget.billId;
+
+      if (billId == null || billId.isEmpty) {
+        debugPrint('Payment Page - ERROR: No billId provided as parameter');
+        
+        // Try to get billId from BillingProvider as fallback
+        try {
+          final billingProvider = Provider.of<BillingProvider>(context, listen: false);
+          billId = billingProvider.billId;
+          debugPrint('Payment Page - Fallback BillId from BillingProvider: $billId');
+        } catch (e) {
+          debugPrint('Payment Page - Error accessing BillingProvider: $e');
+        }
+        
+        if (billId == null || billId.isEmpty) {
+          throw Exception('No bill ID found. Please generate bill first.');
+        }
+      }
+
+      debugPrint('Payment Page - Final BillId to use: $billId');
+
+      // Get payment mode ID (1 for cash, can be extended for other modes)
+      int paymentModeId = 1; // Default to cash
+      if (_selectedPaymentMethod == 'card') {
+        paymentModeId = 2; // Assuming 2 for card
+      } else if (_selectedPaymentMethod == 'upi') {
+        paymentModeId = 3; // Assuming 3 for UPI
+      }
+
+      debugPrint('Payment Page - Payment Mode ID: $paymentModeId');
+
+      // Create SavePayment request
+      final savePaymentRequest = SavePaymentRequest(
+        billId: billId,
+        paymentDetails: [
+          PaymentDetail(
+            paymentAmount: widget.totalAmount,
+            modeId: paymentModeId,
+            refId: "",
+            cardNo: "",
+            returnAmt: 0,
+          ),
+        ],
+      );
+
+      debugPrint('Payment Page - SavePayment Request Body:');
+      debugPrint(savePaymentRequest.toJson().toString());
+      
+      // Call SavePayment API
+      final response = await ApiService.savePayment(request: savePaymentRequest);
+      
+      debugPrint('Payment Page - SavePayment Response:');
+      debugPrint('Success: ${response?.isSuccess}');
+      debugPrint('Message: ${response?.message}');
+      debugPrint('Status Code: ${response?.statusCode}');
+      debugPrint('Data: ${response?.data}');
+      
+      if (response?.isSuccess == true) {
+        debugPrint('Payment Page - SavePayment API successful');
+        await _triggerHapticLight();
+      } else {
+        throw Exception('Failed to save payment: ${response?.message}');
+      }
+
+      debugPrint('=== PAYMENT PROCESSING DEBUG END ===');
+
+    } catch (e) {
+      debugPrint('=== PAYMENT ERROR DEBUG ===');
+      debugPrint('Error in payment processing: $e');
+      debugPrint('Error Type: ${e.runtimeType}');
+      setState(() => _processing = false);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Payment failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
     }
 
     setState(() => _processing = false);
@@ -246,9 +342,61 @@ class _PaymentPageState extends State<PaymentPage>
                   width: double.infinity,
                   height: 44,
                   child: FilledButton(
-                    onPressed: () {
+                    onPressed: () async {
                       _triggerHapticLight();
+
+                      // Update table status to Bill Settled
+                      if (widget.tableId != null) {
+                        try {
+                          final tableProvider = Provider.of<TableProvider>(
+                            context,
+                            listen: false,
+                          );
+                          tableProvider.updateTableStatus(
+                            widget.tableId!,
+                            'billSettled',
+                          );
+                          await tableProvider.refreshTables();
+
+                          // Auto-clear table after 5 seconds (simulating table clearing)
+                          Future.delayed(const Duration(seconds: 5), () async {
+                            try {
+                              tableProvider.updateTableStatus(
+                                widget.tableId!,
+                                'available',
+                              );
+                              await tableProvider.refreshTables();
+                              debugPrint(
+                                'Table ${widget.tableId} automatically cleared and made available',
+                              );
+                            } catch (e) {
+                              debugPrint('Error auto-clearing table: $e');
+                            }
+                          });
+                        } catch (e) {
+                          debugPrint('Error updating table status: $e');
+                        }
+                      }
+
+                      // Close payment success dialog
                       Navigator.pop(context);
+                      
+                      // Navigate back to main page (dashboard) and refresh
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                      
+                      // Refresh table data on the dashboard
+                      try {
+                        final tableProvider = Provider.of<TableProvider>(
+                          context,
+                          listen: false,
+                        );
+                        await tableProvider.refreshTables();
+                        debugPrint('Dashboard refreshed after payment completion');
+                      } catch (e) {
+                        debugPrint('Error refreshing dashboard: $e');
+                      }
+                      
+                      // Call the onPaymentCompleted callback
                       widget.onPaymentCompleted();
                     },
                     child: const Text('Continue'),

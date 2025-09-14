@@ -84,6 +84,9 @@ class TableProvider extends ChangeNotifier {
 
       // CRITICAL FIX: Force list replacement to trigger UI update
       _tables = List<RestaurantTable>.from(tables); // Create new list instance
+      
+      // Apply local status overrides after loading from API
+      _applyLocalStatusOverrides();
 
       if (_tables.isEmpty) {
         _error =
@@ -208,6 +211,24 @@ class TableProvider extends ChangeNotifier {
                   .where((table) => table.status == TableStatus.occupied)
                   .toList();
           break;
+        case 'kot_generated':
+          filteredTables =
+              filteredTables
+                  .where((table) => table.status == TableStatus.kotGenerated)
+                  .toList();
+          break;
+        case 'bill_generated':
+          filteredTables =
+              filteredTables
+                  .where((table) => table.status == TableStatus.billGenerated)
+                  .toList();
+          break;
+        case 'bill_settled':
+          filteredTables =
+              filteredTables
+                  .where((table) => table.status == TableStatus.billSettled)
+                  .toList();
+          break;
         case 'reserved':
           filteredTables =
               filteredTables
@@ -312,6 +333,10 @@ class TableProvider extends ChangeNotifier {
         status: status,
         activeOrders: orders,
       );
+
+      // Set local status override to ensure it persists across API refreshes
+      _localStatusOverrides[tableId] = status;
+      print('[TableProvider] Set local status override for $tableId: ${status.name}');
 
       notifyListeners();
     }
@@ -499,8 +524,106 @@ class TableProvider extends ChangeNotifier {
     }
   }
 
+  // Local status overrides - these take precedence over API status
+  final Map<String, TableStatus> _localStatusOverrides = {};
+
+  void _applyLocalStatusOverrides() {
+    for (int i = 0; i < _tables.length; i++) {
+      final table = _tables[i];
+      if (_localStatusOverrides.containsKey(table.id)) {
+        final overrideStatus = _localStatusOverrides[table.id]!;
+        _tables[i] = table.copyWith(status: overrideStatus);
+        print('[TableProvider] Applied status override for ${table.name}: ${overrideStatus.name}');
+      }
+    }
+  }
+
   void updateTableStatus(String tableId, String newStatus) {
-    // This is now handled by API calls and refresh
+    // Convert string status to enum
+    TableStatus? status;
+    switch (newStatus.toLowerCase()) {
+      case 'available':
+        status = TableStatus.available;
+        break;
+      case 'occupied':
+        status = TableStatus.occupied;
+        break;
+      case 'kotgenerated':
+        status = TableStatus.kotGenerated;
+        break;
+      case 'billgenerated':
+        status = TableStatus.billGenerated;
+        break;
+      case 'billsettled':
+        status = TableStatus.billSettled;
+        break;
+      case 'reserved':
+        status = TableStatus.reserved;
+        break;
+      case 'outoforder':
+        status = TableStatus.outOfOrder;
+        break;
+    }
+    
+    if (status != null) {
+      _localStatusOverrides[tableId] = status;
+      
+      // Apply the override to the current table list
+      final tableIndex = _tables.indexWhere((table) => table.id == tableId);
+      if (tableIndex != -1) {
+        _tables[tableIndex] = _tables[tableIndex].copyWith(status: status);
+        notifyListeners();
+      }
+      
+      print('[TableProvider] Updated table $tableId status to $newStatus');
+      
+      // Clear override if setting to available (natural API state)
+      if (status == TableStatus.available) {
+        _localStatusOverrides.remove(tableId);
+      }
+    }
+  }
+
+  void clearTableStatusOverride(String tableId) {
+    _localStatusOverrides.remove(tableId);
+    print('[TableProvider] Cleared status override for table $tableId');
+  }
+
+  // Store bill amount for a table
+  void storeBillAmount(String tableId, double billAmount) {
+    print('[TableProvider] Attempting to store bill amount for table ID: $tableId, amount: ₹${billAmount.toStringAsFixed(2)}');
+    print('[TableProvider] Available tables: ${_tables.map((t) => '${t.id}:${t.name}').toList()}');
+    
+    final tableIndex = _tables.indexWhere((table) => table.id == tableId);
+    if (tableIndex != -1) {
+      _tables[tableIndex] = _tables[tableIndex].copyWith(
+        billAmount: billAmount,
+        status: TableStatus.billGenerated,
+      );
+      
+      // Also set local status override
+      _localStatusOverrides[tableId] = TableStatus.billGenerated;
+      
+      notifyListeners();
+      print('[TableProvider] Successfully stored bill amount for table $tableId: ₹${billAmount.toStringAsFixed(2)}');
+    } else {
+      print('[TableProvider] ERROR: Table with ID $tableId not found!');
+    }
+  }
+
+  // Get stored bill amount for a table
+  double? getBillAmount(String tableId) {
+    print('[TableProvider] Attempting to get bill amount for table ID: $tableId');
+    print('[TableProvider] Available tables: ${_tables.map((t) => '${t.id}:${t.name}:${t.billAmount}').toList()}');
+    
+    try {
+      final table = _tables.firstWhere((table) => table.id == tableId);
+      print('[TableProvider] Found table ${table.name}, bill amount: ${table.billAmount}');
+      return table.billAmount;
+    } catch (e) {
+      print('[TableProvider] ERROR: Table with ID $tableId not found');
+      return null;
+    }
   }
 
   void addOrderToTable(String tableId, ActiveOrder newOrder) {

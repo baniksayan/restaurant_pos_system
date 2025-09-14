@@ -242,6 +242,12 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
         'Bill Generated',
         'bill_generated',
         Icons.payment,
+        const Color(0xFF3B82F6),
+      ),
+      _StatusFilter(
+        'Bill Settled',
+        'bill_settled',
+        Icons.check_circle,
         const Color(0xFF06B6D4),
       ),
     ];

@@ -74,13 +74,24 @@ class _MenuViewState extends State<MenuView> {
     return SafeArea(
       child: Scaffold(
         backgroundColor: Colors.grey[50],
-        body: Consumer<MenuProvider>(
-          builder: (context, menuProvider, child) {
+        body: Consumer2<MenuProvider, NavigationProvider>(
+          builder: (context, menuProvider, navProvider, child) {
+            // Debug prints
+            debugPrint('MenuView DEBUG: selectedTableId = ${widget.selectedTableId}');
+            debugPrint('MenuView DEBUG: selectedOrderType = ${navProvider.selectedOrderType}');
+            
+            // Can order if table is selected OR if phone/takeaway order is active
+            final canOrder = widget.selectedTableId != null || 
+                            (navProvider.selectedOrderType != null && 
+                             ['PhoneOrder', 'Takeaway'].contains(navProvider.selectedOrderType));
+            
+            debugPrint('MenuView DEBUG: canOrder = $canOrder');
+            
             return Column(
               children: [
                 MenuHeader(
-                  canOrder: widget.selectedTableId != null,
-                  tableName: widget.tableName,
+                  canOrder: canOrder,
+                  tableName: widget.tableName ?? _getOrderDisplayName(navProvider),
                   selectedLocation: widget.selectedLocation,
                   onPrintKOT: _printKOT,
                 ),
@@ -88,12 +99,11 @@ class _MenuViewState extends State<MenuView> {
                 const CategoryTabs(),
                 Expanded(
                   child: MenuGrid(
-                    canOrder: widget.selectedTableId != null,
+                    canOrder: canOrder,
                     onAddToCart: widget.onAddToCart,
                   ),
                 ),
-                if (widget.selectedTableId != null &&
-                    menuProvider.totalCartItems > 0)
+                if (canOrder && menuProvider.totalCartItems > 0)
                   CartFooter(
                     onPlaceOrder: () {
                       // Navigate to Cart tab (index 2)
@@ -118,5 +128,12 @@ class _MenuViewState extends State<MenuView> {
         backgroundColor: Colors.blue,
       ),
     );
+  }
+  
+  String? _getOrderDisplayName(NavigationProvider navProvider) {
+    if (navProvider.selectedOrderType != null) {
+      return '${navProvider.selectedOrderType} Order - ${navProvider.customerName}';
+    }
+    return null;
   }
 }

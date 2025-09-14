@@ -30,8 +30,10 @@ class _OrderDetailViewState extends State<OrderDetailView> {
 
   // Derived values computed from API response (fallback to widget.order where appropriate)
   double get _subtotal {
-    if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
-      final list = _detailModel!.data!.first.orderDetailList ?? [];
+    if (_detailModel?.data != null && 
+        _detailModel!.data!.isNotEmpty && 
+        _detailModel!.data!.first.orderDetailList != null) {
+      final list = _detailModel!.data!.first.orderDetailList!;
       double s = 0.0;
       for (final d in list) {
         s += (d.totPrice ?? 0).toDouble();
@@ -48,19 +50,60 @@ class _OrderDetailViewState extends State<OrderDetailView> {
   double get _grandTotal => _subtotal + _gstAmount + _serviceCharge - _discount;
 
   String get _createdOnString {
-    final d = _detailModel?.data?.first.orderDetailList?.first.createdOn;
-    if (d != null && d.isNotEmpty) return d;
+    if (_detailModel?.data != null && 
+        _detailModel!.data!.isNotEmpty &&
+        _detailModel!.data!.first.orderDetailList != null &&
+        _detailModel!.data!.first.orderDetailList!.isNotEmpty) {
+      final d = _detailModel!.data!.first.orderDetailList!.first.createdOn;
+      if (d != null && d.isNotEmpty) return d;
+    }
     return widget.order.orderTime.toString();
   }
 
-  String? get _kotNo => _detailModel?.data?.first.orderDetailList?.first.kotNo;
-  String? get _orderNo => _detailModel?.data?.first.orderNo;
-  String? get _channelName => _detailModel?.data?.first.channelName;
-  String? get _waiterName => _detailModel?.data?.first.waiterName;
-  String? get _fullOrderStatus => _detailModel?.data?.first.fullOrderStatus;
+  String? get _kotNo {
+    if (_detailModel?.data != null && 
+        _detailModel!.data!.isNotEmpty &&
+        _detailModel!.data!.first.orderDetailList != null &&
+        _detailModel!.data!.first.orderDetailList!.isNotEmpty) {
+      return _detailModel!.data!.first.orderDetailList!.first.kotNo;
+    }
+    return null;
+  }
+  
+  String? get _orderNo {
+    if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
+      return _detailModel!.data!.first.orderNo;
+    }
+    return null;
+  }
+  
+  String? get _channelName {
+    if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
+      return _detailModel!.data!.first.channelName;
+    }
+    return null;
+  }
+  
+  String? get _waiterName {
+    if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
+      return _detailModel!.data!.first.waiterName;
+    }
+    return null;
+  }
+  
+  String? get _fullOrderStatus {
+    if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
+      return _detailModel!.data!.first.fullOrderStatus;
+    }
+    return null;
+  }
   String? get _instructions {
-    final list = _detailModel?.data?.first.orderDetailList;
-    if (list != null && list.isNotEmpty) return list.first.instruction ?? '';
+    if (_detailModel?.data != null && 
+        _detailModel!.data!.isNotEmpty &&
+        _detailModel!.data!.first.orderDetailList != null &&
+        _detailModel!.data!.first.orderDetailList!.isNotEmpty) {
+      return _detailModel!.data!.first.orderDetailList!.first.instruction ?? '';
+    }
     return '';
   }
 
@@ -259,7 +302,9 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                       Expanded(
                         child: _buildHeaderInfo(
                           'Billing Status',
-                          (_detailModel?.data?.first.isBilled == true ||
+                          ((_detailModel?.data != null && 
+                            _detailModel!.data!.isNotEmpty && 
+                            _detailModel!.data!.first.isBilled == true) ||
                                   _isBilled)
                               ? 'Paid'
                               : 'Unpaid',
@@ -733,8 +778,10 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                   _buildInfoRow('Platform', widget.order.platformName!),
 
                 // Instructions if any
-                if ((_detailModel?.data?.first.orderDetailList != null &&
-                    _detailModel!.data!.first.orderDetailList!.isNotEmpty))
+                if (_detailModel?.data != null && 
+                    _detailModel!.data!.isNotEmpty &&
+                    _detailModel!.data!.first.orderDetailList != null &&
+                    _detailModel!.data!.first.orderDetailList!.isNotEmpty)
                   _buildInfoRow(
                     'Instructions',
                     _detailModel!

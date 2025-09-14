@@ -62,6 +62,24 @@ class TableCard extends StatelessWidget {
           borderColor: AppColors.tableOccupied,
           statusText: 'Occupied',
         );
+      case TableStatus.kotGenerated:
+        return TableCardData(
+          backgroundColor: Colors.purple.withValues(alpha: 0.1),
+          borderColor: Colors.purple,
+          statusText: 'KOT Generated',
+        );
+      case TableStatus.billGenerated:
+        return TableCardData(
+          backgroundColor: Colors.blue.withValues(alpha: 0.1),
+          borderColor: Colors.blue,
+          statusText: 'Bill Generated',
+        );
+      case TableStatus.billSettled:
+        return TableCardData(
+          backgroundColor: Colors.teal.withValues(alpha: 0.1),
+          borderColor: Colors.teal,
+          statusText: 'Bill Settled',
+        );
       case TableStatus.reserved:
         return TableCardData(
           backgroundColor: AppColors.tableReserved.withValues(alpha: 0.1),

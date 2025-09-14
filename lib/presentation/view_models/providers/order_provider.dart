@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:restaurant_pos_system/data/models/create_kot_with_order_details_api_res_model.dart';
 import '../../../data/models/order.dart';
 import '../../../services/api_service.dart';
+import '../../../data/local/hive_service.dart';
+import '../../../data/models/order_channel_list_api_response_model.dart';
 
 class OrderProvider with ChangeNotifier {
   List _orders = [];
@@ -161,5 +163,82 @@ class OrderProvider with ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  // Create Phone/Takeaway Order
+  Future<bool> createPhoneTakeawayOrder({
+    required String orderChannelType,
+    required String customerName,
+    required String customerPhone,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Get required data from Hive
+      final userId = HiveService.getUserId();
+      final waiterId = HiveService.getWaiterId();
+      final outletId = HiveService.getOutletId();
+
+      if (userId == null || waiterId == null || outletId == null) {
+        _error = 'Missing user authentication data';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Step 1: Get order channels by type
+      final token = HiveService.getAuthToken();
+      if (token.isEmpty) {
+        _error = 'Authentication token not found';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Map orderChannelType to API expected format
+      String apiChannelType = orderChannelType;
+      if (orderChannelType == 'PhoneOrder') {
+        apiChannelType = 'Phone';
+      }
+
+      final channelsResponse = await ApiService.getOrderChannelListByType(
+        token: token,
+        orderChannelType: apiChannelType,
+        outletId: outletId,
+      );
+
+      if (channelsResponse == null || 
+          channelsResponse.data == null || 
+          channelsResponse.data!.isEmpty) {
+        _error = 'No $orderChannelType channels available';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Use the first available channel
+      final orderChannel = channelsResponse.data!.first;
+      
+      // Step 2: Create order head
+      final success = await createOrderHead(
+        orderChannelId: orderChannel.orderChannelId!,
+        waiterId: waiterId,
+        customerName: customerName,
+        outletId: outletId,
+        userId: userId,
+        custPhoneNo: customerPhone,
+        totalAdult: 0,
+        totalChild: 0,
+      );
+
+      return success;
+    } catch (e) {
+      _error = 'Error creating $orderChannelType order: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 }

@@ -14,7 +14,7 @@ class TableModel extends HiveObject {
   int capacity;
 
   @HiveField(3)
-  String status; // 'available', 'occupied', 'reserved', 'cleaning'
+  String status; // 'available', 'occupied', 'kotGenerated', 'billGenerated', 'billSettled', 'reserved', 'outOfOrder'
 
   @HiveField(4)
   String? currentOrderId;

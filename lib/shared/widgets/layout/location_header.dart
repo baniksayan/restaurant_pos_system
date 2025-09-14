@@ -47,7 +47,9 @@ class LocationHeader extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        selectedLocation.isEmpty ? 'All Tables' : selectedLocation,
+                        selectedLocation.isEmpty
+                            ? 'All Tables'
+                            : selectedLocation,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -86,29 +88,52 @@ class LocationHeader extends StatelessWidget {
         ),
         child: const Text(
           'No tables',
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.grey,
-          ),
+          style: TextStyle(fontSize: 11, color: Colors.grey),
         ),
       );
     }
 
     // Count tables by status safely
     final availableCount = _countTablesByStatus('available');
-    final occupiedCount = _countTablesByStatus('occupied'); 
+    final occupiedCount = _countTablesByStatus('occupied');
+    final kotGeneratedCount = _countTablesByStatus('kotGenerated');
+    final billGeneratedCount = _countTablesByStatus('billGenerated');
+    final billSettledCount = _countTablesByStatus('billSettled');
     final reservedCount = _countTablesByStatus('reserved');
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (availableCount > 0) _buildStatusChip('${availableCount}A', Colors.green),
+        if (availableCount > 0)
+          _buildStatusChip('${availableCount}A', Colors.green),
         if (occupiedCount > 0) ...[
           if (availableCount > 0) const SizedBox(width: 4),
           _buildStatusChip('${occupiedCount}O', Colors.red),
         ],
-        if (reservedCount > 0) ...[
+        if (kotGeneratedCount > 0) ...[
           if (availableCount > 0 || occupiedCount > 0) const SizedBox(width: 4),
+          _buildStatusChip('${kotGeneratedCount}K', Colors.purple),
+        ],
+        if (billGeneratedCount > 0) ...[
+          if (availableCount > 0 || occupiedCount > 0 || kotGeneratedCount > 0)
+            const SizedBox(width: 4),
+          _buildStatusChip('${billGeneratedCount}B', Colors.blue),
+        ],
+        if (billSettledCount > 0) ...[
+          if (availableCount > 0 ||
+              occupiedCount > 0 ||
+              kotGeneratedCount > 0 ||
+              billGeneratedCount > 0)
+            const SizedBox(width: 4),
+          _buildStatusChip('${billSettledCount}S', Colors.teal),
+        ],
+        if (reservedCount > 0) ...[
+          if (availableCount > 0 ||
+              occupiedCount > 0 ||
+              kotGeneratedCount > 0 ||
+              billGeneratedCount > 0 ||
+              billSettledCount > 0)
+            const SizedBox(width: 4),
           _buildStatusChip('${reservedCount}R', Colors.orange),
         ],
       ],
@@ -136,7 +161,7 @@ class LocationHeader extends StatelessWidget {
 
   int _countTablesByStatus(String status) {
     if (tables.isEmpty) return 0;
-    
+
     try {
       return tables.where((table) {
         // Safe access to table status
@@ -153,13 +178,14 @@ class LocationHeader extends StatelessWidget {
 
   IconData _getLocationIcon() {
     if (selectedLocation.isEmpty) return Icons.all_inclusive;
-    
+
     // Safe access to locations list
     if (locations.isNotEmpty) {
       try {
         final location = locations.firstWhere(
           (loc) => loc.name == selectedLocation,
-          orElse: () => LocationSection('Default', Icons.location_on, Colors.grey),
+          orElse:
+              () => LocationSection('Default', Icons.location_on, Colors.grey),
         );
         return location.icon;
       } catch (e) {
@@ -167,7 +193,7 @@ class LocationHeader extends StatelessWidget {
         return Icons.location_on;
       }
     }
-    
+
     return Icons.location_on;
   }
 }

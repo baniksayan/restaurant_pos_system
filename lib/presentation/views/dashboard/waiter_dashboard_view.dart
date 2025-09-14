@@ -18,7 +18,9 @@ import 'widgets/table_grid.dart';
 import 'widgets/multi_order_management_dialog.dart';
 import 'package:restaurant_pos_system/data/models/order_channel_types_model.dart';
 import 'widgets/order_type_selector_dialog.dart';
+import '../payment/payment_page.dart';
 import 'widgets/customer_details_dialog.dart';
+import 'dialogs/customer_info_dialog.dart';
 
 class WaiterDashboardView extends StatefulWidget {
   final Function(String tableId, String tableName)? onTableSelected;
@@ -199,13 +201,27 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     );
   }
 
-  /// Handle order type selection - FIXED METHOD
+  /// Handle order type selection - UPDATED METHOD
   void _handleOrderTypeSelected(OrderType orderType) {
     if (orderType == OrderType.dineIn) {
       // For dine-in, just show table selection (existing behavior)
       _showSnackBar('Select a table for dine-in order', Colors.blue);
+    } else if (orderType == OrderType.phoneOrder || orderType == OrderType.takeaway) {
+      // Use new CustomerInfoDialog for Phone and Takeaway orders
+      showDialog(
+        context: context,
+        builder: (context) => CustomerInfoDialog(
+          orderChannelType: orderType.channelType,
+          onSuccess: () {
+            _showSnackBar(
+              '${orderType.displayName} order created successfully!',
+              Colors.green,
+            );
+          },
+        ),
+      );
     } else {
-      // For phone order and takeaway, show customer details dialog
+      // For other order types, use existing flow
       showDialog(
         context: context,
         builder:
@@ -298,50 +314,94 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
               onReserve: () => _showReservationPage(table, tableProvider),
             ),
       );
-    } else if (table.status == TableStatus.occupied) {
-      // Occupied table logic based on requirements
-      if (table.orderCount == 1 || table.orderCount > 1) {
+    } else if (table.status == TableStatus.billGenerated) {
+      // Bill Generated - redirect directly to payment page using stored amount
+      if (table.hasActiveOrders) {
+        final tableProvider = context.read<TableProvider>();
+        final orderNumber = table.activeOrders.last.generatedOrderNo;
+        
+        try {
+          // Get the stored bill amount for this table
+          final storedBillAmount = tableProvider.getBillAmount(table.id);
+          
+          if (storedBillAmount != null && storedBillAmount > 0) {
+            debugPrint('[Dashboard] Using stored bill amount for ${table.name}: ₹${storedBillAmount.toStringAsFixed(2)}');
+            
+            // Navigate directly to payment page with stored amount
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PaymentPage(
+                  orderNumber: orderNumber,
+                  totalAmount: storedBillAmount,
+                  tableId: table.id,
+                  onPaymentCompleted: () {
+                    // Refresh tables after payment completion
+                    tableProvider.refreshTables();
+                    _showSnackBar('Payment completed for ${table.name}', Colors.green);
+                  },
+                ),
+              ),
+            );
+          } else {
+            _showSnackBar('No bill amount found for ${table.name}. Please generate bill first.', Colors.orange);
+          }
+        } catch (e) {
+          _showSnackBar('Error loading bill details: $e', Colors.red);
+        }
+      } else {
+        _showSnackBar('${table.name} has no active orders', Colors.orange);
+      }
+    } else if (table.status == TableStatus.occupied ||
+               table.status == TableStatus.kotGenerated ||
+               table.status == TableStatus.billSettled) {
+      // Tables with active orders - allow entry for other statuses in the order lifecycle
+      if (table.hasActiveOrders) {
         final tableProvider = context.read<TableProvider>();
         final animatedCart = context.read<AnimatedCartProvider>();
         final orderId = table.activeOrders.last.orderId;
-        if (orderId != null) {
-          // Load from API (this will also update TableProvider state)
-          final items = await tableProvider.loadCartStateForOrder(orderId);
+        
+        // Load from API (this will also update TableProvider state)
+        final items = await tableProvider.loadCartStateForOrder(orderId);
 
-          // Import into AnimatedCartProvider so UI shows them
-          animatedCart.importFromOrderCart(
-            items,
-            tableId: 'TABLE_ID_IF_KNOWN', // optional
-            tableName: 'Table X', // optional
-            clearExisting: true,
-          );
-        }
-        debugPrint(
-          '[Dashboard] Occupied table with ${table.orderCount} orders - showing management dialog',
+        // Import into AnimatedCartProvider so UI shows them
+        animatedCart.importFromOrderCart(
+          items,
+          tableId: table.id,
+          tableName: table.name,
+          clearExisting: true,
         );
-        // Single order - navigate directly to menu
+        
+        debugPrint(
+          '[Dashboard] ${table.status.name} table with ${table.orderCount} orders - allowing entry',
+        );
 
-        // await tableProvider.loadCartStateForOrder(orderId);
-
+        // Navigate to table
         context.read<NavigationProvider>().selectTable(
           table.id,
           table.name,
           dashboardProvider.selectedLocation,
-        ); // to-do
-        if (kDebugMode) {
-          print('[Dashboard] Single order table - direct navigation to menu');
-        }
-      } else if (table.orderCount > 1) {
-        // Multiple orders - show management dialog
-        showDialog(
-          context: context,
-          builder: (context) => MultiOrderManagementDialog(table: table),
         );
+        
         if (kDebugMode) {
-          print(
-            '[Dashboard] Multiple orders table (${table.orderCount}) - showing management dialog',
-          );
+          print('[Dashboard] Table with order - direct navigation to menu');
         }
+        
+        if (table.orderCount > 1) {
+          // Show management dialog for multiple orders
+          showDialog(
+            context: context,
+            builder: (context) => MultiOrderManagementDialog(table: table),
+          );
+          if (kDebugMode) {
+            print(
+              '[Dashboard] Multiple orders table (${table.orderCount}) - showing management dialog',
+            );
+          }
+        }
+      } else {
+        // Edge case: table has status but no active orders
+        _showSnackBar('${table.name} has no active orders', Colors.orange);
       }
     } else if (table.status == TableStatus.reserved) {
       // Reserved table - show info or navigate based on orders

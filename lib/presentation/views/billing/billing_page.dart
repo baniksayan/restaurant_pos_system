@@ -12,12 +12,16 @@ class BillingPage extends StatefulWidget {
   final String orderNumber;
   final List cartItems;
   final VoidCallback onBillGenerated;
+  final String? tableId;
+  final String? orderId; // Add orderId parameter
 
   const BillingPage({
     super.key,
     required this.orderNumber,
     required this.cartItems,
     required this.onBillGenerated,
+    this.tableId,
+    this.orderId, // Add orderId parameter
   });
 
   @override
@@ -40,20 +44,26 @@ class _BillingPageState extends State<BillingPage> {
   @override
   void dispose() {
     _phoneController.dispose();
+    // Clear billId when leaving billing page to ensure clean state
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        context.read<BillingProvider>().clearBillId();
+      } catch (e) {
+        // Ignore context errors during dispose
+      }
+    });
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => BillingProvider(),
-      child: Consumer<BillingProvider>(
-        builder: (context, billingProvider, child) {
-          final subtotal = billingProvider.calculateSubtotal(widget.cartItems);
-          final gstAmount = billingProvider.calculateGST(subtotal);
-          final total = billingProvider.calculateTotal(subtotal, gstAmount);
+    return Consumer<BillingProvider>(
+      builder: (context, billingProvider, child) {
+        final subtotal = billingProvider.calculateSubtotal(widget.cartItems);
+        final gstAmount = billingProvider.calculateGST(subtotal);
+        final total = billingProvider.calculateTotal(subtotal, gstAmount);
 
-          return Scaffold(
+        return Scaffold(
             backgroundColor: Colors.grey[50],
             appBar: AppBar(
               title: Text('Generate Bill - Order #${widget.orderNumber}'),
@@ -109,8 +119,7 @@ class _BillingPageState extends State<BillingPage> {
             ),
           );
         },
-      ),
-    );
+      );
   }
 
   Widget _buildPaymentModeSelector(BillingProvider billingProvider) {
@@ -276,6 +285,7 @@ class _BillingPageState extends State<BillingPage> {
         subtotal: subtotal,
         gstAmount: gstAmount,
         total: total,
+        orderId: widget.orderId, // Pass the orderId
       );
 
       if (mounted) {
@@ -289,6 +299,7 @@ class _BillingPageState extends State<BillingPage> {
                 customerPhone: billingProvider.customerPhone,
                 billBytes: billBytes,
                 onBillGenerated: widget.onBillGenerated,
+                tableId: widget.tableId,
               ),
         );
       }

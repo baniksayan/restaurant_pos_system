@@ -8,6 +8,7 @@ import 'package:restaurant_pos_system/data/models/payment_mode_api_res_model.dar
 import 'package:restaurant_pos_system/data/models/create_order_head_request_model.dart';
 import 'package:restaurant_pos_system/data/models/create_order_head_api_res_model.dart';
 import 'package:restaurant_pos_system/data/models/create_kot_with_order_details_api_res_model.dart';
+import 'package:restaurant_pos_system/data/models/bill_generation_models.dart';
 import 'package:restaurant_pos_system/data/models/order_channel_list_api_response_model.dart';
 import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
 import '../core/constants/api_constants.dart';
@@ -1021,6 +1022,152 @@ class ApiService {
     } catch (e, stackTrace) {
       if (kDebugMode) {
         debugPrint('Error in createKotWithOrderDetails: $e');
+        debugPrint('StackTrace: $stackTrace');
+      }
+      return null;
+    }
+  }
+
+  /// Get Order Details for Bill Generation
+  static Future<GetOrderDetailForBillResponse?> getOrderDetailForBill({
+    required String orderId,
+  }) async {
+    try {
+      final body = {
+        "orderId": orderId,
+      };
+
+      if (kDebugMode) {
+        debugPrint('getOrderDetailForBill API Call:');
+        debugPrint('Order ID: $orderId');
+        debugPrint('Body: $body');
+      }
+
+      final response = await apiRequestHttpRawBody(
+        'Order/GetOrderDetalForBill',
+        body,
+        method: 'POST',
+      );
+
+      if (response != null) {
+        if (kDebugMode) {
+          debugPrint('getOrderDetailForBill API Response: $response');
+        }
+        return GetOrderDetailForBillResponse.fromJson(response);
+      }
+
+      return null;
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Error in getOrderDetailForBill: $e');
+        debugPrint('StackTrace: $stackTrace');
+      }
+      return null;
+    }
+  }
+
+  /// Get Customer by Mobile Number
+  static Future<CustomerByMobileResponse?> getCustomerByMobileNo({
+    required String contactNo,
+  }) async {
+    try {
+      final body = {
+        "contactNo": contactNo,
+      };
+
+      if (kDebugMode) {
+        debugPrint('getCustomerByMobileNo API Call:');
+        debugPrint('Contact No: $contactNo');
+        debugPrint('Body: $body');
+      }
+
+      final response = await apiRequestHttpRawBody(
+        'Order/getCustomerByMobileNo',
+        body,
+        method: 'POST',
+      );
+
+      if (response != null) {
+        if (kDebugMode) {
+          debugPrint('getCustomerByMobileNo API Response: $response');
+        }
+        return CustomerByMobileResponse.fromJson(response);
+      }
+
+      return null;
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Error in getCustomerByMobileNo: $e');
+        debugPrint('StackTrace: $stackTrace');
+      }
+      return null;
+    }
+  }
+
+  /// Create Bill
+  static Future<CreateBillResponse?> createBill({
+    required CreateBillRequest request,
+  }) async {
+    try {
+      final body = request.toJson();
+
+      if (kDebugMode) {
+        debugPrint('createBill API Call:');
+        debugPrint('Body: $body');
+      }
+
+      final response = await apiRequestHttpRawBody(
+        'Order/CreateBill',
+        body,
+        method: 'POST',
+      );
+
+      if (response != null) {
+        if (kDebugMode) {
+          debugPrint('createBill API Response: $response');
+        }
+        return CreateBillResponse.fromJson(response);
+      }
+
+      return null;
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Error in createBill: $e');
+        debugPrint('StackTrace: $stackTrace');
+      }
+      return null;
+    }
+  }
+
+  /// Save Payment
+  static Future<SavePaymentResponse?> savePayment({
+    required SavePaymentRequest request,
+  }) async {
+    try {
+      final body = request.toJson();
+
+      if (kDebugMode) {
+        debugPrint('savePayment API Call:');
+        debugPrint('Body: $body');
+      }
+
+      final response = await apiRequestHttpRawBody(
+        'Order/SavePayment',
+        body,
+        method: 'POST',
+      );
+
+      if (response != null) {
+        if (kDebugMode) {
+          debugPrint('savePayment API Response: $response');
+        }
+        return SavePaymentResponse.fromJson(response);
+      }
+
+      return null;
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Error in savePayment: $e');
         debugPrint('StackTrace: $stackTrace');
       }
       return null;

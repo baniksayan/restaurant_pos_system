@@ -11,6 +11,7 @@ class RestaurantTable {
   final TableStatus status;
   final bool kotGenerated;
   final bool billGenerated;
+  final double? billAmount; // NEW: Store bill amount when bill is generated
   final ReservationInfo? reservationInfo;
   final List<ActiveOrder> activeOrders; // NEW: Multiple orders support
 
@@ -22,6 +23,7 @@ class RestaurantTable {
     required this.status,
     required this.kotGenerated,
     required this.billGenerated,
+    this.billAmount,
     this.reservationInfo,
     this.activeOrders = const [], // NEW: Default empty list
   });
@@ -43,6 +45,7 @@ class RestaurantTable {
     TableStatus? status,
     bool? kotGenerated,
     bool? billGenerated,
+    double? billAmount,
     ReservationInfo? reservationInfo,
     List<ActiveOrder>? activeOrders,
   }) {
@@ -54,6 +57,7 @@ class RestaurantTable {
       status: status ?? this.status,
       kotGenerated: kotGenerated ?? this.kotGenerated,
       billGenerated: billGenerated ?? this.billGenerated,
+      billAmount: billAmount ?? this.billAmount,
       reservationInfo: reservationInfo ?? this.reservationInfo,
       activeOrders: activeOrders ?? this.activeOrders,
     );
@@ -65,10 +69,35 @@ class RestaurantTable {
         return Colors.green;
       case TableStatus.occupied:
         return Colors.red;
+      case TableStatus.kotGenerated:
+        return Colors.purple;
+      case TableStatus.billGenerated:
+        return Colors.blue;
+      case TableStatus.billSettled:
+        return Colors.teal;
       case TableStatus.reserved:
         return Colors.orange;
       case TableStatus.outOfOrder:
         return Colors.grey;
+    }
+  }
+
+  String get statusDisplayName {
+    switch (status) {
+      case TableStatus.available:
+        return 'Available';
+      case TableStatus.occupied:
+        return 'Occupied';
+      case TableStatus.kotGenerated:
+        return 'KOT Generated';
+      case TableStatus.billGenerated:
+        return 'Bill Generated';
+      case TableStatus.billSettled:
+        return 'Bill Settled';
+      case TableStatus.reserved:
+        return 'Reserved';
+      case TableStatus.outOfOrder:
+        return 'Out of Order';
     }
   }
 
@@ -122,8 +151,16 @@ class ActiveOrder {
   }
 }
 
-// ✅ FIXED: Added outOfOrder to enum
-enum TableStatus { available, occupied, reserved, outOfOrder }
+// ✅ ENHANCED: 5-state table status system
+enum TableStatus {
+  available,
+  occupied,
+  kotGenerated,
+  billGenerated,
+  billSettled,
+  reserved,
+  outOfOrder,
+}
 
 class ReservationInfo {
   final String startTime;

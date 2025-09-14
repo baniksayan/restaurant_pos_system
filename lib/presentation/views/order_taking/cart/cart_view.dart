@@ -195,12 +195,18 @@ class _CartViewState extends State<CartView> {
           if (serverKotItems.isNotEmpty)
             _buildServerKotItemsList(serverKotItems),
           // Show any local-only KOT items that aren't in server yet (should be rare)
-          if (kotGeneratedItems.isNotEmpty) 
+          if (kotGeneratedItems.isNotEmpty)
             CartItemsList(
-              items: kotGeneratedItems
-                .where((localItem) => !serverKotItems.any((serverItem) => 
-                    serverItem.productId == localItem.id))
-                .toList(),
+              items:
+                  kotGeneratedItems
+                      .where(
+                        (localItem) =>
+                            !serverKotItems.any(
+                              (serverItem) =>
+                                  serverItem.productId == localItem.id,
+                            ),
+                      )
+                      .toList(),
               onEditItem: (item) => _showKotItemInfo(item),
             ),
         ],
@@ -524,16 +530,22 @@ class _CartViewState extends State<CartView> {
       final orderProvider = context.read<OrderProvider>();
       final tableProvider = context.read<TableProvider>();
 
-      // Use the actual orderId from backend (created during table selection)
-      // The order is created in TableProvider, not OrderProvider
-      final backendOrderId = tableProvider.currentOrderId;
+      // Use the actual orderId from backend 
+      // For table orders: get from TableProvider (created during table selection)
+      // For Phone/Takeaway orders: get from OrderProvider (created during phone/takeaway order)
+      String? backendOrderId = tableProvider.currentOrderId;
+      
+      // If no table order ID, check for Phone/Takeaway order ID
+      if (backendOrderId == null) {
+        backendOrderId = orderProvider.createdOrderId;
+      }
 
       if (backendOrderId == null) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Error: No order ID found. Please select table again.',
+              'Error: No order ID found. Please create an order first.',
             ),
             backgroundColor: Colors.red,
           ),
@@ -615,6 +627,14 @@ class _CartViewState extends State<CartView> {
         // Mark the new items as KOT generated
         final newItemIds = newItems.map((item) => item.id).toList();
         cartProvider.markItemsAsKotGenerated(newItemIds, orderNumber);
+
+        // Update table status to KOT Generated
+        if (widget.tableId != null) {
+          final tableProvider = context.read<TableProvider>();
+          tableProvider.updateTableStatus(widget.tableId!, 'kotGenerated');
+          // Refresh tables to sync with updated status
+          await tableProvider.refreshTables();
+        }
 
         // Refresh server state to get updated KOT items
         if (widget.tableId != null && widget.tableName != null) {
@@ -963,6 +983,18 @@ class _CartViewState extends State<CartView> {
     // Use the first KOT number for billing reference
     final orderNumber = _kotNumbers.isNotEmpty ? _kotNumbers.first : 'Unknown';
 
+    // Get orderId from table provider or order provider based on context
+    String? orderId;
+    if (widget.tableId != null) {
+      // For table orders, get from TableProvider
+      final tableProvider = Provider.of<TableProvider>(context, listen: false);
+      orderId = tableProvider.currentOrderId;
+    } else {
+      // For phone/takeaway orders, get from OrderProvider
+      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+      orderId = orderProvider.createdOrderId;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -970,6 +1002,8 @@ class _CartViewState extends State<CartView> {
             (_) => BillingPage(
               orderNumber: orderNumber,
               cartItems: cartProvider.cartItems.values.toList(),
+              tableId: widget.tableId,
+              orderId: orderId, // Pass the orderId
               onBillGenerated: () {
                 // This will be called after payment is completed
                 cartProvider.clearCart();
