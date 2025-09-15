@@ -9,6 +9,7 @@ import 'package:restaurant_pos_system/data/models/create_order_head_request_mode
 import 'package:restaurant_pos_system/data/models/create_order_head_api_res_model.dart';
 import 'package:restaurant_pos_system/data/models/create_kot_with_order_details_api_res_model.dart';
 import 'package:restaurant_pos_system/data/models/bill_generation_models.dart';
+import 'package:restaurant_pos_system/data/models/bill_details_response.dart';
 import 'package:restaurant_pos_system/data/models/order_channel_list_api_response_model.dart';
 import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
 import '../core/constants/api_constants.dart';
@@ -1164,6 +1165,40 @@ class ApiService {
     } catch (e, stackTrace) {
       if (kDebugMode) {
         debugPrint('Error in savePayment: $e');
+        debugPrint('StackTrace: $stackTrace');
+      }
+      return null;
+    }
+  }
+
+  /// Get bill details by billId
+  static Future<BillDetailsResponse?> getBillDetailByBillId({
+    required String billId,
+  }) async {
+    try {
+      if (kDebugMode) {
+        debugPrint('Fetching bill details for billId: $billId');
+      }
+
+      final requestBody = {"billId": billId};
+
+      final response = await apiRequestHttpRawBody(
+        'Order/getBillDetailByBillId',
+        requestBody,
+      );
+
+      if (kDebugMode) {
+        debugPrint('getBillDetailByBillId Response: $response');
+      }
+
+      if (response != null) {
+        return BillDetailsResponse.fromJson(response);
+      }
+
+      return null;
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Error in getBillDetailByBillId: $e');
         debugPrint('StackTrace: $stackTrace');
       }
       return null;

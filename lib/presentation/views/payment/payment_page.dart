@@ -34,6 +34,8 @@ class _PaymentPageState extends State<PaymentPage>
   String _selectedPaymentMethod = 'cash';
   bool _processing = false;
   bool _showQR = false;
+  double? _actualBillAmount;
+  bool _loadingBillDetails = false;
 
   late final AnimationController _fadeController;
   late final Animation<double> _fadeIn;
@@ -42,14 +44,68 @@ class _PaymentPageState extends State<PaymentPage>
   void initState() {
     super.initState();
     debugPrint(
-      '[PaymentPage] Initialized with amount: ${widget.totalAmount}, order: ${widget.orderNumber}, tableId: ${widget.tableId}',
+      '[PaymentPage] Initialized with amount: ${widget.totalAmount}, order: ${widget.orderNumber}, tableId: ${widget.tableId}, billId: ${widget.billId}',
     );
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    _fadeIn = CurvedAnimation(parent: _fadeController, curve: Curves.easeIn);
+
+    // Fetch bill details if billId is provided
+    if (widget.billId != null && widget.billId!.isNotEmpty) {
+      _fetchBillDetails();
+    }
+    _fadeIn = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
     _fadeController.forward();
+  }
+
+  // Fetch bill details using the new API
+  Future<void> _fetchBillDetails() async {
+    if (widget.billId == null || widget.billId!.isEmpty) return;
+
+    setState(() {
+      _loadingBillDetails = true;
+    });
+
+    try {
+      debugPrint(
+        '[PaymentPage] Fetching bill details for billId: ${widget.billId}',
+      );
+      final billDetails = await ApiService.getBillDetailByBillId(
+        billId: widget.billId!,
+      );
+
+      if (billDetails != null &&
+          billDetails.isSuccess &&
+          billDetails.data != null) {
+        final actualAmount = billDetails.data!.billHeadDt.billAmountInclTax;
+        setState(() {
+          _actualBillAmount = actualAmount;
+          _loadingBillDetails = false;
+        });
+        debugPrint('[PaymentPage] Fetched actual bill amount: ₹$actualAmount');
+      } else {
+        debugPrint(
+          '[PaymentPage] Failed to fetch bill details: ${billDetails?.message}',
+        );
+        setState(() {
+          _loadingBillDetails = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[PaymentPage] Error fetching bill details: $e');
+      setState(() {
+        _loadingBillDetails = false;
+      });
+    }
+  }
+
+  // Get the current amount to display (either from API or fallback to widget amount)
+  double get currentAmount {
+    return _actualBillAmount ?? widget.totalAmount;
   }
 
   @override
@@ -130,7 +186,15 @@ class _PaymentPageState extends State<PaymentPage>
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _AmountCard(amount: widget.totalAmount),
+              const SizedBox(height: 24),
+              _loadingBillDetails
+                  ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                  : _AmountCard(amount: currentAmount),
               const SizedBox(height: 16),
               _PaymentMethods(
                 selected: _selectedPaymentMethod,
@@ -151,7 +215,7 @@ class _PaymentPageState extends State<PaymentPage>
                     _showQR
                         ? _QRSection(
                           key: const ValueKey('qr-section'),
-                          amount: widget.totalAmount,
+                          amount: currentAmount,
                           orderNumber: widget.orderNumber,
                         )
                         : const SizedBox.shrink(key: ValueKey('empty')),
@@ -175,7 +239,7 @@ class _PaymentPageState extends State<PaymentPage>
     try {
       debugPrint('=== PAYMENT PROCESSING DEBUG START ===');
       debugPrint(
-        'Payment Page - Total Amount: ${CurrencyConstants.symbol}${widget.totalAmount}',
+        'Payment Page - Total Amount: ${CurrencyConstants.symbol}$currentAmount',
       );
       debugPrint('Payment Page - Order Number: ${widget.orderNumber}');
       debugPrint('Payment Page - Table ID: ${widget.tableId}');
@@ -226,7 +290,7 @@ class _PaymentPageState extends State<PaymentPage>
         billId: billId,
         paymentDetails: [
           PaymentDetail(
-            paymentAmount: widget.totalAmount,
+            paymentAmount: currentAmount,
             modeId: paymentModeId,
             refId: "",
             cardNo: "",
@@ -316,7 +380,7 @@ class _PaymentPageState extends State<PaymentPage>
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${CurrencyConstants.symbol}${widget.totalAmount.toStringAsFixed(2)} • ${_selectedPaymentMethod.toUpperCase()}',
+                  '${CurrencyConstants.symbol}${currentAmount.toStringAsFixed(2)} • ${_selectedPaymentMethod.toUpperCase()}',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
@@ -337,7 +401,7 @@ class _PaymentPageState extends State<PaymentPage>
                       const SizedBox(height: 6),
                       _kv(
                         'Amount',
-                        '${CurrencyConstants.symbol}${widget.totalAmount.toStringAsFixed(2)}',
+                        '${CurrencyConstants.symbol}${currentAmount.toStringAsFixed(2)}',
                         context,
                       ),
                       const SizedBox(height: 6),

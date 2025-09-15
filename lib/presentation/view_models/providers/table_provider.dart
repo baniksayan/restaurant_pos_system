@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/services/api_service.dart';
 import '../../../data/models/restaurant_table.dart';
+import '../../../data/models/bill_details_response.dart';
 import '../../../data/repositories/table_repository.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/order_channel.dart';
@@ -82,8 +83,39 @@ class TableProvider extends ChangeNotifier {
         outletId: outletId,
       );
 
-      // CRITICAL FIX: Force list replacement to trigger UI update
-      _tables = List<RestaurantTable>.from(tables); // Create new list instance
+      // CRITICAL FIX: Merge API data with existing local data to preserve bill IDs
+      final List<RestaurantTable> mergedTables = [];
+
+      for (final apiTable in tables) {
+        // Find existing table to preserve local data
+        final existingTable = _tables.firstWhere(
+          (t) => t.id == apiTable.id,
+          orElse: () => apiTable,
+        );
+
+        // Get bill ID from memory or persistent storage
+        String? preservedBillId = existingTable.billId;
+        if (preservedBillId == null || preservedBillId.isEmpty) {
+          // Fallback to persistent storage if not in memory
+          preservedBillId = HiveService.getTableBillId(apiTable.id);
+        }
+
+        // Merge API data with existing local data (preserve billId)
+        final mergedTable = apiTable.copyWith(
+          billId: preservedBillId, // Preserve existing bill ID
+        );
+
+        mergedTables.add(mergedTable);
+
+        // Debug log for bill ID preservation
+        if (preservedBillId != null && preservedBillId.isNotEmpty) {
+          print(
+            '[TableProvider] Preserved bill ID for ${apiTable.name}: $preservedBillId',
+          );
+        }
+      }
+
+      _tables = mergedTables; // Replace with merged data
 
       // Apply local status overrides after loading from API
       _applyLocalStatusOverrides();
@@ -144,20 +176,18 @@ class TableProvider extends ChangeNotifier {
                     orderList:
                         tableData.orderList
                             ?.map(
-                              (order) =>
-                              // FIXED: Properly convert to OrderChannel's OrderList structure
-                              OrderInfo(
+                              (order) => OrderInfo(
                                 orderId: order.orderId ?? '',
                                 isBilled: order.isBilled ?? false,
                                 orderStatus: order.orderStatus ?? '',
                                 generatedOrderNo: order.generatedOrderNo ?? '',
                               ),
                             )
-                            ?.toList() ??
+                            .toList() ??
                         [],
                   ),
                 )
-                ?.toList() ??
+                .toList() ??
             [];
 
         // Also update the main tables list
@@ -294,7 +324,7 @@ class TableProvider extends ChangeNotifier {
         }
 
         print(
-          '[Error] Failed to create order - API response: ${orderResponse?.message}',
+          '[Error] Failed to create order - API response: ${orderResponse.message}',
         );
         return false;
       }
@@ -361,29 +391,51 @@ class TableProvider extends ChangeNotifier {
       if (orderDetails != null &&
           orderDetails.isSuccess == true &&
           orderDetails.data != null) {
-        // Convert order details to cart items
-        final cartItems =
-            orderDetails.data!.first.orderDetailList
-                ?.map(
-                  (item) => {
-                    'productId': item.productId,
-                    'productName': item.productName,
-                    'quantity': item.productQty,
-                    'price': item.itemPrice,
-                    'totalPrice': item.totPrice, // to do
-                  },
-                )
-                ?.toList() ??
-            [];
-        // print cart items
+        // Convert order details to cart items with proper KOT status
+        final orderDetailList = orderDetails.data!.first.orderDetailList ?? [];
+        final List<Map<String, dynamic>> cartItems =
+            orderDetailList.map((item) {
+              // Check if item has KOT information (exists in backend = KOT generated)
+              final bool isKotGenerated =
+                  item.kotNo != null &&
+                  item.kotNo!.isNotEmpty &&
+                  item.kotId != null &&
+                  item.kotId!.isNotEmpty;
+
+              return <String, dynamic>{
+                'productId': item.productId,
+                'productName': item.productName,
+                'quantity': item.productQty,
+                'price': item.itemPrice,
+                'totalPrice': item.totPrice,
+                // Mark as KOT generated since these items exist in backend
+                'isKotGenerated': isKotGenerated,
+                'kotNo': item.kotNo,
+                'kotNumber': item.kotNo,
+                // Additional properties for proper cart item creation
+                'uom': item.uom,
+                'discountPercentage': item.discountPerc ?? 0,
+                'specialNotes': item.instruction,
+                'note': item.instruction,
+              };
+            }).toList();
+        // print cart items with KOT status
+        final kotGeneratedCount =
+            cartItems.where((item) => item['isKotGenerated'] == true).length;
+        final newItemsCount = cartItems.length - kotGeneratedCount;
         print(
           '[Cart Items] Loaded ${cartItems.length} items for order $orderId',
+        );
+        print(
+          '[Cart Items] KOT Generated: $kotGeneratedCount, New Items: $newItemsCount',
         );
 
         _orderCartStates[orderId] = cartItems;
         _currentOrderId = orderId;
 
-        print('[Cart Loaded] Order $orderId with ${cartItems.length} items');
+        print(
+          '[Cart Loaded] Order $orderId with ${cartItems.length} items (${kotGeneratedCount} KOT generated)',
+        );
         notifyListeners(); // CRITICAL: Notify when cart state changes
 
         // Return loaded items so caller (UI) can sync AnimatedCartProvider
@@ -593,19 +645,22 @@ class TableProvider extends ChangeNotifier {
     print('[TableProvider] Cleared status override for table $tableId');
   }
 
-  // Store bill amount for a table
-  void storeBillAmount(String tableId, double billAmount) {
+  // Store bill ID for a table (new approach)
+  void storeBillId(String tableId, String billId) {
     print(
-      '[TableProvider] Attempting to store bill amount for table ID: $tableId, amount: ₹${billAmount.toStringAsFixed(2)}',
+      '[TableProvider] Attempting to store bill ID for table ID: $tableId, billId: $billId',
     );
     print(
       '[TableProvider] Available tables: ${_tables.map((t) => '${t.id}:${t.name}').toList()}',
     );
 
+    // Save to persistent storage first
+    HiveService.saveTableBillId(tableId, billId);
+
     final tableIndex = _tables.indexWhere((table) => table.id == tableId);
     if (tableIndex != -1) {
       _tables[tableIndex] = _tables[tableIndex].copyWith(
-        billAmount: billAmount,
+        billId: billId,
         status: TableStatus.billGenerated,
       );
 
@@ -614,30 +669,110 @@ class TableProvider extends ChangeNotifier {
 
       notifyListeners();
       print(
-        '[TableProvider] Successfully stored bill amount for table $tableId: ₹${billAmount.toStringAsFixed(2)}',
+        '[TableProvider] Successfully stored bill ID for table $tableId: $billId',
       );
     } else {
       print('[TableProvider] ERROR: Table with ID $tableId not found!');
     }
   }
 
-  // Get stored bill amount for a table
-  double? getBillAmount(String tableId) {
+  // Backward compatibility method (deprecated)
+  @deprecated
+  void storeBillAmount(String tableId, double billAmount) {
+    print('Warning: storeBillAmount is deprecated. Use storeBillId instead.');
+    // This method is kept for backward compatibility but does nothing
+  }
+
+  // Get stored bill ID for a table
+  String? getBillId(String tableId) {
+    print('[TableProvider] Attempting to get bill ID for table ID: $tableId');
     print(
-      '[TableProvider] Attempting to get bill amount for table ID: $tableId',
-    );
-    print(
-      '[TableProvider] Available tables: ${_tables.map((t) => '${t.id}:${t.name}:${t.billAmount}').toList()}',
+      '[TableProvider] Available tables: ${_tables.map((t) => '${t.id}:${t.name}:${t.billId}').toList()}',
     );
 
     try {
       final table = _tables.firstWhere((table) => table.id == tableId);
       print(
-        '[TableProvider] Found table ${table.name}, bill amount: ${table.billAmount}',
+        '[TableProvider] Found table ${table.name}, bill ID: ${table.billId}',
       );
-      return table.billAmount;
+
+      // If table bill ID is null, try loading from persistent storage
+      if (table.billId == null || table.billId!.isEmpty) {
+        final persistedBillId = HiveService.getTableBillId(tableId);
+        if (persistedBillId != null && persistedBillId.isNotEmpty) {
+          print(
+            '[TableProvider] Loaded bill ID from persistent storage: $persistedBillId',
+          );
+          // Update the table with persisted bill ID
+          final tableIndex = _tables.indexWhere((t) => t.id == tableId);
+          if (tableIndex != -1) {
+            _tables[tableIndex] = _tables[tableIndex].copyWith(
+              billId: persistedBillId,
+            );
+            notifyListeners();
+          }
+          return persistedBillId;
+        }
+      }
+
+      return table.billId;
     } catch (e) {
-      print('[TableProvider] ERROR: Table with ID $tableId not found');
+      print(
+        '[TableProvider] ERROR: Table with ID $tableId not found, trying persistent storage',
+      );
+      // Fallback to persistent storage
+      final persistedBillId = HiveService.getTableBillId(tableId);
+      if (persistedBillId != null && persistedBillId.isNotEmpty) {
+        print(
+          '[TableProvider] Found bill ID in persistent storage: $persistedBillId',
+        );
+      }
+      return persistedBillId;
+    }
+  }
+
+  // Fetch bill details using the new API
+  Future<BillDetailsResponse?> getBillDetails(String tableId) async {
+    try {
+      final billId = getBillId(tableId);
+      if (billId == null || billId.isEmpty) {
+        print('[TableProvider] No bill ID found for table $tableId');
+        return null;
+      }
+
+      print(
+        '[TableProvider] Fetching bill details for table $tableId with billId: $billId',
+      );
+      final billDetails = await ApiService.getBillDetailByBillId(
+        billId: billId,
+      );
+
+      if (billDetails != null && billDetails.isSuccess) {
+        print(
+          '[TableProvider] Successfully fetched bill details for table $tableId',
+        );
+        return billDetails;
+      } else {
+        print(
+          '[TableProvider] Failed to fetch bill details for table $tableId: ${billDetails?.message}',
+        );
+        return null;
+      }
+    } catch (e) {
+      print(
+        '[TableProvider] Error fetching bill details for table $tableId: $e',
+      );
+      return null;
+    }
+  }
+
+  // Get bill amount using the new API (backward compatibility)
+  Future<double?> getBillAmount(String tableId) async {
+    try {
+      final billDetails = await getBillDetails(tableId);
+      return billDetails?.data?.billHeadDt.billAmountInclTax;
+    } catch (e) {
+      print('[TableProvider] Error getting bill amount for table $tableId: $e');
       return null;
     }
   }

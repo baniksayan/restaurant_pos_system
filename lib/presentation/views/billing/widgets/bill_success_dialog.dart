@@ -38,8 +38,26 @@ class BillSuccessDialog extends StatelessWidget {
         // Refresh tables first to get latest data
         await tableProvider.refreshTables();
 
-        // Then store the bill amount for this table (after refresh)
-        tableProvider.storeBillAmount(tableId!, total);
+        // Then store the bill ID for this table (after refresh)
+        try {
+          final billingProvider = Provider.of<BillingProvider>(
+            context,
+            listen: false,
+          );
+          final billId = billingProvider.billId;
+          if (billId != null && billId.isNotEmpty) {
+            tableProvider.storeBillId(tableId!, billId);
+            debugPrint(
+              'BillSuccessDialog - Stored billId for table $tableId: $billId',
+            );
+          } else {
+            debugPrint(
+              'BillSuccessDialog - No billId found in BillingProvider',
+            );
+          }
+        } catch (e) {
+          debugPrint('BillSuccessDialog - Error storing billId: $e');
+        }
       });
     }
 

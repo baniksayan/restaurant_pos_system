@@ -334,23 +334,24 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
         final orderNumber = table.activeOrders.last.generatedOrderNo;
 
         try {
-          // Get the stored bill amount for this table
-          final storedBillAmount = tableProvider.getBillAmount(table.id);
+          // Get the stored bill ID for this table
+          final storedBillId = tableProvider.getBillId(table.id);
 
-          if (storedBillAmount != null && storedBillAmount > 0) {
+          if (storedBillId != null && storedBillId.isNotEmpty) {
             debugPrint(
-              '[Dashboard] Using stored bill amount for ${table.name}: ₹${storedBillAmount.toStringAsFixed(2)}',
+              '[Dashboard] Found bill ID for ${table.name}: $storedBillId',
             );
 
-            // Navigate directly to payment page with stored amount
+            // Navigate directly to payment page with bill ID
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder:
                     (context) => PaymentPage(
                       orderNumber: orderNumber,
-                      totalAmount: storedBillAmount,
+                      totalAmount: 0.0, // Will be fetched from API using billId
                       tableId: table.id,
+                      billId: storedBillId, // Pass the bill ID
                       onPaymentCompleted: () {
                         // Refresh tables after payment completion
                         tableProvider.refreshTables();
@@ -364,7 +365,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
             );
           } else {
             _showSnackBar(
-              'No bill amount found for ${table.name}. Please generate bill first.',
+              'No bill ID found for ${table.name}. Please generate bill first.',
               Colors.orange,
             );
           }

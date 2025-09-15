@@ -44,26 +44,33 @@ class _CartViewState extends State<CartView> {
     super.initState();
     // Switch to current table's cart when entering cart view and sync with server
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (widget.tableId != null && widget.tableName != null) {
-        final cartProvider = Provider.of<AnimatedCartProvider>(
-          context,
-          listen: false,
-        );
-        final tableProvider = Provider.of<TableProvider>(
-          context,
-          listen: false,
-        );
-
-        // Get the current order ID for this table to sync with server
-        final orderId = tableProvider.currentOrderId;
-
-        await cartProvider.switchToTable(
-          widget.tableId!,
-          widget.tableName!,
-          orderId: orderId,
-        );
-      }
+      await _switchToCurrentTable();
     });
+  }
+
+  @override
+  void didUpdateWidget(CartView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Switch to new table if table ID changed
+    if (oldWidget.tableId != widget.tableId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _switchToCurrentTable();
+      });
+    }
+  }
+
+  Future<void> _switchToCurrentTable() async {
+    if (widget.tableId != null && widget.tableName != null) {
+      final cartProvider = Provider.of<AnimatedCartProvider>(
+        context,
+        listen: false,
+      );
+      debugPrint('[CartView] Switching to table ${widget.tableId}');
+
+      cartProvider.switchToTable(widget.tableId!);
+
+      debugPrint('[CartView] Cart switched to table ${widget.tableId}');
+    }
   }
 
   @override
@@ -637,12 +644,8 @@ class _CartViewState extends State<CartView> {
         }
 
         // Refresh server state to get updated KOT items
-        if (widget.tableId != null && widget.tableName != null) {
-          await cartProvider.switchToTable(
-            widget.tableId!,
-            widget.tableName!,
-            orderId: backendOrderId,
-          );
+        if (widget.tableId != null) {
+          cartProvider.switchToTable(widget.tableId!);
         }
 
         // Add to our KOT numbers set

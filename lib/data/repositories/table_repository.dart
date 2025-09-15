@@ -153,7 +153,7 @@ class TableRepository {
             status: tableStatus,
             kotGenerated: kotGenerated,
             billGenerated: billGenerated,
-            billAmount: null, // Will be set when bill is generated
+            billId: null, // Will be set when bill is generated
             activeOrders: activeOrders,
           );
         })

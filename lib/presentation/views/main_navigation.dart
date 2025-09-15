@@ -76,11 +76,11 @@ class _MainNavigationState extends State<MainNavigation> {
 
       // Switch cart provider to current table if not already
       if (animatedCartProvider.currentTableId != tableId) {
-        animatedCartProvider.switchToTable(tableId, tableName);
+        animatedCartProvider.switchToTable(tableId);
       }
     }
 
-    // Add item to both providers
+    // Add item only to AnimatedCartProvider (MenuProvider no longer tracks cart)
     animatedCartProvider.addItem(
       itemId,
       itemName,
@@ -91,8 +91,7 @@ class _MainNavigationState extends State<MainNavigation> {
       categoryName: categoryName,
     );
 
-    // Keep Menu view quantities in sync
-    menuProvider.addToCart(itemId);
+    // MenuProvider no longer tracks cart quantities - removed sync
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

@@ -180,6 +180,98 @@ class HiveService {
     }
   }
 
+  // Table-wise cart storage methods
+  static Future<void> saveTableCart(
+    String tableId,
+    Map<String, dynamic> cartData,
+  ) async {
+    try {
+      await posBox.put('cart_$tableId', cartData);
+    } catch (e) {
+      print('Error saving table cart: $e');
+    }
+  }
+
+  static Map<String, dynamic>? getTableCart(String tableId) {
+    try {
+      final data = posBox.get('cart_$tableId');
+      if (data != null && data is Map) {
+        return Map<String, dynamic>.from(data);
+      }
+    } catch (e) {
+      print('Error getting table cart: $e');
+    }
+    return null;
+  }
+
+  static Future<void> clearTableCart(String tableId) async {
+    try {
+      await posBox.delete('cart_$tableId');
+    } catch (e) {
+      print('Error clearing table cart: $e');
+    }
+  }
+
+  // Table-wise bill ID storage methods (replacing bill amount storage)
+  static Future<void> saveTableBillId(String tableId, String billId) async {
+    try {
+      await posBox.put('bill_id_$tableId', billId);
+      print('Saved bill ID for table $tableId: $billId');
+    } catch (e) {
+      print('Error saving table bill ID: $e');
+    }
+  }
+
+  static String? getTableBillId(String tableId) {
+    try {
+      final billId = posBox.get('bill_id_$tableId');
+      if (billId != null && billId is String) {
+        return billId;
+      }
+    } catch (e) {
+      print('Error getting table bill ID: $e');
+    }
+    return null;
+  }
+
+  static Future<void> clearTableBillId(String tableId) async {
+    try {
+      await posBox.delete('bill_id_$tableId');
+      print('Cleared bill ID for table $tableId');
+    } catch (e) {
+      print('Error clearing table bill ID: $e');
+    }
+  }
+
+  // Legacy methods for backward compatibility (temporarily kept)
+  @deprecated
+  static Future<void> saveTableBillAmount(
+    String tableId,
+    double billAmount,
+  ) async {
+    // This method is deprecated - use saveTableBillId instead
+    print(
+      'Warning: saveTableBillAmount is deprecated. Use saveTableBillId instead.',
+    );
+  }
+
+  @deprecated
+  static double? getTableBillAmount(String tableId) {
+    // This method is deprecated - use getBillDetailByBillId API instead
+    print(
+      'Warning: getTableBillAmount is deprecated. Use getBillDetailByBillId API instead.',
+    );
+    return null;
+  }
+
+  @deprecated
+  static Future<void> clearTableBillAmount(String tableId) async {
+    // This method is deprecated - use clearTableBillId instead
+    print(
+      'Warning: clearTableBillAmount is deprecated. Use clearTableBillId instead.',
+    );
+  }
+
   // Utility method to clear all data (useful for logout)
   static Future<void> clearAllData() async {
     await posBox.clear();

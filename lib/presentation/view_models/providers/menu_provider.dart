@@ -15,8 +15,7 @@ class MenuProvider with ChangeNotifier {
   String _searchQuery = '';
   String _selectedCategory = 'All';
 
-  // Multi-table cart and state management
-  final Map<String, Map<String, int>> _tableWiseCarts = {}; // Table ID -> Cart
+  // Multi-table state management (cart removed - handled by AnimatedCartProvider)
   final Map<String, String> _tableWiseSearchQuery =
       {}; // Table ID -> Search Query
   final Map<String, String> _tableWiseCategory =
@@ -39,18 +38,15 @@ class MenuProvider with ChangeNotifier {
           ? (_tableWiseCategory[_currentTableId] ?? 'All')
           : _selectedCategory;
   Map<String, int> get cart =>
-      _currentTableId != null
-          ? Map.unmodifiable(_tableWiseCarts[_currentTableId] ?? {})
-          : const <String, int>{};
+      const <
+        String,
+        int
+      >{}; // Always empty - cart handled by AnimatedCartProvider
   bool get isLoading => _isLoading;
   bool get isCategoriesLoading => _isCategoriesLoading;
   String? get errorMessage => _errorMessage;
 
-  // Helper methods for current table cart
-  Map<String, int> _getCurrentCart() {
-    if (_currentTableId == null) return <String, int>{};
-    return _tableWiseCarts[_currentTableId!] ??= <String, int>{};
-  }
+  // Cart functionality removed from MenuProvider - handled by AnimatedCartProvider
 
   // Table management
   void switchToTable(String? tableId) {
@@ -59,7 +55,6 @@ class MenuProvider with ChangeNotifier {
   }
 
   void clearTableData(String tableId) {
-    _tableWiseCarts.remove(tableId);
     _tableWiseSearchQuery.remove(tableId);
     _tableWiseCategory.remove(tableId);
     notifyListeners();
@@ -245,80 +240,35 @@ class MenuProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Cart operations
+  // Cart operations - REMOVED: No longer track cart quantities in MenuProvider
+  // The AnimatedCartProvider handles all cart functionality
   void addToCart(String itemId) {
-    try {
-      final cart = _getCurrentCart();
-      final currentQuantity = cart[itemId] ?? 0;
-      cart[itemId] = currentQuantity + 1;
-      notifyListeners();
-    } catch (e) {
-      _errorMessage = "Failed to add item to cart: $e";
-      notifyListeners();
-    }
+    // No-op: Cart functionality moved to AnimatedCartProvider
+    // This method kept for compatibility but does nothing
   }
 
   void removeFromCart(String itemId) {
-    final cart = _getCurrentCart();
-    if (itemId.isNotEmpty && cart.containsKey(itemId)) {
-      final currentQuantity = cart[itemId];
-      if (currentQuantity != null) {
-        if (currentQuantity > 1) {
-          cart[itemId] = currentQuantity - 1;
-        } else {
-          cart.remove(itemId);
-        }
-        notifyListeners();
-      }
-    }
+    // No-op: Cart functionality moved to AnimatedCartProvider
+    // This method kept for compatibility but does nothing
   }
 
   int getCartQuantity(String itemId) {
-    if (itemId.isEmpty) return 0;
-    final cart = _getCurrentCart();
-    return cart[itemId] ?? 0;
+    // Always return 0 to prevent auto-selection in menu
+    return 0;
   }
 
   int get totalCartItems {
-    int total = 0;
-    final cart = _getCurrentCart();
-    for (var quantity in cart.values) {
-      total += quantity;
-    }
-    return total;
+    // Always return 0 since we're not tracking cart in MenuProvider anymore
+    return 0;
   }
 
   double calculateTotal() {
-    double total = 0.0;
-    final cart = _getCurrentCart();
-    for (var entry in cart.entries) {
-      final itemId = entry.key;
-      final quantity = entry.value;
-
-      if (itemId.isNotEmpty && quantity > 0) {
-        try {
-          final item = _apiMenuItems.firstWhere(
-            (item) => item.productId == itemId,
-            orElse: () => Data(),
-          );
-          final price = item.productPrice;
-          if (price != null) {
-            total += price.toDouble() * quantity.toDouble();
-          }
-        } catch (e) {
-          // Item not found, skip
-          continue;
-        }
-      }
-    }
-    return total;
+    // Always return 0 since we're not tracking cart in MenuProvider anymore
+    return 0.0;
   }
 
   void clearCart() {
-    if (_currentTableId != null) {
-      _tableWiseCarts[_currentTableId!]?.clear();
-      notifyListeners();
-    }
+    // No-op: Cart functionality moved to AnimatedCartProvider
   }
 
   // Clear error message

@@ -11,7 +11,7 @@ class RestaurantTable {
   final TableStatus status;
   final bool kotGenerated;
   final bool billGenerated;
-  final double? billAmount; // NEW: Store bill amount when bill is generated
+  final String? billId; // NEW: Store bill ID when bill is generated
   final ReservationInfo? reservationInfo;
   final List<ActiveOrder> activeOrders; // NEW: Multiple orders support
 
@@ -23,7 +23,7 @@ class RestaurantTable {
     required this.status,
     required this.kotGenerated,
     required this.billGenerated,
-    this.billAmount,
+    this.billId,
     this.reservationInfo,
     this.activeOrders = const [], // NEW: Default empty list
   });
@@ -45,7 +45,7 @@ class RestaurantTable {
     TableStatus? status,
     bool? kotGenerated,
     bool? billGenerated,
-    double? billAmount,
+    String? billId,
     ReservationInfo? reservationInfo,
     List<ActiveOrder>? activeOrders,
   }) {
@@ -57,7 +57,7 @@ class RestaurantTable {
       status: status ?? this.status,
       kotGenerated: kotGenerated ?? this.kotGenerated,
       billGenerated: billGenerated ?? this.billGenerated,
-      billAmount: billAmount ?? this.billAmount,
+      billId: billId ?? this.billId,
       reservationInfo: reservationInfo ?? this.reservationInfo,
       activeOrders: activeOrders ?? this.activeOrders,
     );

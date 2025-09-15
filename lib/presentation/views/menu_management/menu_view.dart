@@ -4,6 +4,7 @@ import 'package:restaurant_pos_system/data/local/hive_service.dart';
 
 import '../../view_models/providers/menu_provider.dart';
 import '../../view_models/providers/navigation_provider.dart';
+import '../../view_models/providers/animated_cart_provider.dart';
 import 'widgets/menu_header.dart';
 import 'widgets/menu_search_bar.dart';
 import 'widgets/category_tabs.dart';
@@ -41,12 +42,12 @@ class _MenuViewState extends State<MenuView> {
   void initState() {
     super.initState();
     // Load menu data when the widget initializes - BUT ONLY IF AUTHENTICATED
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final menuProvider = Provider.of<MenuProvider>(context, listen: false);
 
       // Switch to selected table for proper state isolation
       if (widget.selectedTableId != null) {
-        menuProvider.switchToTable(widget.selectedTableId);
+        await _switchToNewTable();
       }
 
       // Check if user is authenticated before loading menu
@@ -64,9 +65,33 @@ class _MenuViewState extends State<MenuView> {
     super.didUpdateWidget(oldWidget);
     // Switch to new table when table selection changes
     if (widget.selectedTableId != oldWidget.selectedTableId) {
-      final menuProvider = Provider.of<MenuProvider>(context, listen: false);
-      menuProvider.switchToTable(widget.selectedTableId);
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _switchToNewTable();
+      });
     }
+  }
+
+  Future<void> _switchToNewTable() async {
+    if (widget.selectedTableId == null) return;
+
+    final menuProvider = Provider.of<MenuProvider>(context, listen: false);
+    final animatedCartProvider = Provider.of<AnimatedCartProvider>(
+      context,
+      listen: false,
+    );
+    debugPrint('[MenuView] Switching to table: ${widget.selectedTableId}');
+
+    // Switch menu provider
+    menuProvider.switchToTable(widget.selectedTableId);
+
+    // Switch cart provider
+    debugPrint(
+      '[MenuView] Switching cart provider to table ${widget.selectedTableId}',
+    );
+
+    animatedCartProvider.switchToTable(widget.selectedTableId!);
+
+    debugPrint('[MenuView] Table switch completed');
   }
 
   @override
