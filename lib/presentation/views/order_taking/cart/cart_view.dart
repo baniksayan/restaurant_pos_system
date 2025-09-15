@@ -530,11 +530,11 @@ class _CartViewState extends State<CartView> {
       final orderProvider = context.read<OrderProvider>();
       final tableProvider = context.read<TableProvider>();
 
-      // Use the actual orderId from backend 
+      // Use the actual orderId from backend
       // For table orders: get from TableProvider (created during table selection)
       // For Phone/Takeaway orders: get from OrderProvider (created during phone/takeaway order)
       String? backendOrderId = tableProvider.currentOrderId;
-      
+
       // If no table order ID, check for Phone/Takeaway order ID
       if (backendOrderId == null) {
         backendOrderId = orderProvider.createdOrderId;

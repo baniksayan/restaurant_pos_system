@@ -84,7 +84,7 @@ class TableProvider extends ChangeNotifier {
 
       // CRITICAL FIX: Force list replacement to trigger UI update
       _tables = List<RestaurantTable>.from(tables); // Create new list instance
-      
+
       // Apply local status overrides after loading from API
       _applyLocalStatusOverrides();
 
@@ -336,7 +336,9 @@ class TableProvider extends ChangeNotifier {
 
       // Set local status override to ensure it persists across API refreshes
       _localStatusOverrides[tableId] = status;
-      print('[TableProvider] Set local status override for $tableId: ${status.name}');
+      print(
+        '[TableProvider] Set local status override for $tableId: ${status.name}',
+      );
 
       notifyListeners();
     }
@@ -533,7 +535,9 @@ class TableProvider extends ChangeNotifier {
       if (_localStatusOverrides.containsKey(table.id)) {
         final overrideStatus = _localStatusOverrides[table.id]!;
         _tables[i] = table.copyWith(status: overrideStatus);
-        print('[TableProvider] Applied status override for ${table.name}: ${overrideStatus.name}');
+        print(
+          '[TableProvider] Applied status override for ${table.name}: ${overrideStatus.name}',
+        );
       }
     }
   }
@@ -564,19 +568,19 @@ class TableProvider extends ChangeNotifier {
         status = TableStatus.outOfOrder;
         break;
     }
-    
+
     if (status != null) {
       _localStatusOverrides[tableId] = status;
-      
+
       // Apply the override to the current table list
       final tableIndex = _tables.indexWhere((table) => table.id == tableId);
       if (tableIndex != -1) {
         _tables[tableIndex] = _tables[tableIndex].copyWith(status: status);
         notifyListeners();
       }
-      
+
       print('[TableProvider] Updated table $tableId status to $newStatus');
-      
+
       // Clear override if setting to available (natural API state)
       if (status == TableStatus.available) {
         _localStatusOverrides.remove(tableId);
@@ -591,21 +595,27 @@ class TableProvider extends ChangeNotifier {
 
   // Store bill amount for a table
   void storeBillAmount(String tableId, double billAmount) {
-    print('[TableProvider] Attempting to store bill amount for table ID: $tableId, amount: ₹${billAmount.toStringAsFixed(2)}');
-    print('[TableProvider] Available tables: ${_tables.map((t) => '${t.id}:${t.name}').toList()}');
-    
+    print(
+      '[TableProvider] Attempting to store bill amount for table ID: $tableId, amount: ₹${billAmount.toStringAsFixed(2)}',
+    );
+    print(
+      '[TableProvider] Available tables: ${_tables.map((t) => '${t.id}:${t.name}').toList()}',
+    );
+
     final tableIndex = _tables.indexWhere((table) => table.id == tableId);
     if (tableIndex != -1) {
       _tables[tableIndex] = _tables[tableIndex].copyWith(
         billAmount: billAmount,
         status: TableStatus.billGenerated,
       );
-      
+
       // Also set local status override
       _localStatusOverrides[tableId] = TableStatus.billGenerated;
-      
+
       notifyListeners();
-      print('[TableProvider] Successfully stored bill amount for table $tableId: ₹${billAmount.toStringAsFixed(2)}');
+      print(
+        '[TableProvider] Successfully stored bill amount for table $tableId: ₹${billAmount.toStringAsFixed(2)}',
+      );
     } else {
       print('[TableProvider] ERROR: Table with ID $tableId not found!');
     }
@@ -613,12 +623,18 @@ class TableProvider extends ChangeNotifier {
 
   // Get stored bill amount for a table
   double? getBillAmount(String tableId) {
-    print('[TableProvider] Attempting to get bill amount for table ID: $tableId');
-    print('[TableProvider] Available tables: ${_tables.map((t) => '${t.id}:${t.name}:${t.billAmount}').toList()}');
-    
+    print(
+      '[TableProvider] Attempting to get bill amount for table ID: $tableId',
+    );
+    print(
+      '[TableProvider] Available tables: ${_tables.map((t) => '${t.id}:${t.name}:${t.billAmount}').toList()}',
+    );
+
     try {
       final table = _tables.firstWhere((table) => table.id == tableId);
-      print('[TableProvider] Found table ${table.name}, bill amount: ${table.billAmount}');
+      print(
+        '[TableProvider] Found table ${table.name}, bill amount: ${table.billAmount}',
+      );
       return table.billAmount;
     } catch (e) {
       print('[TableProvider] ERROR: Table with ID $tableId not found');

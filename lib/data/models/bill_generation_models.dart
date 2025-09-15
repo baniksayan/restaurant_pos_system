@@ -14,7 +14,10 @@ class GetOrderDetailForBillResponse {
 
   factory GetOrderDetailForBillResponse.fromJson(Map<String, dynamic> json) {
     return GetOrderDetailForBillResponse(
-      data: json['data'] != null ? OrderDetailForBill.fromJson(json['data']) : null,
+      data:
+          json['data'] != null
+              ? OrderDetailForBill.fromJson(json['data'])
+              : null,
       message: json['message'] ?? '',
       isSuccess: json['isSuccess'] ?? false,
       statusCode: json['statusCode'] ?? 0,
@@ -210,15 +213,13 @@ class SavePaymentRequest {
   final String billId;
   final List<PaymentDetail> paymentDetails;
 
-  SavePaymentRequest({
-    required this.billId,
-    required this.paymentDetails,
-  });
+  SavePaymentRequest({required this.billId, required this.paymentDetails});
 
   Map<String, dynamic> toJson() {
     return {
       'billId': billId,
-      'paymentDetails': paymentDetails.map((detail) => detail.toJson()).toList(),
+      'paymentDetails':
+          paymentDetails.map((detail) => detail.toJson()).toList(),
     };
   }
 }

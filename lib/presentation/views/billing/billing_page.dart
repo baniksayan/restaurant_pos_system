@@ -64,62 +64,62 @@ class _BillingPageState extends State<BillingPage> {
         final total = billingProvider.calculateTotal(subtotal, gstAmount);
 
         return Scaffold(
-            backgroundColor: Colors.grey[50],
-            appBar: AppBar(
-              title: Text('Generate Bill - Order #${widget.orderNumber}'),
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () async {
-                  await HapticHelper.triggerFeedback();
-                  Navigator.pop(context);
-                },
-              ),
+          backgroundColor: Colors.grey[50],
+          appBar: AppBar(
+            title: Text('Generate Bill - Order #${widget.orderNumber}'),
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () async {
+                await HapticHelper.triggerFeedback();
+                Navigator.pop(context);
+              },
             ),
-            body: SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      OrderSummaryCard(
-                        orderNumber: widget.orderNumber,
-                        cartItems: widget.cartItems,
-                      ),
-                      const SizedBox(height: 20),
-                      ItemsListCard(cartItems: widget.cartItems),
-                      const SizedBox(height: 20),
-                      BillDetailsCard(
-                        subtotal: subtotal,
-                        gstAmount: gstAmount,
-                        total: total,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildPaymentModeSelector(billingProvider),
-                      const SizedBox(height: 20),
-                      CustomerPhoneCard(
-                        phoneController: _phoneController,
-                        formKey: _formKey,
-                      ),
-                      const SizedBox(height: 30),
-                      _buildGenerateBillButton(
-                        billingProvider,
-                        subtotal,
-                        gstAmount,
-                        total,
-                      ),
-                    ],
-                  ),
+          ),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    OrderSummaryCard(
+                      orderNumber: widget.orderNumber,
+                      cartItems: widget.cartItems,
+                    ),
+                    const SizedBox(height: 20),
+                    ItemsListCard(cartItems: widget.cartItems),
+                    const SizedBox(height: 20),
+                    BillDetailsCard(
+                      subtotal: subtotal,
+                      gstAmount: gstAmount,
+                      total: total,
+                    ),
+                    const SizedBox(height: 20),
+                    _buildPaymentModeSelector(billingProvider),
+                    const SizedBox(height: 20),
+                    CustomerPhoneCard(
+                      phoneController: _phoneController,
+                      formKey: _formKey,
+                    ),
+                    const SizedBox(height: 30),
+                    _buildGenerateBillButton(
+                      billingProvider,
+                      subtotal,
+                      gstAmount,
+                      total,
+                    ),
+                  ],
                 ),
               ),
             ),
-          );
-        },
-      );
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildPaymentModeSelector(BillingProvider billingProvider) {

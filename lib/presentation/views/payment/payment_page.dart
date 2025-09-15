@@ -41,7 +41,9 @@ class _PaymentPageState extends State<PaymentPage>
   @override
   void initState() {
     super.initState();
-    debugPrint('[PaymentPage] Initialized with amount: ${widget.totalAmount}, order: ${widget.orderNumber}, tableId: ${widget.tableId}');
+    debugPrint(
+      '[PaymentPage] Initialized with amount: ${widget.totalAmount}, order: ${widget.orderNumber}, tableId: ${widget.tableId}',
+    );
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -172,10 +174,14 @@ class _PaymentPageState extends State<PaymentPage>
 
     try {
       debugPrint('=== PAYMENT PROCESSING DEBUG START ===');
-      debugPrint('Payment Page - Total Amount: ${CurrencyConstants.symbol}${widget.totalAmount}');
+      debugPrint(
+        'Payment Page - Total Amount: ${CurrencyConstants.symbol}${widget.totalAmount}',
+      );
       debugPrint('Payment Page - Order Number: ${widget.orderNumber}');
       debugPrint('Payment Page - Table ID: ${widget.tableId}');
-      debugPrint('Payment Page - Selected Payment Method: $_selectedPaymentMethod');
+      debugPrint(
+        'Payment Page - Selected Payment Method: $_selectedPaymentMethod',
+      );
       debugPrint('Payment Page - BillId passed as parameter: ${widget.billId}');
 
       // Use billId from widget parameter (passed from BillSuccessDialog) or fallback to provider
@@ -183,16 +189,21 @@ class _PaymentPageState extends State<PaymentPage>
 
       if (billId == null || billId.isEmpty) {
         debugPrint('Payment Page - ERROR: No billId provided as parameter');
-        
+
         // Try to get billId from BillingProvider as fallback
         try {
-          final billingProvider = Provider.of<BillingProvider>(context, listen: false);
+          final billingProvider = Provider.of<BillingProvider>(
+            context,
+            listen: false,
+          );
           billId = billingProvider.billId;
-          debugPrint('Payment Page - Fallback BillId from BillingProvider: $billId');
+          debugPrint(
+            'Payment Page - Fallback BillId from BillingProvider: $billId',
+          );
         } catch (e) {
           debugPrint('Payment Page - Error accessing BillingProvider: $e');
         }
-        
+
         if (billId == null || billId.isEmpty) {
           throw Exception('No bill ID found. Please generate bill first.');
         }
@@ -226,16 +237,18 @@ class _PaymentPageState extends State<PaymentPage>
 
       debugPrint('Payment Page - SavePayment Request Body:');
       debugPrint(savePaymentRequest.toJson().toString());
-      
+
       // Call SavePayment API
-      final response = await ApiService.savePayment(request: savePaymentRequest);
-      
+      final response = await ApiService.savePayment(
+        request: savePaymentRequest,
+      );
+
       debugPrint('Payment Page - SavePayment Response:');
       debugPrint('Success: ${response?.isSuccess}');
       debugPrint('Message: ${response?.message}');
       debugPrint('Status Code: ${response?.statusCode}');
       debugPrint('Data: ${response?.data}');
-      
+
       if (response?.isSuccess == true) {
         debugPrint('Payment Page - SavePayment API successful');
         await _triggerHapticLight();
@@ -244,13 +257,12 @@ class _PaymentPageState extends State<PaymentPage>
       }
 
       debugPrint('=== PAYMENT PROCESSING DEBUG END ===');
-
     } catch (e) {
       debugPrint('=== PAYMENT ERROR DEBUG ===');
       debugPrint('Error in payment processing: $e');
       debugPrint('Error Type: ${e.runtimeType}');
       setState(() => _processing = false);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -380,10 +392,10 @@ class _PaymentPageState extends State<PaymentPage>
 
                       // Close payment success dialog
                       Navigator.pop(context);
-                      
+
                       // Navigate back to main page (dashboard) and refresh
                       Navigator.of(context).popUntil((route) => route.isFirst);
-                      
+
                       // Refresh table data on the dashboard
                       try {
                         final tableProvider = Provider.of<TableProvider>(
@@ -391,11 +403,13 @@ class _PaymentPageState extends State<PaymentPage>
                           listen: false,
                         );
                         await tableProvider.refreshTables();
-                        debugPrint('Dashboard refreshed after payment completion');
+                        debugPrint(
+                          'Dashboard refreshed after payment completion',
+                        );
                       } catch (e) {
                         debugPrint('Error refreshing dashboard: $e');
                       }
-                      
+
                       // Call the onPaymentCompleted callback
                       widget.onPaymentCompleted();
                     },

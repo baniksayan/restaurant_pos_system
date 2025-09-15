@@ -19,11 +19,12 @@ class OrderChannel {
       channelType: json['channelType'],
       name: json['name'],
       capacity: json['capacity'],
-      orderList: json['orderList'] == null
-          ? []
-          : List<OrderInfo>.from(
-              (json['orderList'] as List).map((x) => OrderInfo.fromJson(x)),
-            ),
+      orderList:
+          json['orderList'] == null
+              ? []
+              : List<OrderInfo>.from(
+                (json['orderList'] as List).map((x) => OrderInfo.fromJson(x)),
+              ),
     );
   }
 }
@@ -66,7 +67,8 @@ class OrderChannelResponse {
 
   factory OrderChannelResponse.fromJson(Map<String, dynamic> json) {
     return OrderChannelResponse(
-      data: (json['data'] as List<dynamic>?)
+      data:
+          (json['data'] as List<dynamic>?)
               ?.map((item) => OrderChannel.fromJson(item))
               .toList() ??
           [],

@@ -209,8 +209,8 @@ class OrderProvider with ChangeNotifier {
         outletId: outletId,
       );
 
-      if (channelsResponse == null || 
-          channelsResponse.data == null || 
+      if (channelsResponse == null ||
+          channelsResponse.data == null ||
           channelsResponse.data!.isEmpty) {
         _error = 'No $orderChannelType channels available';
         _isLoading = false;
@@ -220,7 +220,7 @@ class OrderProvider with ChangeNotifier {
 
       // Use the first available channel
       final orderChannel = channelsResponse.data!.first;
-      
+
       // Step 2: Create order head
       final success = await createOrderHead(
         orderChannelId: orderChannel.orderChannelId!,

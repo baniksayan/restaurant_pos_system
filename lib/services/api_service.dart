@@ -1033,9 +1033,7 @@ class ApiService {
     required String orderId,
   }) async {
     try {
-      final body = {
-        "orderId": orderId,
-      };
+      final body = {"orderId": orderId};
 
       if (kDebugMode) {
         debugPrint('getOrderDetailForBill API Call:');
@@ -1071,9 +1069,7 @@ class ApiService {
     required String contactNo,
   }) async {
     try {
-      final body = {
-        "contactNo": contactNo,
-      };
+      final body = {"contactNo": contactNo};
 
       if (kDebugMode) {
         debugPrint('getCustomerByMobileNo API Call:');

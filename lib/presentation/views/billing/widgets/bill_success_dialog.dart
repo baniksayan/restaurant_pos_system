@@ -34,10 +34,10 @@ class BillSuccessDialog extends StatelessWidget {
           context,
           listen: false,
         );
-        
+
         // Refresh tables first to get latest data
         await tableProvider.refreshTables();
-        
+
         // Then store the bill amount for this table (after refresh)
         tableProvider.storeBillAmount(tableId!, total);
       });
@@ -185,16 +185,23 @@ class BillSuccessDialog extends StatelessWidget {
 
   void _navigateToPayment(BuildContext context) {
     debugPrint('BillSuccessDialog - _navigateToPayment called');
-    
+
     // Get billId from BillingProvider to pass to PaymentPage
     String? billId;
     try {
-      final billingProvider = Provider.of<BillingProvider>(context, listen: false);
+      final billingProvider = Provider.of<BillingProvider>(
+        context,
+        listen: false,
+      );
       billId = billingProvider.billId;
       debugPrint('BillSuccessDialog - BillingProvider found, billId: $billId');
-      debugPrint('BillSuccessDialog - BillingProvider instance: ${billingProvider.hashCode}');
+      debugPrint(
+        'BillSuccessDialog - BillingProvider instance: ${billingProvider.hashCode}',
+      );
     } catch (e) {
-      debugPrint('BillSuccessDialog - Error getting billId from BillingProvider: $e');
+      debugPrint(
+        'BillSuccessDialog - Error getting billId from BillingProvider: $e',
+      );
       debugPrint('BillSuccessDialog - Error Type: ${e.runtimeType}');
     }
 

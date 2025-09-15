@@ -42,8 +42,11 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
 
     try {
       final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-      final navigationProvider = Provider.of<NavigationProvider>(context, listen: false);
-      
+      final navigationProvider = Provider.of<NavigationProvider>(
+        context,
+        listen: false,
+      );
+
       // Create order for Phone/Takeaway
       final success = await orderProvider.createPhoneTakeawayOrder(
         orderChannelType: widget.orderChannelType,
@@ -53,22 +56,24 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
 
       if (success && mounted) {
         Navigator.of(context).pop();
-        
+
         // Navigate to menu for phone/takeaway order
         navigationProvider.selectOrderTypeAndNavigate(
           widget.orderChannelType,
           _nameController.text.trim(),
           _phoneController.text.trim(),
         );
-        
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${widget.orderChannelType} order created successfully!'),
+            content: Text(
+              '${widget.orderChannelType} order created successfully!',
+            ),
             backgroundColor: AppColors.success,
           ),
         );
-        
+
         widget.onSuccess?.call();
       }
     } catch (e) {
@@ -92,9 +97,7 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         padding: const EdgeInsets.all(24),
         constraints: const BoxConstraints(maxWidth: 400),
@@ -108,8 +111,8 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
               Row(
                 children: [
                   Icon(
-                    widget.orderChannelType == 'Phone' 
-                        ? Icons.phone 
+                    widget.orderChannelType == 'Phone'
+                        ? Icons.phone
                         : Icons.takeout_dining,
                     color: AppColors.primary,
                     size: 24,
@@ -187,7 +190,8 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                      onPressed:
+                          _isLoading ? null : () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -209,16 +213,19 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : const Text('Confirm'),
+                      child:
+                          _isLoading
+                              ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                              : const Text('Confirm'),
                     ),
                   ),
                 ],
