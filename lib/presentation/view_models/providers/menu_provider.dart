@@ -77,26 +77,26 @@ class MenuProvider with ChangeNotifier {
   List<Data> get filteredItems {
     var filtered = List<Data>.from(_apiMenuItems);
 
-    // Filter by category
-    if (_selectedCategory != 'All') {
+    // Filter by category (use getter to support table-wise categories)
+    if (selectedCategory != 'All') {
       filtered =
           filtered.where((item) {
             final itemCategory = item.categoryName;
             if (itemCategory != null && itemCategory.isNotEmpty) {
               return itemCategory.toLowerCase() ==
-                  _selectedCategory.toLowerCase();
+                  selectedCategory.toLowerCase();
             }
             return false;
           }).toList();
     }
 
-    // Filter by search query
-    if (_searchQuery.isNotEmpty) {
+    // Filter by search query (use getter to support table-wise search)
+    if (searchQuery.isNotEmpty) {
       filtered =
           filtered.where((item) {
             final productName = item.productName ?? '';
             final description = item.description ?? '';
-            final searchLower = _searchQuery.toLowerCase();
+            final searchLower = searchQuery.toLowerCase();
             return productName.toLowerCase().contains(searchLower) ||
                 description.toLowerCase().contains(searchLower);
           }).toList();

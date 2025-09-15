@@ -632,8 +632,9 @@ class _CartViewState extends State<CartView> {
             PDFService.generateOrderNumber();
 
         // Mark the new items as KOT generated
-        final newItemIds = newItems.map((item) => item.id).toList();
-        cartProvider.markItemsAsKotGenerated(newItemIds, orderNumber);
+        // Get the actual cart keys (not item IDs) to properly mark items as KOT'd
+        final newItemCartKeys = cartProvider.newItems.keys.toList();
+        cartProvider.markItemsAsKotGenerated(newItemCartKeys, orderNumber);
 
         // Update table status to KOT Generated
         if (widget.tableId != null) {

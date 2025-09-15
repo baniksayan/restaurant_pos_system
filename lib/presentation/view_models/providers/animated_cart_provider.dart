@@ -106,6 +106,26 @@ class AnimatedCartProvider extends ChangeNotifier {
         if (specialNotes != null && specialNotes.isNotEmpty) {
           _cartItems[itemId]!.specialNotes = specialNotes;
         }
+      } else {
+        // Item is already KOT'd, create a new separate item with unique key
+        final uniqueKey = '${itemId}_${DateTime.now().millisecondsSinceEpoch}';
+        _cartItems[uniqueKey] = CartItem(
+          id: itemId, // Keep original item ID for API calls
+          name: name,
+          price: price,
+          quantity: 1,
+          tableId: tableId,
+          tableName: tableName,
+          specialNotes: specialNotes,
+          categoryId: categoryId,
+          categoryName: categoryName,
+          uom: uom,
+          discountPercentage: discountPercentage,
+          isKotGenerated: false, // New item, not KOT'd yet
+        );
+        print(
+          '[AnimatedCart] Added new instance of KOT\'d item $name with key: $uniqueKey',
+        );
       }
     } else {
       _cartItems[itemId] = CartItem(
@@ -153,10 +173,10 @@ class AnimatedCartProvider extends ChangeNotifier {
   }
 
   // Mark items as KOT generated
-  void markItemsAsKotGenerated(List<String> itemIds, String kotNumber) {
-    for (String itemId in itemIds) {
-      if (_cartItems.containsKey(itemId)) {
-        _cartItems[itemId]!.markAsKotGenerated(kotNumber);
+  void markItemsAsKotGenerated(List<String> cartKeys, String kotNumber) {
+    for (String cartKey in cartKeys) {
+      if (_cartItems.containsKey(cartKey)) {
+        _cartItems[cartKey]!.markAsKotGenerated(kotNumber);
       }
     }
     notifyListeners();
