@@ -95,15 +95,15 @@ class CartHeader extends StatelessWidget {
                         ],
                       ],
                     ),
-                    Text(
-                      kotGenerated && kotOrderNumber != null
-                          ? 'Order #$kotOrderNumber • $totalItems items'
-                          : '$totalItems items',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+                    // Text(
+                    //   kotGenerated && kotOrderNumber != null
+                    //       ? 'Order #$kotOrderNumber • $totalItems items'
+                    //       : '$totalItems items',
+                    //   style: const TextStyle(
+                    //     fontSize: 14,
+                    //     color: AppColors.textSecondary,
+                    //   ),
+                    // ),
                     if (tableName != null) ...[
                       Text(
                         'Table: $tableName',

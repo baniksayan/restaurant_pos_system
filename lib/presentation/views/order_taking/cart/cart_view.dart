@@ -16,6 +16,7 @@ import 'widgets/empty_cart_widget.dart';
 import 'widgets/edit_item_dialog.dart';
 import 'widgets/clear_cart_dialog.dart';
 import 'widgets/gst_info_dialog.dart';
+import 'widgets/kot_pdf_viewer_dialog.dart';
 import '../../../view_models/providers/order_provider.dart';
 import '../../../../data/local/hive_service.dart';
 
@@ -664,20 +665,28 @@ class _CartViewState extends State<CartView> {
           orderTime: DateTime.now(),
         );
 
+        // Show KOT PDF viewer dialog (undismissible)
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false, // Make it undismissible
+            builder:
+                (context) => KOTPDFViewerDialog(
+                  pdfBytes: kotBytes,
+                  kotNumber: orderNumber,
+                  fileName: 'KOT_$orderNumber.pdf',
+                ),
+          );
+        }
+
+        // Also show a brief success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               '✅ KOT #$orderNumber generated successfully for ${newItems.length} items!',
             ),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'Share',
-              textColor: Colors.white,
-              onPressed: () {
-                PDFService.sharePDF(kotBytes, 'KOT_$orderNumber');
-              },
-            ),
+            duration: const Duration(seconds: 2),
           ),
         );
       } else {
