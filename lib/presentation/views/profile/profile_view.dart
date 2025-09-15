@@ -6,7 +6,6 @@ import '../../view_models/providers/navigation_provider.dart';
 import '../../view_models/providers/auth_provider.dart';
 import '../../view_models/providers/profile_provider.dart';
 import 'widgets/profile_header.dart';
-import 'widgets/profile_menu_section.dart';
 import 'widgets/quick_stats_card.dart';
 import 'widgets/edit_profile_dialog.dart';
 import 'widgets/printer_settings_dialog.dart';
