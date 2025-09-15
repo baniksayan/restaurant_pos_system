@@ -39,12 +39,14 @@ class _BillingPageState extends State<BillingPage> {
     // Load payment modes when page opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<BillingProvider>().loadPaymentModes();
-      
+
       // Auto-populate customer phone for phone/takeaway orders
       final navProvider = context.read<NavigationProvider>();
       if (navProvider.customerPhone?.isNotEmpty == true) {
         _phoneController.text = navProvider.customerPhone!;
-        context.read<BillingProvider>().setCustomerPhone(navProvider.customerPhone!);
+        context.read<BillingProvider>().setCustomerPhone(
+          navProvider.customerPhone!,
+        );
       }
     });
   }

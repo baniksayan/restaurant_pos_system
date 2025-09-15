@@ -71,9 +71,10 @@ class _MainNavigationState extends State<MainNavigation> {
     // For Phone/Takeaway orders, create a virtual table ID based on order type
     if (tableId.isEmpty && navProvider.selectedOrderType != null) {
       tableId = navProvider.selectedOrderType!; // 'PhoneOrder' or 'Takeaway'
-      tableName = navProvider.selectedOrderType == 'PhoneOrder' 
-          ? 'Phone Order - ${navProvider.customerName ?? "Unknown"}' 
-          : 'Takeaway - ${navProvider.customerName ?? "Unknown"}';
+      tableName =
+          navProvider.selectedOrderType == 'PhoneOrder'
+              ? 'Phone Order - ${navProvider.customerName ?? "Unknown"}'
+              : 'Takeaway - ${navProvider.customerName ?? "Unknown"}';
     }
 
     // Ensure both providers are on the same context for proper state isolation
@@ -148,14 +149,16 @@ class _MainNavigationState extends State<MainNavigation> {
                   ),
                   // Cart Tab
                   CartView(
-                    tableId: navProvider.selectedTableId ?? navProvider.selectedOrderType,
-                    tableName: navProvider.selectedTableName ?? (
-                      navProvider.selectedOrderType == 'PhoneOrder' 
-                        ? 'Phone Order - ${navProvider.customerName ?? "Unknown"}' 
-                        : navProvider.selectedOrderType == 'Takeaway'
-                          ? 'Takeaway - ${navProvider.customerName ?? "Unknown"}'
-                          : null
-                    ),
+                    tableId:
+                        navProvider.selectedTableId ??
+                        navProvider.selectedOrderType,
+                    tableName:
+                        navProvider.selectedTableName ??
+                        (navProvider.selectedOrderType == 'PhoneOrder'
+                            ? 'Phone Order - ${navProvider.customerName ?? "Unknown"}'
+                            : navProvider.selectedOrderType == 'Takeaway'
+                            ? 'Takeaway - ${navProvider.customerName ?? "Unknown"}'
+                            : null),
                     selectedLocation: navProvider.selectedLocation,
                   ),
                   // Reports Tab (moved from index 4 to index 3)
