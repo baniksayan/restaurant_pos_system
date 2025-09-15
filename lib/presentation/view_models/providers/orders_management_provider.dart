@@ -11,12 +11,35 @@ class OrdersManagementProvider extends ChangeNotifier {
   List<OrderItem> _tableOrders = [];
   List<OrderItem> _phoneOrders = [];
   List<OrderItem> _takeawayOrders = [];
+  List<OrderItem> _channelPartnerOrders = [];
+
+  // Search functionality
+  String _searchQuery = '';
+  List<OrderItem> _filteredTableOrders = [];
+  List<OrderItem> _filteredPhoneOrders = [];
+  List<OrderItem> _filteredTakeawayOrders = [];
+  List<OrderItem> _filteredChannelPartnerOrders = [];
 
   bool get isLoading => _isLoading;
   String? get error => _error;
-  List<OrderItem> get tableOrders => List.unmodifiable(_tableOrders);
-  List<OrderItem> get phoneOrders => List.unmodifiable(_phoneOrders);
-  List<OrderItem> get takeawayOrders => List.unmodifiable(_takeawayOrders);
+  String get searchQuery => _searchQuery;
+
+  List<OrderItem> get tableOrders =>
+      _searchQuery.isEmpty
+          ? List.unmodifiable(_tableOrders)
+          : List.unmodifiable(_filteredTableOrders);
+  List<OrderItem> get phoneOrders =>
+      _searchQuery.isEmpty
+          ? List.unmodifiable(_phoneOrders)
+          : List.unmodifiable(_filteredPhoneOrders);
+  List<OrderItem> get takeawayOrders =>
+      _searchQuery.isEmpty
+          ? List.unmodifiable(_takeawayOrders)
+          : List.unmodifiable(_filteredTakeawayOrders);
+  List<OrderItem> get channelPartnerOrders =>
+      _searchQuery.isEmpty
+          ? List.unmodifiable(_channelPartnerOrders)
+          : List.unmodifiable(_filteredChannelPartnerOrders);
 
   OrdersManagementProvider();
 
@@ -54,6 +77,9 @@ class OrdersManagementProvider extends ChangeNotifier {
         _fetchByChannelType(token, outletId, 'Takeaway'),
       ]);
       debugPrint('[OrdersProvider] All channel fetches completed');
+
+      // Generate dummy channel partner orders for UI demonstration
+      _generateDummyChannelPartnerOrders();
     } catch (e) {
       _error = 'Failed to load orders: $e';
       debugPrint('[OrdersProvider] Error during fetchAllOrders: $e');
@@ -64,6 +90,85 @@ class OrdersManagementProvider extends ChangeNotifier {
       );
       notifyListeners();
     }
+  }
+
+  /// Search functionality
+  void updateSearchQuery(String query) {
+    _searchQuery = query.toLowerCase().trim();
+    _performSearch();
+    notifyListeners();
+  }
+
+  void clearSearch() {
+    _searchQuery = '';
+    _filteredTableOrders.clear();
+    _filteredPhoneOrders.clear();
+    _filteredTakeawayOrders.clear();
+    _filteredChannelPartnerOrders.clear();
+    notifyListeners();
+  }
+
+  void _performSearch() {
+    if (_searchQuery.isEmpty) {
+      _filteredTableOrders.clear();
+      _filteredPhoneOrders.clear();
+      _filteredTakeawayOrders.clear();
+      _filteredChannelPartnerOrders.clear();
+      return;
+    }
+
+    // Filter table orders
+    _filteredTableOrders =
+        _tableOrders.where((order) => _matchesSearchQuery(order)).toList();
+
+    // Filter phone orders
+    _filteredPhoneOrders =
+        _phoneOrders.where((order) => _matchesSearchQuery(order)).toList();
+
+    // Filter takeaway orders
+    _filteredTakeawayOrders =
+        _takeawayOrders.where((order) => _matchesSearchQuery(order)).toList();
+
+    // Filter channel partner orders
+    _filteredChannelPartnerOrders =
+        _channelPartnerOrders
+            .where((order) => _matchesSearchQuery(order))
+            .toList();
+  }
+
+  bool _matchesSearchQuery(OrderItem order) {
+    final query = _searchQuery;
+
+    // Search in order ID
+    if (order.orderId.toLowerCase().contains(query)) return true;
+
+    // Search in customer name
+    if (order.customerName.toLowerCase().contains(query)) return true;
+
+    // Search in phone number
+    if (order.phoneNumber?.toLowerCase().contains(query) ?? false) return true;
+
+    // Search in order type
+    if (order.orderType.toLowerCase().contains(query)) return true;
+
+    // Search in platform name
+    if (order.platformName?.toLowerCase().contains(query) ?? false) return true;
+
+    // Search in table number
+    if (order.tableNumber?.toLowerCase().contains(query) ?? false) return true;
+
+    // Search in waiter name
+    if (order.waiterName?.toLowerCase().contains(query) ?? false) return true;
+
+    // Search in status
+    if (order.statusDisplayText.toLowerCase().contains(query)) return true;
+
+    // Search in items
+    for (final item in order.items) {
+      if (item.productName.toLowerCase().contains(query)) return true;
+    }
+
+    return false;
   }
 
   Future<void> _fetchByChannelType(
@@ -205,6 +310,12 @@ class OrdersManagementProvider extends ChangeNotifier {
       debugPrint(
         '[OrdersProvider] Finished aggregation for $channelType - total kept: ${aggregated.length}',
       );
+
+      // Re-apply search if there's an active search query
+      if (_searchQuery.isNotEmpty) {
+        _performSearch();
+      }
+
       notifyListeners();
     } catch (e) {
       if (kDebugMode) print('[OrdersProvider] Error fetching $channelType: $e');
@@ -303,5 +414,167 @@ class OrdersManagementProvider extends ChangeNotifier {
     if (lower.contains('deliver')) return OrderStatusType.delivered;
     if (lower.contains('cancel')) return OrderStatusType.cancelled;
     return OrderStatusType.pending;
+  }
+
+  /// Generate dummy channel partner orders for UI demonstration
+  void _generateDummyChannelPartnerOrders() {
+    final now = DateTime.now();
+
+    _channelPartnerOrders = [
+      OrderItem(
+        orderId: 'ZO001234',
+        customerName: 'Sarah Miller',
+        phoneNumber: '+91 9876543210',
+        orderType: 'Zomato',
+        status: OrderStatusType.pending,
+        totalAmount: 850.00,
+        orderTime: now.subtract(const Duration(minutes: 2)),
+        expectedDeliveryTime: now.add(const Duration(minutes: 28)),
+        items: [
+          const OrderItemDetail(
+            productId: 'item_001',
+            productName: 'Chicken Biryani',
+            quantity: 2,
+            price: 299.00,
+            imageUrl: null,
+          ),
+          const OrderItemDetail(
+            productId: 'item_002',
+            productName: 'Paneer Butter Masala',
+            quantity: 1,
+            price: 250.00,
+            imageUrl: null,
+          ),
+        ],
+        platformName: 'Zomato',
+      ),
+      OrderItem(
+        orderId: 'SW002156',
+        customerName: 'Rajesh Kumar',
+        phoneNumber: '+91 8765432109',
+        orderType: 'Swiggy',
+        status: OrderStatusType.preparing,
+        totalAmount: 650.50,
+        orderTime: now.subtract(const Duration(minutes: 12)),
+        acceptedTime: now.subtract(const Duration(minutes: 10)),
+        expectedDeliveryTime: now.add(const Duration(minutes: 18)),
+        items: [
+          const OrderItemDetail(
+            productId: 'item_003',
+            productName: 'Margherita Pizza',
+            quantity: 1,
+            price: 450.00,
+            imageUrl: null,
+          ),
+          const OrderItemDetail(
+            productId: 'item_004',
+            productName: 'Garlic Bread',
+            quantity: 2,
+            price: 100.00,
+            imageUrl: null,
+          ),
+        ],
+        platformName: 'Swiggy',
+      ),
+      OrderItem(
+        orderId: 'UE003789',
+        customerName: 'Priya Sharma',
+        phoneNumber: '+91 7654321098',
+        orderType: 'Uber Eats',
+        status: OrderStatusType.ready,
+        totalAmount: 420.00,
+        orderTime: now.subtract(const Duration(minutes: 25)),
+        acceptedTime: now.subtract(const Duration(minutes: 23)),
+        expectedDeliveryTime: now.add(const Duration(minutes: 5)),
+        items: [
+          const OrderItemDetail(
+            productId: 'item_005',
+            productName: 'Veg Hakka Noodles',
+            quantity: 1,
+            price: 180.00,
+            imageUrl: null,
+          ),
+          const OrderItemDetail(
+            productId: 'item_006',
+            productName: 'Chicken Manchurian',
+            quantity: 1,
+            price: 240.00,
+            imageUrl: null,
+          ),
+        ],
+        platformName: 'Uber Eats',
+      ),
+      OrderItem(
+        orderId: 'ZO004521',
+        customerName: 'Amit Patel',
+        phoneNumber: '+91 6543210987',
+        orderType: 'Zomato',
+        status: OrderStatusType.pending,
+        totalAmount: 1200.00,
+        orderTime: now.subtract(const Duration(minutes: 1)),
+        expectedDeliveryTime: now.add(const Duration(minutes: 29)),
+        items: [
+          const OrderItemDetail(
+            productId: 'item_007',
+            productName: 'Tandoori Chicken (Full)',
+            quantity: 1,
+            price: 500.00,
+            imageUrl: null,
+          ),
+          const OrderItemDetail(
+            productId: 'item_008',
+            productName: 'Butter Naan',
+            quantity: 4,
+            price: 60.00,
+            imageUrl: null,
+          ),
+          const OrderItemDetail(
+            productId: 'item_009',
+            productName: 'Dal Makhani',
+            quantity: 1,
+            price: 220.00,
+            imageUrl: null,
+          ),
+        ],
+        platformName: 'Zomato',
+      ),
+      OrderItem(
+        orderId: 'FD005693',
+        customerName: 'Neha Singh',
+        phoneNumber: '+91 5432109876',
+        orderType: 'FoodPanda',
+        status: OrderStatusType.accepted,
+        totalAmount: 380.00,
+        orderTime: now.subtract(const Duration(minutes: 8)),
+        acceptedTime: now.subtract(const Duration(minutes: 7)),
+        expectedDeliveryTime: now.add(const Duration(minutes: 22)),
+        items: [
+          const OrderItemDetail(
+            productId: 'item_010',
+            productName: 'Masala Dosa',
+            quantity: 2,
+            price: 120.00,
+            imageUrl: null,
+          ),
+          const OrderItemDetail(
+            productId: 'item_011',
+            productName: 'Filter Coffee',
+            quantity: 2,
+            price: 70.00,
+            imageUrl: null,
+          ),
+        ],
+        platformName: 'FoodPanda',
+      ),
+    ];
+
+    debugPrint(
+      '[OrdersProvider] Generated ${_channelPartnerOrders.length} dummy channel partner orders',
+    );
+
+    // Re-apply search if there's an active search query
+    if (_searchQuery.isNotEmpty) {
+      _performSearch();
+    }
   }
 }

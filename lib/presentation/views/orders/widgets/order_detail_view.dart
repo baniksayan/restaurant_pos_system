@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/presentation/views/payment/payment_page.dart';
+import 'package:restaurant_pos_system/presentation/views/order_taking/cart/cart_view.dart';
+import 'package:restaurant_pos_system/presentation/view_models/providers/animated_cart_provider.dart';
 import '../../../../core/themes/app_colors.dart';
 import '../../../../core/constants/currency_constants.dart';
 import '../../../../data/models/order_management_model.dart';
@@ -75,6 +78,34 @@ class _OrderDetailViewState extends State<OrderDetailView> {
       return _detailModel!.data!.first.orderNo;
     }
     return null;
+  }
+
+  String? get _billNo {
+    if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
+      return _detailModel!.data!.first.billNo?.toString();
+    }
+    return null;
+  }
+
+  String? get _billId {
+    if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
+      return _detailModel!.data!.first.billId;
+    }
+    return null;
+  }
+
+  bool get _isActuallyBilled {
+    if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
+      return _detailModel!.data!.first.isBilled ?? false;
+    }
+    return _isBilled;
+  }
+
+  bool get _isActuallyPaid {
+    if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
+      return _detailModel!.data!.first.isPaid ?? false;
+    }
+    return false;
   }
 
   String? get _channelName {
@@ -222,6 +253,69 @@ class _OrderDetailViewState extends State<OrderDetailView> {
           ),
         ),
       ),
+      bottomNavigationBar: _buildBottomActionBar(),
+    );
+  }
+
+  Widget _buildBottomActionBar() {
+    if (_loading || _error != null) {
+      return const SizedBox.shrink();
+    }
+
+    String buttonText;
+    Color buttonColor;
+    VoidCallback? onPressed;
+
+    if (!_isActuallyBilled) {
+      // Not billed - go to cart to add items and generate bill
+      buttonText = 'Go to Cart';
+      buttonColor = AppColors.primary;
+      onPressed = _navigateToCart;
+    } else if (_isActuallyBilled && !_isActuallyPaid) {
+      // Billed but not paid - go to payment
+      buttonText = 'Go to Payment';
+      buttonColor = AppColors.success;
+      onPressed = _navigateToPaymentWithBillId;
+    } else {
+      // Paid - show regenerate bill option
+      buttonText = 'Regenerate Bill';
+      buttonColor = AppColors.info;
+      onPressed = () => _regenerateBill(context);
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: onPressed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: buttonColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 2,
+            ),
+            child: Text(
+              buttonText,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -303,13 +397,9 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                       Expanded(
                         child: _buildHeaderInfo(
                           'Billing Status',
-                          ((_detailModel?.data != null &&
-                                      _detailModel!.data!.isNotEmpty &&
-                                      _detailModel!.data!.first.isBilled ==
-                                          true) ||
-                                  _isBilled)
-                              ? 'Paid'
-                              : 'Unpaid',
+                          _isActuallyBilled
+                              ? (_isActuallyPaid ? 'Paid' : 'Billed (Unpaid)')
+                              : 'Not Billed',
                         ),
                       ),
                       if (widget.order.orderType == 'Table Orders')
@@ -404,7 +494,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                   ),
                 ),
 
-                // Conditional buttons based on status
+                // Status indicator based on API data
                 if (!_isKOTGenerated)
                   const Text(
                     'KOT Required First',
@@ -414,38 +504,31 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                       fontWeight: FontWeight.w600,
                     ),
                   )
-                else if (_isKOTGenerated && !_isBilled)
-                  ElevatedButton.icon(
-                    onPressed: () => _navigateToPayment(context),
-                    icon: const Icon(Icons.payment, size: 16),
-                    label: const Text('Go to Payment'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.success,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                else if (_isActuallyBilled && _isActuallyPaid)
+                  const Text(
+                    'Payment Complete',
+                    style: TextStyle(
+                      color: AppColors.success,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   )
-                else if (_isBilled)
-                  ElevatedButton.icon(
-                    onPressed: () => _regenerateBill(context),
-                    icon: const Icon(Icons.refresh, size: 16),
-                    label: const Text('Regenerate Bill'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.info,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                else if (_isActuallyBilled && !_isActuallyPaid)
+                  const Text(
+                    'Awaiting Payment',
+                    style: TextStyle(
+                      color: AppColors.warning,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                else
+                  const Text(
+                    'Ready for Billing',
+                    style: TextStyle(
+                      color: AppColors.info,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
               ],
@@ -457,10 +540,18 @@ class _OrderDetailViewState extends State<OrderDetailView> {
               children: [
                 _buildInfoRow(
                   'Bill Number',
-                  _isBilled ? 'BILL001234' : 'Not Generated',
+                  _isActuallyBilled
+                      ? (_billNo ?? 'Generated')
+                      : 'Not Generated',
                 ),
-                _buildInfoRow('Payment Status', _isBilled ? 'Paid' : 'Unpaid'),
-                if (_isBilled) _buildInfoRow('Payment Mode', _paymentMode),
+                _buildInfoRow(
+                  'Payment Status',
+                  _isActuallyBilled
+                      ? (_isActuallyPaid ? 'Paid' : 'Unpaid')
+                      : 'Not Billed',
+                ),
+                if (_isActuallyBilled && _isActuallyPaid)
+                  _buildInfoRow('Payment Mode', _paymentMode),
                 _buildInfoRow('Created On', _createdOnString),
               ],
             ),
@@ -821,20 +912,175 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     }
   }
 
-  void _navigateToPayment(BuildContext context) {
+  void _navigateToPaymentWithBillId() {
+    if (_billId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bill ID not available'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder:
             (context) => PaymentPage(
-              orderNumber: widget.order.orderId.toString(),
-              totalAmount: widget.order.totalAmount,
+              orderNumber: _orderNo ?? widget.order.orderId.toString(),
+              totalAmount: _grandTotal,
+              billId: _billId,
+              tableId:
+                  widget.order.orderType == 'Table Orders'
+                      ? widget.order.tableNumber
+                      : widget.order.orderType == 'Phone Orders'
+                      ? 'PhoneOrder'
+                      : 'Takeaway',
               onPaymentCompleted: () {
-                setState(() {
-                  _isBilled = true;
-                  _paymentMode = 'Cash'; // This should come from payment page
-                });
+                // Refresh the order details to get updated payment status
+                _loadOrderDetail();
               },
+            ),
+      ),
+    );
+  }
+
+  void _navigateToCart() async {
+    // Load order items into cart first
+    await _loadOrderItemsIntoCart();
+
+    // Then navigate to cart with appropriate context
+    if (widget.order.orderType == 'Table Orders') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => CartView(
+                tableId: widget.order.tableNumber,
+                tableName: 'Table ${widget.order.tableNumber}',
+                selectedLocation: 'Main Hall',
+              ),
+        ),
+      );
+    } else {
+      // For phone/takeaway orders
+      _navigateToPhoneTakeawayCart();
+    }
+  }
+
+  Future<void> _loadOrderItemsIntoCart() async {
+    try {
+      final cartProvider = context.read<AnimatedCartProvider>();
+
+      // Determine the cart context
+      String tableId;
+      String tableName;
+
+      if (widget.order.orderType == 'Table Orders') {
+        tableId = widget.order.tableNumber ?? 'Table1';
+        tableName = 'Table ${widget.order.tableNumber}';
+      } else if (widget.order.orderType == 'Phone Orders') {
+        tableId = 'PhoneOrder';
+        tableName = 'Phone Order - ${widget.order.customerName}';
+      } else {
+        tableId = 'Takeaway';
+        tableName = 'Takeaway - ${widget.order.customerName}';
+      }
+
+      // Switch to the appropriate cart context
+      cartProvider.switchToTable(tableId);
+
+      // Load items from API data if available, otherwise use widget data
+      if (_detailModel?.data != null &&
+          _detailModel!.data!.isNotEmpty &&
+          _detailModel!.data!.first.orderDetailList != null) {
+        // Load items from API response
+        for (final orderDetail in _detailModel!.data!.first.orderDetailList!) {
+          final productName = orderDetail.productName ?? 'Unknown Item';
+          final price = (orderDetail.itemPrice ?? 0).toDouble();
+          final qtyStr = orderDetail.productQty?.toString() ?? '1';
+          final quantity = double.tryParse(qtyStr)?.toInt() ?? 1;
+          final productId =
+              orderDetail.productId ?? orderDetail.orderDetailId ?? '';
+          final instruction = orderDetail.instruction;
+
+          // Add each item the correct number of times
+          for (int i = 0; i < quantity; i++) {
+            cartProvider.addItem(
+              productId,
+              productName,
+              price,
+              tableId,
+              tableName,
+              specialNotes:
+                  instruction?.isNotEmpty == true ? instruction : null,
+            );
+          }
+
+          // Mark items as KOT generated if they have KOT status
+          if (orderDetail.kotNo?.isNotEmpty == true) {
+            // Find the cart items that match this product and mark them as KOT'd
+            final cartKeys =
+                cartProvider.cartItems.keys
+                    .where(
+                      (key) => cartProvider.cartItems[key]?.id == productId,
+                    )
+                    .toList();
+
+            if (cartKeys.isNotEmpty) {
+              cartProvider.markItemsAsKotGenerated(
+                cartKeys,
+                orderDetail.kotNo!,
+              );
+            }
+          }
+        }
+      } else {
+        // Fallback to widget order items if API data not available
+        for (final item in widget.order.items) {
+          // Add each item the correct number of times
+          for (int i = 0; i < item.quantity; i++) {
+            cartProvider.addItem(
+              item.productName, // Use productName as ID for now
+              item.productName,
+              item.price,
+              tableId,
+              tableName,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[OrderDetailView] Error loading items into cart: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading order items: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _navigateToPhoneTakeawayCart() {
+    // Navigate to cart with the order type context
+    String tableId =
+        widget.order.orderType == 'Phone Orders' ? 'PhoneOrder' : 'Takeaway';
+    String tableName =
+        widget.order.orderType == 'Phone Orders'
+            ? 'Phone Order - ${widget.order.customerName}'
+            : 'Takeaway - ${widget.order.customerName}';
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => CartView(
+              tableId: tableId,
+              tableName: tableName,
+              selectedLocation: null,
             ),
       ),
     );

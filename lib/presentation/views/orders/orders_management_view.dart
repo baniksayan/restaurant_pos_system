@@ -11,6 +11,7 @@ import '../../../shared/widgets/animations/blinking_widget.dart';
 import 'widgets/order_tab_view.dart';
 
 import 'widgets/order_detail_view.dart';
+import 'widgets/channel_partner_order_detail_view.dart';
 
 class OrdersManagementView extends StatefulWidget {
   const OrdersManagementView({super.key});
@@ -29,6 +30,24 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
   bool _hasNewChannelPartnerOrders = true; // Set based on your logic
   int _currentTabIndex = 0;
 
+  // Search functionality
+  bool _isSearchVisible = false;
+  final _searchController = TextEditingController();
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearchVisible = !_isSearchVisible;
+      if (!_isSearchVisible) {
+        // Clear search when hiding search bar
+        _searchController.clear();
+        Provider.of<OrdersManagementProvider>(
+          context,
+          listen: false,
+        ).clearSearch();
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -45,14 +64,8 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadOrders() async {
-    await Provider.of<OrdersManagementProvider>(
-      context,
-      listen: false,
-    ).fetchAllOrders();
   }
 
   // Lists are provided by OrdersManagementProvider
@@ -79,8 +92,11 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: AppColors.textOnDark),
-            onPressed: _loadOrders,
+            icon: Icon(
+              _isSearchVisible ? Icons.close : Icons.search,
+              color: AppColors.textOnDark,
+            ),
+            onPressed: _toggleSearch,
           ),
         ],
         bottom: TabBar(
@@ -147,28 +163,87 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
             );
           }
 
-          return TabBarView(
-            controller: _tabController,
+          return Column(
             children: [
-              OrderTabView(
-                orders: provider.tableOrders,
-                orderType: 'Table Orders',
-                onOrderTap: _showOrderDetail,
-              ),
-              OrderTabView(
-                orders: provider.phoneOrders,
-                orderType: 'Phone Orders',
-                onOrderTap: _showOrderDetail,
-              ),
-              OrderTabView(
-                orders: provider.takeawayOrders,
-                orderType: 'Takeaway',
-                onOrderTap: _showOrderDetail,
-              ),
-              OrderTabView(
-                orders: const [], // Channel handled later
-                orderType: 'Channel Partner',
-                onOrderTap: _showOrderDetail,
+              // Search Bar (conditional visibility)
+              if (_isSearchVisible)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  padding: const EdgeInsets.all(16),
+                  color: AppColors.surface,
+                  child: TextField(
+                    controller: _searchController,
+                    autofocus: true,
+                    onChanged: (value) {
+                      provider.updateSearchQuery(value);
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Search orders by ID, customer, phone, etc...',
+                      hintStyle: TextStyle(color: AppColors.textHint),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: AppColors.textSecondary,
+                      ),
+                      suffixIcon:
+                          provider.searchQuery.isNotEmpty
+                              ? IconButton(
+                                icon: Icon(
+                                  Icons.clear,
+                                  color: AppColors.textSecondary,
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  provider.clearSearch();
+                                },
+                              )
+                              : null,
+                      filled: true,
+                      fillColor: AppColors.cardBackground,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: AppColors.primary,
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              // Tab Bar View
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    OrderTabView(
+                      orders: provider.tableOrders,
+                      orderType: 'Table Orders',
+                      onOrderTap: _showOrderDetail,
+                    ),
+                    OrderTabView(
+                      orders: provider.phoneOrders,
+                      orderType: 'Phone Orders',
+                      onOrderTap: _showOrderDetail,
+                    ),
+                    OrderTabView(
+                      orders: provider.takeawayOrders,
+                      orderType: 'Takeaway',
+                      onOrderTap: _showOrderDetail,
+                    ),
+                    OrderTabView(
+                      orders: provider.channelPartnerOrders,
+                      orderType: 'Channel Partner',
+                      onOrderTap: _showOrderDetail,
+                    ),
+                  ],
+                ),
               ),
             ],
           );
@@ -178,13 +253,28 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
   }
 
   void _showOrderDetail(OrderItem order) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => OrderDetailView(order: order)),
-    );
-  }
+    // Check if it's a channel partner order (third-party platform orders)
+    final isChannelPartnerOrder =
+        order.platformName != null &&
+        [
+          'Zomato',
+          'Swiggy',
+          'Uber Eats',
+          'FoodPanda',
+        ].any((platform) => order.platformName!.contains(platform));
 
-  List<OrderItem> _getMockOrders() {
-    return [];
+    if (isChannelPartnerOrder) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChannelPartnerOrderDetailView(order: order),
+        ),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => OrderDetailView(order: order)),
+      );
+    }
   }
 }

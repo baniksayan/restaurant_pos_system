@@ -90,14 +90,14 @@ class OrderCard extends StatelessWidget {
                 const SizedBox(height: 12),
 
                 // Price - No arrow, clean text
-                Text(
-                  '${CurrencyConstants.symbol}${order.totalAmount.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                // Text(
+                //   '${CurrencyConstants.symbol}${order.totalAmount.toStringAsFixed(2)}',
+                //   style: const TextStyle(
+                //     color: AppColors.primary,
+                //     fontSize: 18,
+                //     fontWeight: FontWeight.bold,
+                //   ),
+                // ),
               ],
             ),
           ),
