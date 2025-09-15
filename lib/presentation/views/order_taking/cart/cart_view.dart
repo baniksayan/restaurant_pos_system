@@ -636,8 +636,8 @@ class _CartViewState extends State<CartView> {
         final newItemCartKeys = cartProvider.newItems.keys.toList();
         cartProvider.markItemsAsKotGenerated(newItemCartKeys, orderNumber);
 
-        // Update table status to KOT Generated
-        if (widget.tableId != null) {
+        // Update table status to KOT Generated (for table orders only)
+        if (widget.tableId != null && !['PhoneOrder', 'Takeaway'].contains(widget.tableId)) {
           final tableProvider = context.read<TableProvider>();
           tableProvider.updateTableStatus(widget.tableId!, 'kotGenerated');
           // Refresh tables to sync with updated status

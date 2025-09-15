@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/utils/haptic_helper.dart';
 import '../../view_models/providers/billing_provider.dart';
+import '../../view_models/providers/navigation_provider.dart';
 import 'widgets/order_summary_card.dart';
 import 'widgets/items_list_card.dart';
 import 'widgets/bill_details_card.dart';
@@ -38,6 +39,13 @@ class _BillingPageState extends State<BillingPage> {
     // Load payment modes when page opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<BillingProvider>().loadPaymentModes();
+      
+      // Auto-populate customer phone for phone/takeaway orders
+      final navProvider = context.read<NavigationProvider>();
+      if (navProvider.customerPhone?.isNotEmpty == true) {
+        _phoneController.text = navProvider.customerPhone!;
+        context.read<BillingProvider>().setCustomerPhone(navProvider.customerPhone!);
+      }
     });
   }
 

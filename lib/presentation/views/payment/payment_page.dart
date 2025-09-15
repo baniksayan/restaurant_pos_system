@@ -82,11 +82,17 @@ class _PaymentPageState extends State<PaymentPage>
           billDetails.isSuccess &&
           billDetails.data != null) {
         final actualAmount = billDetails.data!.billHeadDt.billAmountInclTax;
+        final isPhoneOrTakeawayOrder = widget.tableId == 'PhoneOrder' || widget.tableId == 'Takeaway';
+        
         setState(() {
           _actualBillAmount = actualAmount;
           _loadingBillDetails = false;
         });
+        
         debugPrint('[PaymentPage] Fetched actual bill amount: ₹$actualAmount');
+        if (isPhoneOrTakeawayOrder && actualAmount == 0) {
+          debugPrint('[PaymentPage] API returned 0 for ${widget.tableId} order, will use local amount: ₹${widget.totalAmount}');
+        }
       } else {
         debugPrint(
           '[PaymentPage] Failed to fetch bill details: ${billDetails?.message}',
@@ -105,6 +111,15 @@ class _PaymentPageState extends State<PaymentPage>
 
   // Get the current amount to display (either from API or fallback to widget amount)
   double get currentAmount {
+    // For takeaway/phone orders, if API returns 0 or null, use local calculation
+    final isPhoneOrTakeawayOrder = widget.tableId == 'PhoneOrder' || widget.tableId == 'Takeaway';
+    
+    if (isPhoneOrTakeawayOrder && (_actualBillAmount == null || _actualBillAmount == 0)) {
+      debugPrint('[PaymentPage] Using local amount for ${widget.tableId} order: ₹${widget.totalAmount}');
+      return widget.totalAmount;
+    }
+    
+    // For table orders or when API returns valid amount, use API amount with fallback
     return _actualBillAmount ?? widget.totalAmount;
   }
 
