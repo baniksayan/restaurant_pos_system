@@ -64,8 +64,8 @@ class TableCard extends StatelessWidget {
         );
       case TableStatus.kotGenerated:
         return TableCardData(
-          backgroundColor: Colors.purple.withValues(alpha: 0.1),
-          borderColor: Colors.purple,
+          backgroundColor: AppColors.kotStatus.withValues(alpha: 0.1),
+          borderColor: AppColors.kotStatus,
           statusText: 'KOT Generated',
         );
       case TableStatus.billGenerated:
@@ -155,7 +155,7 @@ class TableCard extends StatelessWidget {
             width: 8,
             height: 8,
             decoration: const BoxDecoration(
-              color: AppColors.warning,
+              color: AppColors.kotStatus,
               shape: BoxShape.circle,
             ),
           ),
@@ -164,7 +164,7 @@ class TableCard extends StatelessWidget {
             'KOT',
             style: TextStyle(
               fontSize: 8,
-              color: AppColors.warning,
+              color: AppColors.kotStatus,
               fontWeight: FontWeight.bold,
             ),
           ),

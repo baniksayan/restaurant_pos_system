@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/themes/app_colors.dart';
 
 class OrderSummaryCard extends StatelessWidget {
   final String orderNumber;
@@ -65,7 +66,7 @@ class OrderSummaryCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.green,
+                  color: AppColors.kotStatus,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(

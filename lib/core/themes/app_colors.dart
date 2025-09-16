@@ -34,4 +34,7 @@ class AppColors {
   static const Color tableOccupied = Color(0xFFEF4444);
   static const Color tableReserved = Color(0xFFF59E0B);
   static const Color tableCleaning = Color(0xFF8B5CF6);
+  
+  // KOT related status color (purple accent)
+  static const Color kotStatus = Color(0xFF8B5CF6);
 }

@@ -8,6 +8,7 @@ import 'widgets/items_list_card.dart';
 import 'widgets/bill_details_card.dart';
 import 'widgets/customer_phone_card.dart';
 import 'widgets/bill_success_dialog.dart';
+import 'widgets/bill_pdf_viewer_dialog.dart';
 
 class BillingPage extends StatefulWidget {
   final String orderNumber;
@@ -299,18 +300,29 @@ class _BillingPageState extends State<BillingPage> {
       );
 
       if (mounted) {
+        // First show bill PDF preview (similar to KOT flow)
         await showDialog(
           context: context,
           barrierDismissible: true,
-          builder:
-              (context) => BillSuccessDialog(
-                orderNumber: widget.orderNumber,
-                total: total,
-                customerPhone: billingProvider.customerPhone,
-                billBytes: billBytes,
-                onBillGenerated: widget.onBillGenerated,
-                tableId: widget.tableId,
-              ),
+          builder: (context) => BillPDFViewerDialog(
+            pdfBytes: billBytes,
+            orderNumber: widget.orderNumber,
+            fileName: 'Bill_${widget.orderNumber}.pdf',
+          ),
+        );
+
+        // After preview is closed, show success dialog with send/share options
+        await showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (context) => BillSuccessDialog(
+            orderNumber: widget.orderNumber,
+            total: total,
+            customerPhone: billingProvider.customerPhone,
+            billBytes: billBytes,
+            onBillGenerated: widget.onBillGenerated,
+            tableId: widget.tableId,
+          ),
         );
       }
     } catch (e) {

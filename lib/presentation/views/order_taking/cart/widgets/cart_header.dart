@@ -80,7 +80,7 @@ class CartHeader extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.green,
+                              color: AppColors.kotStatus,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Text(

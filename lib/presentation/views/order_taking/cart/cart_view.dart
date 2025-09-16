@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/themes/app_colors.dart';
 import '../../../view_models/providers/animated_cart_provider.dart';
 import '../../../view_models/providers/navigation_provider.dart';
 import '../../../view_models/providers/table_provider.dart';
@@ -161,20 +162,20 @@ class _CartViewState extends State<CartView> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
+              color: AppColors.kotStatus.withOpacity(0.08),
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(12),
               ),
             ),
             child: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.green, size: 20),
+                Icon(Icons.receipt_long, color: AppColors.kotStatus, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   'KOT Generated Items',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.green[700],
+                    color: AppColors.kotStatus.withOpacity(0.95),
                   ),
                 ),
                 const Spacer(),
@@ -184,7 +185,7 @@ class _CartViewState extends State<CartView> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.green,
+                    color: AppColors.kotStatus,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -292,9 +293,9 @@ class _CartViewState extends State<CartView> {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.05),
+            color: AppColors.kotStatus.withOpacity(0.05),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.green.withOpacity(0.2)),
+            border: Border.all(color: AppColors.kotStatus.withOpacity(0.2)),
           ),
           child: Row(
             children: [
@@ -354,7 +355,7 @@ class _CartViewState extends State<CartView> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.green,
+                      color: AppColors.kotStatus,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -369,10 +370,10 @@ class _CartViewState extends State<CartView> {
                   const SizedBox(height: 4),
                   Text(
                     '₹${item.totPrice?.toStringAsFixed(2) ?? '0.00'}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: Colors.green,
+                      color: AppColors.kotStatus,
                     ),
                   ),
                 ],
@@ -403,7 +404,7 @@ class _CartViewState extends State<CartView> {
           (context) => AlertDialog(
             title: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.green),
+                Icon(Icons.receipt_long, color: AppColors.kotStatus),
                 const SizedBox(width: 8),
                 const Text('KOT Generated'),
               ],
