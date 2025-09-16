@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../../core/themes/app_colors.dart';
-import '../../../../core/constants/currency_constants.dart';
 import '../../../../data/models/order_management_model.dart';
 
 class OrderCard extends StatelessWidget {

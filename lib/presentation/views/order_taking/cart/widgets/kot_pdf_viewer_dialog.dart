@@ -143,7 +143,8 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
                       child: ElevatedButton.icon(
                         onPressed: _isPrinting ? null : _printKOT,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.success,
+                          // Use KOT-specific color instead of the global success (green)
+                          backgroundColor: AppColors.tableCleaning,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -218,10 +219,11 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
       await PDFService.sharePDF(widget.pdfBytes, widget.fileName);
 
       if (mounted) {
+        // Use KOT color for feedback instead of green snackbars per request
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('KOT shared successfully'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.tableCleaning,
             duration: Duration(seconds: 2),
           ),
         );
@@ -256,10 +258,11 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
       );
 
       if (mounted) {
+        // Use KOT color for feedback instead of green snackbars per request
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Print dialog opened'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.tableCleaning,
             duration: Duration(seconds: 2),
           ),
         );

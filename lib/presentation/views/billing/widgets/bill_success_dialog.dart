@@ -174,12 +174,7 @@ class BillSuccessDialog extends StatelessWidget {
           Uri.parse(whatsappUrl),
           mode: LaunchMode.externalApplication,
         );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Bill shared to $customerPhone via WhatsApp!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        // Removed green SnackBar per request: WhatsApp share success message
       } else {
         await PDFService.sharePDF(billBytes, 'Bill_$orderNumber');
         ScaffoldMessenger.of(context).showSnackBar(

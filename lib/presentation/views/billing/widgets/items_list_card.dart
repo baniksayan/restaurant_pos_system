@@ -1,4 +1,3 @@
-import '../../../../core/themes/app_colors.dart';
 import '../../../../core/constants/currency_constants.dart';
 import 'package:flutter/material.dart';
 

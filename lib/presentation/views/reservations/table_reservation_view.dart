@@ -864,11 +864,11 @@ class _TableReservationViewState extends State<TableReservationView> {
           ),
           if (_decoration) ...[
             const SizedBox(height: 4),
-                const Row(
+                Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Decoration:', style: TextStyle(fontSize: 14)),
-                Text('\$500', style: TextStyle(fontSize: 14)),
+                const Text('Decoration:', style: TextStyle(fontSize: 14)),
+                Text('${CurrencyConstants.symbol}500', style: const TextStyle(fontSize: 14)),
               ],
             ),
           ],
@@ -1507,23 +1507,9 @@ class _TableReservationViewState extends State<TableReservationView> {
           );
 
       if (mounted) {
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text('Bill shared to ${reservation.customerName}!'),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        } else {
+            if (success) {
+              // Removed green SnackBar: bill shared success message (was green)
+            } else {
           // Fallback: Open share dialog
           await ReservationBillService.shareAdvanceBillToWhatsApp(
             reservation,

@@ -67,11 +67,10 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                 Navigator.pop(context);
                 _showSnackBar('Showing: $location', Colors.blue);
               },
-              onStatusFilterChanged: (statusFilter) {
+                onStatusFilterChanged: (statusFilter) {
                 dashboardProvider.changeStatusFilter(statusFilter);
                 Navigator.pop(context);
-                final filterName = _getStatusFilterDisplayName(statusFilter);
-                _showSnackBar('Filtered by: $filterName', Colors.green);
+                // Removed green SnackBar per request: previously showed filtered-by message in green
               },
             );
           },
@@ -123,10 +122,10 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                       Expanded(
                         child: RefreshIndicator(
                           onRefresh: () async {
-                            try {
+                              try {
                               // Re-initialize / reload tables from provider (API)
                               context.read<TableProvider>().initializeTables();
-                              _showSnackBar('Tables refreshed', Colors.green);
+                              // Removed green SnackBar per request
                             } catch (e) {
                               if (kDebugMode) print('Refresh error: $e');
                               _showSnackBar(
@@ -182,24 +181,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     );
   }
 
-  String _getStatusFilterDisplayName(String statusFilter) {
-    switch (statusFilter) {
-      case 'all':
-        return 'All Tables';
-      case 'available':
-        return 'Available Tables';
-      case 'occupied':
-        return 'Occupied Tables';
-      case 'reserved':
-        return 'Reserved Tables';
-      case 'kot_generated':
-        return 'KOT Generated';
-      case 'bill_generated':
-        return 'Bill Generated';
-      default:
-        return statusFilter;
-    }
-  }
+
 
   /// Handle Add Order button press - NEW METHOD
   void _handleAddOrderPressed() {
@@ -222,14 +204,11 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
       // Use new CustomerInfoDialog for Phone and Takeaway orders
       showDialog(
         context: context,
-        builder:
+                builder:
             (context) => CustomerInfoDialog(
               orderChannelType: orderType.channelType,
               onSuccess: () {
-                _showSnackBar(
-                  '${orderType.displayName} order created successfully!',
-                  Colors.green,
-                );
+                // Removed green SnackBar per request: success handled by dialog flow
               },
             ),
       );
@@ -272,10 +251,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
         phoneNumber,
       );
 
-      _showSnackBar(
-        '${orderType.displayName} order created for $customerName',
-        Colors.green,
-      );
+      // Removed green SnackBar per request: creation success previously shown in green
     } catch (e) {
       if (kDebugMode) {
         print('Error handling customer details: $e');
@@ -317,7 +293,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                     table.name,
                     dashboardProvider.selectedLocation,
                   );
-                  _showSnackBar('${table.name} is now occupied', Colors.green);
+                  // Removed green SnackBar per request: occupancy success previously shown in green
                   if (kDebugMode) {
                     print(
                       '[Dashboard] Table ${table.name} successfully occupied',

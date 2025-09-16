@@ -1389,33 +1389,7 @@ class _ReportsViewState extends State<ReportsView>
     Navigator.of(context).pop(); // Close loading dialog
 
     if (file != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_outline, color: Colors.white),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('$format report generated successfully!'),
-                    Text(
-                      'Saved to: ${file.path}',
-                      style: const TextStyle(fontSize: 12, color: Colors.white70),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      // Removed green SnackBar per request: report generation success message
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

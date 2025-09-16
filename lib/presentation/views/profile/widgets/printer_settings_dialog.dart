@@ -287,12 +287,7 @@ class _PrinterSettingsDialogState extends State<PrinterSettingsDialog> {
       _printerStatus = 'Connected to $printerName';
     });
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Connected to $printerName'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    // Removed green SnackBar per request: connected message
   }
 
   void _testPrint() {
@@ -306,23 +301,13 @@ class _PrinterSettingsDialogState extends State<PrinterSettingsDialog> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Test print sent successfully!'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    // Removed green SnackBar per request: test print success message
   }
 
   void _saveSettings() {
     // Here you would save the printer settings to your backend/local storage
     Navigator.pop(context);
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Printer settings saved successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    // Removed green SnackBar per request: printer settings saved message
   }
 }

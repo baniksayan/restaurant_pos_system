@@ -4,7 +4,6 @@ import 'package:restaurant_pos_system/data/models/create_kot_with_order_details_
 import '../../../data/models/order.dart';
 import '../../../services/api_service.dart';
 import '../../../data/local/hive_service.dart';
-import '../../../data/models/order_channel_list_api_response_model.dart';
 
 class OrderProvider with ChangeNotifier {
   List _orders = [];

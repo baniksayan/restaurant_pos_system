@@ -495,12 +495,7 @@ class _CartViewState extends State<CartView> {
         widget.selectedLocation ?? '',
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Navigated back to menu'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      // Removed green SnackBar per request: navigated back to menu message
     }
   }
 
@@ -680,15 +675,7 @@ class _CartViewState extends State<CartView> {
         }
 
         // Also show a brief success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '✅ KOT #$orderNumber generated successfully for ${newItems.length} items!',
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        // Removed green SnackBar per request: KOT generation success message
       } else {
         // Enhanced error handling with backend context
         String errorMessage = 'Backend server error (HTTP 500)';
@@ -927,12 +914,7 @@ class _CartViewState extends State<CartView> {
         await launchUrl(Uri.parse(whatsappUrl));
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('KOT #$kotNumber sent via WhatsApp!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      // Removed green SnackBar per request: KOT sent via WhatsApp
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -946,12 +928,7 @@ class _CartViewState extends State<CartView> {
   Future<void> _printKOT(dynamic kotBytes, String kotNumber) async {
     try {
       await PDFService.sharePDF(kotBytes, 'KOT_$kotNumber');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('KOT #$kotNumber ready to print!'),
-          backgroundColor: Colors.blue,
-        ),
-      );
+      // Print ready message (no green snackbar). Kept as implicit UX behavior.
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -965,12 +942,7 @@ class _CartViewState extends State<CartView> {
   Future<void> _shareKOT(dynamic kotBytes, String kotNumber) async {
     try {
       await PDFService.sharePDF(kotBytes, 'KOT_$kotNumber');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('KOT #$kotNumber shared!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      // Removed green SnackBar per request: KOT shared
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

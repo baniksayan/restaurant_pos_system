@@ -384,11 +384,6 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
     // Here you would save the cash management data to your backend
     Navigator.pop(context);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Daily cash management saved successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    // Removed green SnackBar per request: cash management saved message
   }
 }
