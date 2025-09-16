@@ -5,6 +5,7 @@ import 'package:vibration/vibration.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/constants/currency_constants.dart';
 import '../../view_models/providers/table_provider.dart';
+import '../../view_models/providers/animated_cart_provider.dart';
 import '../../view_models/providers/billing_provider.dart';
 import '../../../services/api_service.dart';
 import '../../../data/models/bill_generation_models.dart';
@@ -450,11 +451,20 @@ class _PaymentPageState extends State<PaymentPage>
                             context,
                             listen: false,
                           );
+                          final animatedCartProvider =
+                              Provider.of<AnimatedCartProvider>(
+                                context,
+                                listen: false,
+                              );
+
                           tableProvider.updateTableStatus(
                             widget.tableId!,
                             'billSettled',
                           );
                           await tableProvider.refreshTables();
+
+                          // CRITICAL FIX: Clear cart data for this table after bill settlement
+                          animatedCartProvider.clearTableData(widget.tableId!);
 
                           // Auto-clear table after 5 seconds (simulating table clearing)
                           Future.delayed(const Duration(seconds: 5), () async {

@@ -255,6 +255,9 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     String phoneNumber,
   ) {
     try {
+      // CRITICAL FIX: Clear all cart session data to prevent table order contamination
+      context.read<AnimatedCartProvider>().clearAllSessionData();
+
       // Store the order type and customer details
       context.read<DashboardProvider>().setOrderType(orderType);
       context.read<DashboardProvider>().setCustomerDetails(

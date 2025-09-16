@@ -31,6 +31,9 @@ class _OrderDetailViewState extends State<OrderDetailView> {
   bool _isKOTGenerated = true;
   String _paymentMode = 'Cash';
 
+  // Track if cart has been loaded to prevent duplicates
+  bool _cartLoaded = false;
+
   // Derived values computed from API response (fallback to widget.order where appropriate)
   double get _subtotal {
     if (_detailModel?.data != null &&
@@ -151,6 +154,13 @@ class _OrderDetailViewState extends State<OrderDetailView> {
 
     // Load order detail from API
     _loadOrderDetail();
+  }
+
+  @override
+  void dispose() {
+    // Reset cart loaded state when leaving order details
+    _cartLoaded = false;
+    super.dispose();
   }
 
   Future<void> _loadOrderDetail() async {
@@ -971,6 +981,14 @@ class _OrderDetailViewState extends State<OrderDetailView> {
 
   Future<void> _loadOrderItemsIntoCart() async {
     try {
+      // Prevent duplicate loading - only load once per order detail view session
+      if (_cartLoaded) {
+        debugPrint(
+          '[OrderDetailView] Cart already loaded, skipping to prevent duplicates',
+        );
+        return;
+      }
+
       final cartProvider = context.read<AnimatedCartProvider>();
 
       // Determine the cart context
@@ -988,14 +1006,24 @@ class _OrderDetailViewState extends State<OrderDetailView> {
         tableName = 'Takeaway - ${widget.order.customerName}';
       }
 
+      debugPrint(
+        '[OrderDetailView] Loading cart for ${widget.order.orderType}: $tableName',
+      );
+
+      // CRITICAL FIX: Clear existing cart data first to prevent duplicates
+      cartProvider.clearAllSessionData();
+
       // Switch to the appropriate cart context
       cartProvider.switchToTable(tableId);
+
+      // Prepare items for import using the proper importFromOrderCart method
+      List<Map<String, dynamic>> cartItems = [];
 
       // Load items from API data if available, otherwise use widget data
       if (_detailModel?.data != null &&
           _detailModel!.data!.isNotEmpty &&
           _detailModel!.data!.first.orderDetailList != null) {
-        // Load items from API response
+        // Convert API response to cart format
         for (final orderDetail in _detailModel!.data!.first.orderDetailList!) {
           final productName = orderDetail.productName ?? 'Unknown Item';
           final price = (orderDetail.itemPrice ?? 0).toDouble();
@@ -1004,52 +1032,64 @@ class _OrderDetailViewState extends State<OrderDetailView> {
           final productId =
               orderDetail.productId ?? orderDetail.orderDetailId ?? '';
           final instruction = orderDetail.instruction;
+          final kotNo = orderDetail.kotNo;
 
-          // Add each item the correct number of times
-          for (int i = 0; i < quantity; i++) {
-            cartProvider.addItem(
-              productId,
-              productName,
-              price,
-              tableId,
-              tableName,
-              specialNotes:
-                  instruction?.isNotEmpty == true ? instruction : null,
-            );
-          }
+          // Create cart item data
+          final cartItem = {
+            'productId': productId,
+            'productName': productName,
+            'itemPrice': price,
+            'price': price,
+            'productQty': quantity,
+            'quantity': quantity,
+            'instruction': instruction,
+            'specialNotes': instruction,
+            'isKotGenerated': kotNo?.isNotEmpty == true,
+            'kotNo': kotNo,
+            'kotNumber': kotNo,
+          };
 
-          // Mark items as KOT generated if they have KOT status
-          if (orderDetail.kotNo?.isNotEmpty == true) {
-            // Find the cart items that match this product and mark them as KOT'd
-            final cartKeys =
-                cartProvider.cartItems.keys
-                    .where(
-                      (key) => cartProvider.cartItems[key]?.id == productId,
-                    )
-                    .toList();
-
-            if (cartKeys.isNotEmpty) {
-              cartProvider.markItemsAsKotGenerated(
-                cartKeys,
-                orderDetail.kotNo!,
-              );
-            }
-          }
+          cartItems.add(cartItem);
         }
       } else {
         // Fallback to widget order items if API data not available
         for (final item in widget.order.items) {
-          // Add each item the correct number of times
-          for (int i = 0; i < item.quantity; i++) {
-            cartProvider.addItem(
-              item.productName, // Use productName as ID for now
-              item.productName,
-              item.price,
-              tableId,
-              tableName,
-            );
-          }
+          final cartItem = {
+            'productId': item.productName, // Use productName as ID for now
+            'productName': item.productName,
+            'price': item.price,
+            'quantity': item.quantity,
+            'isKotGenerated': false,
+          };
+          cartItems.add(cartItem);
         }
+      }
+
+      // Use importFromOrderCart to properly load items (this clears existing and replaces)
+      cartProvider.importFromOrderCart(
+        cartItems,
+        tableId: tableId,
+        tableName: tableName,
+        clearExisting: true, // This ensures no duplicates
+      );
+
+      // Mark cart as loaded to prevent duplicate loading
+      _cartLoaded = true;
+      debugPrint(
+        '[OrderDetailView] Cart loaded with ${cartItems.length} items',
+      );
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Order items loaded to cart (${cartItems.length} items)',
+            ),
+            backgroundColor: AppColors.success,
+            duration: const Duration(seconds: 1),
+          ),
+        );
       }
     } catch (e) {
       debugPrint('[OrderDetailView] Error loading items into cart: $e');

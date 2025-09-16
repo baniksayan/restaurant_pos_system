@@ -37,12 +37,17 @@ class NavigationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Added method
+  // Added method - now clears table selection to prevent contamination
   void selectOrderTypeAndNavigate(
     String orderType,
     String customerName,
     String phoneNumber,
   ) {
+    // Clear any existing table selection to prevent data contamination
+    _selectedTableId = null;
+    _selectedTableName = null;
+    _selectedLocation = null;
+
     _selectedOrderType = orderType;
     _customerName = customerName;
     _customerPhone = phoneNumber;

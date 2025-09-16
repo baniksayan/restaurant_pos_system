@@ -120,34 +120,38 @@ class _MenuViewState extends State<MenuView> {
 
             debugPrint('MenuView DEBUG: canOrder = $canOrder');
 
-            return Column(
-              children: [
-                MenuHeader(
-                  canOrder: canOrder,
-                  tableName:
-                      widget.tableName ?? _getOrderDisplayName(navProvider),
-                  selectedLocation: widget.selectedLocation,
-                  onPrintKOT: _printKOT,
-                ),
-                const MenuSearchBar(),
-                const CategoryTabs(),
-                Expanded(
-                  child: MenuGrid(
-                    canOrder: canOrder,
-                    onAddToCart: widget.onAddToCart,
-                  ),
-                ),
-                if (canOrder && menuProvider.totalCartItems > 0)
-                  CartFooter(
-                    onPlaceOrder: () {
-                      // Navigate to Cart tab (index 2)
-                      Provider.of<NavigationProvider>(
-                        context,
-                        listen: false,
-                      ).navigateToIndex(2);
-                    },
-                  ),
-              ],
+            return Consumer<AnimatedCartProvider>(
+              builder: (context, cartProvider, child) {
+                return Column(
+                  children: [
+                    MenuHeader(
+                      canOrder: canOrder,
+                      tableName:
+                          widget.tableName ?? _getOrderDisplayName(navProvider),
+                      selectedLocation: widget.selectedLocation,
+                      onPrintKOT: _printKOT,
+                    ),
+                    const MenuSearchBar(),
+                    const CategoryTabs(),
+                    Expanded(
+                      child: MenuGrid(
+                        canOrder: canOrder,
+                        onAddToCart: widget.onAddToCart,
+                      ),
+                    ),
+                    if (canOrder && cartProvider.totalItems > 0)
+                      CartFooter(
+                        onPlaceOrder: () {
+                          // Navigate to Cart tab (index 2)
+                          Provider.of<NavigationProvider>(
+                            context,
+                            listen: false,
+                          ).navigateToIndex(2);
+                        },
+                      ),
+                  ],
+                );
+              },
             );
           },
         ),

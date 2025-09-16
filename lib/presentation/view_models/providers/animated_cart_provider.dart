@@ -42,6 +42,11 @@ class AnimatedCartProvider extends ChangeNotifier {
     (sum, item) => sum + (item.price * item.quantity),
   );
 
+  // Get quantity for a specific item ID
+  int getItemQuantity(String itemId) {
+    return _cartItems[itemId]?.quantity ?? 0;
+  }
+
   // Switch to a different table's cart and sync with server state
   void switchToTable(String? newTableId) {
     if (newTableId == null || _currentTableId == newTableId) return;
@@ -234,6 +239,52 @@ class AnimatedCartProvider extends ChangeNotifier {
   void clearNewItems() {
     _cartItems.removeWhere((key, item) => !item.isKotGenerated);
     _updateTotalItems();
+    notifyListeners();
+  }
+
+  // Clear all session data when starting a new order type (table -> takeaway/phone)
+  void clearAllSessionData() {
+    debugPrint('[AnimatedCart] Clearing all session data for new order type');
+
+    // Clear current cart items
+    _cartItems.clear();
+
+    // Clear table-wise carts to prevent cross-contamination
+    _tableWiseCarts.clear();
+
+    // Clear server KOT items
+    _serverKotItems.clear();
+    _tableWiseServerKotItems.clear();
+
+    // Reset current table ID
+    _currentTableId = null;
+
+    // Reset total items
+    _totalItems = 0;
+
+    debugPrint('[AnimatedCart] All session data cleared');
+    notifyListeners();
+  }
+
+  // Clear specific table's data after bill settlement
+  void clearTableData(String tableId) {
+    debugPrint('[AnimatedCart] Clearing data for table: $tableId');
+
+    // Remove from table-wise carts
+    _tableWiseCarts.remove(tableId);
+
+    // Remove from server KOT items
+    _tableWiseServerKotItems.remove(tableId);
+
+    // Clear current cart if it's the same table
+    if (_currentTableId == tableId) {
+      _cartItems.clear();
+      _serverKotItems.clear();
+      _currentTableId = null;
+      _totalItems = 0;
+    }
+
+    debugPrint('[AnimatedCart] Data cleared for table: $tableId');
     notifyListeners();
   }
 
