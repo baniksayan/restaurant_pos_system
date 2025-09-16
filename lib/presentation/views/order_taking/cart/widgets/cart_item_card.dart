@@ -55,13 +55,14 @@ class CartItemCard extends StatelessWidget {
                     onEdit();
                   },
                   icon: Icon(
-                    item.isKotGenerated
-                        ? Icons
-                            .info_outline // Info icon for KOT'd items
-                        : Icons.sticky_note_2, // Edit icon for new items
+          item.isKotGenerated
+            ? Icons
+              .info_outline // Info icon for KOT'd items
+            : Icons.sticky_note_2, // Edit icon for new items
                     size: 20,
-                    color:
-                        item.isKotGenerated ? Colors.green : AppColors.primary,
+          color: item.isKotGenerated
+            ? AppColors.kotStatus
+            : AppColors.primary,
                   ),
                   constraints: const BoxConstraints(
                     minWidth: 30,
@@ -137,7 +138,7 @@ class CartItemCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.green,
+                      color: AppColors.kotStatus,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
