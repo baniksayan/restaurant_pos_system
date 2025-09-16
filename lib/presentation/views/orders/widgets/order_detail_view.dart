@@ -743,8 +743,8 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             // Render items from API detail if available, otherwise fall back to existing items
             if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty)
               ...?_detailModel!.data!.first.orderDetailList?.map((d) {
-                final qtyStr = d.productQty?.toString() ?? '0';
-                final qty = int.tryParse(qtyStr) ?? 0;
+                final qtyStr = "${d.productQty}";
+                final qty = d.productQty ?? 0;
                 final price = (d.itemPrice ?? 0).toDouble();
                 final total = (d.totPrice ?? 0).toDouble();
                 return _buildItemRow(d.productName ?? '', qty, price, total);
