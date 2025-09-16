@@ -61,7 +61,7 @@ class PDFService {
                       style: pw.TextStyle(
                         fontSize: 16,
                         fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.red,
+                        color: PdfColors.black,
                       ),
                     ),
                   ],
@@ -117,13 +117,13 @@ class PDFService {
                         style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                       ),
                     ),
-                    pw.Expanded(
-                      flex: 1,
-                      child: pw.Text(
-                        "TYPE",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                      ),
-                    ),
+                    // pw.Expanded(
+                    //   flex: 1,
+                    //   child: pw.Text(
+                    //     "TYPE",
+                    //     style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    //   ),
+                    // ),
                   ],
                 ),
               ),
@@ -159,33 +159,33 @@ class PDFService {
                                   ),
                                 ),
                               ),
-                              pw.Expanded(
-                                flex: 1,
-                                child: pw.Container(
-                                  padding: const pw.EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: pw.BoxDecoration(
-                                    color:
-                                        _isVeg(item.name)
-                                            ? PdfColors.green100
-                                            : PdfColors.red100,
-                                    borderRadius: pw.BorderRadius.circular(10),
-                                  ),
-                                  child: pw.Text(
-                                    _isVeg(item.name) ? "VEG" : "NON-VEG",
-                                    style: pw.TextStyle(
-                                      fontSize: 10,
-                                      color:
-                                          _isVeg(item.name)
-                                              ? PdfColors.green
-                                              : PdfColors.red,
-                                      fontWeight: pw.FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                              // pw.Expanded(
+                              //   flex: 1,
+                              //   child: pw.Container(
+                              //     padding: const pw.EdgeInsets.symmetric(
+                              //       horizontal: 8,
+                              //       vertical: 2,
+                              //     ),
+                              //     decoration: pw.BoxDecoration(
+                              //       color:
+                              //           _isVeg(item.name)
+                              //               ? PdfColors.green100
+                              //               : PdfColors.red100,
+                              //       borderRadius: pw.BorderRadius.circular(10),
+                              //     ),
+                              //     child: pw.Text(
+                              //       _isVeg(item.name) ? "VEG" : "NON-VEG",
+                              //       style: pw.TextStyle(
+                              //         fontSize: 10,
+                              //         color:
+                              //             _isVeg(item.name)
+                              //                 ? PdfColors.green
+                              //                 : PdfColors.red,
+                              //         fontWeight: pw.FontWeight.bold,
+                              //       ),
+                              //     ),
+                              //   ),
+                              // ),
                             ],
                           ),
                           // |  ADD individual item notes for KOT
@@ -236,7 +236,7 @@ class PDFService {
                         "🔥 SPECIAL INSTRUCTIONS:",
                         style: pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.red,
+                          color: PdfColors.black,
                         ),
                       ),
                       pw.SizedBox(height: 5),
@@ -253,19 +253,19 @@ class PDFService {
                 pw.SizedBox(height: 10),
               ],
 
-              pw.Spacer(),
+              // pw.Spacer(),
 
               // Footer
-              pw.Center(
-                child: pw.Text(
-                  "*** KITCHEN COPY ***",
-                  style: pw.TextStyle(
-                    fontSize: 14,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.red,
-                  ),
-                ),
-              ),
+              // pw.Center(
+              //   child: pw.Text(
+              //     "*** KITCHEN COPY ***",
+              //     style: pw.TextStyle(
+              //       fontSize: 14,
+              //       fontWeight: pw.FontWeight.bold,
+              //       color: PdfColors.black,
+              //     ),
+              //   ),
+              // ),
             ],
           );
         },

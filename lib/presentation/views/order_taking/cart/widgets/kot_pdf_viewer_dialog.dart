@@ -38,8 +38,8 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
               false, // Remove back button since it's undismissible
           title: Row(
             children: [
-              Icon(Icons.receipt, color: AppColors.textOnDark, size: 24),
-              const SizedBox(width: 8),
+              // Icon(Icons.receipt, color: AppColors.textOnDark, size: 24),
+              // const SizedBox(width: 8),
               Text(
                 'KOT #${widget.kotNumber}',
                 style: const TextStyle(
