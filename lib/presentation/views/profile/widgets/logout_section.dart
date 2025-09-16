@@ -106,12 +106,7 @@ class LogoutSection extends StatelessWidget {
       
       if (context.mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Logged out successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        // Removed green SnackBar per request: logged out successfully message
       }
     } catch (e) {
       if (context.mounted) {

@@ -156,11 +156,6 @@ class _EditItemDialogState extends State<EditItemDialog> {
     await HapticHelper.triggerFeedback();
     cartProvider.updateItemNotes(widget.item.id, _notesController.text.trim());
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${widget.item.name} updated!'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    // Removed green SnackBar per request: item updated message
   }
 }

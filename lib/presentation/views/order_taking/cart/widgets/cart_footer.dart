@@ -5,7 +5,7 @@ import '../../../../../core/constants/currency_constants.dart';
 import '../../../../../core/utils/haptic_helper.dart';
 import '../../../../../presentation/view_models/providers/tax_provider.dart';
 
-class CartFooter extends StatelessWidget {
+class CartFooter extends StatefulWidget {
   final double subtotal;
   final bool kotGenerated;
   final VoidCallback onGenerateKOT;
@@ -24,12 +24,19 @@ class CartFooter extends StatelessWidget {
   });
 
   @override
+  State<CartFooter> createState() => _CartFooterState();
+}
+
+class _CartFooterState extends State<CartFooter> {
+  bool _expanded = false; // default collapsed per request
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<TaxProvider>(
       builder: (context, taxProvider, child) {
         final gstPercentage = taxProvider.totalGstPercentage;
-        final gstAmount = taxProvider.calculateGstAmount(subtotal);
-        final total = subtotal + gstAmount;
+        final gstAmount = taxProvider.calculateGstAmount(widget.subtotal);
+        final total = widget.subtotal + gstAmount;
 
         return Container(
           padding: const EdgeInsets.all(16),
@@ -42,67 +49,110 @@ class CartFooter extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              GestureDetector(
-                onTap: () async {
-                  await HapticHelper.triggerFeedback();
-                  onShowGSTInfo();
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              // Header row: toggle + total (always visible)
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () async {
+                      await HapticHelper.triggerFeedback();
+                      setState(() => _expanded = !_expanded);
+                    },
+                    icon: Icon(_expanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up),
                   ),
-                  child: Row(
+                  const SizedBox(width: 8),
+                  Expanded(child: SizedBox()),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.info,
-                          color: Colors.white,
-                          size: 14,
-                        ),
+                      Text(
+                        'TOTAL',
+                        style: TextStyle(fontSize: 12, color: AppColors.textHint),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Restaurant GST: ${gstPercentage.toStringAsFixed(1)}% ${taxProvider.hasTaxData ? "(Dynamic)" : "(Default)"} - Tap for info',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.blue[700],
-                            fontWeight: FontWeight.w500,
-                          ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${CurrencyConstants.symbol}${total.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
                         ),
                       ),
                     ],
                   ),
-                ),
+                ],
               ),
-              _buildPriceRow("Subtotal:", "${CurrencyConstants.symbol}${subtotal.toStringAsFixed(2)}"),
-              const SizedBox(height: 8),
+
+              if (_expanded) ...[
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: () async {
+                    await HapticHelper.triggerFeedback();
+                    widget.onShowGSTInfo();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.info,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Restaurant GST: ${gstPercentage.toStringAsFixed(1)}% ${taxProvider.hasTaxData ? "(Dynamic)" : "(Default)"} - Tap for info',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                _buildPriceRow("Subtotal:", "${CurrencyConstants.symbol}${widget.subtotal.toStringAsFixed(2)}"),
+                const SizedBox(height: 8),
                 _buildPriceRow(
                   "GST (${gstPercentage.toStringAsFixed(1)}%):",
                   "${CurrencyConstants.symbol}${gstAmount.toStringAsFixed(2)}",
                 ),
-              const SizedBox(height: 12),
-              const Divider(thickness: 2),
-              const SizedBox(height: 8),
-              _buildPriceRow(
-                "TOTAL AMOUNT:",
-                "${CurrencyConstants.symbol}${total.toStringAsFixed(2)}",
-                isTotal: true,
-              ),
-              const SizedBox(height: 20),
-              if (!kotGenerated)
-                _buildPreKOTButtons()
-              else
-                _buildPostKOTButtons(),
+                const SizedBox(height: 12),
+                const Divider(thickness: 2),
+                const SizedBox(height: 8),
+                _buildPriceRow(
+                  "TOTAL AMOUNT:",
+                  "${CurrencyConstants.symbol}${total.toStringAsFixed(2)}",
+                  isTotal: true,
+                ),
+                const SizedBox(height: 20),
+                if (!widget.kotGenerated)
+                  _buildPreKOTButtons()
+                else
+                  _buildPostKOTButtons(),
+              ] else ...[
+                const SizedBox(height: 12),
+                // When collapsed, still show primary action(s)
+                if (!widget.kotGenerated)
+                  _buildPreKOTButtons()
+                else
+                  _buildPostKOTButtons(),
+              ],
             ],
           ),
         );
@@ -136,10 +186,10 @@ class CartFooter extends StatelessWidget {
   Widget _buildPreKOTButtons() {
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton.icon(
+          child: ElevatedButton.icon(
         onPressed: () async {
           await HapticHelper.triggerFeedback();
-          onGenerateKOT();
+          widget.onGenerateKOT();
         },
         icon: const Icon(Icons.print, size: 20),
         label: const Text('Generate KOT'),
@@ -160,7 +210,7 @@ class CartFooter extends StatelessWidget {
           child: OutlinedButton.icon(
             onPressed: () async {
               await HapticHelper.triggerFeedback();
-              onSendToKitchen();
+              widget.onSendToKitchen();
             },
             icon: const Icon(Icons.kitchen, size: 20),
             label: const Text('Send to Kitchen'),
@@ -179,7 +229,7 @@ class CartFooter extends StatelessWidget {
           child: ElevatedButton.icon(
             onPressed: () async {
               await HapticHelper.triggerFeedback();
-              onGenerateBill();
+              widget.onGenerateBill();
             },
             icon: const Icon(Icons.receipt_long, size: 20),
             label: const Text('Generate Bill'),

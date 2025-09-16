@@ -103,13 +103,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
     // MenuProvider no longer tracks cart quantities - removed sync
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$itemName added to cart!'),
-        backgroundColor: Colors.green,
-        duration: const Duration(milliseconds: 700),
-      ),
-    );
+    // Removed green SnackBar per project request: item added to cart message
   }
 
   @override
