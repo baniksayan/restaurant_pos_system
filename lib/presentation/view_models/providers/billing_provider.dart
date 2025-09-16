@@ -108,7 +108,7 @@ class BillingProvider extends ChangeNotifier {
   }
 
   double calculateGST(double subtotal) {
-    return subtotal * 0.18;
+    return subtotal * 0.05;
   }
 
   double calculateTotal(double subtotal, double gst) {

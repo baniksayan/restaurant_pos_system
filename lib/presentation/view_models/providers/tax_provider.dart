@@ -13,17 +13,17 @@ class TaxProvider with ChangeNotifier {
 
   // Get total GST percentage (CGST + SGST)
   double get totalGstPercentage {
-    return _taxData?.getTotalGstPercentage() ?? 18.0; // Fallback to 18%
+    return _taxData?.getTotalGstPercentage() ?? 5.0; // Fallback to 5%
   }
 
   // Get CGST percentage
   double get cgstPercentage {
-    return _taxData?.getCgstPercentage() ?? 9.0;
+    return _taxData?.getCgstPercentage() ?? 2.5;
   }
 
   // Get SGST percentage
   double get sgstPercentage {
-    return _taxData?.getSgstPercentage() ?? 9.0;
+    return _taxData?.getSgstPercentage() ?? 2.5;
   }
 
   // Check if taxes are loaded

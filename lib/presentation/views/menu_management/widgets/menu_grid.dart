@@ -84,7 +84,11 @@ class MenuGrid extends StatelessWidget {
                 id: itemId,
                 canOrder: canOrder,
                 name: item.productName ?? '',
-                imageUrl: item.imageUrl ?? '',
+                imageUrl:
+                    item.imageId == 206
+                        ? "https://assetrmsfiles.uvanij.com/Dev/Company/D02B4B68-B244-462D-B564-CD2848D19F0F/images/RMS/Reciepe/ApplePi-àlaMode_16092025114648.jpg"
+                        : item.imageThumbUrl ??
+                            'https://assetrmsfiles.uvanij.com/Dev/Company/D02B4B68-B244-462D-B564-CD2848D19F0F/images/RMS/Reciepe/ApplePi-àlaMode_16092025114648.jpg',
                 description: item.description ?? '',
                 price: item.productPrice?.toDouble() ?? 0.0,
                 quantity: cartProvider.getItemQuantity(

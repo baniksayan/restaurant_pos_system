@@ -644,7 +644,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             const SizedBox(height: 20),
 
             _buildPriceRow('Item Price', _subtotal),
-            _buildPriceRow('GST (8%)', _gstAmount),
+            _buildPriceRow('GST (5%)', _gstAmount),
             _buildPriceRow('Service Charge', _serviceCharge),
 
             // Only show discount if it exists

@@ -345,7 +345,7 @@ class _ChannelPartnerOrderDetailViewState
       0.0,
       (sum, item) => sum + (item.price * item.quantity),
     );
-    final tax = subtotal * 0.18; // 18% GST
+    final tax = subtotal * 0.05; // 5% GST
     final total = widget.order.totalAmount;
 
     return Card(
@@ -375,7 +375,7 @@ class _ChannelPartnerOrderDetailViewState
             const SizedBox(height: 16),
             _buildSummaryRow('Subtotal', subtotal),
             const SizedBox(height: 8),
-            _buildSummaryRow('Tax (18%)', tax),
+            _buildSummaryRow('Tax (5%)', tax),
             const Divider(color: AppColors.textHint, height: 20),
             _buildSummaryRow('Total', total, isTotal: true),
           ],

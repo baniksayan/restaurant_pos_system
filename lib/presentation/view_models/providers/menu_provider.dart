@@ -172,7 +172,7 @@ class MenuProvider with ChangeNotifier {
         "itemCode": "",
         "itemName": "",
         "isItemCode": false,
-        "outletId": outletId,
+        "outletId": HiveService.getOutletId() ?? outletId,
       };
 
       final response = await ApiService.apiRequestHttpRawBody(
