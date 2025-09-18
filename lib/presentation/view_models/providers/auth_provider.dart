@@ -145,6 +145,7 @@ class AuthProvider with ChangeNotifier {
         HiveService.setUserId(model.data?.userDetails?.userId ?? '');
         HiveService.setWaiterId("cceb307f-2f01-4e0e-8f28-e07ba8e941ac");
         HiveService.setOutletId(model.data?.location?.locationId ?? 0);
+        // HiveService.setOutletId(47); // static outlet id
         debugPrint('Saved OutletId: ${HiveService.getOutletId()}');
 
         // Save auth data to hive
