@@ -57,6 +57,7 @@ class RestaurantPOSApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => OrdersManagementProvider()),
         ChangeNotifierProvider(create: (_) => MenuProvider()),
+        //Added comment
         ChangeNotifierProvider(create: (_) => TableProvider()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),

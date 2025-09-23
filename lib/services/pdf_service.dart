@@ -22,251 +22,170 @@ class PDFService {
 
   // Generate KOT (Kitchen Order Ticket) for Chef - Updated with Special Notes
   static Future<Uint8List> generateKOT({
-    required List<CartItem> items,
-    required String tableId,
-    required String tableName,
-    required String orderNumber,
-    required DateTime orderTime,
-    String? specialNotes, // |  ADD this parameter
+  required List<CartItem> items,
+  required String tableId,
+  required String tableName,
+  required String orderNumber,
+  required DateTime orderTime,
+  required String kotNo,
+  required String waiterName,
+  String? specialNotes,
   }) async {
     final pdf = pw.Document();
 
+    // Set page size for 57mm thermal printer (width: 57mm, print width: 48mm)
+    final kotPageFormat = PdfPageFormat(57 * PdfPageFormat.mm, PdfPageFormat.a4.height, marginAll: 0);
+
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a5,
+        pageFormat: kotPageFormat,
         build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // Header
-              pw.Container(
-                width: double.infinity,
-                padding: const pw.EdgeInsets.all(10),
-                decoration: pw.BoxDecoration(
-                  color: PdfColors.grey300,
-                  borderRadius: pw.BorderRadius.circular(5),
-                ),
-                child: pw.Column(
-                  children: [
-                    pw.Text(
-                      restaurantName,
-                      style: pw.TextStyle(
-                        fontSize: 20,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
+          return pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // Restaurant Title Centered
+                pw.Center(
+                  child: pw.Text(
+                    restaurantName,
+                    style: pw.TextStyle(
+                      fontSize: 13, // slightly smaller for better UI
+                      fontWeight: pw.FontWeight.bold,
                     ),
-                    pw.SizedBox(height: 5),
-                    pw.Text(
-                      "KITCHEN ORDER TICKET (KOT)",
-                      style: pw.TextStyle(
-                        fontSize: 16,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.black,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              pw.SizedBox(height: 20),
+                pw.SizedBox(height: 2),
+                pw.Divider(thickness: 1, color: PdfColors.black),
 
-              // Order Details
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                // Header Info, each line centered, not bold
+                pw.Center(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.center,
                     children: [
                       pw.Text(
-                        "Order #: $orderNumber",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        "Order No: $orderNumber",
+                        style: pw.TextStyle(fontSize: 10),
+                      ),
+                      pw.Text(
+                        "KOT No: $kotNo",
+                        style: pw.TextStyle(fontSize: 10),
                       ),
                       pw.Text(
                         "Table: $tableName",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        style: pw.TextStyle(fontSize: 10),
+                      ),
+                      pw.Text(
+                        "Waiter: $waiterName",
+                        style: pw.TextStyle(fontSize: 10),
                       ),
                     ],
                   ),
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
-                    children: [
-                      pw.Text("Date: ${_formatDate(orderTime)}"),
-                      pw.Text("Time: ${_formatTime(orderTime)}"),
-                    ],
-                  ),
-                ],
-              ),
-              pw.SizedBox(height: 20),
-              pw.Divider(),
+                ),
+                pw.Divider(thickness: 1, color: PdfColors.black),
 
-              // Items Header
-              pw.Container(
-                padding: const pw.EdgeInsets.symmetric(vertical: 8),
-                child: pw.Row(
+                // Items Header
+                pw.Row(
                   children: [
                     pw.Expanded(
-                      flex: 3,
+                      flex: 4,
                       child: pw.Text(
-                        "ITEM",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        "Item Name",
+                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
                       ),
                     ),
                     pw.Expanded(
                       flex: 1,
                       child: pw.Text(
-                        "QTY",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        "Qty",
+                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                        textAlign: pw.TextAlign.center,
                       ),
                     ),
-                    // pw.Expanded(
-                    //   flex: 1,
-                    //   child: pw.Text(
-                    //     "TYPE",
-                    //     style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                    //   ),
-                    // ),
+                    pw.Expanded(
+                      flex: 3,
+                      child: pw.Text(
+                        "Remarks",
+                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                        textAlign: pw.TextAlign.right,
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              pw.Divider(),
+                pw.Divider(thickness: 1, color: PdfColors.black),
 
-              // Items List with individual special notes
-              ...items
-                  .map(
-                    (item) => pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(vertical: 8),
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Row(
-                            children: [
-                              pw.Expanded(
-                                flex: 3,
-                                child: pw.Text(
-                                  item.name,
-                                  style: pw.TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: pw.FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              pw.Expanded(
-                                flex: 1,
-                                child: pw.Text(
-                                  "${item.quantity}",
-                                  style: pw.TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: pw.FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              // pw.Expanded(
-                              //   flex: 1,
-                              //   child: pw.Container(
-                              //     padding: const pw.EdgeInsets.symmetric(
-                              //       horizontal: 8,
-                              //       vertical: 2,
-                              //     ),
-                              //     decoration: pw.BoxDecoration(
-                              //       color:
-                              //           _isVeg(item.name)
-                              //               ? PdfColors.green100
-                              //               : PdfColors.red100,
-                              //       borderRadius: pw.BorderRadius.circular(10),
-                              //     ),
-                              //     child: pw.Text(
-                              //       _isVeg(item.name) ? "VEG" : "NON-VEG",
-                              //       style: pw.TextStyle(
-                              //         fontSize: 10,
-                              //         color:
-                              //             _isVeg(item.name)
-                              //                 ? PdfColors.green
-                              //                 : PdfColors.red,
-                              //         fontWeight: pw.FontWeight.bold,
-                              //       ),
-                              //     ),
-                              //   ),
-                              // ),
-                            ],
-                          ),
-                          // |  ADD individual item notes for KOT
-                          if (item.specialNotes != null &&
-                              item.specialNotes!.isNotEmpty)
-                            pw.Container(
-                              margin: const pw.EdgeInsets.only(
-                                top: 5,
-                                left: 10,
-                              ),
-                              padding: const pw.EdgeInsets.all(5),
-                              decoration: pw.BoxDecoration(
-                                color: PdfColors.yellow100,
-                                border: pw.Border.all(
-                                  color: PdfColors.orange300,
-                                ),
-                                borderRadius: pw.BorderRadius.circular(3),
-                              ),
+                // Items List
+                ...items.map((item) {
+                  final itemNameLines = _splitText(item.name, 22);
+                  final remarksText = (item.specialNotes != null && item.specialNotes!.trim().isNotEmpty)
+                      ? item.specialNotes!.trim()
+                      : '---';
+                  final remarksLines = _splitText(remarksText, 18);
+                  final maxLines = itemNameLines.length > remarksLines.length ? itemNameLines.length : remarksLines.length;
+
+                  return pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      for (int i = 0; i < maxLines; i++)
+                        pw.Row(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Expanded(
+                              flex: 4,
                               child: pw.Text(
-                                "⚠️ ${item.specialNotes}",
-                                style: const pw.TextStyle(
+                                i < itemNameLines.length ? itemNameLines[i] : '',
+                                style: pw.TextStyle(
                                   fontSize: 10,
-                                  color: PdfColors.orange800,
+                                  fontWeight: pw.FontWeight.bold,
                                 ),
                               ),
                             ),
-                        ],
-                      ),
-                    ),
-                  )
-                  .toList(),
-              pw.SizedBox(height: 20),
-
-              // |  ADD Special Notes section for entire order in KOT
-              if (specialNotes != null && specialNotes.isNotEmpty) ...[
-                pw.Container(
-                  width: double.infinity,
-                  padding: const pw.EdgeInsets.all(10),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.yellow50,
-                    border: pw.Border.all(color: PdfColors.orange400, width: 2),
-                    borderRadius: pw.BorderRadius.circular(5),
-                  ),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        "🔥 SPECIAL INSTRUCTIONS:",
-                        style: pw.TextStyle(
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.black,
+                            pw.Expanded(
+                              flex: 1,
+                              child: pw.Text(
+                                i == 0 ? "${item.quantity}" : '',
+                                style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                                textAlign: pw.TextAlign.center,
+                              ),
+                            ),
+                            pw.Expanded(
+                              flex: 3,
+                              child: pw.Text(
+                                i < remarksLines.length ? remarksLines[i] : '',
+                                style: pw.TextStyle(fontSize: 9),
+                                textAlign: pw.TextAlign.right,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      pw.SizedBox(height: 5),
-                      pw.Text(
-                        specialNotes,
-                        style: pw.TextStyle(
-                          fontSize: 12,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
+                      pw.SizedBox(height: 4),
                     ],
+                  );
+                }).toList(),
+                pw.Divider(thickness: 1, color: PdfColors.black),
+
+                // Special Notes for entire order
+                if (specialNotes != null && specialNotes.trim().isNotEmpty) ...[
+                  pw.Text(
+                    "Special Instructions:",
+                    style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
                   ),
+                  ..._splitText(specialNotes.trim(), 32).map((line) => pw.Text(line, style: pw.TextStyle(fontSize: 8))),
+                  pw.SizedBox(height: 2),
+                ],
+
+                // Footer: Date and Time right-aligned, smaller font
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.end,
+                  children: [
+                    pw.Text(
+                      "Date: ${_formatDate(orderTime)} | Time: ${_formatTime(orderTime)}",
+                      style: pw.TextStyle(fontSize: 8, fontStyle: pw.FontStyle.italic),
+                    ),
+                  ],
                 ),
-                pw.SizedBox(height: 10),
               ],
-
-              // pw.Spacer(),
-
-              // Footer
-              // pw.Center(
-              //   child: pw.Text(
-              //     "*** KITCHEN COPY ***",
-              //     style: pw.TextStyle(
-              //       fontSize: 14,
-              //       fontWeight: pw.FontWeight.bold,
-              //       color: PdfColors.black,
-              //     ),
-              //   ),
-              // ),
-            ],
+            ),
           );
         },
       ),
@@ -767,6 +686,23 @@ class PDFService {
     // Simple logic - in real app, this would come from item data
     final vegItems = ['paneer', 'dosa', 'tikka', 'dal', 'rice', 'naan'];
     return vegItems.any((veg) => itemName.toLowerCase().contains(veg));
+  }
+
+  /// Splits a string into lines of max [maxLen] characters, breaking at spaces.
+  static List<String> _splitText(String text, int maxLen) {
+    final words = text.split(' ');
+    List<String> lines = [];
+    String current = '';
+    for (final word in words) {
+      if ((current + (current.isEmpty ? '' : ' ') + word).length > maxLen) {
+        if (current.isNotEmpty) lines.add(current);
+        current = word;
+      } else {
+        current += (current.isEmpty ? '' : ' ') + word;
+      }
+    }
+    if (current.isNotEmpty) lines.add(current);
+    return lines;
   }
 
   // Generate unique order number

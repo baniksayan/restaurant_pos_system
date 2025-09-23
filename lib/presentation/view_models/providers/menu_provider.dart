@@ -149,9 +149,9 @@ class MenuProvider with ChangeNotifier {
     }
   }
 
-  // 🔥 MAIN FIX: Load menu items from API with token guard
+  // MAIN FIX: Load menu items from API with token guard
   Future<void> loadMenuItems({int outletId = 10048}) async {
-    // ✅ TOKEN CHECK - THIS PREVENTS 500 ERRORS ON FIRST LAUNCH
+    // TOKEN CHECK - THIS PREVENTS 500 ERRORS ON FIRST LAUNCH
     final token = HiveService.getAuthToken();
     if (token.isEmpty) {
       debugPrint(

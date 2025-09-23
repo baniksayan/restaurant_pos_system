@@ -129,16 +129,12 @@ class _CartViewState extends State<CartView> {
                 if (items.isNotEmpty)
                   CartFooter(
                     subtotal: cartProvider.totalAmount,
-                    kotGenerated:
-                        hasKotItems &&
-                        !hasNewItems, // KOT generated and no new items
-                    onGenerateKOT:
-                        hasNewItems ? () => _generateKOT(cartProvider) : () {},
+                    kotGenerated: hasKotItems && !hasNewItems, // KOT generated and no new items
+                    onGenerateKOT: hasNewItems ? () => _generateKOT(cartProvider) : () {},
                     onSendToKitchen: () => _sendToKitchen(cartProvider),
-                    onGenerateBill:
-                        cartProvider.canProceedToBilling
-                            ? () => _navigateToBillingPage(cartProvider)
-                            : () => _showCannotBillDialog(),
+                    onGenerateBill: cartProvider.canProceedToBilling
+                        ? () => _navigateToBillingPage(cartProvider)
+                        : () => _showCannotBillDialog(),
                     onShowGSTInfo: _showGSTInfoDialog,
                   ),
               ],
@@ -621,15 +617,14 @@ class _CartViewState extends State<CartView> {
 
       if (kotResponse != null && kotResponse.isSuccess == true) {
         // Get KOT details from response
-        final kotNo = kotResponse.data?.kotDetail?.kotNo;
-        final orderNumber =
+        final kotDetail = kotResponse.data?.kotDetail;
+        final orderNumber = kotDetail?.orderNo ??
             orderProvider.generatedOrderNo ??
             orderProvider.orderNo?.toString() ??
-            kotNo ??
+            kotDetail?.kotNo ??
             PDFService.generateOrderNumber();
 
         // Mark the new items as KOT generated
-        // Get the actual cart keys (not item IDs) to properly mark items as KOT'd
         final newItemCartKeys = cartProvider.newItems.keys.toList();
         cartProvider.markItemsAsKotGenerated(newItemCartKeys, orderNumber);
 
@@ -638,27 +633,26 @@ class _CartViewState extends State<CartView> {
             !['PhoneOrder', 'Takeaway'].contains(widget.tableId)) {
           final tableProvider = context.read<TableProvider>();
           tableProvider.updateTableStatus(widget.tableId!, 'kotGenerated');
-          // Refresh tables to sync with updated status
           await tableProvider.refreshTables();
         }
 
-        // Refresh server state to get updated KOT items
         if (widget.tableId != null) {
           cartProvider.switchToTable(widget.tableId!);
         }
 
-        // Add to our KOT numbers set
         setState(() {
           _kotNumbers.add(orderNumber);
         });
 
-        // Generate PDF KOT for the new items only
+        // Generate PDF KOT for the new items only, all fields dynamic from API
         final kotBytes = await PDFService.generateKOT(
           items: newItems,
-          tableId: newItems.first.tableId,
-          tableName: newItems.first.tableName,
-          orderNumber: orderNumber,
+          tableId: kotDetail?.orderId ?? newItems.first.tableId,
+          tableName: kotDetail?.channelName ?? newItems.first.tableName,
+          orderNumber: kotDetail?.orderNo ?? orderNumber,
           orderTime: DateTime.now(),
+          kotNo: kotDetail?.kotNo ?? orderNumber,
+          waiterName: kotDetail?.waiterName ?? 'Unknown',
         );
 
         // Show KOT PDF viewer dialog (undismissible)
@@ -840,6 +834,8 @@ class _CartViewState extends State<CartView> {
         tableName: kotGeneratedItems.first.tableName,
         orderNumber: latestKotNumber,
         orderTime: DateTime.now(),
+        kotNo: latestKotNumber,
+        waiterName: 'Unknown', // If you have waiterName, pass it here
       );
 
       Navigator.of(context).pop();
