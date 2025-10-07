@@ -86,7 +86,7 @@ class ApiService {
 
       final streamedResponse = await request.send();
       final responseData = await streamedResponse.stream.toBytes();
-      final responseString = String.fromCharCodes(responseData);
+      final responseString = utf8.decode(responseData, allowMalformed: true);
 
       dynamic jsonData;
       try {
