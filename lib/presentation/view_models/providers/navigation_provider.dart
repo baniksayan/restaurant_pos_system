@@ -67,4 +67,23 @@ class NavigationProvider extends ChangeNotifier {
   void navigateToMenu() => navigateToIndex(1);
   void navigateToCart() => navigateToIndex(2);
   void navigateToReports() => navigateToIndex(3);
+
+  // Method to automatically select a table and navigate to menu for direct ordering
+  void selectTableAndNavigateToMenu(
+    String tableId,
+    String tableName,
+    String location,
+  ) {
+    _selectedTableId = tableId;
+    _selectedTableName = tableName;
+    _selectedLocation = location;
+
+    // Clear any order type selection since we're using table-based ordering
+    _selectedOrderType = null;
+    _customerName = null;
+    _customerPhone = null;
+
+    _currentIndex = 1; // Navigate directly to menu tab
+    notifyListeners();
+  }
 }

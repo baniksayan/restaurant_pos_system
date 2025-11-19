@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../view_models/providers/menu_provider.dart';
 import '../../../view_models/providers/animated_cart_provider.dart';
 import '../../../view_models/providers/navigation_provider.dart';
+import '../../../../data/local/hive_service.dart';
 import 'menu_item_card.dart';
 
 class MenuGrid extends StatelessWidget {
@@ -33,7 +34,22 @@ class MenuGrid extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: menuProvider.loadMenuData,
+                  onPressed: () async {
+                    final outletId = HiveService.getOutletId();
+                    if (outletId != null && outletId > 0) {
+                      await menuProvider.loadMenuData(outletId: outletId);
+                    } else {
+                      // Show error if no outlet ID available
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'No valid outlet ID available. Cannot load menu.',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
                   child: const Text('Retry'),
                 ),
               ],
@@ -68,39 +84,66 @@ class MenuGrid extends StatelessWidget {
 
         return Padding(
           padding: const EdgeInsets.all(16),
-          child: GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.75,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-            ),
-            itemCount: filteredItems.length,
-            itemBuilder: (context, index) {
-              final item = filteredItems[index];
-              final itemId = item.productId ?? '';
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Calculate responsive grid
+              final screenWidth = constraints.maxWidth;
+              int crossAxisCount;
+              double childAspectRatio;
 
-              return MenuItemCard(
-                id: itemId,
-                canOrder: canOrder,
-                name: item.productName ?? '',
-                imageUrl:
-                //"https://assetrmsfiles.uvanij.com/Dev/Company/D02B4B68-B244-462D-B564-CD2848D19F0F/images/RMS/Reciepe/ApplePi-àlaMode_16092025114648.jpg",
-                    item.imageId == 206
-                        ? "https://assetrmsfiles.uvanij.com/Dev/Company/D02B4B68-B244-462D-B564-CD2848D19F0F/images/RMS/Reciepe/ApplePi-àlaMode_16092025114648.jpg"
-                        : item.imageThumbUrl ??
-                            'https://assetrmsfiles.uvanij.com/Dev/Company/D02B4B68-B244-462D-B564-CD2848D19F0F/images/RMS/Reciepe/ApplePi-àlaMode_16092025114648.jpg',
-                description: item.description ?? '',
-                price: item.productPrice?.toDouble() ?? 0.0,
-                quantity: cartProvider.getItemQuantity(
-                  itemId,
-                ), // Use AnimatedCartProvider
-                cid: item.categoryId ?? '',
-                cname: item.categoryName ?? '',
-                onAdd: () => _addToCart(context, item, cartProvider),
-                onRemove: () => _removeFromCart(itemId, cartProvider),
-                onAddToCart: onAddToCart,
-                isVeg: item.pureVeg ?? false,
+              if (screenWidth > 1200) {
+                // Very large screens (large tablets, desktop)
+                crossAxisCount = 6;
+                childAspectRatio = 0.8;
+              } else if (screenWidth > 900) {
+                // Large tablets
+                crossAxisCount = 4;
+                childAspectRatio = 0.85;
+              } else if (screenWidth > 600) {
+                // Medium tablets
+                crossAxisCount = 3;
+                childAspectRatio = 0.9;
+              } else if (screenWidth > 400) {
+                // Small tablets / large phones
+                crossAxisCount = 2;
+                childAspectRatio = 1.0;
+              } else {
+                // Small phones
+                crossAxisCount = 1;
+                childAspectRatio = 1.2;
+              }
+
+              return GridView.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  childAspectRatio: childAspectRatio,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                itemCount: filteredItems.length,
+                itemBuilder: (context, index) {
+                  final item = filteredItems[index];
+                  final itemId = item.productId ?? '';
+
+                  return MenuItemCard(
+                    id: itemId,
+                    canOrder: canOrder,
+                    name: item.productName ?? '',
+                    imageUrl: item.imageThumbUrl,
+                    //"https://assetrmsfiles.uvanij.com/Dev/Company/D02B4B68-B244-462D-B564-CD2848D19F0F/images/RMS/Reciepe/ApplePi-àlaMode_16092025114648.jpg",
+                    description: item.description ?? '',
+                    price: item.productPrice?.toDouble() ?? 0.0,
+                    quantity: cartProvider.getItemQuantity(
+                      itemId,
+                    ), // Use AnimatedCartProvider
+                    cid: item.categoryId ?? '',
+                    cname: item.categoryName ?? '',
+                    onAdd: () => _addToCart(context, item, cartProvider),
+                    onRemove: () => _removeFromCart(itemId, cartProvider),
+                    onAddToCart: onAddToCart,
+                    isVeg: item.pureVeg ?? false,
+                  );
+                },
               );
             },
           ),

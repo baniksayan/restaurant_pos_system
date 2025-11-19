@@ -32,7 +32,10 @@ class TaxApiResModel {
   // Helper method to get total GST percentage
   double getTotalGstPercentage() {
     if (data == null) return 0.0;
-    return data!.fold(0.0, (sum, tax) => sum + (tax.currentPercentage?.toDouble() ?? 0.0));
+    return data!.fold(
+      0.0,
+      (sum, tax) => sum + (tax.currentPercentage?.toDouble() ?? 0.0),
+    );
   }
 
   // Helper method to get CGST percentage
@@ -59,14 +62,20 @@ class TaxApiResModel {
 class TaxData {
   int? taxComponentId;
   String? componentName;
-  int? currentPercentage;
+  double? currentPercentage; // Changed from int to double
 
   TaxData({this.taxComponentId, this.componentName, this.currentPercentage});
 
   TaxData.fromJson(Map<String, dynamic> json) {
     taxComponentId = json['taxComponentId'];
     componentName = json['componentName'];
-    currentPercentage = json['currentPercentage'];
+    // Handle both int and double values from API
+    if (json['currentPercentage'] != null) {
+      currentPercentage =
+          (json['currentPercentage'] is int)
+              ? (json['currentPercentage'] as int).toDouble()
+              : json['currentPercentage']?.toDouble();
+    }
   }
 
   Map<String, dynamic> toJson() {

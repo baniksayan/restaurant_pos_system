@@ -12,7 +12,7 @@ class TableProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   String _selectedLocation = 'Main Hall';
-  int _outletId = 47;
+  int? _outletId; // Remove static assignment - will get from Hive
 
   // Multi-order support
   Map<String, List<Map<String, dynamic>>> _orderCartStates = {};
@@ -28,7 +28,21 @@ class TableProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   String get selectedLocation => _selectedLocation;
-  int get outletId => _outletId;
+  int get outletId => _outletId ?? _getOutletIdFromHive();
+
+  // Helper method to get outlet ID from Hive
+  int _getOutletIdFromHive() {
+    final savedOutletId = HiveService.getOutletId();
+    if (savedOutletId != null && savedOutletId > 0) {
+      _outletId = savedOutletId; // Cache it locally
+      return savedOutletId;
+    }
+    if (kDebugMode) {
+      print('[TableProvider] WARNING: No valid outlet ID found in Hive');
+    }
+    return 0; // Return 0 if no valid outlet ID found
+  }
+
   String? get currentOrderId => _currentOrderId;
 
   // Legacy getters
@@ -38,6 +52,11 @@ class TableProvider extends ChangeNotifier {
 
   void setOutletId(int outletId) {
     _outletId = outletId;
+    // Also save to Hive for persistence
+    HiveService.setOutletId(outletId);
+    if (kDebugMode) {
+      print('[TableProvider] Updated outlet ID: $outletId (saved to Hive)');
+    }
     notifyListeners();
   }
 
@@ -66,9 +85,16 @@ class TableProvider extends ChangeNotifier {
     }
   }
 
-  /// Get outlet ID
+  /// Get outlet ID with validation
   int? _getOutletId() {
-    return _outletId;
+    final id = outletId; // Use getter
+    if (id > 0) {
+      return id;
+    }
+    if (kDebugMode) {
+      print('[TableProvider] Invalid outlet ID: $id');
+    }
+    return null;
   }
 
   /// Fetch tables using ONLY API data - FIXED UI UPDATE
@@ -293,7 +319,7 @@ class TableProvider extends ChangeNotifier {
         orderChannelId: tableId,
         waiterId: waiterId ?? userId, // Use userId as fallback
         customerName: 'Walk-in Customer',
-        outletId: _outletId,
+        outletId: outletId, // Use getter instead of private field
         userId: userId,
       );
 

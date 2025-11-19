@@ -129,12 +129,16 @@ class _CartViewState extends State<CartView> {
                 if (items.isNotEmpty)
                   CartFooter(
                     subtotal: cartProvider.totalAmount,
-                    kotGenerated: hasKotItems && !hasNewItems, // KOT generated and no new items
-                    onGenerateKOT: hasNewItems ? () => _generateKOT(cartProvider) : () {},
+                    kotGenerated:
+                        hasKotItems &&
+                        !hasNewItems, // KOT generated and no new items
+                    onGenerateKOT:
+                        hasNewItems ? () => _generateKOT(cartProvider) : () {},
                     onSendToKitchen: () => _sendToKitchen(cartProvider),
-                    onGenerateBill: cartProvider.canProceedToBilling
-                        ? () => _navigateToBillingPage(cartProvider)
-                        : () => _showCannotBillDialog(),
+                    onGenerateBill:
+                        cartProvider.canProceedToBilling
+                            ? () => _navigateToBillingPage(cartProvider)
+                            : () => _showCannotBillDialog(),
                     onShowGSTInfo: _showGSTInfoDialog,
                   ),
               ],
@@ -607,7 +611,9 @@ class _CartViewState extends State<CartView> {
       // Use the existing order ID from backend (table selection)
       final kotResponse = await orderProvider.createKotWithOrderDetails(
         userId: HiveService.getUserId() ?? "",
-        outletId: HiveService.getOutletId() ?? 1,
+        outletId:
+            HiveService.getOutletId() ??
+            0, // No fallback - validation will catch this
         orderId: backendOrderId,
         kotNote: "",
         cartItems: newItemsData,
@@ -618,7 +624,8 @@ class _CartViewState extends State<CartView> {
       if (kotResponse != null && kotResponse.isSuccess == true) {
         // Get KOT details from response
         final kotDetail = kotResponse.data?.kotDetail;
-        final orderNumber = kotDetail?.orderNo ??
+        final orderNumber =
+            kotDetail?.orderNo ??
             orderProvider.generatedOrderNo ??
             orderProvider.orderNo?.toString() ??
             kotDetail?.kotNo ??

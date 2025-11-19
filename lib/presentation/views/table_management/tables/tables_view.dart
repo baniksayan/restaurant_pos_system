@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../view_models/providers/table_provider.dart';
+import '../../../../data/local/hive_service.dart';
 
 class TablesView extends StatefulWidget {
   const TablesView({super.key});
@@ -21,9 +22,17 @@ class _TablesViewState extends State<TablesView> {
 
     const String token =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb21wYW55X2lkIjoiaEdFOXAyTnMzdVVTdS9nM3dpdVpWQT09IiwibmJmIjoxNzU1NzY4NjI5LCJleHAiOjE3NTU4NTUwMjksImlhdCI6MTc1NTc2ODYyOX0.E46nK0KzuGHM6LPJop2tq3oq-eadiBoHIpLwAbtSaXg";
-    const int outletId = 55;
 
-    print("CALLING API NOW...");
+    // Get outlet ID from Hive (previously hardcoded to 55)
+    final outletId = HiveService.getOutletId();
+
+    if (outletId == null || outletId <= 0) {
+      print("ERROR: Invalid outlet ID ($outletId) - Cannot fetch tables");
+      print("Please ensure proper login with valid outlet configuration");
+      return;
+    }
+
+    print("CALLING API NOW with outlet ID: $outletId...");
     tableProvider.fetchTablesByOutlet(token: token, outletId: outletId);
   }
 
@@ -38,9 +47,7 @@ class _TablesViewState extends State<TablesView> {
       ),
       body: Consumer<TableProvider>(
         builder: (context, tableProvider, child) {
-          print(
-            "Build called - isApiLoading: ${tableProvider.isApiLoading}",
-          );
+          print("Build called - isApiLoading: ${tableProvider.isApiLoading}");
           print("Error: ${tableProvider.tableApiError}");
           print("Tables count: ${tableProvider.orderChannels.length}");
 

@@ -7,6 +7,7 @@ import 'package:restaurant_pos_system/core/constants/api_constants.dart';
 import 'package:restaurant_pos_system/data/models/auth_api_res_model.dart';
 import 'package:restaurant_pos_system/services/api_service.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/table_provider.dart';
+import 'package:restaurant_pos_system/presentation/view_models/providers/tax_provider.dart';
 
 class AuthProvider with ChangeNotifier {
   bool _isAuthenticated = false;
@@ -15,6 +16,9 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   bool _rememberMe = false;
   String? _errorMessage;
+  bool _shouldNavigateDirectlyToMenu = false;
+  String? _autoSelectedTableId;
+  String? _autoSelectedTableName;
 
   // Existing getters
   bool get isAuthenticated => _isAuthenticated;
@@ -25,6 +29,11 @@ class AuthProvider with ChangeNotifier {
   // New getters for login form
   bool get rememberMe => _rememberMe;
   String? get errorMessage => _errorMessage;
+
+  // New getters for direct menu navigation
+  bool get shouldNavigateDirectlyToMenu => _shouldNavigateDirectlyToMenu;
+  String? get autoSelectedTableId => _autoSelectedTableId;
+  String? get autoSelectedTableName => _autoSelectedTableName;
 
   // New methods for login form
   void setRememberMe(bool value) {
@@ -144,9 +153,20 @@ class AuthProvider with ChangeNotifier {
         debugPrint('Saved Token from api const.: ${ApiConstants.accessToken}');
         HiveService.setUserId(model.data?.userDetails?.userId ?? '');
         HiveService.setWaiterId("cceb307f-2f01-4e0e-8f28-e07ba8e941ac");
-        HiveService.setOutletId(model.data?.location?.locationId ?? 0);
-        // HiveService.setOutletId(47); // static outlet id
-        debugPrint('Saved OutletId: ${HiveService.getOutletId()}');
+
+        // Extract and save outlet ID from locationId (as specified by user)
+        debugPrint('=== OUTLET ID PROCESSING ===');
+        debugPrint('Full API Response Data: ${model.data?.location?.toJson()}');
+
+        final locationId = model.data?.location?.locationId;
+        debugPrint('Extracted locationId from API: $locationId');
+
+        // Save locationId as outlet ID (as per user's requirement)
+        HiveService.setOutletId(locationId ?? 10080);
+
+        final savedOutletId = HiveService.getOutletId();
+        debugPrint('Final outlet ID saved to Hive: $savedOutletId');
+        debugPrint('=== OUTLET ID PROCESSING END ===');
 
         // Save auth data to hive
         await HiveService.saveAuthData(model);
@@ -155,6 +175,35 @@ class AuthProvider with ChangeNotifier {
         _currentUser = username;
         _userRole = 'Manager'; // Set based on your API response
         _rememberMe = rememberMe;
+
+        // Check if companySiteUrl is "Menu" for direct menu navigation
+        final companySiteUrl = model.data?.userDetails?.companySiteUrl;
+        if (companySiteUrl != null && companySiteUrl.isNotEmpty) {
+          // Store companySiteUrl in Hive
+          HiveService.setCompanySiteUrl(companySiteUrl);
+          if (kDebugMode) {
+            debugPrint('Stored companySiteUrl in Hive: $companySiteUrl');
+          }
+
+          if (companySiteUrl.toLowerCase() == 'menu') {
+            if (kDebugMode) {
+              debugPrint(
+                'companySiteUrl is "Menu" - preparing for direct menu navigation',
+              );
+            }
+
+            // Fetch tables and auto-select the first available one
+            await _setupAutoTableSelection(context);
+          } else {
+            _shouldNavigateDirectlyToMenu = false;
+            _autoSelectedTableId = null;
+            _autoSelectedTableName = null;
+          }
+        } else {
+          _shouldNavigateDirectlyToMenu = false;
+          _autoSelectedTableId = null;
+          _autoSelectedTableName = null;
+        }
 
         // ALWAYS save login state for persistence during development
         final prefs = await SharedPreferences.getInstance();
@@ -220,6 +269,99 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  // **NEW: Public method to setup automatic table selection for direct menu navigation**
+  Future<void> setupAutoTableSelection(BuildContext context) async {
+    await _setupAutoTableSelection(context);
+  }
+
+  // **NEW: Private method to setup automatic table selection for direct menu navigation**
+  Future<void> _setupAutoTableSelection(BuildContext context) async {
+    try {
+      if (kDebugMode) {
+        debugPrint(
+          'Setting up auto table selection for direct menu navigation',
+        );
+      }
+
+      // Get the table provider to fetch tables
+      final tableProvider = Provider.of<TableProvider>(context, listen: false);
+
+      // Ensure tables are loaded
+      await tableProvider.fetchTables();
+
+      // Find the first available table
+      final tables = tableProvider.tables;
+      if (tables.isNotEmpty) {
+        // Find first available table, or if none available, use the first table
+        final availableTable = tables.firstWhere(
+          (table) => table.status.toString().contains('available'),
+          orElse: () => tables.first,
+        );
+
+        _shouldNavigateDirectlyToMenu = true;
+        _autoSelectedTableId = availableTable.id;
+        _autoSelectedTableName = availableTable.name;
+
+        if (kDebugMode) {
+          debugPrint(
+            'Auto-selected table: ${availableTable.name} (${availableTable.id})',
+          );
+        }
+
+        // **ENHANCED: Automatically create order for the selected table**
+        // This ensures orderId is ready for KOT generation without showing table UI
+        if (kDebugMode) {
+          debugPrint(
+            'companySiteUrl="Menu" - Creating background order for table ${availableTable.name}',
+          );
+        }
+
+        final orderCreated = await tableProvider.createOrderForTable(
+          availableTable.id,
+          availableTable.name,
+        );
+
+        if (orderCreated) {
+          if (kDebugMode) {
+            debugPrint(
+              '✅ Background order created successfully for direct menu access',
+            );
+            debugPrint('OrderId ready: ${tableProvider.currentOrderId}');
+          }
+        } else {
+          if (kDebugMode) {
+            debugPrint(
+              '❌ Failed to create background order - menu may not work properly',
+            );
+          }
+          // Don't fail login, but warn that KOT generation might not work
+        }
+      } else {
+        if (kDebugMode) {
+          debugPrint('No tables available for auto-selection');
+        }
+        _shouldNavigateDirectlyToMenu = false;
+        _autoSelectedTableId = null;
+        _autoSelectedTableName = null;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error setting up auto table selection: $e');
+      }
+      _shouldNavigateDirectlyToMenu = false;
+      _autoSelectedTableId = null;
+      _autoSelectedTableName = null;
+    }
+  }
+
+  // Method to reset auto navigation flags
+  void resetAutoNavigationFlags() {
+    _shouldNavigateDirectlyToMenu = false;
+    _autoSelectedTableId = null;
+    _autoSelectedTableName = null;
+    notifyListeners();
+  }
+
   // **NEW: Private method to initialize data providers after authentication**
   // **NEW: Private method to initialize data providers after authentication**
   Future<void> _initializeDataProviders(BuildContext context) async {
@@ -230,23 +372,42 @@ class AuthProvider with ChangeNotifier {
 
       // Get providers from context
       final tableProvider = Provider.of<TableProvider>(context, listen: false);
+      final taxProvider = Provider.of<TaxProvider>(context, listen: false);
 
-      // Only initialize TableProvider for now (the main issue)
+      // Initialize TableProvider
       await tableProvider.fetchTables().catchError((error) {
         debugPrint('Failed to load tables: $error');
         return; // Continue even if tables fail
       });
 
-      // TODO: Add other providers when their methods are available
-      // Example:
-      // final menuProvider = Provider.of<MenuProvider>(context, listen: false);
-      // await menuProvider.loadMenu(); // Use the actual method name
+      // Initialize TaxProvider - load from Hive or fetch from API
+      await taxProvider.initializeTaxData().catchError((error) {
+        debugPrint('Failed to load tax data: $error');
+        return; // Continue even if tax data fails
+      });
 
-      // final taxProvider = Provider.of<TaxProvider>(context, listen: false);
-      // await taxProvider.fetchTaxes(); // Use the actual method name
+      // Give a small delay and try again if no tax data was loaded
+      if (!taxProvider.hasTaxData) {
+        debugPrint(
+          '⚠️ No tax data after first attempt, trying again in 1 second...',
+        );
+        await Future.delayed(const Duration(seconds: 1));
+        await taxProvider.refreshTaxData().catchError((error) {
+          debugPrint('Second attempt to load tax data failed: $error');
+          return;
+        });
+      }
 
       if (kDebugMode) {
-        debugPrint('Post-login table data loaded successfully');
+        debugPrint('Post-login data loaded successfully');
+        debugPrint(
+          'Tax data status: ${taxProvider.hasTaxData ? "Loaded" : "Using defaults"}',
+        );
+        if (taxProvider.hasTaxData) {
+          debugPrint(
+            'CGST: ${taxProvider.cgstPercentage}%, SGST: ${taxProvider.sgstPercentage}%',
+          );
+        }
       }
     } catch (e) {
       // Don't throw error, just log it

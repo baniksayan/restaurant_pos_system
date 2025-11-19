@@ -53,7 +53,17 @@ class _MenuViewState extends State<MenuView> {
       // Check if user is authenticated before loading menu
       final token = HiveService.getAuthToken();
       if (token.isNotEmpty) {
-        menuProvider.loadMenuData();
+        final outletId = HiveService.getOutletId();
+        debugPrint('[MenuView] Raw outlet ID from Hive: $outletId');
+
+        if (outletId != null && outletId > 0) {
+          debugPrint('[MenuView] ✅ Using outlet ID: $outletId');
+          menuProvider.loadMenuData(outletId: outletId);
+        } else {
+          debugPrint(
+            '[MenuView] ❌ No valid outlet ID available - skipping menu load',
+          );
+        }
       } else {
         debugPrint('No auth token available - skipping menu load in MenuView');
       }

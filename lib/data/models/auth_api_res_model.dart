@@ -35,20 +35,22 @@ class Data {
   String? posToken;
   Location? location;
 
-  Data(
-      {this.userDetails,
-      this.roles,
-      this.permissionModuleList,
-      this.permissionMenuList,
-      this.bindParentMenu,
-      this.bindMenu,
-      this.posToken,
-      this.location});
+  Data({
+    this.userDetails,
+    this.roles,
+    this.permissionModuleList,
+    this.permissionMenuList,
+    this.bindParentMenu,
+    this.bindMenu,
+    this.posToken,
+    this.location,
+  });
 
   Data.fromJson(Map<String, dynamic> json) {
-    userDetails = json['userDetails'] != null
-        ? new UserDetails.fromJson(json['userDetails'])
-        : null;
+    userDetails =
+        json['userDetails'] != null
+            ? new UserDetails.fromJson(json['userDetails'])
+            : null;
     if (json['roles'] != null) {
       roles = <Roles>[];
       json['roles'].forEach((v) {
@@ -80,9 +82,10 @@ class Data {
       });
     }
     posToken = json['posToken'];
-    location = json['location'] != null
-        ? new Location.fromJson(json['location'])
-        : null;
+    location =
+        json['location'] != null
+            ? new Location.fromJson(json['location'])
+            : null;
   }
 
   Map<String, dynamic> toJson() {
@@ -142,33 +145,36 @@ class UserDetails {
   String? phoneCode;
   String? userPhoneCountryCode;
   String? apiKey;
+  String? companySiteUrl;
 
-  UserDetails(
-      {this.userId,
-      this.companyId,
-      this.email,
-      this.userName,
-      this.password,
-      this.firstName,
-      this.middleName,
-      this.lastName,
-      this.address,
-      this.address2,
-      this.city,
-      this.state,
-      this.stateCode,
-      this.country,
-      this.countryCode,
-      this.postalCode,
-      this.phone,
-      this.imagePath,
-      this.isActive,
-      this.createdDate,
-      this.createdBy,
-      this.isCustomer,
-      this.phoneCode,
-      this.userPhoneCountryCode,
-      this.apiKey});
+  UserDetails({
+    this.userId,
+    this.companyId,
+    this.email,
+    this.userName,
+    this.password,
+    this.firstName,
+    this.middleName,
+    this.lastName,
+    this.address,
+    this.address2,
+    this.city,
+    this.state,
+    this.stateCode,
+    this.country,
+    this.countryCode,
+    this.postalCode,
+    this.phone,
+    this.imagePath,
+    this.isActive,
+    this.createdDate,
+    this.createdBy,
+    this.isCustomer,
+    this.phoneCode,
+    this.userPhoneCountryCode,
+    this.apiKey,
+    this.companySiteUrl,
+  });
 
   UserDetails.fromJson(Map<String, dynamic> json) {
     userId = json['userId'];
@@ -196,6 +202,7 @@ class UserDetails {
     phoneCode = json['phoneCode'];
     userPhoneCountryCode = json['userPhoneCountryCode'];
     apiKey = json['apiKey'];
+    companySiteUrl = json['companySiteUrl'];
   }
 
   Map<String, dynamic> toJson() {
@@ -225,6 +232,7 @@ class UserDetails {
     data['phoneCode'] = this.phoneCode;
     data['userPhoneCountryCode'] = this.userPhoneCountryCode;
     data['apiKey'] = this.apiKey;
+    data['companySiteUrl'] = this.companySiteUrl;
     return data;
   }
 }
@@ -279,14 +287,15 @@ class PermissionMenuList {
   String? url;
   int? parentMenuId;
 
-  PermissionMenuList(
-      {this.menuId,
-      this.menuName,
-      this.isActive,
-      this.displayOrder,
-      this.moduleName,
-      this.url,
-      this.parentMenuId});
+  PermissionMenuList({
+    this.menuId,
+    this.menuName,
+    this.isActive,
+    this.displayOrder,
+    this.moduleName,
+    this.url,
+    this.parentMenuId,
+  });
 
   PermissionMenuList.fromJson(Map<String, dynamic> json) {
     menuId = json['menuId'];
@@ -355,8 +364,12 @@ class Location {
   String? locationType;
   String? locAddress;
 
-  Location(
-      {this.locationId, this.locationName, this.locationType, this.locAddress});
+  Location({
+    this.locationId,
+    this.locationName,
+    this.locationType,
+    this.locAddress,
+  });
 
   Location.fromJson(Map<String, dynamic> json) {
     locationId = json['locationId'];

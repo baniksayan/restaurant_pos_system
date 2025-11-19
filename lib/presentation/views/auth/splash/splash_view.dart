@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/themes/app_colors.dart';
+import '../../../../data/local/hive_service.dart';
 import '../../../view_models/providers/auth_provider.dart';
+import '../../menu_management/standalone_menu_view.dart';
 
 class SplashView extends StatefulWidget {
   const SplashView({super.key});
@@ -143,13 +145,42 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
         final isAuthenticated = await authProvider.checkAuthState();
 
         if (isAuthenticated) {
-          // User is logged in (state restored), go to dashboard
-          if (mounted) {
-            Navigator.of(context).pushReplacementNamed('/dashboard');
-            if (kDebugMode) {
-              debugPrint(
-                'User restored from saved state - navigating to dashboard',
+          // User is logged in (state restored), check companySiteUrl for navigation
+          final companySiteUrl = HiveService.getCompanySiteUrl();
+
+          if (companySiteUrl != null &&
+              companySiteUrl.toLowerCase() == 'menu') {
+            // User should go directly to standalone menu view
+            if (mounted) {
+              // Setup auto table selection for direct menu navigation
+              await authProvider.setupAutoTableSelection(context);
+
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder:
+                      (context) => StandaloneMenuView(
+                        autoSelectedTableId: authProvider.autoSelectedTableId,
+                        autoSelectedTableName:
+                            authProvider.autoSelectedTableName,
+                      ),
+                ),
               );
+
+              if (kDebugMode) {
+                debugPrint(
+                  'User restored from saved state with companySiteUrl="Menu" - navigating to standalone menu',
+                );
+              }
+            }
+          } else {
+            // Normal user - go to dashboard
+            if (mounted) {
+              Navigator.of(context).pushReplacementNamed('/dashboard');
+              if (kDebugMode) {
+                debugPrint(
+                  'User restored from saved state - navigating to dashboard',
+                );
+              }
             }
           }
         } else {

@@ -154,6 +154,50 @@ class HiveService {
     posBox.put('outletId', outletId);
   }
 
+  // Company Site URL Management
+  static String? getCompanySiteUrl() {
+    return posBox.get('companySiteUrl');
+  }
+
+  static void setCompanySiteUrl(String companySiteUrl) {
+    posBox.put('companySiteUrl', companySiteUrl);
+  }
+
+  static void clearCompanySiteUrl() {
+    posBox.delete('companySiteUrl');
+  }
+
+  // Tax Data Management
+  static void saveTaxData(Map<String, dynamic> taxData) {
+    posBox.put('taxData', taxData);
+    posBox.put('taxDataTimestamp', DateTime.now().millisecondsSinceEpoch);
+  }
+
+  static Map<String, dynamic>? getTaxData() {
+    return posBox.get('taxData');
+  }
+
+  static DateTime? getTaxDataTimestamp() {
+    final timestamp = posBox.get('taxDataTimestamp');
+    return timestamp != null
+        ? DateTime.fromMillisecondsSinceEpoch(timestamp)
+        : null;
+  }
+
+  static void clearTaxData() {
+    posBox.delete('taxData');
+    posBox.delete('taxDataTimestamp');
+  }
+
+  static bool isTaxDataExpired({int maxAgeHours = 24}) {
+    final timestamp = getTaxDataTimestamp();
+    if (timestamp == null) return true;
+
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+    return difference.inHours > maxAgeHours;
+  }
+
   // Sync queue management
   static Future<void> _addToSyncQueue(String action, String entityId) async {
     final syncItem = {

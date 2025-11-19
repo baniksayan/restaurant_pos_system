@@ -243,7 +243,9 @@ class BillingProvider extends ChangeNotifier {
           itemList: orderDetail.orderDetailId,
           splDisPer: 0,
           splDisReason: "",
-          outletId: HiveService.getOutletId() ?? 1,
+          outletId:
+              HiveService.getOutletId() ??
+              0, // No fallback - validation will catch this
           billPrefix: "BL",
           paymentDetails: [],
         );
@@ -299,7 +301,9 @@ class BillingProvider extends ChangeNotifier {
               "", // Empty for now - might need to generate from cart items
           splDisPer: 0,
           splDisReason: "",
-          outletId: HiveService.getOutletId() ?? 1,
+          outletId:
+              HiveService.getOutletId() ??
+              0, // No fallback - validation will catch this
           billPrefix: "BL",
           paymentDetails: [],
         );

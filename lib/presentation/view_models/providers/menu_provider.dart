@@ -106,7 +106,7 @@ class MenuProvider with ChangeNotifier {
   }
 
   // Extract categories from menu items
-  Future<void> loadCategories({int outletId = 10048}) async {
+  Future<void> loadCategories({required int outletId}) async {
     _isCategoriesLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -150,7 +150,7 @@ class MenuProvider with ChangeNotifier {
   }
 
   // MAIN FIX: Load menu items from API with token guard
-  Future<void> loadMenuItems({int outletId = 10048}) async {
+  Future<void> loadMenuItems({required int outletId}) async {
     // TOKEN CHECK - THIS PREVENTS 500 ERRORS ON FIRST LAUNCH
     final token = HiveService.getAuthToken();
     if (token.isEmpty) {
@@ -159,6 +159,17 @@ class MenuProvider with ChangeNotifier {
       );
       _apiMenuItems = [];
       _errorMessage = null; // Don't show error for expected behavior
+      notifyListeners();
+      return;
+    }
+
+    // OUTLET ID CHECK
+    if (outletId <= 0) {
+      debugPrint(
+        'Invalid outlet ID ($outletId) - skipping menu load in MenuProvider',
+      );
+      _apiMenuItems = [];
+      _errorMessage = 'Invalid outlet ID. Cannot load menu items.';
       notifyListeners();
       return;
     }
@@ -213,7 +224,7 @@ class MenuProvider with ChangeNotifier {
   }
 
   // Load menu items first, then extract categories
-  Future<void> loadMenuData({int outletId = 10048}) async {
+  Future<void> loadMenuData({required int outletId}) async {
     // Load menu items first
     await loadMenuItems(outletId: outletId);
     // Then extract categories from menu items

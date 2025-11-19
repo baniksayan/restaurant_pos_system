@@ -5,6 +5,7 @@ import 'package:restaurant_pos_system/presentation/view_models/providers/auth_pr
 import 'package:restaurant_pos_system/shared/widgets/forms/custom_text_field.dart';
 import 'package:restaurant_pos_system/shared/widgets/animations/fade_in_animation.dart';
 import 'package:restaurant_pos_system/shared/widgets/buttons/animated_button.dart';
+import '../../../menu_management/standalone_menu_view.dart';
 
 class LoginForm extends StatefulWidget {
   final VoidCallback onForgotPassword;
@@ -44,7 +45,22 @@ class _LoginFormState extends State<LoginForm> {
       );
 
       if (success && mounted) {
-        widget.onLoginSuccess();
+        // Check if we need direct menu navigation
+        if (authProvider.shouldNavigateDirectlyToMenu) {
+          // Navigate directly to standalone menu view
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder:
+                  (context) => StandaloneMenuView(
+                    autoSelectedTableId: authProvider.autoSelectedTableId,
+                    autoSelectedTableName: authProvider.autoSelectedTableName,
+                  ),
+            ),
+          );
+        } else {
+          // Normal navigation to dashboard
+          widget.onLoginSuccess();
+        }
       } else if (mounted && authProvider.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -4,7 +4,7 @@ import '../../../../../core/themes/app_colors.dart';
 import '../../../../../core/constants/currency_constants.dart';
 import '../../../../../core/utils/haptic_helper.dart';
 import '../../../../../presentation/view_models/providers/tax_provider.dart';
- 
+
 const List<BoxShadow> cartFooterShadow = [
   BoxShadow(
     color: Color(0x22000000), // subtle black shadow
@@ -12,7 +12,7 @@ const List<BoxShadow> cartFooterShadow = [
     offset: Offset(0, -2),
   ),
 ];
- 
+
 class CartFooter extends StatefulWidget {
   final double subtotal;
   final bool kotGenerated;
@@ -20,7 +20,7 @@ class CartFooter extends StatefulWidget {
   final VoidCallback onSendToKitchen;
   final VoidCallback onGenerateBill;
   final VoidCallback onShowGSTInfo;
- 
+
   const CartFooter({
     super.key,
     required this.subtotal,
@@ -30,14 +30,14 @@ class CartFooter extends StatefulWidget {
     required this.onGenerateBill,
     required this.onShowGSTInfo,
   });
- 
+
   @override
   State<CartFooter> createState() => _CartFooterState();
 }
- 
+
 class _CartFooterState extends State<CartFooter> {
   bool _expanded = false; // default collapsed per request
- 
+
   @override
   Widget build(BuildContext context) {
     return Consumer<TaxProvider>(
@@ -45,7 +45,7 @@ class _CartFooterState extends State<CartFooter> {
         final gstPercentage = taxProvider.totalGstPercentage;
         final gstAmount = taxProvider.calculateGstAmount(widget.subtotal);
         final total = widget.subtotal + gstAmount;
- 
+
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -99,7 +99,9 @@ class _CartFooterState extends State<CartFooter> {
                           decoration: BoxDecoration(
                             color: Colors.blue.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                            border: Border.all(
+                              color: Colors.blue.withOpacity(0.3),
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -118,7 +120,7 @@ class _CartFooterState extends State<CartFooter> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Restaurant GST: ${gstPercentage.toStringAsFixed(1)}% ${taxProvider.hasTaxData ? "(Dynamic)" : "(Default)"} - Tap for info',
+                                  'Restaurant GST: ${gstPercentage.toStringAsFixed(1)}% ${taxProvider.hasTaxData ? "(From API)" : "(Default)"} - Tap for info',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.blue[700],
@@ -140,7 +142,10 @@ class _CartFooterState extends State<CartFooter> {
                     ),
                   ],
                 ),
-                _buildPriceRow("Subtotal:", "${CurrencyConstants.symbol}${widget.subtotal.toStringAsFixed(2)}"),
+                _buildPriceRow(
+                  "Subtotal:",
+                  "${CurrencyConstants.symbol}${widget.subtotal.toStringAsFixed(2)}",
+                ),
                 const SizedBox(height: 8),
                 _buildPriceRow(
                   "GST (${gstPercentage.toStringAsFixed(1)}%):",
@@ -166,7 +171,7 @@ class _CartFooterState extends State<CartFooter> {
       },
     );
   }
- 
+
   Widget _buildPriceRow(String label, String value, {bool isTotal = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -189,11 +194,11 @@ class _CartFooterState extends State<CartFooter> {
       ],
     );
   }
- 
+
   Widget _buildPreKOTButtons() {
     return SizedBox(
       width: double.infinity,
-          child: ElevatedButton.icon(
+      child: ElevatedButton.icon(
         onPressed: () async {
           await HapticHelper.triggerFeedback();
           widget.onGenerateKOT();
@@ -209,7 +214,7 @@ class _CartFooterState extends State<CartFooter> {
       ),
     );
   }
- 
+
   Widget _buildPostKOTButtons() {
     return Row(
       children: [

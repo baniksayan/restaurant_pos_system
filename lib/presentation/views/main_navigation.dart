@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../view_models/providers/navigation_provider.dart';
 import '../view_models/providers/animated_cart_provider.dart';
 import '../view_models/providers/menu_provider.dart';
+import '../view_models/providers/auth_provider.dart';
 import 'dashboard/waiter_dashboard_view.dart';
 import 'menu_management/menu_view.dart';
 import 'order_taking/cart/cart_view.dart';
@@ -23,6 +24,34 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   final GlobalKey<CartAnimationOverlayState> _overlayKey =
       GlobalKey<CartAnimationOverlayState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Check if we need to auto-select a table and navigate to menu
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleAutoTableSelection();
+    });
+  }
+
+  void _handleAutoTableSelection() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final navProvider = Provider.of<NavigationProvider>(context, listen: false);
+
+    if (authProvider.shouldNavigateDirectlyToMenu &&
+        authProvider.autoSelectedTableId != null &&
+        authProvider.autoSelectedTableName != null) {
+      // Auto-select the table and navigate to menu
+      navProvider.selectTableAndNavigateToMenu(
+        authProvider.autoSelectedTableId!,
+        authProvider.autoSelectedTableName!,
+        'Main Hall', // Default location
+      );
+
+      // Reset the auto navigation flags
+      authProvider.resetAutoNavigationFlags();
+    }
+  }
 
   // Updated navigation items - removed Profile
   final List<NavigationItem> _navigationItems = [
