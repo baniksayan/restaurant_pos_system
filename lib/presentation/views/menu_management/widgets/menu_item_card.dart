@@ -229,7 +229,28 @@ class _MenuItemCardState extends State<MenuItemCard>
                             widget.imageUrl != null
                                 ? CachedNetworkImage(
                                   imageUrl: widget.imageUrl!,
-                                  fit: BoxFit.cover,
+                                  imageBuilder:
+                                      (context, imageProvider) => Container(
+                                        width: 45,
+                                        height: 45,
+                                        decoration: BoxDecoration(
+                                          image: DecorationImage(
+                                            image: imageProvider,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                  placeholder:
+                                      (context, url) => Center(
+                                        child: SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      ),
                                   errorWidget:
                                       (context, url, error) => const Icon(
                                         Icons.restaurant_menu,

@@ -477,6 +477,10 @@ class _CartViewState extends State<CartView> {
   }
 
   void _navigateBackToMenu(AnimatedCartProvider cartProvider) {
+    if (HiveService.getCompanySiteUrl() == 'Menu') {
+      Navigator.pop(context);
+      return;
+    }
     try {
       final items = cartProvider.cartItems.values.toList();
       if (items.isEmpty) {
