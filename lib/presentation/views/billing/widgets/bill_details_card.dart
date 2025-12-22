@@ -38,7 +38,7 @@ class BillDetailsCard extends StatelessWidget {
           const SizedBox(height: 16),
           _buildAmountRow('Subtotal:', '${CurrencyConstants.symbol}${subtotal.toStringAsFixed(2)}'),
           const SizedBox(height: 8),
-          _buildAmountRow('GST (18%):', '${CurrencyConstants.symbol}${gstAmount.toStringAsFixed(2)}'),
+          _buildAmountRow('GST (10%):', '${CurrencyConstants.symbol}${gstAmount.toStringAsFixed(2)}'),
           const SizedBox(height: 12),
           const Divider(thickness: 1),
           const SizedBox(height: 8),
