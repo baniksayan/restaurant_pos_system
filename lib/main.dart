@@ -23,6 +23,7 @@ import 'services/sync_service.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/navigation_provider.dart';
 import 'package:flutter/foundation.dart';
 
+//updating a new pc and git
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
