@@ -42,9 +42,15 @@ class AnimatedCartProvider extends ChangeNotifier {
     (sum, item) => sum + (item.price * item.quantity),
   );
 
-  // Get quantity for a specific item ID
+  // Get quantity for a specific item ID (only count editable/non-KOT'd items)
   int getItemQuantity(String itemId) {
-    return _cartItems[itemId]?.quantity ?? 0;
+    int qty = 0;
+    for (final item in _cartItems.values) {
+      if (item.id == itemId && !item.isKotGenerated) {
+        qty += item.quantity;
+      }
+    }
+    return qty;
   }
 
   // Switch to a different table's cart and sync with server state
@@ -104,18 +110,34 @@ class AnimatedCartProvider extends ChangeNotifier {
       switchToTable(tableId);
     }
 
-    if (_cartItems.containsKey(itemId)) {
-      // Only allow quantity increase if item is not KOT'd
-      if (_cartItems[itemId]!.canEdit) {
-        _cartItems[itemId]!.quantity++;
-        if (specialNotes != null && specialNotes.isNotEmpty) {
-          _cartItems[itemId]!.specialNotes = specialNotes;
-        }
-      } else {
-        // Item is already KOT'd, create a new separate item with unique key
+    // Check if there is an editable item in the cart for this food
+    String? editableKey;
+    CartItem? editableItem;
+    for (final entry in _cartItems.entries) {
+      if (entry.value.id == itemId && entry.value.canEdit) {
+        editableKey = entry.key;
+        editableItem = entry.value;
+        break;
+      }
+    }
+
+    if (editableItem != null && editableKey != null) {
+      // Editable item already exists, increment its quantity
+      editableItem.quantity++;
+      if (specialNotes != null && specialNotes.isNotEmpty) {
+        editableItem.specialNotes = specialNotes;
+      }
+      debugPrint(
+        '[AnimatedCart] Incremented quantity of existing editable item $name (key: $editableKey) to ${editableItem.quantity}',
+      );
+    } else {
+      // No editable item exists for this food.
+      // If the original itemId key exists (it must be KOT'd since there is no editable item),
+      // we must use a unique key to add the new editable item.
+      if (_cartItems.containsKey(itemId)) {
         final uniqueKey = '${itemId}_${DateTime.now().millisecondsSinceEpoch}';
         _cartItems[uniqueKey] = CartItem(
-          id: itemId, // Keep original item ID for API calls
+          id: itemId,
           name: name,
           price: price,
           quantity: 1,
@@ -126,26 +148,31 @@ class AnimatedCartProvider extends ChangeNotifier {
           categoryName: categoryName,
           uom: uom,
           discountPercentage: discountPercentage,
-          isKotGenerated: false, // New item, not KOT'd yet
+          isKotGenerated: false,
         );
-        print(
+        debugPrint(
           '[AnimatedCart] Added new instance of KOT\'d item $name with key: $uniqueKey',
         );
+      } else {
+        // Otherwise, use the original itemId as key
+        _cartItems[itemId] = CartItem(
+          id: itemId,
+          name: name,
+          price: price,
+          quantity: 1,
+          tableId: tableId,
+          tableName: tableName,
+          specialNotes: specialNotes,
+          categoryId: categoryId,
+          categoryName: categoryName,
+          uom: uom,
+          discountPercentage: discountPercentage,
+          isKotGenerated: false,
+        );
+        debugPrint(
+          '[AnimatedCart] Added new item $name with key: $itemId',
+        );
       }
-    } else {
-      _cartItems[itemId] = CartItem(
-        id: itemId,
-        name: name,
-        price: price,
-        quantity: 1,
-        tableId: tableId,
-        tableName: tableName,
-        specialNotes: specialNotes,
-        categoryId: categoryId,
-        categoryName: categoryName,
-        uom: uom,
-        discountPercentage: discountPercentage,
-      );
     }
 
     _updateTotalItems();
@@ -153,25 +180,41 @@ class AnimatedCartProvider extends ChangeNotifier {
   }
 
   void removeItem(String itemId) {
-    if (_cartItems.containsKey(itemId)) {
-      final item = _cartItems[itemId]!;
-      // Only allow removal if item is not KOT'd
-      if (item.canEdit) {
-        if (item.quantity > 1) {
-          item.quantity--;
-        } else {
-          _cartItems.remove(itemId);
-        }
-        _updateTotalItems();
-        notifyListeners();
+    // Find the editable item for this itemId
+    String? editableKey;
+    CartItem? editableItem;
+    for (final entry in _cartItems.entries) {
+      if (entry.value.id == itemId && entry.value.canEdit) {
+        editableKey = entry.key;
+        editableItem = entry.value;
+        break;
       }
+    }
+
+    if (editableItem != null && editableKey != null) {
+      if (editableItem.quantity > 1) {
+        editableItem.quantity--;
+      } else {
+        _cartItems.remove(editableKey);
+      }
+      _updateTotalItems();
+      notifyListeners();
     }
   }
 
   // Enhanced method - Delete all quantities of a specific item (only if not KOT'd)
   void deleteAllOfItem(String itemId) {
-    if (_cartItems.containsKey(itemId) && _cartItems[itemId]!.canEdit) {
-      _cartItems.remove(itemId);
+    // Find the editable item for this itemId
+    String? editableKey;
+    for (final entry in _cartItems.entries) {
+      if (entry.value.id == itemId && entry.value.canEdit) {
+        editableKey = entry.key;
+        break;
+      }
+    }
+
+    if (editableKey != null) {
+      _cartItems.remove(editableKey);
       _updateTotalItems();
       notifyListeners();
     }

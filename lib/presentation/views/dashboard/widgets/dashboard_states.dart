@@ -105,15 +105,15 @@ class DashboardEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: Center(
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.table_restaurant_outlined, size: 64, color: Colors.grey),
+            const Icon(Icons.table_restaurant_outlined, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'No Tables Available',
               style: TextStyle(
                 fontSize: 18,
@@ -124,7 +124,7 @@ class DashboardEmptyState extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'No tables found for $selectedLocation',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(

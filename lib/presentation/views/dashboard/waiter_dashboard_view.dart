@@ -138,25 +138,33 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                           // provide a scrollable ListView so pull-to-refresh still works.
                           child:
                               tables.isEmpty
-                                  ? ListView(
-                                    physics:
-                                        const AlwaysScrollableScrollPhysics(),
-                                    children: [
-                                      DashboardEmptyState(
-                                        selectedLocation:
-                                            dashboardProvider
-                                                    .selectedLocation
-                                                    .isEmpty
-                                                ? 'All Tables'
-                                                : dashboardProvider
-                                                    .selectedLocation,
-                                        onChangeLocation:
-                                            () =>
-                                                _scaffoldKey.currentState
-                                                    ?.openDrawer(),
-                                      ),
-                                    ],
-                                  )
+                                  ? LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        return ListView(
+                                          physics: const AlwaysScrollableScrollPhysics(),
+                                          children: [
+                                            Container(
+                                              constraints: BoxConstraints(
+                                                minHeight: constraints.maxHeight,
+                                              ),
+                                              child: DashboardEmptyState(
+                                                selectedLocation:
+                                                    dashboardProvider
+                                                            .selectedLocation
+                                                            .isEmpty
+                                                        ? 'All Tables'
+                                                        : dashboardProvider
+                                                            .selectedLocation,
+                                                onChangeLocation:
+                                                    () =>
+                                                        _scaffoldKey.currentState
+                                                            ?.openDrawer(),
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    )
                                   : TableGrid(
                                     tables: tables,
                                     onTableTap:

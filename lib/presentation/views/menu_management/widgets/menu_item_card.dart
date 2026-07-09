@@ -526,7 +526,7 @@ class _MenuItemCardState extends State<MenuItemCard>
           Expanded(
             flex: 2,
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -543,22 +543,27 @@ class _MenuItemCardState extends State<MenuItemCard>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  Expanded(
-                    child: Text(
-                      widget.description ?? 'Delicious menu item',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color:
-                            showMemoryBlur
-                                ? AppColors.primary.withOpacity(0.7)
-                                : AppColors.textSecondary,
+                  if (widget.description != null &&
+                      widget.description!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: Text(
+                        widget.description!,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color:
+                              showMemoryBlur
+                                  ? AppColors.primary.withOpacity(0.7)
+                                  : AppColors.textSecondary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 8),
+                    const SizedBox(height: 6),
+                  ] else ...[
+                    const Spacer(),
+                  ],
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [

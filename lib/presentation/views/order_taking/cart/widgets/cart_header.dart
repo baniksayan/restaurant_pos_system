@@ -9,6 +9,7 @@ class CartHeader extends StatelessWidget {
   final String? selectedLocation;
   final int totalItems;
   final bool hasItems;
+  final bool showClearAll;
   final VoidCallback onClearCart;
   final VoidCallback onAddMore;
 
@@ -20,6 +21,7 @@ class CartHeader extends StatelessWidget {
     this.selectedLocation,
     required this.totalItems,
     required this.hasItems,
+    required this.showClearAll,
     required this.onClearCart,
     required this.onAddMore,
   });
@@ -125,7 +127,7 @@ class CartHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              if (hasItems)
+              if (showClearAll)
                 Container(
                   margin: const EdgeInsets.only(left: 8),
                   child: OutlinedButton.icon(

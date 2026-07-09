@@ -70,11 +70,11 @@ class _MainNavigationState extends State<MainNavigation> {
       label: 'Cart',
       activeColor: Colors.green,
     ),
-    NavigationItem(
-      icon: Icons.analytics,
-      label: 'Reports',
-      activeColor: Colors.red,
-    ),
+    // NavigationItem(
+    //   icon: Icons.analytics,
+    //   label: 'Reports',
+    //   activeColor: Colors.red,
+    // ),
   ];
 
   void _handleAddToCart(
@@ -333,13 +333,20 @@ class _MainNavigationState extends State<MainNavigation> {
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
                 left:
-                    (navProvider.currentIndex *
-                        MediaQuery.of(context).size.width /
-                        4) +
-                    (MediaQuery.of(context).size.width / 4 / 2) -
-                    25,
+                    navProvider.currentIndex < _navigationItems.length
+                        ? (navProvider.currentIndex *
+                                MediaQuery.of(context).size.width /
+                                _navigationItems.length) +
+                            (MediaQuery.of(context).size.width /
+                                _navigationItems.length /
+                                2) -
+                            25
+                        : -100.0, // Move offscreen if active tab is out of bottom bar range
                 top: 8,
-                child: _buildFloatingActiveTab(cartProvider, navProvider),
+                child:
+                    navProvider.currentIndex < _navigationItems.length
+                        ? _buildFloatingActiveTab(cartProvider, navProvider)
+                        : const SizedBox.shrink(),
               ),
             ],
           ),
