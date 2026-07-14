@@ -7,6 +7,7 @@ import '../../view_models/providers/navigation_provider.dart';
 import '../../view_models/providers/animated_cart_provider.dart';
 import 'widgets/menu_header.dart';
 import 'widgets/menu_search_bar.dart';
+import 'widgets/diet_filter_row.dart';
 import 'widgets/category_tabs.dart';
 import 'widgets/menu_grid.dart';
 import 'widgets/cart_footer.dart';
@@ -142,6 +143,7 @@ class _MenuViewState extends State<MenuView> {
                       onPrintKOT: _printKOT,
                     ),
                     const MenuSearchBar(),
+                    const DietFilterRow(),
                     const CategoryTabs(),
                     Expanded(
                       child: MenuGrid(

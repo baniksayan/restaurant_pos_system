@@ -202,6 +202,80 @@ class AnimatedCartProvider extends ChangeNotifier {
     }
   }
 
+  void setItemQuantity(
+    String itemId,
+    int quantity,
+    String name,
+    double price,
+    String tableId,
+    String tableName, {
+    String? categoryId,
+    String? categoryName,
+    String? uom,
+    double? discountPercentage,
+  }) {
+    // Ensure we're working with the correct table
+    if (_currentTableId != tableId) {
+      switchToTable(tableId);
+    }
+
+    // Find the editable item for this itemId
+    String? editableKey;
+    CartItem? editableItem;
+    for (final entry in _cartItems.entries) {
+      if (entry.value.id == itemId && entry.value.canEdit) {
+        editableKey = entry.key;
+        editableItem = entry.value;
+        break;
+      }
+    }
+
+    if (quantity <= 0) {
+      if (editableKey != null) {
+        _cartItems.remove(editableKey);
+      }
+    } else {
+      if (editableItem != null) {
+        editableItem.quantity = quantity;
+      } else {
+        // Create new item with specified quantity
+        if (_cartItems.containsKey(itemId)) {
+          final uniqueKey = '${itemId}_${DateTime.now().millisecondsSinceEpoch}';
+          _cartItems[uniqueKey] = CartItem(
+            id: itemId,
+            name: name,
+            price: price,
+            quantity: quantity,
+            tableId: tableId,
+            tableName: tableName,
+            categoryId: categoryId,
+            categoryName: categoryName,
+            uom: uom,
+            discountPercentage: discountPercentage,
+            isKotGenerated: false,
+          );
+        } else {
+          _cartItems[itemId] = CartItem(
+            id: itemId,
+            name: name,
+            price: price,
+            quantity: quantity,
+            tableId: tableId,
+            tableName: tableName,
+            categoryId: categoryId,
+            categoryName: categoryName,
+            uom: uom,
+            discountPercentage: discountPercentage,
+            isKotGenerated: false,
+          );
+        }
+      }
+    }
+
+    _updateTotalItems();
+    notifyListeners();
+  }
+
   // Enhanced method - Delete all quantities of a specific item (only if not KOT'd)
   void deleteAllOfItem(String itemId) {
     // Find the editable item for this itemId

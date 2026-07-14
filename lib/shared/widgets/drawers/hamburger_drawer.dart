@@ -1,579 +1,293 @@
-// lib/shared/widgets/drawers/hamburger_drawer.dart
+// lib/shared/widgets/layout/location_header.dart
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:restaurant_pos_system/presentation/views/orders/orders_management_view.dart';
-
 import '../../../core/themes/app_colors.dart';
 import '../../../presentation/view_models/providers/dashboard_provider.dart';
 import '../../../presentation/view_models/providers/table_provider.dart';
-import '../../../presentation/view_models/providers/auth_provider.dart';
-import '../../../presentation/view_models/providers/navigation_provider.dart';
-import '../../../presentation/views/profile/profile_view.dart';
+import '../../../data/models/restaurant_table.dart';
 
-class HamburgerDrawer extends StatefulWidget {
+class LocationHeader extends StatelessWidget {
   final String selectedLocation;
-  final Function(String) onLocationChanged;
-  final Function(String) onStatusFilterChanged;
-  final String selectedStatusFilter;
+  final List<LocationSection> locations;
+  final List<RestaurantTable> tables;
 
-  const HamburgerDrawer({
+  const LocationHeader({
     super.key,
     required this.selectedLocation,
-    required this.onLocationChanged,
-    required this.onStatusFilterChanged,
-    required this.selectedStatusFilter,
+    required this.locations,
+    required this.tables,
   });
 
   @override
-  State<HamburgerDrawer> createState() => _HamburgerDrawerState();
-}
-
-class _HamburgerDrawerState extends State<HamburgerDrawer> {
-  bool _isProfileExpanded = false;
-
-  @override
   Widget build(BuildContext context) {
-    return Drawer(
-      backgroundColor: Colors.white,
-      child: SafeArea(
-        child: Column(
-          children: [
-            _buildDrawerHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Column(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Location info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    _buildLocationFilters(), // First: Locations
-                    const Divider(thickness: 1, height: 32),
-                    _buildTableStatusFilters(), // Second: Table Status
-                    const Divider(thickness: 1, height: 32),
-                    _buildProfileSection(), // Third: Profile
-                    const Divider(thickness: 1, height: 32),
-                    _buildOrdersSection(), // NEW: Orders Management
-                    const Divider(thickness: 1, height: 32),
-                    // _buildSignOutSection(), // Fourth: Sign Out
+                    Icon(
+                      _getLocationIcon(),
+                      color: AppColors.primary,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        selectedLocation.isEmpty
+                            ? 'All Tables'
+                            : selectedLocation,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDrawerHeader() {
-    return Container(
-      height: 100,
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryDark],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(16),
-          bottomRight: Radius.circular(16),
-        ),
-      ),
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.restaurant, color: Colors.white, size: 28),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'WiZARD Restaurant',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
+                const SizedBox(height: 2),
+                Text(
+                  '${tables.length} ${tables.length == 1 ? 'table' : 'tables'}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
+          // Dynamic status filter dropdown on the right top
+          _buildFilterDropdown(context),
         ],
       ),
     );
   }
 
-  Widget _buildLocationFilters() {
-    return Consumer2<DashboardProvider, TableProvider>(
-      builder: (context, dashboardProvider, tableProvider, child) {
-        // Get locations that actually have tables
-        final availableLocations = _getAvailableLocations(
-          dashboardProvider.locations,
-          tableProvider.tables,
-        );
+  Widget _buildFilterDropdown(BuildContext context) {
+    final dashboardProvider = Provider.of<DashboardProvider>(context);
+    final allTables = Provider.of<TableProvider>(context, listen: false).tables;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    // Get all tables for this location to compute counts and unique statuses
+    final locationTables =
+        allTables.where((t) => t.location == selectedLocation).toList();
+
+    // Get unique statuses dynamically from the location tables list
+    final uniqueStatuses = locationTables.map((t) => t.status).toSet().toList();
+
+    return PopupMenuButton<String>(
+      initialValue: dashboardProvider.selectedStatusFilter,
+      onSelected: (String status) {
+        dashboardProvider.changeStatusFilter(status);
+      },
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 6,
+      offset: const Offset(0, 40),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey[300]!, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            Icon(Icons.filter_list, size: 16, color: Colors.grey[700]),
+            const SizedBox(width: 6),
+            Text(
+              _getStatusFilterDisplayName(
+                dashboardProvider.selectedStatusFilter,
+              ),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.arrow_drop_down, size: 16, color: Colors.grey[700]),
+          ],
+        ),
+      ),
+      itemBuilder: (BuildContext context) {
+        return [
+          // 'All' option
+          PopupMenuItem<String>(
+            value: 'all',
+            child: Row(
+              children: [
+                const Icon(Icons.all_inclusive, size: 16, color: Colors.grey),
+                const SizedBox(width: 8),
+                const Text(
+                  'All Statuses',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  '(${locationTables.length})',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          ...uniqueStatuses.map((status) {
+            final count =
+                locationTables.where((t) => t.status == status).length;
+            final filterVal = _getFilterValue(status);
+            return PopupMenuItem<String>(
+              value: filterVal,
               child: Row(
                 children: [
-                  Icon(Icons.location_on, color: AppColors.primary, size: 18),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Locations',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(status),
+                      shape: BoxShape.circle,
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _getStatusDisplayName(status),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    '($count)',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
               ),
-            ),
-            // Show only specific locations (removed "All Tables" option)
-            ...availableLocations.map(
-              (location) => _buildLocationTile(location),
-            ),
-          ],
-        );
+            );
+          }),
+        ];
       },
     );
   }
 
-  // Helper method to get available locations that have tables
-  List<LocationSection> _getAvailableLocations(
-    List<LocationSection> allLocations,
-    List tables,
-  ) {
-    return allLocations.where((location) {
-      return tables.any((table) => table.location == location.name);
-    }).toList();
-  }
-
-  Widget _buildLocationTile(LocationSection location) {
-    final isSelected = widget.selectedLocation == location.name;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: isSelected ? location.color.withOpacity(0.1) : null,
-        border:
-            isSelected
-                ? Border.all(color: location.color.withOpacity(0.3), width: 1)
-                : null,
-      ),
-      child: ListTile(
-        dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color:
-                isSelected ? location.color : location.color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow:
-                isSelected
-                    ? [
-                      BoxShadow(
-                        color: location.color.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                    : null,
-          ),
-          child: Icon(
-            location.icon,
-            color: isSelected ? Colors.white : location.color,
-            size: 18,
-          ),
-        ),
-        title: Text(
-          location.name,
-          style: TextStyle(
-            color: isSelected ? location.color : AppColors.textPrimary,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            fontSize: 13,
-          ),
-        ),
-        trailing:
-            isSelected
-                ? Icon(Icons.check_circle, color: location.color, size: 16)
-                : null,
-        onTap: () => widget.onLocationChanged(location.name),
-      ),
-    );
-  }
-
-  Widget _buildTableStatusFilters() {
-    final statusFilters = [
-      _StatusFilter('All Tables', 'all', Icons.table_restaurant, Colors.grey),
-      _StatusFilter(
-        'Available',
-        'available',
-        Icons.check_circle,
-        const Color(0xFF10B981),
-      ),
-      _StatusFilter(
-        'Occupied',
-        'occupied',
-        Icons.people,
-        const Color(0xFFEF4444),
-      ),
-      _StatusFilter(
-        'Reserved',
-        'reserved',
-        Icons.event,
-        const Color(0xFFF59E0B),
-      ),
-      _StatusFilter(
-        'KOT Generated',
-        'kot_generated',
-        Icons.receipt,
-        const Color(0xFF8B5CF6),
-      ),
-      _StatusFilter(
-        'Bill Generated',
-        'bill_generated',
-        Icons.payment,
-        const Color(0xFF3B82F6),
-      ),
-      _StatusFilter(
-        'Bill Settled',
-        'bill_settled',
-        Icons.check_circle,
-        const Color(0xFF06B6D4),
-      ),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              Icon(Icons.filter_list, color: AppColors.primary, size: 18),
-              const SizedBox(width: 8),
-              const Text(
-                'Table Status',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        ...statusFilters.map((filter) => _buildStatusFilterTile(filter)),
-      ],
-    );
-  }
-
-  Widget _buildStatusFilterTile(_StatusFilter filter) {
-    final isSelected = widget.selectedStatusFilter == filter.value;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: isSelected ? filter.color.withOpacity(0.1) : null,
-        border:
-            isSelected
-                ? Border.all(color: filter.color.withOpacity(0.3), width: 1)
-                : null,
-      ),
-      child: ListTile(
-        dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isSelected ? filter.color : filter.color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow:
-                isSelected
-                    ? [
-                      BoxShadow(
-                        color: filter.color.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                    : null,
-          ),
-          child: Icon(
-            filter.icon,
-            color: isSelected ? Colors.white : filter.color,
-            size: 18,
-          ),
-        ),
-        title: Text(
-          filter.name,
-          style: TextStyle(
-            color: isSelected ? filter.color : AppColors.textPrimary,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            fontSize: 13,
-          ),
-        ),
-        trailing:
-            isSelected
-                ? Icon(Icons.check_circle, color: filter.color, size: 16)
-                : null,
-        onTap: () => widget.onStatusFilterChanged(filter.value),
-      ),
-    );
-  }
-
-  Widget _buildProfileSection() {
-    return Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color:
-                _isProfileExpanded ? AppColors.primary.withOpacity(0.1) : null,
-            border:
-                _isProfileExpanded
-                    ? Border.all(
-                      color: AppColors.primary.withOpacity(0.3),
-                      width: 1,
-                    )
-                    : null,
-          ),
-          child: ListTile(
-            dense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 2,
-            ),
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color:
-                    _isProfileExpanded
-                        ? AppColors.primary
-                        : AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                boxShadow:
-                    _isProfileExpanded
-                        ? [
-                          BoxShadow(
-                            color: AppColors.primary.withOpacity(0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                        : null,
-              ),
-              child: Icon(
-                Icons.person,
-                color: _isProfileExpanded ? Colors.white : AppColors.primary,
-                size: 18,
-              ),
-            ),
-            title: Text(
-              'Profile',
-              style: TextStyle(
-                color:
-                    _isProfileExpanded
-                        ? AppColors.primary
-                        : AppColors.textPrimary,
-                fontWeight:
-                    _isProfileExpanded ? FontWeight.w600 : FontWeight.normal,
-                fontSize: 13,
-              ),
-            ),
-            trailing: Icon(
-              _isProfileExpanded ? Icons.expand_less : Icons.expand_more,
-              color: _isProfileExpanded ? AppColors.primary : Colors.grey[400],
-              size: 20,
-            ),
-            onTap: () {
-              setState(() {
-                _isProfileExpanded = !_isProfileExpanded;
-              });
-            },
-          ),
-        ),
-        if (_isProfileExpanded) _buildProfileSubMenu(),
-      ],
-    );
-  }
-
-  Widget _buildProfileSubMenu() {
-    return Container(
-      margin: const EdgeInsets.only(left: 24, right: 8, top: 4),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withOpacity(0.2)),
-      ),
-      child: Column(
-        children: [
-          _buildProfileSubItem('View Profile', Icons.person_outline, () {
-            Navigator.pop(context); // Close drawer
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ProfileView()),
-            );
-          }),
-          _buildProfileSubItem('Settings', Icons.settings_outlined, () {
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Settings coming soon!')),
-            );
-          }),
-          _buildProfileSubItem('Performance', Icons.analytics_outlined, () {
-            Navigator.pop(context);
-            // Navigate to Reports tab
-            context.read<NavigationProvider>().navigateToReports();
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfileSubItem(String title, IconData icon, VoidCallback onTap) {
-    return ListTile(
-      dense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-      leading: Icon(icon, color: Colors.grey[600], size: 16),
-      title: Text(
-        title,
-        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-      ),
-      onTap: onTap,
-    );
-  }
-
-  Widget _buildOrdersSection() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(
-            Icons.receipt_long,
-            color: AppColors.primary,
-            size: 18,
-          ),
-        ),
-        title: const Text(
-          'Orders Management',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-        subtitle: const Text(
-          'View all orders',
-          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-        ),
-        onTap: () {
-          Navigator.pop(context); // Close drawer
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const OrdersManagementView(),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildSignOutSection() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child: ListTile(
-        dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(Icons.logout, color: Colors.red, size: 18),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _performLogout() async {
-    try {
-      // Show loading dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder:
-            (context) => const AlertDialog(
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Signing out...'),
-                ],
-              ),
-            ),
-      );
-
-      // Perform logout operations
-      final authProvider = context.read<AuthProvider>();
-      await authProvider.logout(); // Clear tokens, user data, etc.
-
-      // Small delay for UX
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      if (mounted) {
-        // Close loading dialog first
-        Navigator.of(context, rootNavigator: true).pop();
-
-        // COMPLETE RESET: Navigate to splash/login and remove ALL routes
-        Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
-          '/', // This should go to your splash screen, then login
-          (Route<dynamic> route) => false, // Remove ALL previous routes
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        // Close loading dialog on error
-        Navigator.of(context, rootNavigator: true).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Sign out failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+  Color _getStatusColor(TableStatus status) {
+    switch (status) {
+      case TableStatus.available:
+        return Colors.green;
+      case TableStatus.occupied:
+        return Colors.red;
+      case TableStatus.kotGenerated:
+        return Colors.purple;
+      case TableStatus.billGenerated:
+        return Colors.blue;
+      case TableStatus.billSettled:
+        return Colors.teal;
+      case TableStatus.reserved:
+        return Colors.orange;
+      case TableStatus.outOfOrder:
+        return Colors.grey;
     }
   }
-}
 
-class _StatusFilter {
-  final String name;
-  final String value;
-  final IconData icon;
-  final Color color;
+  String _getStatusDisplayName(TableStatus status) {
+    switch (status) {
+      case TableStatus.available:
+        return 'Available';
+      case TableStatus.occupied:
+        return 'Occupied';
+      case TableStatus.kotGenerated:
+        return 'KOT Generated';
+      case TableStatus.billGenerated:
+        return 'Bill Generated';
+      case TableStatus.billSettled:
+        return 'Bill Settled';
+      case TableStatus.reserved:
+        return 'Reserved';
+      case TableStatus.outOfOrder:
+        return 'Out of Order';
+    }
+  }
 
-  _StatusFilter(this.name, this.value, this.icon, this.color);
+  String _getStatusFilterDisplayName(String filter) {
+    switch (filter.toLowerCase()) {
+      case 'all':
+        return 'All Statuses';
+      case 'available':
+        return 'Available';
+      case 'occupied':
+        return 'Occupied';
+      case 'kot_generated':
+      case 'kotgenerated':
+        return 'KOT Generated';
+      case 'bill_generated':
+      case 'billgenerated':
+        return 'Bill Generated';
+      case 'bill_settled':
+      case 'billsettled':
+        return 'Bill Settled';
+      case 'reserved':
+        return 'Reserved';
+      case 'out_of_order':
+      case 'outoforder':
+        return 'Out of Order';
+      default:
+        return filter;
+    }
+  }
+
+  String _getFilterValue(TableStatus status) {
+    switch (status) {
+      case TableStatus.available:
+        return 'available';
+      case TableStatus.occupied:
+        return 'occupied';
+      case TableStatus.kotGenerated:
+        return 'kot_generated';
+      case TableStatus.billGenerated:
+        return 'bill_generated';
+      case TableStatus.billSettled:
+        return 'bill_settled';
+      case TableStatus.reserved:
+        return 'reserved';
+      case TableStatus.outOfOrder:
+        return 'out_of_order';
+    }
+  }
+
+  IconData _getLocationIcon() {
+    if (selectedLocation.isEmpty) return Icons.all_inclusive;
+
+    // Safe access to locations list
+    if (locations.isNotEmpty) {
+      try {
+        final location = locations.firstWhere(
+          (loc) => loc.name == selectedLocation,
+          orElse:
+              () => LocationSection('Default', Icons.location_on, Colors.grey),
+        );
+        return location.icon;
+      } catch (e) {
+        // If firstWhere fails, return default icon
+        return Icons.location_on;
+      }
+    }
+
+    return Icons.location_on;
+  }
 }

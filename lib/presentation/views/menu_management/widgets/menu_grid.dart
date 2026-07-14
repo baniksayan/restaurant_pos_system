@@ -84,65 +84,34 @@ class MenuGrid extends StatelessWidget {
 
         return Padding(
           padding: const EdgeInsets.all(16),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // Calculate responsive grid
-              final screenWidth = constraints.maxWidth;
-              int crossAxisCount;
-              double childAspectRatio;
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 185,
+              mainAxisExtent: 245,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: filteredItems.length,
+            itemBuilder: (context, index) {
+              final item = filteredItems[index];
+              final itemId = item.productId ?? '';
 
-              if (screenWidth > 1200) {
-                // Very large screens (large tablets, desktop)
-                crossAxisCount = 6;
-                childAspectRatio = 0.8;
-              } else if (screenWidth > 900) {
-                // Large tablets
-                crossAxisCount = 4;
-                childAspectRatio = 0.85;
-              } else if (screenWidth > 600) {
-                // Medium tablets
-                crossAxisCount = 3;
-                childAspectRatio = 0.9;
-              } else if (screenWidth > 400) {
-                // Small tablets / large phones
-                crossAxisCount = 2;
-                childAspectRatio = 1.0;
-              } else {
-                // Small phones
-                crossAxisCount = 1;
-                childAspectRatio = 1.2;
-              }
-
-              return GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  childAspectRatio: childAspectRatio,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                ),
-                itemCount: filteredItems.length,
-                itemBuilder: (context, index) {
-                  final item = filteredItems[index];
-                  final itemId = item.productId ?? '';
-
-                  return MenuItemCard(
-                    id: itemId,
-                    canOrder: canOrder,
-                    name: item.productName ?? '',
-                    imageUrl: item.imageThumbUrl,
-                    //"https://assetrmsfiles.uvanij.com/Dev/Company/D02B4B68-B244-462D-B564-CD2848D19F0F/images/RMS/Reciepe/ApplePi-àlaMode_16092025114648.jpg",
-                    description: item.description ?? '',
-                    price: item.productPrice?.toDouble() ?? 0.0,
-                    quantity: cartProvider.getItemQuantity(
-                      itemId,
-                    ), // Use AnimatedCartProvider
-                    cid: item.categoryId ?? '',
-                    cname: item.categoryName ?? '',
-                    onAdd: () => _addToCart(context, item, cartProvider),
-                    onRemove: () => _removeFromCart(itemId, cartProvider),
-                    onAddToCart: onAddToCart,
-                    isVeg: item.pureVeg ?? false,
-                  );
+              return MenuItemCard(
+                id: itemId,
+                canOrder: canOrder,
+                name: item.productName ?? '',
+                imageUrl: item.imageThumbUrl,
+                description: item.description ?? '',
+                price: item.productPrice?.toDouble() ?? 0.0,
+                quantity: cartProvider.getItemQuantity(itemId), // Use AnimatedCartProvider
+                cid: item.categoryId ?? '',
+                cname: item.categoryName ?? '',
+                onAdd: () => _addToCart(context, item, cartProvider),
+                onRemove: () => _removeFromCart(itemId, cartProvider),
+                onAddToCart: onAddToCart,
+                isVeg: item.pureVeg ?? false,
+                onQuantityChanged: (newQty) {
+                  _updateCartQuantity(context, item, cartProvider, newQty);
                 },
               );
             },
@@ -191,5 +160,43 @@ class MenuGrid extends StatelessWidget {
   // Helper method to remove item from cart
   void _removeFromCart(String itemId, AnimatedCartProvider cartProvider) {
     cartProvider.removeItem(itemId);
+  }
+
+  // Helper method to update item quantity directly
+  void _updateCartQuantity(
+    BuildContext context,
+    dynamic item,
+    AnimatedCartProvider cartProvider,
+    int newQty,
+  ) {
+    final navProvider = Provider.of<NavigationProvider>(context, listen: false);
+
+    // Determine table context for both table orders and phone/takeaway orders
+    String tableId = navProvider.selectedTableId ?? '';
+    String tableName = navProvider.selectedTableName ?? '';
+
+    // For phone/takeaway orders, use appropriate identifiers
+    if (tableId.isEmpty) {
+      if (navProvider.selectedOrderType == 'PhoneOrder') {
+        tableId = 'PhoneOrder';
+        tableName = 'Phone Order - ${navProvider.customerName ?? 'Customer'}';
+      } else if (navProvider.selectedOrderType == 'Takeaway') {
+        tableId = 'Takeaway';
+        tableName = 'Takeaway - ${navProvider.customerName ?? 'Customer'}';
+      }
+    }
+
+    if (tableId.isNotEmpty && tableName.isNotEmpty) {
+      cartProvider.setItemQuantity(
+        item.productId ?? '',
+        newQty,
+        item.productName ?? '',
+        (item.productPrice?.toDouble() ?? 0.0),
+        tableId,
+        tableName,
+        categoryId: item.categoryId ?? '',
+        categoryName: item.categoryName ?? '',
+      );
+    }
   }
 }

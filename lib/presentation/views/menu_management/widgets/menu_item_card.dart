@@ -21,6 +21,7 @@ class MenuItemCard extends StatefulWidget {
   final Function(String, String, double, String, String, Offset)? onAddToCart;
   final VoidCallback? onAdd;
   final VoidCallback? onRemove;
+  final Function(int)? onQuantityChanged;
 
   const MenuItemCard({
     super.key,
@@ -37,6 +38,7 @@ class MenuItemCard extends StatefulWidget {
     this.onAddToCart,
     this.onAdd,
     this.onRemove,
+    this.onQuantityChanged,
   });
 
   @override
@@ -48,6 +50,7 @@ class _MenuItemCardState extends State<MenuItemCard>
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
+  late TextEditingController _quantityController;
 
   // **LOCAL STATE: Track if this item was tapped (shows blur immediately)**
   bool _locallySelected = false;
@@ -72,6 +75,9 @@ class _MenuItemCardState extends State<MenuItemCard>
     // Set local state based on existing quantity
     _locallySelected = widget.quantity > 0;
 
+    final displayQuantity = widget.quantity > 0 ? widget.quantity : 1;
+    _quantityController = TextEditingController(text: displayQuantity.toString());
+
     if (_locallySelected) {
       _animationController.forward();
     }
@@ -80,6 +86,7 @@ class _MenuItemCardState extends State<MenuItemCard>
   @override
   void dispose() {
     _animationController.dispose();
+    _quantityController.dispose();
     super.dispose();
   }
 
@@ -98,6 +105,11 @@ class _MenuItemCardState extends State<MenuItemCard>
         _locallySelected = false;
       });
       _animationController.reverse();
+    }
+
+    final displayQuantity = widget.quantity > 0 ? widget.quantity : 1;
+    if (_quantityController.text != displayQuantity.toString()) {
+      _quantityController.text = displayQuantity.toString();
     }
   }
 
@@ -132,202 +144,18 @@ class _MenuItemCardState extends State<MenuItemCard>
 
   void _handleRemove() {
     _provideRemoveHapticFeedback();
-
-    if (widget.quantity <= 1) {
-      _showRemoveConfirmation();
-    } else {
-      widget.onRemove?.call();
-    }
+    widget.onRemove?.call();
   }
 
-  void _showRemoveConfirmation() {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          contentPadding: const EdgeInsets.all(20),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.remove_shopping_cart_rounded,
-                  color: Colors.red[600],
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'Remove Item?',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Remove "${widget.name}" completely from cart?',
-                style: const TextStyle(fontSize: 15),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange[200]!),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.visibility_off,
-                      color: Colors.orange[700],
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Selection highlight will be removed',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.orange[700],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        width: 45,
-                        height: 45,
-                        color: Colors.grey[200],
-                        child:
-                            widget.imageUrl != null
-                                ? CachedNetworkImage(
-                                  imageUrl: widget.imageUrl!,
-                                  imageBuilder:
-                                      (context, imageProvider) => Container(
-                                        width: 45,
-                                        height: 45,
-                                        decoration: BoxDecoration(
-                                          image: DecorationImage(
-                                            image: imageProvider,
-                                            fit: BoxFit.cover,
-                                          ),
-                                        ),
-                                      ),
-                                  placeholder:
-                                      (context, url) => Center(
-                                        child: SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: AppColors.primary,
-                                          ),
-                                        ),
-                                      ),
-                                  errorWidget:
-                                      (context, url, error) => const Icon(
-                                        Icons.restaurant_menu,
-                                        size: 20,
-                                      ),
-                                )
-                                : const Icon(Icons.restaurant_menu, size: 20),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${widget.price.toInt()} • Qty: ${widget.quantity}',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Cancel',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                HapticFeedback.heavyImpact();
-
-                // **RESET LOCAL STATE when completely removing**
-                setState(() {
-                  _locallySelected = false;
-                });
-
-                widget.onRemove?.call();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[500],
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                elevation: 0,
-              ),
-              child: const Text('Remove Completely'),
-            ),
-          ],
-        );
-      },
-    );
+  void _handleQuantityChanged(String val) {
+    if (val.isEmpty) {
+      widget.onQuantityChanged?.call(0);
+      return;
+    }
+    final newQty = int.tryParse(val);
+    if (newQty != null) {
+      widget.onQuantityChanged?.call(newQty);
+    }
   }
 
   void _addToCartWithAnimation() {
@@ -354,27 +182,22 @@ class _MenuItemCardState extends State<MenuItemCard>
     // **SHOW BLUR: If locally selected OR has quantity from external state**
     final showMemoryBlur = _locallySelected || widget.quantity > 0;
 
-    // **DEBUG: Print state for troubleshooting**
-    print(
-      'MenuItemCard ${widget.name}: quantity=${widget.quantity}, _locallySelected=$_locallySelected, showBlur=$showMemoryBlur',
-    );
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border:
             showMemoryBlur
-                ? Border.all(color: AppColors.primary, width: 2.5)
+                ? Border.all(color: AppColors.primary, width: 2.0)
                 : Border.all(color: Colors.grey[200]!, width: 1),
         boxShadow: [
           BoxShadow(
             color:
                 showMemoryBlur
-                    ? AppColors.primary.withOpacity(0.2)
+                    ? AppColors.primary.withOpacity(0.15)
                     : Colors.grey.withOpacity(0.08),
-            blurRadius: showMemoryBlur ? 15.0 : 6.0,
-            offset: showMemoryBlur ? const Offset(0, 4) : const Offset(0, 2),
+            blurRadius: showMemoryBlur ? 12.0 : 6.0,
+            offset: showMemoryBlur ? const Offset(0, 3) : const Offset(0, 2),
           ),
         ],
       ),
@@ -401,19 +224,19 @@ class _MenuItemCardState extends State<MenuItemCard>
                     child:
                         widget.imageUrl != null
                             ? ClipRRect(
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(16),
-                                topRight: Radius.circular(16),
-                              ),
-                              child: _buildMenuItemImage(widget.imageUrl!),
-                            )
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(16),
+                                  topRight: Radius.circular(16),
+                                ),
+                                child: _buildMenuItemImage(widget.imageUrl!),
+                              )
                             : Center(
-                              child: Icon(
-                                Icons.restaurant_menu,
-                                size: 40,
-                                color: Colors.grey[400],
+                                child: Icon(
+                                  Icons.restaurant_menu,
+                                  size: 40,
+                                  color: Colors.grey[400],
+                                ),
                               ),
-                            ),
                   ),
                 ),
 
@@ -431,9 +254,7 @@ class _MenuItemCardState extends State<MenuItemCard>
                         filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(
-                              0.3,
-                            ), // **EVEN MORE VISIBLE**
+                            color: AppColors.primary.withOpacity(0.25),
                             borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(16),
                               topRight: Radius.circular(16),
@@ -458,65 +279,12 @@ class _MenuItemCardState extends State<MenuItemCard>
                     ),
                   ),
 
-                // **VISUAL INDICATORS**
-                if (showMemoryBlur)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.green[600],
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.green.withOpacity(0.4),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.check_circle,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                    ),
-                  ),
-
+                // **VISUAL INDICATORS - animated TAP badge**
                 if (!showMemoryBlur && widget.canOrder)
-                  Positioned(
+                  const Positioned(
                     top: 8,
                     right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withOpacity(0.3),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.touch_app, color: Colors.white, size: 12),
-                          SizedBox(width: 4),
-                          Text(
-                            'TAP',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    child: _SubtleTappingBadge(),
                   ),
               ],
             ),
@@ -526,14 +294,14 @@ class _MenuItemCardState extends State<MenuItemCard>
           Expanded(
             flex: 2,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     widget.name,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13.5,
                       fontWeight: FontWeight.bold,
                       color:
                           showMemoryBlur
@@ -543,14 +311,14 @@ class _MenuItemCardState extends State<MenuItemCard>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: 2),
                   if (widget.description != null &&
                       widget.description!.trim().isNotEmpty) ...[
-                    const SizedBox(height: 4),
                     Expanded(
                       child: Text(
                         widget.description!,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10.5,
                           color:
                               showMemoryBlur
                                   ? AppColors.primary.withOpacity(0.7)
@@ -560,7 +328,7 @@ class _MenuItemCardState extends State<MenuItemCard>
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                   ] else ...[
                     const Spacer(),
                   ],
@@ -570,48 +338,11 @@ class _MenuItemCardState extends State<MenuItemCard>
                       Text(
                         '${CurrencyConstants.symbol}${widget.price.toInt()}',
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,
                         ),
                       ),
-                      if (showMemoryBlur)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.green[600],
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.green.withOpacity(0.2),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.bookmark,
-                                color: Colors.white,
-                                size: 10,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'SELECTED',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                     ],
                   ),
                 ],
@@ -624,22 +355,19 @@ class _MenuItemCardState extends State<MenuItemCard>
   }
 
   Widget _buildQuantityControls() {
-    // **USE ACTUAL QUANTITY or 1 if locally selected but not yet updated**
-    final displayQuantity = widget.quantity > 0 ? widget.quantity : 1;
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -649,20 +377,35 @@ class _MenuItemCardState extends State<MenuItemCard>
             color: Colors.red[600]!,
           ),
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)],
+                colors: [AppColors.primary, AppColors.primary.withOpacity(0.85)],
               ),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: Text(
-              displayQuantity.toString(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+            child: SizedBox(
+              width: 28,
+              child: TextField(
+                controller: _quantityController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+                cursorColor: Colors.white,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: 2),
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
+                onChanged: _handleQuantityChanged,
               ),
             ),
           ),
@@ -684,19 +427,12 @@ class _MenuItemCardState extends State<MenuItemCard>
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(25),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.3),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          shape: BoxShape.circle,
         ),
-        child: Icon(icon, color: Colors.white, size: 18),
+        child: Icon(icon, color: Colors.white, size: 14),
       ),
     );
   }
@@ -713,7 +449,7 @@ class _MenuItemCardState extends State<MenuItemCard>
       placeholder:
           (context, url) => Container(
             color: Colors.grey[100],
-            child: Center(
+            child: const Center(
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: AppColors.primary,
@@ -780,22 +516,22 @@ class _MenuItemCardState extends State<MenuItemCard>
               child:
                   widget.isVeg
                       ? Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF4CAF50),
-                          shape: BoxShape.circle,
-                        ),
-                      )
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF4CAF50),
+                            shape: BoxShape.circle,
+                          ),
+                        )
                       : SizedBox(
-                        width: 8,
-                        height: 8,
-                        child: CustomPaint(
-                          painter: TrianglePainter(
-                            color: const Color(0xFF8D6E63),
+                          width: 8,
+                          height: 8,
+                          child: CustomPaint(
+                            painter: TrianglePainter(
+                              color: const Color(0xFF8D6E63),
+                            ),
                           ),
                         ),
-                      ),
             ),
           ],
         ),
@@ -827,4 +563,75 @@ class TrianglePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+class _SubtleTappingBadge extends StatefulWidget {
+  const _SubtleTappingBadge();
+
+  @override
+  State<_SubtleTappingBadge> createState() => _SubtleTappingBadgeState();
+}
+
+class _SubtleTappingBadgeState extends State<_SubtleTappingBadge>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+
+    _scaleAnimation = Tween<double>(begin: 0.92, end: 1.08).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.35),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.touch_app_rounded, color: Colors.white, size: 12),
+            SizedBox(width: 4),
+            Text(
+              'TAP',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 9.5,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

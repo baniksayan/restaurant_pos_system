@@ -289,27 +289,23 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
         builder:
             (BuildContext context) => TableActionDialog(
               table: table,
-              onOccupy: () async {
-                // API-driven table occupation
-                final success = await tableProvider.createOrderForTable(
+              onOccupy: () {
+                // Navigate to the menu instantly for responsive UI
+                context.read<NavigationProvider>().selectTable(
                   table.id,
                   table.name,
+                  dashboardProvider.selectedLocation,
                 );
-                if (success) {
-                  context.read<NavigationProvider>().selectTable(
-                    table.id,
-                    table.name,
-                    dashboardProvider.selectedLocation,
-                  );
-                  // Removed green SnackBar per request: occupancy success previously shown in green
-                  if (kDebugMode) {
-                    print(
-                      '[Dashboard] Table ${table.name} successfully occupied',
-                    );
+                
+                // Trigger API-driven table occupation in the background
+                tableProvider.createOrderForTable(
+                  table.id,
+                  table.name,
+                ).then((success) {
+                  if (!success) {
+                    _showSnackBar('Failed to occupy ${table.name} on server', Colors.red);
                   }
-                } else {
-                  _showSnackBar('Failed to occupy ${table.name}', Colors.red);
-                }
+                });
               },
               onReserve: () => _showReservationPage(table, tableProvider),
             ),

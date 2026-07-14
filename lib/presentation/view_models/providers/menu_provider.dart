@@ -14,12 +14,15 @@ class MenuProvider with ChangeNotifier {
 
   String _searchQuery = '';
   String _selectedCategory = 'All';
+  String _selectedDietaryFilter = 'All'; // 'All', 'Veg', 'Non-Veg'
 
   // Multi-table state management (cart removed - handled by AnimatedCartProvider)
   final Map<String, String> _tableWiseSearchQuery =
       {}; // Table ID -> Search Query
   final Map<String, String> _tableWiseCategory =
       {}; // Table ID -> Selected Category
+  final Map<String, String> _tableWiseDietaryFilter =
+      {}; // Table ID -> Dietary Filter ('All', 'Veg', 'Non-Veg')
   String? _currentTableId;
 
   bool _isLoading = false;
@@ -37,6 +40,10 @@ class MenuProvider with ChangeNotifier {
       _currentTableId != null
           ? (_tableWiseCategory[_currentTableId] ?? 'All')
           : _selectedCategory;
+  String get selectedDietaryFilter =>
+      _currentTableId != null
+          ? (_tableWiseDietaryFilter[_currentTableId] ?? 'All')
+          : _selectedDietaryFilter;
   Map<String, int> get cart =>
       const <
         String,
@@ -57,6 +64,7 @@ class MenuProvider with ChangeNotifier {
   void clearTableData(String tableId) {
     _tableWiseSearchQuery.remove(tableId);
     _tableWiseCategory.remove(tableId);
+    _tableWiseDietaryFilter.remove(tableId);
     notifyListeners();
   }
 
@@ -88,6 +96,12 @@ class MenuProvider with ChangeNotifier {
             }
             return false;
           }).toList();
+    }
+
+    // Filter by dietary preference
+    if (selectedDietaryFilter != 'All') {
+      final isVegFilter = selectedDietaryFilter == 'Veg';
+      filtered = filtered.where((item) => (item.pureVeg ?? false) == isVegFilter).toList();
     }
 
     // Filter by search query (use getter to support table-wise search)
@@ -247,6 +261,16 @@ class MenuProvider with ChangeNotifier {
       _tableWiseCategory[_currentTableId!] = category;
     } else {
       _selectedCategory = category;
+    }
+    notifyListeners();
+  }
+
+  // Select dietary filter
+  void selectDietaryFilter(String filter) {
+    if (_currentTableId != null) {
+      _tableWiseDietaryFilter[_currentTableId!] = filter;
+    } else {
+      _selectedDietaryFilter = filter;
     }
     notifyListeners();
   }

@@ -25,13 +25,63 @@ class _MainNavigationState extends State<MainNavigation> {
   final GlobalKey<CartAnimationOverlayState> _overlayKey =
       GlobalKey<CartAnimationOverlayState>();
 
+  late PageController _pageController;
+  NavigationProvider? _navProvider;
+
   @override
   void initState() {
     super.initState();
+    _pageController = PageController();
     // Check if we need to auto-select a table and navigate to menu
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handleAutoTableSelection();
+
+      // Jump page controller to initial index
+      final navProvider = Provider.of<NavigationProvider>(
+        context,
+        listen: false,
+      );
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(navProvider.currentIndex);
+      }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final navProvider = Provider.of<NavigationProvider>(context, listen: false);
+    if (_navProvider != navProvider) {
+      _navProvider?.removeListener(_onNavProviderChanged);
+      _navProvider = navProvider;
+      _navProvider?.addListener(_onNavProviderChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    _navProvider?.removeListener(_onNavProviderChanged);
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onNavProviderChanged() {
+    if (_navProvider != null && _pageController.hasClients) {
+      final int targetIndex = _navProvider!.currentIndex;
+      final int currentPage = _pageController.page?.round() ?? 0;
+      if (currentPage != targetIndex) {
+        // If moving to or from Reports (index 3), jump instantly to avoid layout glitches
+        if (targetIndex == 3 || currentPage == 3) {
+          _pageController.jumpToPage(targetIndex);
+        } else {
+          _pageController.animateToPage(
+            targetIndex,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+      }
+    }
   }
 
   void _handleAutoTableSelection() {
@@ -70,11 +120,6 @@ class _MainNavigationState extends State<MainNavigation> {
       label: 'Cart',
       activeColor: Colors.green,
     ),
-    // NavigationItem(
-    //   icon: Icons.analytics,
-    //   label: 'Reports',
-    //   activeColor: Colors.red,
-    // ),
   ];
 
   void _handleAddToCart(
@@ -150,8 +195,17 @@ class _MainNavigationState extends State<MainNavigation> {
           return Scaffold(
             body: CartAnimationOverlay(
               key: _overlayKey,
-              child: IndexedStack(
-                index: navProvider.currentIndex,
+              child: PageView(
+                controller: _pageController,
+                physics:
+                    navProvider.currentIndex == 3
+                        ? const NeverScrollableScrollPhysics()
+                        : const ClampingScrollPhysics(),
+                onPageChanged: (index) {
+                  if (navProvider.currentIndex != index) {
+                    navProvider.navigateToIndex(index);
+                  }
+                },
                 children: [
                   // Tables Tab
                   WaiterDashboardView(
@@ -184,8 +238,7 @@ class _MainNavigationState extends State<MainNavigation> {
                             : null),
                     selectedLocation: navProvider.selectedLocation,
                   ),
-                  // Reports Tab (moved from index 4 to index 3)
-                  const ReportsView(),
+                  if (navProvider.currentIndex == 3) const ReportsView(),
                 ],
               ),
             ),
@@ -206,216 +259,187 @@ class _MainNavigationState extends State<MainNavigation> {
     return Consumer<AnimatedCartProvider>(
       builder: (context, cartProvider, _) {
         return Container(
-          height: 75,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 15,
-                offset: const Offset(0, -3),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              // Inactive icons row
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: 55,
-                child: Row(
-                  children: List.generate(
-                    _navigationItems.length,
-                    (index) => Expanded(
-                      child: GestureDetector(
-                        onTap: () => navProvider.navigateToIndex(index),
-                        child: Container(
-                          color: Colors.transparent,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  Icon(
-                                    _navigationItems[index].icon,
-                                    size:
-                                        navProvider.currentIndex == index
-                                            ? 0
-                                            : 20,
-                                    color:
-                                        navProvider.currentIndex == index
-                                            ? Colors.transparent
-                                            : Colors.grey[600],
-                                  ),
-                                  if (index == 2 && // Cart tab
-                                      cartProvider.totalItems > 0 &&
-                                      navProvider.currentIndex != 2)
-                                    Positioned(
-                                      right: -8,
-                                      top: -8,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          gradient: const LinearGradient(
-                                            colors: [
-                                              Color(0xFFFF6B6B),
-                                              Color(0xFFFF8E53),
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: const Color(
-                                                0xFFFF6B6B,
-                                              ).withOpacity(0.4),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ],
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: 2,
-                                          ),
-                                        ),
-                                        constraints: const BoxConstraints(
-                                          minWidth: 20,
-                                          minHeight: 20,
-                                        ),
-                                        child: Text(
-                                          '${cartProvider.totalItems > 99 ? '99+' : cartProvider.totalItems}',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            height: 1.0,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _navigationItems[index].label,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight:
-                                      navProvider.currentIndex == index
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                  color:
-                                      navProvider.currentIndex == index
-                                          ? _navigationItems[index].activeColor
-                                          : Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+          color: Colors.white,
+          child: SafeArea(
+            top: false,
+            child: Container(
+              height: 68,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
                   ),
+                ],
+                border: Border(
+                  top: BorderSide(color: Colors.grey[200]!, width: 1),
                 ),
               ),
-              // Active/floating tab
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                left:
-                    navProvider.currentIndex < _navigationItems.length
-                        ? (navProvider.currentIndex *
-                                MediaQuery.of(context).size.width /
-                                _navigationItems.length) +
-                            (MediaQuery.of(context).size.width /
-                                _navigationItems.length /
-                                2) -
-                            25
-                        : -100.0, // Move offscreen if active tab is out of bottom bar range
-                top: 8,
-                child:
-                    navProvider.currentIndex < _navigationItems.length
-                        ? _buildFloatingActiveTab(cartProvider, navProvider)
-                        : const SizedBox.shrink(),
+              child: Row(
+                children: List.generate(_navigationItems.length, (index) {
+                  final bool isSelected = index == navProvider.currentIndex;
+                  final item = _navigationItems[index];
+                  return Expanded(
+                    child: _NavBarItem(
+                      item: item,
+                      isSelected: isSelected,
+                      totalCartItems: cartProvider.totalItems,
+                      onTap: () {
+                        if (!isSelected) {
+                          HapticFeedback.selectionClick();
+                          navProvider.navigateToIndex(index);
+                        }
+                      },
+                    ),
+                  );
+                }),
               ),
-            ],
+            ),
           ),
         );
       },
     );
   }
+}
 
-  Widget _buildFloatingActiveTab(
-    AnimatedCartProvider cartProvider,
-    NavigationProvider navProvider,
-  ) {
-    final activeItem = _navigationItems[navProvider.currentIndex];
+class _NavBarItem extends StatelessWidget {
+  final NavigationItem item;
+  final bool isSelected;
+  final int totalCartItems;
+  final VoidCallback onTap;
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: activeItem.activeColor,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: activeItem.activeColor.withOpacity(0.25),
-                blurRadius: 12,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Icon(activeItem.icon, color: Colors.white, size: 24),
+  const _NavBarItem({
+    required this.item,
+    required this.isSelected,
+    required this.totalCartItems,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isCart = item.icon == Icons.shopping_cart;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        padding: EdgeInsets.symmetric(horizontal: isSelected ? 16 : 0),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isSelected ? item.activeColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: item.activeColor.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                  : [],
         ),
-        if (navProvider.currentIndex == 2 && cartProvider.totalItems > 0)
-          Positioned(
-            right: -4,
-            top: -4,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFF6B6B).withOpacity(0.4),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: TweenAnimationBuilder<Color?>(
+                    duration: const Duration(milliseconds: 280),
+                    tween: ColorTween(
+                      begin: Colors.grey[500],
+                      end: isSelected ? Colors.white : Colors.grey[500],
+                    ),
+                    builder: (context, color, _) {
+                      return Icon(item.icon, color: color, size: 24);
+                    },
                   ),
-                ],
-              ),
-              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-              child: Text(
-                '${cartProvider.totalItems > 99 ? '99+' : cartProvider.totalItems}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  height: 1.0,
                 ),
-                textAlign: TextAlign.center,
-              ),
+                if (isCart && totalCartItems > 0)
+                  Positioned(
+                    right: -10,
+                    top: -10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1.5,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected ? item.activeColor : Colors.white,
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF6B6B).withOpacity(0.4),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${totalCartItems > 99 ? '99+' : totalCartItems}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.bold,
+                            height: 1.0,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-          ),
-      ],
+            AnimatedSize(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              child:
+                  isSelected
+                      ? Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 220),
+                          opacity: isSelected ? 1 : 0,
+                          child: Text(
+                            item.label,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                        ),
+                      )
+                      : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

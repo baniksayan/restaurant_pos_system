@@ -7,6 +7,7 @@ import 'package:restaurant_pos_system/presentation/view_models/providers/table_p
 import 'package:restaurant_pos_system/core/themes/app_colors.dart';
 import 'package:restaurant_pos_system/presentation/views/profile/profile_view.dart';
 import 'widgets/menu_search_bar.dart';
+import 'widgets/diet_filter_row.dart';
 import 'widgets/category_tabs.dart';
 import 'widgets/menu_grid.dart';
 import 'widgets/cart_footer.dart';
@@ -604,8 +605,8 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
                       padding: EdgeInsets.all(isTablet ? 16 : 8),
                       child: Column(
                         children: [
-                          // Search Bar - Show only when search icon is clicked
                           if (_showSearchBar) const MenuSearchBar(),
+                          const DietFilterRow(),
 
                           // Category Tabs with enhanced design
                           const CategoryTabs(),
