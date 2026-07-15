@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/themes/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../services/pdf_service.dart';
@@ -85,7 +86,7 @@ class BillSuccessDialog extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -97,7 +98,7 @@ class BillSuccessDialog extends StatelessWidget {
                     Text(
                       customerPhone!,
                       style: const TextStyle(
-                        color: Colors.blue,
+                        color: AppColors.primary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -144,7 +145,7 @@ class BillSuccessDialog extends StatelessWidget {
                       _navigateToPayment(context);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
+                      backgroundColor: AppColors.primary,
                     ),
                     child: const Text(
                       'Proceed to Pay',

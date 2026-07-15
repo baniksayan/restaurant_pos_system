@@ -34,12 +34,12 @@ class OrderSummaryCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
                   Icons.receipt_long,
-                  color: Colors.blue,
+                  color: AppColors.primary,
                   size: 28,
                 ),
               ),

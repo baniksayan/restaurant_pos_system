@@ -192,7 +192,13 @@ class _MainNavigationState extends State<MainNavigation> {
       ),
       child: Consumer<NavigationProvider>(
         builder: (context, navProvider, _) {
-          return Scaffold(
+          return PopScope(
+            canPop: navProvider.currentIndex == 0,
+            onPopInvokedWithResult: (didPop, _) {
+              if (didPop) return;
+              navProvider.navigateToIndex(0);
+            },
+            child: Scaffold(
             body: CartAnimationOverlay(
               key: _overlayKey,
               child: PageView(
@@ -246,6 +252,7 @@ class _MainNavigationState extends State<MainNavigation> {
               context,
               navProvider,
             ),
+          ),
           );
         },
       ),
@@ -286,7 +293,7 @@ class _MainNavigationState extends State<MainNavigation> {
                     child: _NavBarItem(
                       item: item,
                       isSelected: isSelected,
-                      totalCartItems: cartProvider.totalItems,
+                      totalCartItems: cartProvider.newItemsCount,
                       onTap: () {
                         if (!isSelected) {
                           HapticFeedback.selectionClick();

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/themes/app_colors.dart';
+import 'package:restaurant_pos_system/shared/widgets/layout/empty_state_widget.dart';
+import 'package:restaurant_pos_system/shared/widgets/layout/skeleton_loader.dart';
 import '../../../view_models/providers/table_provider.dart';
 
 class DashboardLoadingState extends StatelessWidget {
@@ -8,18 +10,67 @@ class DashboardLoadingState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: const Center(
+      backgroundColor: AppColors.backgroundEnd,
+      body: SafeArea(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation(AppColors.primary),
+            // Skeleton Header
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  const SkeletonLoader.circular(size: 40),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SkeletonLoader.rectangular(width: 120, height: 16),
+                      const SizedBox(height: 6),
+                      const SkeletonLoader.rectangular(width: 80, height: 12),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            SizedBox(height: 16),
-            Text(
-              'Loading tables...',
-              style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+            const SizedBox(height: 16),
+            // Grid of Skeleton Cards
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: 6,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 1.2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                itemBuilder: (context, index) {
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const SkeletonLoader.circular(size: 24),
+                            const SkeletonLoader.rectangular(width: 50, height: 12),
+                          ],
+                        ),
+                        const SkeletonLoader.rectangular(width: 100, height: 20),
+                        const SkeletonLoader.rectangular(width: 70, height: 12),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -36,54 +87,27 @@ class DashboardErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.backgroundEnd,
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+        child: EmptyStateWidget(
+          icon: Icons.error_outline_rounded,
+          title: 'Error Loading Tables',
+          description: tableProvider.error ?? 'Unknown error occurred',
+          action: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(
-                'Error Loading Tables',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                ),
+              OutlinedButton(
+                onPressed: () => tableProvider.clearError(),
+                child: const Text('Clear Error'),
               ),
-              const SizedBox(height: 8),
-              Text(
-                tableProvider.error ?? 'Unknown error occurred',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => tableProvider.clearError(),
-                    child: const Text('Clear Error'),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      tableProvider.clearError();
-                      // tableProvider.initializeTables();
-                      tableProvider.fetchTables();
-                    },
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: () {
+                  tableProvider.clearError();
+                  tableProvider.fetchTables();
+                },
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Retry'),
               ),
             ],
           ),
@@ -106,38 +130,17 @@ class DashboardEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.table_restaurant_outlined, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text(
-              'No Tables Available',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'No tables found for $selectedLocation',
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: onChangeLocation,
-              icon: const Icon(Icons.location_on),
-              label: const Text('Change Location'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-              ),
-            ),
-          ],
+      child: EmptyStateWidget(
+        icon: Icons.table_restaurant_outlined,
+        title: 'No Tables Found',
+        description: 'We couldn\'t find any tables registered for $selectedLocation.',
+        action: ElevatedButton.icon(
+          onPressed: onChangeLocation,
+          icon: const Icon(Icons.location_on, size: 16),
+          label: const Text('Change Location'),
         ),
       ),
     );
   }
 }
+

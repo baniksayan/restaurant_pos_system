@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/currency_constants.dart';
+import '../../../../core/themes/app_colors.dart';
 
 class BillDetailsCard extends StatelessWidget {
   final double subtotal;
@@ -68,7 +69,7 @@ class BillDetailsCard extends StatelessWidget {
           style: TextStyle(
             fontSize: isTotal ? 18 : 14,
             fontWeight: FontWeight.bold,
-            color: isTotal ? Colors.blue : Colors.black,
+            color: isTotal ? AppColors.primary : Colors.black,
           ),
         ),
       ],

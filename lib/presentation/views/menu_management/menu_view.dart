@@ -7,10 +7,10 @@ import '../../view_models/providers/navigation_provider.dart';
 import '../../view_models/providers/animated_cart_provider.dart';
 import 'widgets/menu_header.dart';
 import 'widgets/menu_search_bar.dart';
-import 'widgets/diet_filter_row.dart';
 import 'widgets/category_tabs.dart';
 import 'widgets/menu_grid.dart';
 import 'widgets/cart_footer.dart';
+import '../../../../shared/widgets/layout/premium_refresh_indicator.dart';
 
 class MenuView extends StatefulWidget {
   final String? selectedTableId;
@@ -142,13 +142,42 @@ class _MenuViewState extends State<MenuView> {
                       selectedLocation: widget.selectedLocation,
                       onPrintKOT: _printKOT,
                     ),
-                    const MenuSearchBar(),
-                    const DietFilterRow(),
-                    const CategoryTabs(),
                     Expanded(
-                      child: MenuGrid(
-                        canOrder: canOrder,
-                        onAddToCart: widget.onAddToCart,
+                      child: NestedScrollView(
+                        headerSliverBuilder: (context, innerBoxIsScrolled) {
+                          return [
+                             SliverAppBar(
+                              floating: true,
+                              snap: true,
+                              pinned: false,
+                              elevation: 0,
+                              backgroundColor: Colors.grey[50],
+                              automaticallyImplyLeading: false,
+                              toolbarHeight: 140,
+                              flexibleSpace: SafeArea(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    MenuSearchBar(),
+                                    CategoryTabs(),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ];
+                        },
+                        body: PremiumRefreshIndicator(
+                          onRefresh: () async {
+                            final outletId = HiveService.getOutletId();
+                            if (outletId != null && outletId > 0) {
+                              await menuProvider.loadMenuData(outletId: outletId);
+                            }
+                          },
+                          child: MenuGrid(
+                            canOrder: canOrder,
+                            onAddToCart: widget.onAddToCart,
+                          ),
+                        ),
                       ),
                     ),
                     if (canOrder && cartProvider.totalItems > 0)

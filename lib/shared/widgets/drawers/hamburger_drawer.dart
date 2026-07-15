@@ -98,32 +98,34 @@ class LocationHeader extends StatelessWidget {
         dashboardProvider.changeStatusFilter(status);
       },
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 6,
-      offset: const Offset(0, 40),
+      color: Colors.white,
+      shadowColor: Colors.black.withOpacity(0.08),
+      elevation: 8,
+      offset: const Offset(0, 38),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.grey[100],
+          color: const Color(0xFFF1F5F9), // Slate 100
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey[300]!, width: 1),
+          border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2), // Slate 200
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.filter_list, size: 16, color: Colors.grey[700]),
+            const Icon(Icons.filter_list_rounded, size: 15, color: AppColors.textSecondary),
             const SizedBox(width: 6),
             Text(
               _getStatusFilterDisplayName(
                 dashboardProvider.selectedStatusFilter,
               ),
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.arrow_drop_down, size: 16, color: Colors.grey[700]),
+            const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.textSecondary),
           ],
         ),
       ),
@@ -132,18 +134,34 @@ class LocationHeader extends StatelessWidget {
           // 'All' option
           PopupMenuItem<String>(
             value: 'all',
+            height: 38,
             child: Row(
               children: [
-                const Icon(Icons.all_inclusive, size: 16, color: Colors.grey),
-                const SizedBox(width: 8),
+                const Icon(Icons.all_inclusive_rounded, size: 16, color: AppColors.textSecondary),
+                const SizedBox(width: 10),
                 const Text(
                   'All Statuses',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    fontSize: 13.5, 
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-                const SizedBox(width: 16),
-                Text(
-                  '(${locationTables.length})',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${locationTables.length}',
+                    style: const TextStyle(
+                      fontSize: 10.5, 
+                      fontWeight: FontWeight.w700, 
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -154,6 +172,7 @@ class LocationHeader extends StatelessWidget {
             final filterVal = _getFilterValue(status);
             return PopupMenuItem<String>(
               value: filterVal,
+              height: 38,
               child: Row(
                 children: [
                   Container(
@@ -162,20 +181,39 @@ class LocationHeader extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: _getStatusColor(status),
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: _getStatusColor(status).withOpacity(0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Text(
                     _getStatusDisplayName(status),
                     style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Text(
-                    '($count)',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '$count',
+                      style: const TextStyle(
+                        fontSize: 10.5, 
+                        fontWeight: FontWeight.w700, 
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -189,17 +227,17 @@ class LocationHeader extends StatelessWidget {
   Color _getStatusColor(TableStatus status) {
     switch (status) {
       case TableStatus.available:
-        return Colors.green;
+        return const Color(0xFF10B981); // Emerald
       case TableStatus.occupied:
-        return Colors.red;
+        return const Color(0xFFEF4444); // Red
       case TableStatus.kotGenerated:
-        return Colors.purple;
+        return AppColors.kotStatus; // Purple (0xFF8B5CF6)
       case TableStatus.billGenerated:
-        return Colors.blue;
+        return const Color(0xFF3B82F6); // Blue
       case TableStatus.billSettled:
-        return Colors.teal;
+        return const Color(0xFF06B6D4); // Cyan
       case TableStatus.reserved:
-        return Colors.orange;
+        return const Color(0xFFF59E0B); // Amber
       case TableStatus.outOfOrder:
         return Colors.grey;
     }

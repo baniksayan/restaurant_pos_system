@@ -52,6 +52,13 @@ class CartProvider with ChangeNotifier {
   }
 
   void updateItemNotes(String itemId, String notes) {
+    for (final entry in _cartItems.entries) {
+      if (entry.value.id == itemId) {
+        entry.value.specialNotes = notes;
+        notifyListeners();
+        return;
+      }
+    }
     if (_cartItems.containsKey(itemId)) {
       _cartItems[itemId]!.specialNotes = notes;
       notifyListeners();

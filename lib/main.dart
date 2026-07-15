@@ -21,7 +21,6 @@ import 'presentation/view_models/providers/table_provider.dart';
 import 'presentation/view_models/providers/cart_provider.dart';
 import 'services/sync_service.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/navigation_provider.dart';
-import 'package:flutter/foundation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

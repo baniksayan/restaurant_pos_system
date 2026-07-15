@@ -47,32 +47,23 @@ class CartItemCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // ✅ REPLACED EDIT ICON with meaningful special instruction icon
-                // Show different icon based on KOT status
-                IconButton(
-                  onPressed: () async {
-                    await HapticHelper.triggerFeedback();
-                    onEdit();
-                  },
-                  icon: Icon(
-          item.isKotGenerated
-            ? Icons
-              .info_outline // Info icon for KOT'd items
-            : Icons.sticky_note_2, // Edit icon for new items
-                    size: 20,
-          color: item.isKotGenerated
-            ? AppColors.kotStatus
-            : AppColors.primary,
+                if (!item.isKotGenerated)
+                  IconButton(
+                    onPressed: () async {
+                      await HapticHelper.triggerFeedback();
+                      onEdit();
+                    },
+                    icon: const Icon(
+                      Icons.sticky_note_2,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 30,
+                      minHeight: 30,
+                    ),
+                    tooltip: 'Add special instructions',
                   ),
-                  constraints: const BoxConstraints(
-                    minWidth: 30,
-                    minHeight: 30,
-                  ),
-                  tooltip:
-                      item.isKotGenerated
-                          ? 'View KOT info'
-                          : 'Add special instructions',
-                ),
                 // ✅ DELETE ALL BUTTON for multiple items - Only show for editable items
                 if (item.quantity > 1 && item.canEdit)
                   IconButton(

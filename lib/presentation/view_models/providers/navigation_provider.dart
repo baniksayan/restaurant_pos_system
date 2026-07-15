@@ -59,6 +59,9 @@ class NavigationProvider extends ChangeNotifier {
     _selectedTableId = null;
     _selectedTableName = null;
     _selectedLocation = null;
+    _selectedOrderType = null;
+    _customerName = null;
+    _customerPhone = null;
     notifyListeners();
   }
 

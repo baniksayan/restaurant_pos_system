@@ -8,6 +8,7 @@ import 'package:restaurant_pos_system/presentation/views/reservations/table_rese
 import '../../../core/utils/haptic_helper.dart';
 import '../../../shared/widgets/drawers/hamburger_drawer.dart';
 import '../../../shared/widgets/layout/location_header.dart';
+import '../../../shared/widgets/layout/premium_refresh_indicator.dart';
 import '../../view_models/providers/dashboard_provider.dart';
 import '../../view_models/providers/navigation_provider.dart';
 import '../../view_models/providers/table_provider.dart';
@@ -120,7 +121,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                       ),
                       // Pull-to-refresh for tables area
                       Expanded(
-                        child: RefreshIndicator(
+                        child: PremiumRefreshIndicator(
                           onRefresh: () async {
                               try {
                               // Re-initialize / reload tables from provider (API)
@@ -286,6 +287,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
       showDialog(
         context: context,
         barrierDismissible: true,
+        barrierColor: Colors.transparent,
         builder:
             (BuildContext context) => TableActionDialog(
               table: table,
@@ -338,6 +340,8 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                       onPaymentCompleted: () {
                         // Refresh tables after payment completion
                         tableProvider.refreshTables();
+                        // Clear the active ordering session
+                        Provider.of<NavigationProvider>(context, listen: false).clearTableSelection();
                         _showSnackBar(
                           'Payment completed for ${table.name}',
                           Colors.green,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 
 enum NetworkStatus { 
   connected, 

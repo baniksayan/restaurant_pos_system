@@ -4,6 +4,8 @@ import '../../../view_models/providers/menu_provider.dart';
 import '../../../view_models/providers/animated_cart_provider.dart';
 import '../../../view_models/providers/navigation_provider.dart';
 import '../../../../data/local/hive_service.dart';
+import '../../../../shared/widgets/layout/empty_state_widget.dart';
+import '../../../../shared/widgets/layout/skeleton_loader.dart';
 import 'menu_item_card.dart';
 
 class MenuGrid extends StatelessWidget {
@@ -17,74 +19,116 @@ class MenuGrid extends StatelessWidget {
     return Consumer2<MenuProvider, AnimatedCartProvider>(
       builder: (context, menuProvider, cartProvider, child) {
         if (menuProvider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: GridView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 185,
+                mainAxisExtent: 245,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: 8,
+              itemBuilder: (context, index) {
+                return Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const AspectRatio(
+                        aspectRatio: 1.3,
+                        child: SkeletonLoader(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const SkeletonLoader.rectangular(width: 100, height: 16),
+                      const SizedBox(height: 6),
+                      const SkeletonLoader.rectangular(width: 60, height: 12),
+                      const Spacer(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: const [
+                          SkeletonLoader.rectangular(width: 55, height: 14),
+                          SkeletonLoader.rectangular(
+                            width: 40,
+                            height: 28,
+                            borderRadius: BorderRadius.all(Radius.circular(8)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          );
         }
 
         if (menuProvider.errorMessage != null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
-                const SizedBox(height: 16),
-                Text(
-                  menuProvider.errorMessage!,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () async {
-                    final outletId = HiveService.getOutletId();
-                    if (outletId != null && outletId > 0) {
-                      await menuProvider.loadMenuData(outletId: outletId);
-                    } else {
-                      // Show error if no outlet ID available
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'No valid outlet ID available. Cannot load menu.',
-                          ),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: constraints.maxHeight > 0 ? constraints.maxHeight : 400,
+                    child: EmptyStateWidget(
+                      icon: Icons.error_outline_rounded,
+                      title: 'Failed to Load Menu',
+                      description: menuProvider.errorMessage!,
+                      action: ElevatedButton.icon(
+                        onPressed: () async {
+                          final outletId = HiveService.getOutletId();
+                          if (outletId != null && outletId > 0) {
+                            await menuProvider.loadMenuData(outletId: outletId);
+                          }
+                        },
+                        icon: const Icon(Icons.refresh, size: 16),
+                        label: const Text('Retry'),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         }
 
         final filteredItems = menuProvider.filteredItems;
 
         if (filteredItems.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.restaurant_menu, size: 64, color: Colors.grey[400]),
-                const SizedBox(height: 16),
-                Text(
-                  'No menu items available',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                ),
-                if (menuProvider.searchQuery.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Try adjusting your search or category filter',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 14),
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: constraints.maxHeight > 0 ? constraints.maxHeight : 400,
+                    child: EmptyStateWidget(
+                      icon: Icons.restaurant_menu_rounded,
+                      title: 'No Items Available',
+                      description: menuProvider.searchQuery.isNotEmpty
+                          ? 'No menu items match "${menuProvider.searchQuery}". Try adjusting your filters or search.'
+                          : 'There are currently no items in this category.',
+                    ),
                   ),
                 ],
-              ],
-            ),
+              );
+            },
           );
         }
 
         return Padding(
           padding: const EdgeInsets.all(16),
           child: GridView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: 185,
               mainAxisExtent: 245,

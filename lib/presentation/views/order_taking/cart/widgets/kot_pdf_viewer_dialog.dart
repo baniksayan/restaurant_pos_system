@@ -220,13 +220,13 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
 
       if (mounted) {
         // Use KOT color for feedback instead of green snackbars per request
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('KOT shared successfully'),
-            backgroundColor: AppColors.tableCleaning,
-            duration: Duration(seconds: 2),
-          ),
-        );
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   const SnackBar(
+        //     content: Text('KOT shared successfully'),
+        //     backgroundColor: AppColors.tableCleaning,
+        //     duration: Duration(seconds: 2),
+        //   ),
+        // );
       }
     } catch (e) {
       if (mounted) {
@@ -259,13 +259,13 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
 
       if (mounted) {
         // Use KOT color for feedback instead of green snackbars per request
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Print dialog opened'),
-            backgroundColor: AppColors.tableCleaning,
-            duration: Duration(seconds: 2),
-          ),
-        );
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   const SnackBar(
+        //     content: Text('Print dialog opened'),
+        //     backgroundColor: AppColors.tableCleaning,
+        //     duration: Duration(seconds: 2),
+        //   ),
+        // );
       }
     } catch (e) {
       if (mounted) {

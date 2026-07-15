@@ -51,9 +51,11 @@ class _MenuItemCardState extends State<MenuItemCard>
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
   late TextEditingController _quantityController;
+  late FocusNode _focusNode;
 
   // **LOCAL STATE: Track if this item was tapped (shows blur immediately)**
   bool _locallySelected = false;
+  bool _isNameExpanded = false;
 
   @override
   void initState() {
@@ -78,6 +80,18 @@ class _MenuItemCardState extends State<MenuItemCard>
     final displayQuantity = widget.quantity > 0 ? widget.quantity : 1;
     _quantityController = TextEditingController(text: displayQuantity.toString());
 
+    _focusNode = FocusNode();
+    _focusNode.addListener(() {
+      if (!_focusNode.hasFocus) {
+        final val = _quantityController.text;
+        final qty = int.tryParse(val) ?? 0;
+        if (qty <= 0) {
+          _quantityController.text = '1';
+          widget.onQuantityChanged?.call(1);
+        }
+      }
+    });
+
     if (_locallySelected) {
       _animationController.forward();
     }
@@ -87,6 +101,7 @@ class _MenuItemCardState extends State<MenuItemCard>
   void dispose() {
     _animationController.dispose();
     _quantityController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -108,7 +123,7 @@ class _MenuItemCardState extends State<MenuItemCard>
     }
 
     final displayQuantity = widget.quantity > 0 ? widget.quantity : 1;
-    if (_quantityController.text != displayQuantity.toString()) {
+    if (_quantityController.text != displayQuantity.toString() && !_focusNode.hasFocus) {
       _quantityController.text = displayQuantity.toString();
     }
   }
@@ -138,6 +153,10 @@ class _MenuItemCardState extends State<MenuItemCard>
   }
 
   void _handleAdd() {
+    if (widget.quantity >= 99) {
+      HapticFeedback.vibrate();
+      return;
+    }
     _addToCartWithAnimation();
     _provideAddHapticFeedback();
   }
@@ -149,13 +168,220 @@ class _MenuItemCardState extends State<MenuItemCard>
 
   void _handleQuantityChanged(String val) {
     if (val.isEmpty) {
-      widget.onQuantityChanged?.call(0);
       return;
     }
-    final newQty = int.tryParse(val);
+
+    // Strip leading zeros (except single '0')
+    if (val.length > 1 && val.startsWith('0')) {
+      val = val.replaceFirst(RegExp(r'^0+'), '');
+      if (val.isEmpty) val = '1';
+      _quantityController.text = val;
+      _quantityController.selection = TextSelection.fromPosition(
+        TextPosition(offset: val.length),
+      );
+    }
+
+    var newQty = int.tryParse(val);
     if (newQty != null) {
+      if (newQty <= 0) {
+        newQty = 1;
+        _quantityController.text = '1';
+        _quantityController.selection = TextSelection.fromPosition(
+          const TextPosition(offset: 1),
+        );
+      } else if (newQty > 99) {
+        newQty = 99;
+        _quantityController.text = '99';
+        _quantityController.selection = TextSelection.fromPosition(
+          const TextPosition(offset: 2),
+        );
+      }
       widget.onQuantityChanged?.call(newQty);
     }
+  }
+
+  void _showRemoveDialog(BuildContext context) {
+    showGeneralDialog<void>(
+      context: context,
+      barrierLabel: 'Remove item dialog',
+      barrierDismissible: true,
+      barrierColor: Colors.black.withOpacity(0.08),
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        void closeDialog() {
+          if (Navigator.of(dialogContext).canPop()) {
+            Navigator.of(dialogContext).pop();
+          }
+        }
+
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: closeDialog,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 3.5, sigmaY: 3.5),
+                  child: Container(color: Colors.white.withOpacity(0.02)),
+                ),
+              ),
+              SafeArea(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: GestureDetector(
+                      onTap: () {},
+                      child: Material(
+                        color: Colors.transparent,
+                        child: Container(
+                      constraints: const BoxConstraints(maxWidth: 360),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: Colors.white.withOpacity(0.55)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.12),
+                            blurRadius: 24,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Align(
+                              alignment: Alignment.topRight,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: closeDialog,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.05),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.close_rounded,
+                                    size: 16,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Icon(
+                              Icons.delete_forever_rounded,
+                              size: 28,
+                              color: Colors.red,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Remove ${widget.name} from cart?',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'This will remove it completely.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: closeDialog,
+                                    style: OutlinedButton.styleFrom(
+                                      minimumSize: const Size.fromHeight(40),
+                                      side: BorderSide(
+                                        color: Colors.black.withOpacity(0.1),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'Cancel',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      closeDialog();
+                                      _handleRemoveAll();
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      foregroundColor: Colors.white,
+                                      minimumSize: const Size.fromHeight(40),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                    icon: const Icon(Icons.delete_outline_rounded, size: 15),
+                                    label: const Text(
+                                      'Remove',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.96, end: 1.0).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  void _handleRemoveAll() {
+    _provideRemoveHapticFeedback();
+    widget.onQuantityChanged?.call(0);
+    setState(() {
+      _locallySelected = false;
+    });
+    _animationController.reverse();
   }
 
   void _addToCartWithAnimation() {
@@ -240,8 +466,6 @@ class _MenuItemCardState extends State<MenuItemCard>
                   ),
                 ),
 
-                _buildVegIndicator(),
-
                 // **MEMORY BLUR - Shows immediately on tap**
                 if (showMemoryBlur)
                   Positioned.fill(
@@ -279,12 +503,39 @@ class _MenuItemCardState extends State<MenuItemCard>
                     ),
                   ),
 
+                _buildVegIndicator(),
+
                 // **VISUAL INDICATORS - animated TAP badge**
                 if (!showMemoryBlur && widget.canOrder)
                   const Positioned(
                     top: 8,
                     right: 8,
                     child: _SubtleTappingBadge(),
+                  ),
+
+                if (showMemoryBlur && widget.canOrder)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () => _showRemoveDialog(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.5),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.more_horiz_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -298,18 +549,34 @@ class _MenuItemCardState extends State<MenuItemCard>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    widget.name,
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.bold,
-                      color:
-                          showMemoryBlur
-                              ? AppColors.primary
-                              : AppColors.textPrimary,
+                  Tooltip(
+                    message: widget.name,
+                    triggerMode: TooltipTriggerMode.tap,
+                    decoration: BoxDecoration(
+                      color: AppColors.textPrimary.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    showDuration: const Duration(seconds: 3),
+                    textStyle: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    child: Text(
+                      widget.name,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color:
+                            showMemoryBlur
+                                ? AppColors.primary
+                                : AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   if (widget.description != null &&
@@ -380,23 +647,22 @@ class _MenuItemCardState extends State<MenuItemCard>
             margin: const EdgeInsets.symmetric(horizontal: 6),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.primary.withOpacity(0.85)],
-              ),
+              color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(16),
             ),
             child: SizedBox(
               width: 28,
               child: TextField(
                 controller: _quantityController,
+                focusNode: _focusNode,
                 keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
                 ),
-                cursorColor: Colors.white,
+                cursorColor: AppColors.primary,
                 decoration: const InputDecoration(
                   border: InputBorder.none,
                   isDense: true,

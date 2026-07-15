@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/constants/currency_constants.dart';
 import '../../view_models/providers/table_provider.dart';
 import '../../view_models/providers/animated_cart_provider.dart';
 import '../../view_models/providers/billing_provider.dart';
 import '../../../services/api_service.dart';
 import '../../../data/models/bill_generation_models.dart';
+import 'widgets/amount_card.dart';
+import 'widgets/payment_methods.dart';
+import 'widgets/qr_section.dart';
+import 'widgets/confirm_button.dart';
 
 class PaymentPage extends StatefulWidget {
   final String orderNumber;
@@ -217,9 +220,9 @@ class _PaymentPageState extends State<PaymentPage>
                       child: CircularProgressIndicator(),
                     ),
                   )
-                  : _AmountCard(amount: currentAmount),
+                  : AmountCard(amount: currentAmount),
               const SizedBox(height: 16),
-              _PaymentMethods(
+              PaymentMethods(
                 selected: _selectedPaymentMethod,
                 onChanged: (value) {
                   _triggerHapticLight();
@@ -236,7 +239,7 @@ class _PaymentPageState extends State<PaymentPage>
                 switchOutCurve: Curves.easeOut,
                 child:
                     _showQR
-                        ? _QRSection(
+                        ? QRSection(
                           key: const ValueKey('qr-section'),
                           amount: currentAmount,
                           orderNumber: widget.orderNumber,
@@ -244,7 +247,7 @@ class _PaymentPageState extends State<PaymentPage>
                         : const SizedBox.shrink(key: ValueKey('empty')),
               ),
               const SizedBox(height: 24),
-              _ConfirmButton(
+              ConfirmButton(
                 processing: _processing,
                 onPressed: _processing ? null : _processPayment,
               ),
@@ -564,284 +567,5 @@ class _PaymentPageState extends State<PaymentPage>
     } catch (_) {
       await HapticFeedback.heavyImpact();
     }
-  }
-}
-
-class _AmountCard extends StatelessWidget {
-  final double amount;
-  const _AmountCard({required this.amount});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Total Amount',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${CurrencyConstants.symbol}${amount.toStringAsFixed(2)}',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.2,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Inclusive of all taxes',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PaymentMethods extends StatelessWidget {
-  final String selected;
-  final ValueChanged<String> onChanged;
-  const _PaymentMethods({required this.selected, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    Widget item({
-      required String value,
-      required String title,
-      required String subtitle,
-      required IconData icon,
-    }) {
-      final isSelected = selected == value;
-      return InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => onChanged(value),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: isSelected ? cs.primary.withOpacity(0.06) : cs.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isSelected ? cs.primary : cs.outlineVariant,
-              width: isSelected ? 1.2 : 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: cs.surfaceVariant,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: cs.onSurfaceVariant),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isSelected ? cs.primary : Colors.transparent,
-                  border: Border.all(
-                    color: isSelected ? cs.primary : cs.outlineVariant,
-                  ),
-                ),
-                child:
-                    isSelected
-                        ? const Icon(Icons.check, color: Colors.white, size: 16)
-                        : const SizedBox.shrink(),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Payment Method',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 10),
-        item(
-          value: 'cash',
-          title: 'Cash',
-          subtitle: 'Pay with physical cash to waiter',
-          icon: Icons.payments_outlined,
-        ),
-        const SizedBox(height: 10),
-        item(
-          value: 'card',
-          title: 'Card',
-          subtitle: 'Debit/Credit card or contactless payment',
-          icon: Icons.credit_card,
-        ),
-        const SizedBox(height: 10),
-        item(
-          value: 'upi',
-          title: 'UPI',
-          subtitle: 'Scan QR with any UPI app',
-          icon: Icons.qr_code_2,
-        ),
-      ],
-    );
-  }
-}
-
-class _QRSection extends StatelessWidget {
-  final double amount;
-  final String orderNumber;
-
-  const _QRSection({
-    super.key,
-    required this.amount,
-    required this.orderNumber,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final data =
-        'upi://pay?pa=8768412832@ptsbi&pn=WiZARD Restaurant&am=$amount&cu=INR&tn=Order $orderNumber';
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(Icons.qr_code_2, color: cs.onSurfaceVariant),
-              const SizedBox(width: 8),
-              Text(
-                'Scan to Pay',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Center(
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: cs.outlineVariant),
-              ),
-              child: QrImageView(
-                data: data,
-                version: QrVersions.auto,
-                size: 180,
-                backgroundColor: Colors.white,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: cs.surfaceVariant,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.attach_money,
-                  size: 16,
-                  color: Colors.green.shade700,
-                ),
-                Text(
-                  '${CurrencyConstants.symbol}${amount.toStringAsFixed(2)}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.green.shade700,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ConfirmButton extends StatelessWidget {
-  final bool processing;
-  final VoidCallback? onPressed;
-  const _ConfirmButton({required this.processing, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 52,
-      width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: onPressed,
-        icon:
-            processing
-                ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.6,
-                    color: Colors.white,
-                  ),
-                )
-                : const Icon(Icons.verified),
-        label: Text(processing ? 'Processing...' : 'Confirm Payment Received'),
-      ),
-    );
   }
 }

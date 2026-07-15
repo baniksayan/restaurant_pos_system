@@ -37,6 +37,9 @@ class AnimatedCartProvider extends ChangeNotifier {
   // Check if there are new items to generate KOT
   bool get hasNewItemsForKot => newItems.isNotEmpty;
 
+  // Get total count of only new (non-KOT'd) items
+  int get newItemsCount => newItems.values.fold(0, (sum, item) => sum + item.quantity);
+
   double get totalAmount => _cartItems.values.fold(
     0.0,
     (sum, item) => sum + (item.price * item.quantity),
@@ -122,8 +125,12 @@ class AnimatedCartProvider extends ChangeNotifier {
     }
 
     if (editableItem != null && editableKey != null) {
-      // Editable item already exists, increment its quantity
-      editableItem.quantity++;
+      // Editable item already exists, increment its quantity up to 99
+      if (editableItem.quantity < 99) {
+        editableItem.quantity++;
+      } else {
+        debugPrint('[AnimatedCart] Maximum item quantity (99) reached. Blocked increment.');
+      }
       if (specialNotes != null && specialNotes.isNotEmpty) {
         editableItem.specialNotes = specialNotes;
       }
@@ -235,8 +242,9 @@ class AnimatedCartProvider extends ChangeNotifier {
         _cartItems.remove(editableKey);
       }
     } else {
+      final finalQty = quantity > 99 ? 99 : quantity;
       if (editableItem != null) {
-        editableItem.quantity = quantity;
+        editableItem.quantity = finalQty;
       } else {
         // Create new item with specified quantity
         if (_cartItems.containsKey(itemId)) {
@@ -245,7 +253,7 @@ class AnimatedCartProvider extends ChangeNotifier {
             id: itemId,
             name: name,
             price: price,
-            quantity: quantity,
+            quantity: finalQty,
             tableId: tableId,
             tableName: tableName,
             categoryId: categoryId,
@@ -259,7 +267,7 @@ class AnimatedCartProvider extends ChangeNotifier {
             id: itemId,
             name: name,
             price: price,
-            quantity: quantity,
+            quantity: finalQty,
             tableId: tableId,
             tableName: tableName,
             categoryId: categoryId,
@@ -336,9 +344,19 @@ class AnimatedCartProvider extends ChangeNotifier {
   }
 
   void updateItemNotes(String itemId, String notes) {
+    for (final entry in _cartItems.entries) {
+      if (entry.value.id == itemId && entry.value.canEdit) {
+        entry.value.specialNotes = notes;
+        notifyListeners();
+        debugPrint('[AnimatedCart] Updated notes for $itemId to: $notes');
+        return;
+      }
+    }
+    // Fallback/direct check
     if (_cartItems.containsKey(itemId) && _cartItems[itemId]!.canEdit) {
       _cartItems[itemId]!.specialNotes = notes;
       notifyListeners();
+      debugPrint('[AnimatedCart] Updated notes via key for $itemId to: $notes');
     }
   }
 

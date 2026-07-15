@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/themes/app_colors.dart';
@@ -20,6 +21,8 @@ import 'widgets/gst_info_dialog.dart';
 import 'widgets/kot_pdf_viewer_dialog.dart';
 import '../../../view_models/providers/order_provider.dart';
 import '../../../../data/local/hive_service.dart';
+
+import '../../../../shared/widgets/layout/skeleton_loader.dart';
 
 class CartView extends StatefulWidget {
   final String? tableId;
@@ -80,8 +83,57 @@ class _CartViewState extends State<CartView> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SafeArea(
-        child: Consumer<AnimatedCartProvider>(
-          builder: (context, cartProvider, child) {
+        child: Consumer2<AnimatedCartProvider, TableProvider>(
+          builder: (context, cartProvider, tableProvider, child) {
+            if (tableProvider.isLoading) {
+              return Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 10),
+                    const SkeletonLoader.rectangular(width: 140, height: 24),
+                    const SizedBox(height: 30),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: 4,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 20),
+                            child: Row(
+                              children: [
+                                const SkeletonLoader.rectangular(
+                                  width: 48,
+                                  height: 48,
+                                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: const [
+                                      SkeletonLoader.rectangular(width: 140, height: 16),
+                                      SizedBox(height: 8),
+                                      SkeletonLoader.rectangular(width: 70, height: 12),
+                                    ],
+                                  ),
+                                ),
+                                const SkeletonLoader.rectangular(
+                                  width: 80,
+                                  height: 32,
+                                  borderRadius: BorderRadius.all(Radius.circular(16)),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
             final items = cartProvider.cartItems.values.toList();
             final newItems = cartProvider.newItems.values.toList();
             final kotGeneratedItems =
@@ -530,17 +582,9 @@ class _CartViewState extends State<CartView> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder:
-            (_) => AlertDialog(
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  Text('Generating KOT for ${newItems.length} new items...'),
-                ],
-              ),
-            ),
+        builder: (_) => _PremiumLoaderDialog(
+          message: 'Generating KOT for ${newItems.length} new items...',
+        ),
       );
 
       final orderProvider = context.read<OrderProvider>();
@@ -833,17 +877,9 @@ class _CartViewState extends State<CartView> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder:
-            (_) => AlertDialog(
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  Text('Sending KOTs to Kitchen...'),
-                ],
-              ),
-            ),
+        builder: (_) => const _PremiumLoaderDialog(
+          message: 'Sending KOTs to Kitchen...',
+        ),
       );
 
       // Generate combined KOT for all KOT'd items
@@ -1164,8 +1200,90 @@ class _CartViewState extends State<CartView> {
                 setState(() {
                   _kotNumbers.clear();
                 });
+                // Clear the active ordering session and go back to Tables dashboard
+                final navProvider = Provider.of<NavigationProvider>(context, listen: false);
+                navProvider.clearTableSelection();
+                navProvider.navigateToTables();
               },
             ),
+      ),
+    );
+  }
+}
+
+class _PremiumLoaderDialog extends StatefulWidget {
+  final String message;
+  const _PremiumLoaderDialog({required this.message});
+
+  @override
+  State<_PremiumLoaderDialog> createState() => _PremiumLoaderDialogState();
+}
+
+class _PremiumLoaderDialogState extends State<_PremiumLoaderDialog> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Rotating hourglass icon
+              RotationTransition(
+                turns: _controller,
+                child: const Icon(
+                  Icons.hourglass_empty_rounded,
+                  size: 44,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Cupertino spinner below
+              const CupertinoActivityIndicator(radius: 10),
+              const SizedBox(height: 20),
+              Text(
+                widget.message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

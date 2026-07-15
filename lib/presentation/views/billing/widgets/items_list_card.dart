@@ -1,5 +1,6 @@
-import '../../../../core/constants/currency_constants.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/themes/app_colors.dart';
+import '../../../../core/constants/currency_constants.dart';
 
 class ItemsListCard extends StatelessWidget {
   final List cartItems;
@@ -73,7 +74,7 @@ class ItemsListCard extends StatelessWidget {
                             'Note: ${item.specialNotes}',
                             style: const TextStyle(
                               fontSize: 11,
-                              color: Colors.blue,
+                               color: AppColors.primary,
                               fontStyle: FontStyle.italic,
                             ),
                           ),
@@ -91,7 +92,7 @@ class ItemsListCard extends StatelessWidget {
                         '${CurrencyConstants.symbol}${(item.price * item.quantity).toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue,
+                           color: AppColors.primary,
                         ),
                       ),
                     ],

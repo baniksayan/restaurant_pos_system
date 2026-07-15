@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/themes/app_colors.dart';
 import '../../../core/utils/haptic_helper.dart';
 import '../../view_models/providers/billing_provider.dart';
 import '../../view_models/providers/navigation_provider.dart';
@@ -78,7 +79,7 @@ class _BillingPageState extends State<BillingPage> {
           backgroundColor: Colors.grey[50],
           appBar: AppBar(
             title: Text('Generate Bill - Order #${widget.orderNumber}'),
-            backgroundColor: Colors.blue,
+            backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             elevation: 0,
             leading: IconButton(
@@ -197,10 +198,10 @@ class _BillingPageState extends State<BillingPage> {
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          color: isSelected ? Colors.blue : Colors.grey[100],
+                          color: isSelected ? AppColors.primary : Colors.grey[100],
                           borderRadius: BorderRadius.circular(25),
                           border: Border.all(
-                            color: isSelected ? Colors.blue : Colors.grey[300]!,
+                            color: isSelected ? AppColors.primary : Colors.grey[300]!,
                           ),
                         ),
                         child: Row(
@@ -269,7 +270,7 @@ class _BillingPageState extends State<BillingPage> {
           style: const TextStyle(fontSize: 16),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
