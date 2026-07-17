@@ -58,10 +58,8 @@ class PDFService {
               _kotHeader(),
               pw.SizedBox(height: 8),
               _kotDashedLine(),
-              pw.SizedBox(height: 14),
-              _kotOrderBox(kotNo, orderNumber, dateStr, timeStr),
-              pw.SizedBox(height: 6),
-              _kotInfoCard(tableName, waiterName),
+              pw.SizedBox(height: 10),
+              _kotOrderBox(kotNo, orderNumber, dateStr, timeStr, tableName),
               pw.SizedBox(height: 8),
               _kotSectionHeading('ORDER ITEMS (${items.length})'),
               pw.SizedBox(height: 14),
@@ -125,9 +123,8 @@ class PDFService {
                     ],
                   ),
                 ),
-                pw.SizedBox(height: 10),
+                pw.SizedBox(height: 12),
               ],
-              pw.SizedBox(height: 14),
               
             ],
           );
@@ -764,23 +761,6 @@ class PDFService {
     );
   }
 
-  static pw.Widget _kotPersonIcon({double size = 16}) {
-    return pw.CustomPaint(
-      size: PdfPoint(size, size),
-      painter: (ctx, sz) {
-        final c = ctx
-          ..setColor(PdfColors.black)
-          ..setLineWidth(0.9);
-        c.drawEllipse(sz.x * 0.5, sz.y * 0.68, sz.x * 0.17, sz.y * 0.17);
-        c.strokePath();
-        c
-          ..moveTo(sz.x * 0.18, sz.y * 0.14)
-          ..curveTo(sz.x * 0.18, sz.y * 0.46, sz.x * 0.82, sz.y * 0.46, sz.x * 0.82, sz.y * 0.14);
-        c.strokePath();
-      },
-    );
-  }
-
   static pw.Widget _kotHeader() {
     return pw.FittedBox(
       fit: pw.BoxFit.scaleDown,
@@ -801,7 +781,7 @@ class PDFService {
     );
   }
 
-  static pw.Widget _kotOrderBox(String kotNo, String orderNo, String dateStr, String timeStr) {
+  static pw.Widget _kotOrderBox(String kotNo, String orderNo, String dateStr, String timeStr, String tableName) {
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.black, width: 1),
       columnWidths: {
@@ -812,18 +792,46 @@ class PDFService {
         pw.TableRow(
           children: [
             pw.Container(
-              padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+              padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 8),
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 mainAxisAlignment: pw.MainAxisAlignment.center,
                 children: [
-                  _kotLabel('KOT NO.'),
+                  pw.Text("KOT NO.", style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey900)),
                   pw.SizedBox(height: 4),
                   pw.FittedBox(
                     fit: pw.BoxFit.scaleDown,
                     child: pw.Text(
                       kotNo,
                       style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+                    ),
+                  ),
+                  pw.SizedBox(height: 6),
+
+                  pw.Container(
+                    height: 1,
+                    width: double.infinity,
+                    color: PdfColors.grey400,
+                  ),
+                  pw.SizedBox(height: 6),
+                  
+                  pw.Container(
+                    width: double.infinity, 
+                    alignment: pw.Alignment.center,
+                    child: pw.FittedBox(
+                      fit: pw.BoxFit.scaleDown,
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.center,
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
+                        children: [
+                          _kotTableIcon(size: 11),
+                          pw.SizedBox(width: 4),
+                          pw.Text(
+                            tableName,
+                            style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -836,7 +844,7 @@ class PDFService {
                 crossAxisAlignment: pw.CrossAxisAlignment.center,
                 mainAxisAlignment: pw.MainAxisAlignment.center,
                 children: [
-                  _kotLabel('ORDER NO.'),
+                  pw.Text("ORDER NO.", style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey900)),
                   pw.SizedBox(height: 4),
                   pw.FittedBox(
                     fit: pw.BoxFit.scaleDown,
@@ -888,65 +896,6 @@ class PDFService {
     
   }
 
-  static pw.Widget _kotInfoCard(String tableName, String waiterName) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 8),
-      child: pw.Row(
-        children: [
-
-          pw.Expanded(
-            child: _kotInfoTile(_kotTableIcon(), 'TABLE', tableName),
-          ),
-          
-          pw.SizedBox(width: 8),
-          
-          pw.Expanded(
-            child: _kotInfoTile(_kotPersonIcon(), 'WAITER', waiterName),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static pw.Widget _kotInfoTile(pw.Widget icon, String label, String value) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-      decoration: pw.BoxDecoration(
-        // Native dashed border for the entire box
-        border: pw.Border.all(
-          color: PdfColors.black,
-          width: 1,
-          style: pw.BorderStyle.dashed,
-        ),
-      ),
-      child: pw.Row(
-        crossAxisAlignment: pw.CrossAxisAlignment.center,
-        children: [
-          icon,
-          pw.SizedBox(width: 10),
-          
-          pw.Expanded(
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start, 
-              mainAxisAlignment: pw.MainAxisAlignment.center,
-              children: [
-                _kotLabel(label),
-                pw.SizedBox(height: 2),
-                pw.Text(
-                  value,
-                  style: pw.TextStyle(
-                    fontSize: 12, 
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   static pw.Widget _kotSectionHeading(String text) {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.center,
@@ -977,7 +926,11 @@ class PDFService {
   static pw.Widget _kotItemCard(int index, CartItem item) {
     String noteText = '-'; 
     if (item.specialNotes != null && item.specialNotes!.trim().isNotEmpty) {
-      noteText = item.specialNotes!.trim();
+      String rawNote = item.specialNotes!.trim();
+      noteText = rawNote.split(' ').map((word) {
+        if (word.isEmpty) return ''; 
+        return word[0].toUpperCase() + word.substring(1).toLowerCase(); 
+      }).join(' ');
       if (noteText.length > 30) {  // 30 char limit for note
         noteText = '${noteText.substring(0, 30)}...';
       }
@@ -1033,11 +986,4 @@ class PDFService {
     );
   }
 
-  
-  static pw.Widget _kotLabel(String text) {
-    return pw.Text(
-      _kotLetterSpace(text),
-      style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey900),
-    );
-  }
 }
