@@ -1,4 +1,5 @@
 // lib/services/pdf_service.dart
+
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
@@ -8,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../presentation/view_models/providers/animated_cart_provider.dart';
 import '../core/constants/currency_constants.dart';
+
 
 class PDFService {
   static const String restaurantName = "WiZARD Restaurant";
@@ -20,8 +22,8 @@ class PDFService {
   // Use centralized currency symbol
   static const String rupeeSymbol = CurrencyConstants.symbol; // kept name for backward-compat in-file
 
-  static const double _kotPageWidth = 320;
-  static const double _kotMargin = 18;
+  static const double _kotPageWidth = 226.77; // hardcoded for KOT width  (80mm) 
+  static const double _kotMargin = 8;
   static double get _kotContentWidth => _kotPageWidth - _kotMargin * 2;
 
   // Generate KOT (Kitchen Order Ticket) for Chef - Updated with Special Notes
@@ -42,7 +44,7 @@ class PDFService {
 
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat(
+        pageFormat: const PdfPageFormat(
           _kotPageWidth,
           double.infinity,
           marginAll: _kotMargin,
@@ -52,22 +54,52 @@ class PDFService {
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
               _kotDashedLine(),
-              pw.SizedBox(height: 10),
+              pw.SizedBox(height: 8),
               _kotHeader(),
-              pw.SizedBox(height: 10),
+              pw.SizedBox(height: 8),
               _kotDashedLine(),
-              pw.SizedBox(height: 18),
-              _kotOrderBox(kotNo, orderNumber),
-              pw.SizedBox(height: 16),
+              pw.SizedBox(height: 14),
+              _kotOrderBox(kotNo, orderNumber, dateStr, timeStr),
+              pw.SizedBox(height: 6),
               _kotInfoCard(tableName, waiterName),
-              pw.SizedBox(height: 22),
+              pw.SizedBox(height: 8),
               _kotSectionHeading('ORDER ITEMS (${items.length})'),
               pw.SizedBox(height: 14),
-              for (final item in items)
-                pw.Padding(
-                  padding: const pw.EdgeInsets.only(bottom: 4),
-                  child: _kotItemCard(item),
+              pw.Padding(
+                padding: const pw.EdgeInsets.only(bottom: 8),
+                child: pw.Row(
+                  children: [
+                    pw.SizedBox(width: 18), 
+                    pw.Container(
+                      width: 24,
+                      alignment: pw.Alignment.centerRight,
+                      child: pw.Text(
+                        'QTY', 
+                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                      ),
+                    ),
+                    pw.SizedBox(width: 15),
+                    pw.Expanded(
+                      flex: 4,
+                      child: pw.Text(
+                        'ITEM NAME', 
+                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                      ),
+                    ),
+                    pw.Expanded(
+                      flex: 3,
+                      child: pw.Text(
+                        'NOTE', 
+                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              _kotDashedLine(),
+              for (int i = 0; i < items.length; i++)
+                _kotItemCard(i + 1, items[i]),
+
               pw.SizedBox(height: 4),
               // Special Notes for entire order
               if (specialNotes != null && specialNotes.trim().isNotEmpty) ...[
@@ -95,32 +127,8 @@ class PDFService {
                 ),
                 pw.SizedBox(height: 10),
               ],
-              _kotDashedLine(),
               pw.SizedBox(height: 14),
-              pw.Center(
-                child: pw.Text(
-                  '$dateStr   |   $timeStr',
-                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
-                ),
-              ),
-              pw.SizedBox(height: 16),
-              pw.Center(
-                child: pw.Column(
-                  children: [
-                    _kotChefHatIcon(size: 20),
-                    pw.SizedBox(height: 6),
-                    pw.Text(
-                      _kotLetterSpace('END OF ORDER'),
-                      style: pw.TextStyle(
-                        fontSize: 11,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 16),
-              _kotTearLine(),
+              
             ],
           );
         },
@@ -624,22 +632,24 @@ class PDFService {
     return vegItems.any((veg) => itemName.toLowerCase().contains(veg));
   }
 
-  /// Splits a string into lines of max [maxLen] characters, breaking at spaces.
-  static List<String> _splitText(String text, int maxLen) {
-    final words = text.split(' ');
-    List<String> lines = [];
-    String current = '';
-    for (final word in words) {
-      if ((current + (current.isEmpty ? '' : ' ') + word).length > maxLen) {
-        if (current.isNotEmpty) lines.add(current);
-        current = word;
-      } else {
-        current += (current.isEmpty ? '' : ' ') + word;
-      }
-    }
-    if (current.isNotEmpty) lines.add(current);
-    return lines;
-  }
+
+  // Splits a string into lines of max [maxLen] characters, breaking at spaces.
+
+  // static List<String> _splitText(String text, int maxLen) {
+  //   final words = text.split(' ');
+  //   List<String> lines = [];
+  //   String current = '';
+  //   for (final word in words) {
+  //     if ((current + (current.isEmpty ? '' : ' ') + word).length > maxLen) {
+  //       if (current.isNotEmpty) lines.add(current);
+  //       current = word;
+  //     } else {
+  //       current += (current.isEmpty ? '' : ' ') + word;
+  //     }
+  //   }
+  //   if (current.isNotEmpty) lines.add(current);
+  //   return lines;
+  // }
 
   // Generate unique order number
   static String generateOrderNumber() {
@@ -660,12 +670,14 @@ class PDFService {
 
   static Future<void> printPDF(Uint8List pdfBytes) async {
     await Printing.layoutPdf(
+      format: PdfPageFormat.roll80, // 80mm thermal printer format
+      name: 'KOT_Order',
       onLayout: (PdfPageFormat format) async => pdfBytes,
     );
   }
 
   static String _kotLetterSpace(String text) {
-    return text.split('').map((c) => c == ' ' ? '   ' : c).join(' ');
+    return text.replaceAll(' ', '   ');
   }
 
   static pw.Widget _kotDashedLine({
@@ -686,47 +698,46 @@ class PDFService {
     );
   }
 
-  static pw.Widget _kotVerticalDashedLine({
-    double height = 40,
-    double dash = 3,
-    double gap = 2.5,
-    double thickness = 1,
-    PdfColor color = PdfColors.black,
-  }) {
-    final count = (height / (dash + gap)).floor().clamp(1, 100);
-    return pw.Column(
-      mainAxisSize: pw.MainAxisSize.min,
-      children: List.generate(
-        count,
-        (i) => pw.Container(
-          margin: pw.EdgeInsets.only(bottom: i == count - 1 ? 0 : gap),
-          width: thickness,
-          height: dash,
-          color: color,
-        ),
-      ),
-    );
-  }
-
-  static pw.Widget _kotChefHatIcon({double size = 17}) {
+  static pw.Widget _kotChefHatIcon({double size = 17}) { // custom chef hat icon for KOT
     return pw.CustomPaint(
       size: PdfPoint(size, size),
       painter: (ctx, sz) {
+        final double w = sz.x;
+        final double h = sz.y;
+
         final c = ctx
           ..setColor(PdfColors.black)
-          ..setLineWidth(0.9);
-        c.drawEllipse(sz.x * 0.30, sz.y * 0.72, sz.x * 0.15, sz.y * 0.15);
+          ..setLineWidth(size * 0.04) 
+          ..setLineCap(PdfLineCap.round) 
+          ..setLineJoin(PdfLineJoin.round);
+
+        double leftX = w * 0.21;
+        double rightX = w * 0.79;
+        double topY = h * 0.40;
+        double bottomY = h * 0.05;
+
+        c.moveTo(leftX, topY);
+
+        c.lineTo(leftX + (w * 0.05), bottomY);
+        c.lineTo(rightX - (w * 0.05), bottomY);
+        c.lineTo(rightX, topY);
+
+        c.curveTo(w * 1.05, h * 0.55, w * 0.88, h * 0.75, w * 0.70, h * 0.70);
+
+        c.curveTo(w * 0.60, h * 0.90, w * 0.52, h * 0.90, w * 0.50, h * 0.75);
+    
+        c.curveTo(w * 0.48, h * 0.90, w * 0.40, h * 0.90, w * 0.30, h * 0.70);
+  
+        c.curveTo(w * 0.12, h * 0.75, w * -0.05, h * 0.55, leftX, topY);
+
         c.strokePath();
-        c.drawEllipse(sz.x * 0.50, sz.y * 0.78, sz.x * 0.17, sz.y * 0.17);
+
+        c.moveTo(w * 0.42, h * 0.32);
+        c.lineTo(w * 0.42, h * 0.12);
         c.strokePath();
-        c.drawEllipse(sz.x * 0.70, sz.y * 0.72, sz.x * 0.15, sz.y * 0.15);
-        c.strokePath();
-        c
-          ..moveTo(sz.x * 0.28, sz.y * 0.60)
-          ..lineTo(sz.x * 0.72, sz.y * 0.60)
-          ..lineTo(sz.x * 0.66, sz.y * 0.88)
-          ..lineTo(sz.x * 0.34, sz.y * 0.88)
-          ..lineTo(sz.x * 0.28, sz.y * 0.60);
+
+        c.moveTo(w * 0.58, h * 0.32);
+        c.lineTo(w * 0.58, h * 0.12);
         c.strokePath();
       },
     );
@@ -770,126 +781,163 @@ class PDFService {
     );
   }
 
-  static pw.Widget _kotClockIcon({double size = 16}) {
-    return pw.CustomPaint(
-      size: PdfPoint(size, size),
-      painter: (ctx, sz) {
-        final c = ctx
-          ..setColor(PdfColors.black)
-          ..setLineWidth(0.9);
-        c.drawEllipse(sz.x * 0.5, sz.y * 0.5, sz.x * 0.4, sz.y * 0.4);
-        c.strokePath();
-        c
-          ..moveTo(sz.x * 0.5, sz.y * 0.5)
-          ..lineTo(sz.x * 0.5, sz.y * 0.74);
-        c.strokePath();
-        c
-          ..moveTo(sz.x * 0.5, sz.y * 0.5)
-          ..lineTo(sz.x * 0.66, sz.y * 0.5);
-        c.strokePath();
-      },
-    );
-  }
-
-  static pw.Widget _kotCalendarIcon({double size = 16}) {
-    return pw.CustomPaint(
-      size: PdfPoint(size, size),
-      painter: (ctx, sz) {
-        final c = ctx
-          ..setColor(PdfColors.black)
-          ..setLineWidth(0.9);
-        c.drawRect(sz.x * 0.14, sz.y * 0.16, sz.x * 0.72, sz.y * 0.66);
-        c.strokePath();
-        c
-          ..moveTo(sz.x * 0.14, sz.y * 0.36)
-          ..lineTo(sz.x * 0.86, sz.y * 0.36);
-        c.strokePath();
-        c
-          ..moveTo(sz.x * 0.30, sz.y * 0.08)
-          ..lineTo(sz.x * 0.30, sz.y * 0.24);
-        c.strokePath();
-        c
-          ..moveTo(sz.x * 0.70, sz.y * 0.08)
-          ..lineTo(sz.x * 0.70, sz.y * 0.24);
-        c.strokePath();
-      },
-    );
-  }
-
-  static pw.Widget _kotScissorsIcon({double size = 13}) {
-    return pw.CustomPaint(
-      size: PdfPoint(size, size),
-      painter: (ctx, sz) {
-        final c = ctx
-          ..setColor(PdfColors.black)
-          ..setLineWidth(0.9);
-        c.drawEllipse(sz.x * 0.25, sz.y * 0.25, sz.x * 0.12, sz.y * 0.12);
-        c.strokePath();
-        c.drawEllipse(sz.x * 0.25, sz.y * 0.75, sz.x * 0.12, sz.y * 0.12);
-        c.strokePath();
-        c
-          ..moveTo(sz.x * 0.35, sz.y * 0.32)
-          ..lineTo(sz.x * 0.92, sz.y * 0.85);
-        c.strokePath();
-        c
-          ..moveTo(sz.x * 0.35, sz.y * 0.68)
-          ..lineTo(sz.x * 0.92, sz.y * 0.15);
-        c.strokePath();
-      },
-    );
-  }
-
   static pw.Widget _kotHeader() {
-    return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.center,
-      crossAxisAlignment: pw.CrossAxisAlignment.center,
-      children: [
-        _kotChefHatIcon(),
-        pw.SizedBox(width: 10),
-        pw.Text(
-          _kotLetterSpace('KITCHEN ORDER TICKET'),
-          style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.SizedBox(width: 10),
-        _kotChefHatIcon(),
-      ],
-    );
-  }
-
-  static pw.Widget _kotOrderBox(String kotNo, String orderNo) {
-    return pw.Container(
-      width: double.infinity,
-      padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.black, width: 1)),
+    return pw.FittedBox(
+      fit: pw.BoxFit.scaleDown,
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.center,
         crossAxisAlignment: pw.CrossAxisAlignment.center,
         children: [
-          pw.Expanded(
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.center,
-              children: [
-                _kotLabel('KOT NO.'),
-                pw.SizedBox(height: 4),
-                pw.Text(
-                  kotNo,
-                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
-                  textAlign: pw.TextAlign.center,
-                ),
-              ],
-            ),
+          _kotChefHatIcon(),
+          pw.SizedBox(width: 20),
+          pw.Text(
+            _kotLetterSpace('KITCHEN ORDER TICKET'),
+            style: const pw.TextStyle(fontSize: 13),
           ),
-          _kotVerticalDashedLine(height: 38),
+          pw.SizedBox(width: 20),
+          _kotChefHatIcon(),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _kotOrderBox(String kotNo, String orderNo, String dateStr, String timeStr) {
+    return pw.Table(
+      border: pw.TableBorder.all(color: PdfColors.black, width: 1),
+      columnWidths: {
+        0: const pw.FlexColumnWidth(1), 
+        1: const pw.FlexColumnWidth(1), 
+      },
+      children: [
+        pw.TableRow(
+          children: [
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                mainAxisAlignment: pw.MainAxisAlignment.center,
+                children: [
+                  _kotLabel('KOT NO.'),
+                  pw.SizedBox(height: 4),
+                  pw.FittedBox(
+                    fit: pw.BoxFit.scaleDown,
+                    child: pw.Text(
+                      kotNo,
+                      style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                mainAxisAlignment: pw.MainAxisAlignment.center,
+                children: [
+                  _kotLabel('ORDER NO.'),
+                  pw.SizedBox(height: 4),
+                  pw.FittedBox(
+                    fit: pw.BoxFit.scaleDown,
+                    child: pw.Text(
+                      orderNo,
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                      textAlign: pw.TextAlign.center,
+                    ),
+                  ),
+                  pw.SizedBox(height: 6),
+                  
+                  pw.Container(
+                    height: 1,
+                    width: double.infinity,
+                    color: PdfColors.grey400,
+                  ),
+                  pw.SizedBox(height: 6),
+                  
+                  pw.FittedBox(
+                    fit: pw.BoxFit.scaleDown,
+                    child: pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.center,
+                      children: [
+                        pw.Text(
+                          dateStr,
+                          style: const pw.TextStyle(fontSize: 9.5),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(horizontal: 4),
+                          child: pw.Text(
+                            '|',
+                            style: const pw.TextStyle(fontSize: 9.5),
+                          ),
+                        ),
+                        pw.Text(
+                          timeStr,
+                          style: const pw.TextStyle(fontSize: 9.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    
+  }
+
+  static pw.Widget _kotInfoCard(String tableName, String waiterName) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 8),
+      child: pw.Row(
+        children: [
+
+          pw.Expanded(
+            child: _kotInfoTile(_kotTableIcon(), 'TABLE', tableName),
+          ),
+          
+          pw.SizedBox(width: 8),
+          
+          pw.Expanded(
+            child: _kotInfoTile(_kotPersonIcon(), 'WAITER', waiterName),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _kotInfoTile(pw.Widget icon, String label, String value) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+      decoration: pw.BoxDecoration(
+        // Native dashed border for the entire box
+        border: pw.Border.all(
+          color: PdfColors.black,
+          width: 1,
+          style: pw.BorderStyle.dashed,
+        ),
+      ),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          icon,
+          pw.SizedBox(width: 10),
+          
           pw.Expanded(
             child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              crossAxisAlignment: pw.CrossAxisAlignment.start, 
+              mainAxisAlignment: pw.MainAxisAlignment.center,
               children: [
-                _kotLabel('ORDER NO.'),
-                pw.SizedBox(height: 4),
+                _kotLabel(label),
+                pw.SizedBox(height: 2),
                 pw.Text(
-                  orderNo,
-                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
-                  textAlign: pw.TextAlign.center,
+                  value,
+                  style: pw.TextStyle(
+                    fontSize: 12, 
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -899,152 +947,97 @@ class PDFService {
     );
   }
 
-  static pw.Widget _kotInfoCard(String tableName, String waiterName) {
-    return pw.Column(
-      children: [
-        _kotDashedLine(),
-        pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(vertical: 12),
-          child: pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.center,
-            crossAxisAlignment: pw.CrossAxisAlignment.center,
-            children: [
-              pw.Expanded(
-                child: _kotInfoTile(_kotTableIcon(), 'TABLE', tableName),
-              ),
-              _kotVerticalDashedLine(height: 36),
-              pw.Expanded(
-                child: _kotInfoTile(_kotPersonIcon(), 'WAITER', waiterName),
-              ),
-            ],
-          ),
-        ),
-        _kotDashedLine(),
-      ],
-    );
-  }
-
-  static pw.Widget _kotInfoTile(pw.Widget icon, String label, String value) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.center,
-      mainAxisAlignment: pw.MainAxisAlignment.center,
-      children: [
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.center,
-          crossAxisAlignment: pw.CrossAxisAlignment.center,
-          children: [
-            icon,
-            pw.SizedBox(width: 5),
-            _kotLabel(label),
-          ],
-        ),
-        pw.SizedBox(height: 3),
-        pw.Text(
-          value,
-          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-          textAlign: pw.TextAlign.center,
-        ),
-      ],
-    );
-  }
-
   static pw.Widget _kotSectionHeading(String text) {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.center,
       crossAxisAlignment: pw.CrossAxisAlignment.center,
       children: [
-        _kotDashedLine(width: 70, thickness: 1),
+        pw.Expanded(
+          child: pw.Container(
+            height: 1,
+            color: PdfColors.grey700,
+          )
+        ),
         pw.SizedBox(width: 10),
         pw.Text(
           _kotLetterSpace(text),
           style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(width: 10),
-        _kotDashedLine(width: 70, thickness: 1),
+        pw.Expanded(
+          child: pw.Container(
+            height: 1,
+            color: PdfColors.grey700,
+          )
+        ),
       ],
     );
   }
 
-  static pw.Widget _kotItemCard(CartItem item) {
+  static pw.Widget _kotItemCard(int index, CartItem item) {
+    String noteText = '-'; 
+    if (item.specialNotes != null && item.specialNotes!.trim().isNotEmpty) {
+      noteText = item.specialNotes!.trim();
+      if (noteText.length > 30) {  // 30 char limit for note
+        noteText = '${noteText.substring(0, 30)}...';
+      }
+    }
+
     return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
       children: [
-        _kotDashedLine(),
         pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(vertical: 12),
+          padding: const pw.EdgeInsets.symmetric(vertical: 10),
           child: pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Container(
-                width: 34,
-                height: 34,
-                alignment: pw.Alignment.center,
-                decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.black, width: 1)),
+                width: 20,
+                alignment: pw.Alignment.centerLeft,
                 child: pw.Text(
-                  '${item.quantity}x',
-                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+                  '$index.', 
+                  style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700 , fontWeight: pw.FontWeight.bold),
                 ),
               ),
-              pw.SizedBox(width: 14),
-              pw.Expanded(
+              
+              pw.Container(
+                width: 20,
+                alignment: pw.Alignment.center,
                 child: pw.Text(
-                  _kotLetterSpace(item.name.toUpperCase()),
-                  style: pw.TextStyle(fontSize: 11.5, fontWeight: pw.FontWeight.bold),
+                  '${item.quantity}x', 
+                  style: pw.TextStyle(fontSize: 10, color: PdfColors.grey800 , fontWeight: pw.FontWeight.bold),
+                ),
+              ),
+              pw.SizedBox(width: 15),
+              
+              pw.Expanded(
+                flex: 4,
+                child: pw.Text(
+                  item.name.toUpperCase(),
+                  style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                ),
+              ),
+              
+              pw.Expanded(
+                flex: 3,
+                child: pw.Text(
+                  noteText,
+                  style: const pw.TextStyle(fontSize: 10),
                 ),
               ),
             ],
           ),
         ),
-        if (item.specialNotes != null && item.specialNotes!.trim().isNotEmpty) ...[
-          _kotDashedLine(dash: 2, gap: 2, thickness: 0.6),
-          pw.Padding(
-            padding: const pw.EdgeInsets.only(top: 10, bottom: 12),
-            child: pw.RichText(
-              text: pw.TextSpan(
-                children: [
-                  pw.TextSpan(
-                    text: '${_kotLetterSpace('NOTE')}:  ',
-                    style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700),
-                  ),
-                  pw.TextSpan(
-                    text: item.specialNotes,
-                    style: const pw.TextStyle(fontSize: 10),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ] else
-          pw.SizedBox(height: 6),
+        // Dashed line separating every row
         _kotDashedLine(),
       ],
     );
   }
 
-  static pw.Widget _kotTearLine() {
-    return pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.center,
-      children: [
-        _kotScissorsIcon(),
-        pw.SizedBox(width: 6),
-        _kotDashedLine(width: 90),
-        pw.SizedBox(width: 8),
-        pw.Text(
-          _kotLetterSpace('TEAR HERE'),
-          style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
-        ),
-        pw.SizedBox(width: 8),
-        _kotDashedLine(width: 90),
-        pw.SizedBox(width: 6),
-        _kotScissorsIcon(),
-      ],
-    );
-  }
-
+  
   static pw.Widget _kotLabel(String text) {
     return pw.Text(
       _kotLetterSpace(text),
-      style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700),
+      style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey900),
     );
   }
 }

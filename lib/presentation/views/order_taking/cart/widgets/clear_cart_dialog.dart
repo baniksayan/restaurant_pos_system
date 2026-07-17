@@ -32,7 +32,7 @@ class ClearCartDialog extends StatelessWidget {
         ],
       ),
       content: const Text(
-        'Are you sure you want to remove all items from your cart? This will clear all pending order selections.',
+        'Are you sure you want to remove all items from your cart? ',
         style: TextStyle(
           color: AppColors.textSecondary,
           fontSize: 15,

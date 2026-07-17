@@ -98,7 +98,7 @@ class LocationDrawer extends StatelessWidget {
       ),
     );
   }
-
+ 
   Widget _buildLocationList() {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),

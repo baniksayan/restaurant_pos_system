@@ -104,14 +104,14 @@ class _EditItemDialogState extends State<EditItemDialog> {
                     const SizedBox(height: 16),
                     TextField(
                       controller: _notesController,
-                      maxLength: 100,
+                      maxLength: 30,
                       decoration: const InputDecoration(
                         labelText: 'Special Instructions',
                         hintText: 'e.g., Extra spicy, No onions, etc.',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.note),
                       ),
-                      maxLines: 3,
+                      maxLines: 2,
                     ),
                   ],
                 ),

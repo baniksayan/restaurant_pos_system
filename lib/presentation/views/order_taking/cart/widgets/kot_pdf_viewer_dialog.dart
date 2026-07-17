@@ -254,7 +254,7 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
       await Printing.layoutPdf(
         onLayout: (format) async => widget.pdfBytes,
         name: widget.fileName,
-        format: PdfPageFormat.a4,
+        format: PdfPageFormat.roll80,
       );
 
       if (mounted) {
