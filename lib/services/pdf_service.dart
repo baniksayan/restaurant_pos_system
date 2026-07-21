@@ -7,6 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import '../presentation/view_models/providers/animated_cart_provider.dart';
 import '../core/constants/currency_constants.dart';
 
@@ -662,7 +663,19 @@ class PDFService {
   }
 
   static Future<void> sharePDF(Uint8List pdfBytes, String fileName) async {
-    await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
+    final name = fileName.endsWith('.pdf') ? fileName : '$fileName.pdf';
+    try {
+      await Printing.sharePdf(bytes: pdfBytes, filename: name);
+    } catch (e) {
+      try {
+        final tempDir = await getTemporaryDirectory();
+        final file = File('${tempDir.path}/$name');
+        await file.writeAsBytes(pdfBytes);
+        await Share.shareXFiles([XFile(file.path)], subject: name);
+      } catch (err) {
+        rethrow;
+      }
+    }
   }
 
   static Future<void> printPDF(Uint8List pdfBytes) async {

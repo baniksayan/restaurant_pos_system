@@ -9,6 +9,7 @@ import '../../../core/utils/haptic_helper.dart';
 import '../../../shared/widgets/drawers/hamburger_drawer.dart';
 import '../../../shared/widgets/layout/location_header.dart';
 import '../../../shared/widgets/layout/premium_refresh_indicator.dart';
+import '../../../shared/widgets/overlays/hourglass_loading_overlay.dart';
 import '../../view_models/providers/dashboard_provider.dart';
 import '../../view_models/providers/navigation_provider.dart';
 import '../../view_models/providers/table_provider.dart';
@@ -33,6 +34,9 @@ class WaiterDashboardView extends StatefulWidget {
 
 class _WaiterDashboardViewState extends State<WaiterDashboardView> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  String? _navigatingTableName;
+
+  bool get _isTableNavigationInProgress => _navigatingTableName != null;
 
   @override
   void initState() {
@@ -58,6 +62,8 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor: Colors.grey[50],
+        drawerScrimColor: Colors.black.withValues(alpha: 0.12),
+        drawerEnableOpenDragGesture: !_isTableNavigationInProgress,
         drawer: Consumer<DashboardProvider>(
           builder: (context, dashboardProvider, child) {
             return HamburgerDrawer(
@@ -68,7 +74,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                 Navigator.pop(context);
                 _showSnackBar('Showing: $location', Colors.blue);
               },
-                onStatusFilterChanged: (statusFilter) {
+              onStatusFilterChanged: (statusFilter) {
                 dashboardProvider.changeStatusFilter(statusFilter);
                 Navigator.pop(context);
                 // Removed green SnackBar per request: previously showed filtered-by message in green
@@ -105,82 +111,97 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                   print('[UI] Filtered tables: ${tables.length}');
                 }
 
-                return Container(
-                  color: Colors.grey[50],
-                  child: Column(
-                    children: [
-                      DashboardHeader(
-                        onMenuPressed:
-                            () => _scaffoldKey.currentState?.openDrawer(),
-                        onAddOrderPressed: _handleAddOrderPressed,
-                      ),
-                      LocationHeader(
-                        selectedLocation: dashboardProvider.selectedLocation,
-                        locations: dashboardProvider.locations,
-                        tables: tables,
-                      ),
-                      // Pull-to-refresh for tables area
-                      Expanded(
-                        child: PremiumRefreshIndicator(
-                          onRefresh: () async {
-                              try {
-                              // Re-initialize / reload tables from provider (API)
-                              context.read<TableProvider>().initializeTables();
-                              // Removed green SnackBar per request
-                            } catch (e) {
-                              if (kDebugMode) print('Refresh error: $e');
-                              _showSnackBar(
-                                'Failed to refresh tables',
-                                Colors.red,
-                              );
-                            }
-                          },
-                          // The TableGrid likely uses a scrollable (GridView). For empty state,
-                          // provide a scrollable ListView so pull-to-refresh still works.
-                          child:
-                              tables.isEmpty
-                                  ? LayoutBuilder(
-                                      builder: (context, constraints) {
-                                        return ListView(
-                                          physics: const AlwaysScrollableScrollPhysics(),
-                                          children: [
-                                            Container(
-                                              constraints: BoxConstraints(
-                                                minHeight: constraints.maxHeight,
+                return Stack(
+                  children: [
+                    Container(
+                      color: Colors.grey[50],
+                      child: Column(
+                        children: [
+                          DashboardHeader(
+                            onMenuPressed:
+                                () => _scaffoldKey.currentState?.openDrawer(),
+                            onAddOrderPressed: _handleAddOrderPressed,
+                          ),
+                          LocationHeader(
+                            selectedLocation:
+                                dashboardProvider.selectedLocation,
+                            locations: dashboardProvider.locations,
+                            tables: tables,
+                          ),
+                          // Pull-to-refresh for tables area
+                          Expanded(
+                            child: PremiumRefreshIndicator(
+                              onRefresh: () async {
+                                try {
+                                  // Re-initialize / reload tables from provider (API)
+                                  context
+                                      .read<TableProvider>()
+                                      .initializeTables();
+                                  // Removed green SnackBar per request
+                                } catch (e) {
+                                  if (kDebugMode) print('Refresh error: $e');
+                                  _showSnackBar(
+                                    'Failed to refresh tables',
+                                    Colors.red,
+                                  );
+                                }
+                              },
+                              // The TableGrid likely uses a scrollable (GridView). For empty state,
+                              // provide a scrollable ListView so pull-to-refresh still works.
+                              child:
+                                  tables.isEmpty
+                                      ? LayoutBuilder(
+                                        builder: (context, constraints) {
+                                          return ListView(
+                                            physics:
+                                                const AlwaysScrollableScrollPhysics(),
+                                            children: [
+                                              Container(
+                                                constraints: BoxConstraints(
+                                                  minHeight:
+                                                      constraints.maxHeight,
+                                                ),
+                                                child: DashboardEmptyState(
+                                                  selectedLocation:
+                                                      dashboardProvider
+                                                              .selectedLocation
+                                                              .isEmpty
+                                                          ? 'All Tables'
+                                                          : dashboardProvider
+                                                              .selectedLocation,
+                                                  onChangeLocation:
+                                                      () =>
+                                                          _scaffoldKey
+                                                              .currentState
+                                                              ?.openDrawer(),
+                                                ),
                                               ),
-                                              child: DashboardEmptyState(
-                                                selectedLocation:
-                                                    dashboardProvider
-                                                            .selectedLocation
-                                                            .isEmpty
-                                                        ? 'All Tables'
-                                                        : dashboardProvider
-                                                            .selectedLocation,
-                                                onChangeLocation:
-                                                    () =>
-                                                        _scaffoldKey.currentState
-                                                            ?.openDrawer(),
-                                              ),
+                                            ],
+                                          );
+                                        },
+                                      )
+                                      : TableGrid(
+                                        tables: tables,
+                                        onTableTap:
+                                            (table) => _handleTableClick(
+                                              table,
+                                              tableProvider,
+                                              dashboardProvider,
                                             ),
-                                          ],
-                                        );
-                                      },
-                                    )
-                                  : TableGrid(
-                                    tables: tables,
-                                    onTableTap:
-                                        (table) => _handleTableClick(
-                                          table,
-                                          tableProvider,
-                                          dashboardProvider,
-                                        ),
-                                    onTableLongPress:
-                                        (table) => _handleTableLongPress(table),
-                                  ),
-                        ),
+                                        onTableLongPress:
+                                            (table) =>
+                                                _handleTableLongPress(table),
+                                      ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    if (_isTableNavigationInProgress)
+                      HourglassLoadingOverlay(
+                        message: 'Opening $_navigatingTableName...',
+                      ),
+                  ],
                 );
               },
             );
@@ -190,12 +211,11 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     );
   }
 
-
-
   /// Handle Add Order button press - NEW METHOD
   void _handleAddOrderPressed() {
     showDialog(
       context: context,
+      barrierColor: Colors.transparent,
       builder:
           (context) => OrderTypeSelectorDialog(
             onOrderTypeSelected: _handleOrderTypeSelected,
@@ -213,12 +233,15 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
       // Use new CustomerInfoDialog for Phone and Takeaway orders
       showDialog(
         context: context,
-                builder:
+        barrierColor: Colors.transparent,
+        builder:
             (context) => CustomerInfoDialog(
               orderChannelType: orderType.channelType,
-              onSuccess: () {
-                // Removed green SnackBar per request: success handled by dialog flow
+              onBack: () {
+                Navigator.pop(context);
+                _handleAddOrderPressed();
               },
+              onSuccess: () {},
             ),
       );
     } else {
@@ -275,6 +298,10 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     TableProvider tableProvider,
     DashboardProvider dashboardProvider,
   ) async {
+    if (_isTableNavigationInProgress) {
+      return;
+    }
+
     await HapticHelper.triggerFeedback();
     if (kDebugMode) {
       print(
@@ -298,14 +325,16 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                   table.name,
                   dashboardProvider.selectedLocation,
                 );
-                
+
                 // Trigger API-driven table occupation in the background
-                tableProvider.createOrderForTable(
-                  table.id,
-                  table.name,
-                ).then((success) {
+                tableProvider.createOrderForTable(table.id, table.name).then((
+                  success,
+                ) {
                   if (!success) {
-                    _showSnackBar('Failed to occupy ${table.name} on server', Colors.red);
+                    _showSnackBar(
+                      'Failed to occupy ${table.name} on server',
+                      Colors.red,
+                    );
                   }
                 });
               },
@@ -341,7 +370,10 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                         // Refresh tables after payment completion
                         tableProvider.refreshTables();
                         // Clear the active ordering session
-                        Provider.of<NavigationProvider>(context, listen: false).clearTableSelection();
+                        Provider.of<NavigationProvider>(
+                          context,
+                          listen: false,
+                        ).clearTableSelection();
                         _showSnackBar(
                           'Payment completed for ${table.name}',
                           Colors.green,
@@ -371,43 +403,48 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
         final animatedCart = context.read<AnimatedCartProvider>();
         final orderId = table.activeOrders.last.orderId;
 
-        // Load from API (this will also update TableProvider state)
-        final items = await tableProvider.loadCartStateForOrder(orderId);
+        _setTableNavigationLoading(table.name);
+        try {
+          // Load from API (this will also update TableProvider state)
+          final items = await tableProvider.loadCartStateForOrder(orderId);
 
-        // Import into AnimatedCartProvider so UI shows them
-        animatedCart.importFromOrderCart(
-          items,
-          tableId: table.id,
-          tableName: table.name,
-          clearExisting: true,
-        );
-
-        debugPrint(
-          '[Dashboard] ${table.status.name} table with ${table.orderCount} orders - allowing entry',
-        );
-
-        // Navigate to table
-        context.read<NavigationProvider>().selectTable(
-          table.id,
-          table.name,
-          dashboardProvider.selectedLocation,
-        );
-
-        if (kDebugMode) {
-          print('[Dashboard] Table with order - direct navigation to menu');
-        }
-
-        if (table.orderCount > 1) {
-          // Show management dialog for multiple orders
-          showDialog(
-            context: context,
-            builder: (context) => MultiOrderManagementDialog(table: table),
+          // Import into AnimatedCartProvider so UI shows them
+          animatedCart.importFromOrderCart(
+            items,
+            tableId: table.id,
+            tableName: table.name,
+            clearExisting: true,
           );
+
+          debugPrint(
+            '[Dashboard] ${table.status.name} table with ${table.orderCount} orders - allowing entry',
+          );
+
+          // Navigate to table
+          context.read<NavigationProvider>().selectTable(
+            table.id,
+            table.name,
+            dashboardProvider.selectedLocation,
+          );
+
           if (kDebugMode) {
-            print(
-              '[Dashboard] Multiple orders table (${table.orderCount}) - showing management dialog',
-            );
+            print('[Dashboard] Table with order - direct navigation to menu');
           }
+
+          if (table.orderCount > 1 && mounted) {
+            // Show management dialog for multiple orders
+            showDialog(
+              context: context,
+              builder: (context) => MultiOrderManagementDialog(table: table),
+            );
+            if (kDebugMode) {
+              print(
+                '[Dashboard] Multiple orders table (${table.orderCount}) - showing management dialog',
+              );
+            }
+          }
+        } finally {
+          _clearTableNavigationLoading();
         }
       } else {
         // Edge case: table has status but no active orders
@@ -428,6 +465,10 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
 
   /// Complete table long press handler
   Future<void> _handleTableLongPress(RestaurantTable table) async {
+    if (_isTableNavigationInProgress) {
+      return;
+    }
+
     await HapticHelper.triggerFeedback();
     if (kDebugMode) {
       print(
@@ -474,5 +515,25 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
         ),
       );
     }
+  }
+
+  void _setTableNavigationLoading(String tableName) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _navigatingTableName = tableName;
+    });
+  }
+
+  void _clearTableNavigationLoading() {
+    if (!mounted || _navigatingTableName == null) {
+      return;
+    }
+
+    setState(() {
+      _navigatingTableName = null;
+    });
   }
 }

@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import '../../../../../core/themes/app_colors.dart';
-import '../../../../../services/pdf_service.dart';
+
+import '../../../../../shared/widgets/overlays/pdf_share_bottom_sheet.dart';
 
 class BillPDFViewerDialog extends StatefulWidget {
   final Uint8List pdfBytes;
@@ -164,20 +165,12 @@ class _BillPDFViewerDialogState extends State<BillPDFViewerDialog> {
   }
 
   Future<void> _shareBill() async {
-    if (_isSharing) return;
-    setState(() => _isSharing = true);
-    try {
-      await PDFService.sharePDF(widget.pdfBytes, widget.fileName);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bill shared'), backgroundColor: AppColors.primary, duration: Duration(seconds: 2)),
-        );
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to share bill: $e'), backgroundColor: AppColors.error));
-    } finally {
-      if (mounted) setState(() => _isSharing = false);
-    }
+    await PDFShareBottomSheet.show(
+      context,
+      pdfBytes: widget.pdfBytes,
+      fileName: widget.fileName,
+      orderNumber: widget.orderNumber,
+    );
   }
 
   Future<void> _printBill() async {

@@ -1,8 +1,10 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../../../core/themes/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../services/pdf_service.dart';
+import '../../../../shared/widgets/overlays/pdf_share_bottom_sheet.dart';
 import '../../payment/payment_page.dart';
 import '../../../../core/constants/currency_constants.dart';
 import '../../../view_models/providers/table_provider.dart';
@@ -131,7 +133,14 @@ class BillSuccessDialog extends StatelessWidget {
                   child: TextButton.icon(
                     onPressed: () async {
                       Navigator.pop(context);
-                      await PDFService.sharePDF(billBytes, 'Bill_$orderNumber');
+                      if (billBytes is Uint8List) {
+                        await PDFShareBottomSheet.show(
+                          context,
+                          pdfBytes: billBytes,
+                          fileName: 'Bill_$orderNumber.pdf',
+                          orderNumber: orderNumber,
+                        );
+                      }
                     },
                     icon: const Icon(Icons.share),
                     label: const Text('Share'),

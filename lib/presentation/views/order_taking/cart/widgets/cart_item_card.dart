@@ -54,8 +54,8 @@ class CartItemCard extends StatelessWidget {
                       onEdit();
                     },
                     icon: const Icon(
-                      Icons.sticky_note_2,
-                      size: 20,
+                      Icons.edit_note_rounded,
+                      size: 22,
                       color: AppColors.primary,
                     ),
                     constraints: const BoxConstraints(

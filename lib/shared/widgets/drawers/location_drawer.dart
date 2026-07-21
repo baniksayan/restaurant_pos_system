@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/dashboard_provider.dart';
 import '../../../core/themes/app_colors.dart';
@@ -17,15 +18,33 @@ class LocationDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      backgroundColor: Colors.white,
-      child: SafeArea(
-        child: Column(
-          children: [
-            _buildDrawerHeader(),
-            _buildLocationSelector(),
-            Expanded(child: _buildLocationList()),
-            _buildStatusLegend(),
-          ],
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      width: 300,
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.78),
+              border: Border(
+                right: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  width: 1.5,
+                ),
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  _buildDrawerHeader(),
+                  _buildLocationSelectorHeader(),
+                  Expanded(child: _buildLocationList(context)),
+                  _buildStatusLegend(),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -33,39 +52,75 @@ class LocationDrawer extends StatelessWidget {
 
   Widget _buildDrawerHeader() {
     return Container(
-      height: 100,
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryDark],
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.8),
+          width: 1.2,
         ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(16),
-          bottomRight: Radius.circular(16),
-        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.primary, AppColors.primaryDark],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-            child: const Icon(Icons.location_on, color: Colors.white, size: 28),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Restaurant Areas',
-            style: TextStyle(
+            child: const Icon(
+              Icons.location_on_rounded,
               color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Restaurant Areas',
+                  style: TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Location Switcher',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -73,151 +128,140 @@ class LocationDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildLocationSelector() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey!, width: 1),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.tune, color: AppColors.primary, size: 18),
-          SizedBox(width: 8),
+  Widget _buildLocationSelectorHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+      child: Row(
+        children: const [
+          Icon(Icons.tune_rounded, color: AppColors.textSecondary, size: 14),
+          SizedBox(width: 6),
           Text(
-            'Select Location',
+            'SELECT AREA',
             style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+              letterSpacing: 0.8,
             ),
           ),
         ],
       ),
     );
   }
- 
-  Widget _buildLocationList() {
+
+  Widget _buildLocationList(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       child: Column(
-        children:
-            locations.map((location) {
-              final isSelected = selectedLocation == location.name;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 4),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: isSelected ? AppColors.primary.withOpacity(0.1) : null,
-                  border:
-                      isSelected
-                          ? Border.all(
-                            color: AppColors.primary.withOpacity(0.3),
-                            width: 1,
-                          )
-                          : null,
-                ),
-                child: ListTile(
-                  dense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 2,
+        children: locations.map((location) {
+          final isSelected = selectedLocation == location.name;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                  onLocationChanged(location.name);
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? location.color.withValues(alpha: 0.12)
+                        : Colors.white.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isSelected
+                          ? location.color.withValues(alpha: 0.35)
+                          : Colors.white.withValues(alpha: 0.6),
+                      width: 1,
+                    ),
                   ),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color:
-                          isSelected
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isSelected
                               ? location.color
-                              : location.color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow:
-                          isSelected
-                              ? [
-                                BoxShadow(
-                                  color: location.color.withOpacity(0.3),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                              : null,
-                    ),
-                    child: Icon(
-                      location.icon,
-                      color: isSelected ? Colors.white : location.color,
-                      size: 18,
-                    ),
+                              : location.color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          location.icon,
+                          color: isSelected ? Colors.white : location.color,
+                          size: 16,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          location.name,
+                          style: TextStyle(
+                            color: isSelected ? location.color : AppColors.textPrimary,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            fontSize: 13.5,
+                          ),
+                        ),
+                      ),
+                      if (isSelected)
+                        Icon(
+                          Icons.check_circle_rounded,
+                          color: location.color,
+                          size: 16,
+                        ),
+                    ],
                   ),
-                  title: Text(
-                    location.name,
-                    style: TextStyle(
-                      color:
-                          isSelected
-                              ? AppColors.primary
-                              : AppColors.textPrimary,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.normal,
-                      fontSize: 13,
-                    ),
-                  ),
-                  trailing:
-                      isSelected
-                          ? Icon(
-                            Icons.check_circle,
-                            color: AppColors.primary,
-                            size: 16,
-                          )
-                          : null,
-                  onTap: () => onLocationChanged(location.name),
                 ),
-              );
-            }).toList(),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
 
   Widget _buildStatusLegend() {
     return Container(
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey!, width: 1),
+        color: Colors.white.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.7),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
+          const Row(
             children: [
-              Icon(Icons.info_outline, color: AppColors.primary, size: 16),
-              const SizedBox(width: 6),
-              const Text(
-                'Table Status',
+              Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 15),
+              SizedBox(width: 6),
+              Text(
+                'Table Status Legend',
                 style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 12,
-            runSpacing: 6,
+            runSpacing: 8,
             children: [
-              _buildStatusLegendItem(
-                'Available',
-                const Color(0xFF10B981),
-              ), // Green for available
+              _buildStatusLegendItem('Available', const Color(0xFF10B981)),
               _buildStatusLegendItem('Occupied', const Color(0xFFEF4444)),
               _buildStatusLegendItem('Reserved', const Color(0xFFF59E0B)),
               _buildStatusLegendItem('KOT Generated', const Color(0xFF8B5CF6)),
-              // Removed "Bill Generated" as requested
             ],
           ),
         ],
@@ -230,15 +274,15 @@ class LocationDrawer extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 12,
-          height: 12,
+          width: 10,
+          height: 10,
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(3),
             boxShadow: [
               BoxShadow(
-                color: color.withOpacity(0.3),
-                blurRadius: 2,
+                color: color.withValues(alpha: 0.3),
+                blurRadius: 3,
                 offset: const Offset(0, 1),
               ),
             ],
@@ -250,7 +294,7 @@ class LocationDrawer extends StatelessWidget {
           style: const TextStyle(
             fontSize: 11,
             color: AppColors.textSecondary,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
