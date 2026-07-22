@@ -1,8 +1,9 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/themes/app_colors.dart';
+import '../../../../core/utils/haptic_helper.dart';
 import '../../../view_models/providers/animated_cart_provider.dart';
-import '../../../../core/constants/currency_constants.dart';
 
 class CartFooter extends StatelessWidget {
   final VoidCallback onPlaceOrder;
@@ -14,59 +15,102 @@ class CartFooter extends StatelessWidget {
     return Consumer<AnimatedCartProvider>(
       builder: (context, cartProvider, child) {
         final itemCount = cartProvider.newItemsCount;
-        final totalAmount = cartProvider.newItemsTotalAmount;
 
         if (itemCount <= 0) {
           return const SizedBox.shrink();
         }
 
         return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(
-              top: BorderSide(color: AppColors.cardShadow, width: 1),
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$itemCount items',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      '${CurrencyConstants.symbol}${totalAmount.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
+          margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
                 ),
-              ),
-              ElevatedButton(
-                onPressed: onPlaceOrder,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.22), // Ultra translucent frosted glass fill
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.50),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Left Side: Item Count Badge (No Price)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.primary.withOpacity(0.25),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          '$itemCount ${itemCount == 1 ? 'item' : 'items'}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Right Side: Go to Cart Button (No Price)
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          await HapticHelper.triggerFeedback();
+                          onPlaceOrder();
+                        },
+                        icon: const Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 18,
+                        ),
+                        label: const Text(
+                          'Go to Cart',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 2,
+                          shadowColor: AppColors.primary.withOpacity(0.3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 11,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: const Text(
-                  'Go to Cart',
-                  style: TextStyle(color: Colors.white),
-                ),
               ),
-            ],
+            ),
           ),
         );
       },

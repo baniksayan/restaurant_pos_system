@@ -107,10 +107,11 @@ class _MenuViewState extends State<MenuView> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: Colors.grey[50],
-        body: Consumer2<MenuProvider, NavigationProvider>(
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: SafeArea(
+        bottom: false,
+        child: Consumer2<MenuProvider, NavigationProvider>(
           builder: (context, menuProvider, navProvider, child) {
             // Debug prints
             debugPrint(
@@ -143,53 +144,72 @@ class _MenuViewState extends State<MenuView> {
                       onPrintKOT: _printKOT,
                     ),
                     Expanded(
-                      child: NestedScrollView(
-                        headerSliverBuilder: (context, innerBoxIsScrolled) {
-                          return [
-                             SliverAppBar(
-                              floating: true,
-                              snap: true,
-                              pinned: false,
-                              elevation: 0,
-                              backgroundColor: Colors.grey[50],
-                              automaticallyImplyLeading: false,
-                              toolbarHeight: 140,
-                              flexibleSpace: SafeArea(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    MenuSearchBar(),
-                                    CategoryTabs(),
-                                  ],
+                      child: Stack(
+                        children: [
+                          NestedScrollView(
+                            headerSliverBuilder: (context, innerBoxIsScrolled) {
+                              return [
+                                SliverAppBar(
+                                  floating: true,
+                                  snap: true,
+                                  pinned: false,
+                                  elevation: 0,
+                                  backgroundColor: Colors.grey[50],
+                                  automaticallyImplyLeading: false,
+                                  toolbarHeight: 140,
+                                  flexibleSpace: SafeArea(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: const [
+                                        MenuSearchBar(),
+                                        CategoryTabs(),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ];
+                            },
+                            body: PremiumRefreshIndicator(
+                              onRefresh: () async {
+                                final outletId = HiveService.getOutletId();
+                                if (outletId != null && outletId > 0) {
+                                  await menuProvider.loadMenuData(
+                                    outletId: outletId,
+                                  );
+                                }
+                              },
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  bottom:
+                                      canOrder && cartProvider.newItemsCount > 0
+                                          ? 95
+                                          : 0,
+                                ),
+                                child: MenuGrid(
+                                  canOrder: canOrder,
+                                  onAddToCart: widget.onAddToCart,
                                 ),
                               ),
                             ),
-                          ];
-                        },
-                        body: PremiumRefreshIndicator(
-                          onRefresh: () async {
-                            final outletId = HiveService.getOutletId();
-                            if (outletId != null && outletId > 0) {
-                              await menuProvider.loadMenuData(outletId: outletId);
-                            }
-                          },
-                          child: MenuGrid(
-                            canOrder: canOrder,
-                            onAddToCart: widget.onAddToCart,
                           ),
-                        ),
+                          if (canOrder && cartProvider.newItemsCount > 0)
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              child: CartFooter(
+                                onPlaceOrder: () {
+                                  // Navigate to Cart tab (index 2)
+                                  Provider.of<NavigationProvider>(
+                                    context,
+                                    listen: false,
+                                  ).navigateToIndex(2);
+                                },
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                    if (canOrder && cartProvider.newItemsCount > 0)
-                      CartFooter(
-                        onPlaceOrder: () {
-                          // Navigate to Cart tab (index 2)
-                          Provider.of<NavigationProvider>(
-                            context,
-                            listen: false,
-                          ).navigateToIndex(2);
-                        },
-                      ),
                   ],
                 );
               },

@@ -602,34 +602,42 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
                     // Main Menu Layout - Enhanced for tablet
                     return Container(
                       padding: EdgeInsets.all(isTablet ? 16 : 8),
-                      child: Column(
+                      child: Stack(
                         children: [
-                          Expanded(
-                            child: NestedScrollView(
-                              headerSliverBuilder: (context, innerBoxIsScrolled) {
-                                return [
-                                  SliverAppBar(
-                                    floating: true,
-                                    snap: true,
-                                    pinned: false,
-                                    elevation: 0,
-                                    backgroundColor: Colors.transparent,
-                                    automaticallyImplyLeading: false,
-                                    toolbarHeight: _showSearchBar ? 140 : 60,
-                                    flexibleSpace: SafeArea(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          if (_showSearchBar) const MenuSearchBar(),
-                                          const CategoryTabs(),
-                                        ],
-                                      ),
+                          NestedScrollView(
+                            headerSliverBuilder: (context, innerBoxIsScrolled) {
+                              return [
+                                SliverAppBar(
+                                  floating: true,
+                                  snap: true,
+                                  pinned: false,
+                                  elevation: 0,
+                                  backgroundColor: Colors.transparent,
+                                  automaticallyImplyLeading: false,
+                                  toolbarHeight: _showSearchBar ? 140 : 60,
+                                  flexibleSpace: SafeArea(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (_showSearchBar)
+                                          const MenuSearchBar(),
+                                        const CategoryTabs(),
+                                      ],
                                     ),
                                   ),
-                                ];
-                              },
-                              body: ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
+                                ),
+                              ];
+                            },
+                            body: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  bottom:
+                                      _selectedTableId != null &&
+                                              cartProvider.newItemsCount > 0
+                                          ? 95
+                                          : 0,
+                                ),
                                 child: MenuGrid(
                                   canOrder: _selectedTableId != null,
                                   onAddToCart: _handleAddToCart,
@@ -638,22 +646,13 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
                             ),
                           ),
 
-                          // Enhanced Cart Footer for tablets
+                          // Floating Glassmorphic Cart Footer
                           if (_selectedTableId != null &&
                               cartProvider.newItemsCount > 0)
-                            Container(
-                              margin: EdgeInsets.only(top: isTablet ? 16 : 12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary.withOpacity(0.1),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, -2),
-                                  ),
-                                ],
-                              ),
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
                               child: CartFooter(onPlaceOrder: _navigateToCart),
                             ),
                         ],
