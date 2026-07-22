@@ -14,16 +14,18 @@ class CartItemsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: items
-            .map((item) => CartItemCard(
-                  item: item,
-                  onEdit: () => onEditItem(item),
-                ))
-            .toList(),
-      ),
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: items.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return CartItemCard(
+          item: item,
+          onEdit: () => onEditItem(item),
+        );
+      },
     );
   }
 }

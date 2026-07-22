@@ -1,17 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/themes/app_colors.dart';
 import '../../../../../core/constants/currency_constants.dart';
 import '../../../../../core/utils/haptic_helper.dart';
 import '../../../../../presentation/view_models/providers/tax_provider.dart';
-
-const List<BoxShadow> cartFooterShadow = [
-  BoxShadow(
-    color: Color(0x22000000), // subtle black shadow
-    blurRadius: 8,
-    offset: Offset(0, -2),
-  ),
-];
 
 class CartFooter extends StatefulWidget {
   final double subtotal;
@@ -36,7 +29,7 @@ class CartFooter extends StatefulWidget {
 }
 
 class _CartFooterState extends State<CartFooter> {
-  bool _expanded = false; // default collapsed per request
+  bool _expanded = false; // default collapsed
 
   @override
   Widget build(BuildContext context) {
@@ -47,125 +40,161 @@ class _CartFooterState extends State<CartFooter> {
         final total = widget.subtotal + gstAmount;
 
         return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: const Border(
-              top: BorderSide(color: AppColors.cardShadow, width: 1),
-            ),
-            boxShadow: cartFooterShadow,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!_expanded) ...[
-                // Collapsed: TOTAL AMOUNT row with arrow on right
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildPriceRow(
-                        "TOTAL AMOUNT:",
-                        "${CurrencyConstants.symbol}${(widget.subtotal + taxProvider.calculateGstAmount(widget.subtotal)).toStringAsFixed(2)}",
-                        isTotal: true,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () async {
-                        await HapticHelper.triggerFeedback();
-                        setState(() => _expanded = !_expanded);
-                      },
-                      icon: const Icon(Icons.keyboard_arrow_up),
+          margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.72), // Transparent frosted glass fill
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.85), // Clean white glass border
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                if (!widget.kotGenerated)
-                  _buildPreKOTButtons()
-                else
-                  _buildPostKOTButtons(),
-              ] else ...[
-                // Expanded: GST info row with arrow on right
-                Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () async {
-                          await HapticHelper.triggerFeedback();
-                          widget.onShowGSTInfo();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.blue.withOpacity(0.3),
+                    if (!_expanded) ...[
+                      // Collapsed: TOTAL AMOUNT row with arrow on right
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildPriceRow(
+                              "TOTAL AMOUNT:",
+                              "${CurrencyConstants.symbol}${(widget.subtotal + taxProvider.calculateGstAmount(widget.subtotal)).toStringAsFixed(2)}",
+                              isTotal: true,
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.info,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
+                          InkWell(
+                            onTap: () async {
+                              await HapticHelper.triggerFeedback();
+                              setState(() => _expanded = !_expanded);
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: const Padding(
+                              padding: EdgeInsets.all(4.0),
+                              child: Icon(
+                                Icons.keyboard_arrow_up_rounded,
+                                size: 24,
+                                color: Color(0xFF6D28D9),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Restaurant GST: ${gstPercentage.toStringAsFixed(1)}% ${taxProvider.hasTaxData ? "(From API)" : "(Default)"} - Tap for info',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.blue[700],
-                                    fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      if (!widget.kotGenerated)
+                        _buildPreKOTButtons()
+                      else
+                        _buildPostKOTButtons(),
+                    ] else ...[
+                      // Expanded: GST info row with arrow on right
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () async {
+                                await HapticHelper.triggerFeedback();
+                                widget.onShowGSTInfo();
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 8,
+                                ),
+                                margin: const EdgeInsets.only(bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.blue.withOpacity(0.25),
                                   ),
                                 ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Icon(
+                                        Icons.info,
+                                        color: Colors.white,
+                                        size: 12,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        'Restaurant GST: ${gstPercentage.toStringAsFixed(1)}% ${taxProvider.hasTaxData ? "(From API)" : "(Default)"} - Tap for info',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.blue[800],
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
+                          InkWell(
+                            onTap: () async {
+                              await HapticHelper.triggerFeedback();
+                              setState(() => _expanded = !_expanded);
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: const Padding(
+                              padding: EdgeInsets.all(4.0),
+                              child: Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 24,
+                                color: Color(0xFF6D28D9),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    IconButton(
-                      onPressed: () async {
-                        await HapticHelper.triggerFeedback();
-                        setState(() => _expanded = !_expanded);
-                      },
-                      icon: const Icon(Icons.keyboard_arrow_down),
-                    ),
+                      _buildPriceRow(
+                        "Subtotal:",
+                        "${CurrencyConstants.symbol}${widget.subtotal.toStringAsFixed(2)}",
+                      ),
+                      const SizedBox(height: 6),
+                      _buildPriceRow(
+                        "GST (${gstPercentage.toStringAsFixed(1)}%):",
+                        "${CurrencyConstants.symbol}${gstAmount.toStringAsFixed(2)}",
+                      ),
+                      const SizedBox(height: 8),
+                      Divider(thickness: 1, height: 1, color: Colors.grey.withOpacity(0.3)),
+                      const SizedBox(height: 8),
+                      _buildPriceRow(
+                        "TOTAL AMOUNT:",
+                        "${CurrencyConstants.symbol}${total.toStringAsFixed(2)}",
+                        isTotal: true,
+                      ),
+                      const SizedBox(height: 10),
+                      if (!widget.kotGenerated)
+                        _buildPreKOTButtons()
+                      else
+                        _buildPostKOTButtons(),
+                    ],
                   ],
                 ),
-                _buildPriceRow(
-                  "Subtotal:",
-                  "${CurrencyConstants.symbol}${widget.subtotal.toStringAsFixed(2)}",
-                ),
-                const SizedBox(height: 8),
-                _buildPriceRow(
-                  "GST (${gstPercentage.toStringAsFixed(1)}%):",
-                  "${CurrencyConstants.symbol}${gstAmount.toStringAsFixed(2)}",
-                ),
-                const SizedBox(height: 12),
-                const Divider(thickness: 2),
-                const SizedBox(height: 8),
-                _buildPriceRow(
-                  "TOTAL AMOUNT:",
-                  "${CurrencyConstants.symbol}${total.toStringAsFixed(2)}",
-                  isTotal: true,
-                ),
-                const SizedBox(height: 20),
-                if (!widget.kotGenerated)
-                  _buildPreKOTButtons()
-                else
-                  _buildPostKOTButtons(),
-              ],
-            ],
+              ),
+            ),
           ),
         );
       },
@@ -179,16 +208,17 @@ class _CartFooterState extends State<CartFooter> {
         Text(
           label,
           style: TextStyle(
-            fontSize: isTotal ? 16 : 14,
-            fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+            fontSize: isTotal ? 14 : 13,
+            fontWeight: isTotal ? FontWeight.w800 : FontWeight.w600,
+            color: isTotal ? const Color(0xFF1E1B4B) : const Color(0xFF475569),
           ),
         ),
         Text(
           value,
           style: TextStyle(
-            fontSize: isTotal ? 18 : 14,
-            fontWeight: FontWeight.bold,
-            color: isTotal ? AppColors.primary : Colors.black,
+            fontSize: isTotal ? 17 : 13,
+            fontWeight: FontWeight.w800,
+            color: isTotal ? AppColors.primary : const Color(0xFF1E293B),
           ),
         ),
       ],
@@ -203,13 +233,17 @@ class _CartFooterState extends State<CartFooter> {
           await HapticHelper.triggerFeedback();
           widget.onGenerateKOT();
         },
-        icon: const Icon(Icons.print, size: 20),
-        label: const Text('Generate KOT'),
+        icon: const Icon(Icons.print_rounded, size: 18),
+        label: const Text(
+          'Generate KOT',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+        ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
+          backgroundColor: const Color(0xFF16A34A).withOpacity(0.92),
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );
@@ -224,33 +258,41 @@ class _CartFooterState extends State<CartFooter> {
               await HapticHelper.triggerFeedback();
               widget.onSendToKitchen();
             },
-            icon: const Icon(Icons.kitchen, size: 20),
-            label: const Text('Send to Kitchen'),
+            icon: const Icon(Icons.kitchen_rounded, size: 18),
+            label: const Text(
+              'Send to Kitchen',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+            ),
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              side: const BorderSide(color: Colors.orange),
-              foregroundColor: Colors.orange,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              side: BorderSide(color: Colors.orange[700]!, width: 1.5),
+              foregroundColor: Colors.orange[800],
+              backgroundColor: Colors.white.withOpacity(0.5),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: ElevatedButton.icon(
             onPressed: () async {
               await HapticHelper.triggerFeedback();
               widget.onGenerateBill();
             },
-            icon: const Icon(Icons.receipt_long, size: 20),
-            label: const Text('Generate Bill'),
+            icon: const Icon(Icons.receipt_long_rounded, size: 18),
+            label: const Text(
+              'Generate Bill',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+            ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: AppColors.primary.withOpacity(0.92),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
           ),

@@ -13,7 +13,10 @@ class CartFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AnimatedCartProvider>(
       builder: (context, cartProvider, child) {
-        if (cartProvider.cartItems.isEmpty) {
+        final itemCount = cartProvider.newItemsCount;
+        final totalAmount = cartProvider.newItemsTotalAmount;
+
+        if (itemCount <= 0) {
           return const SizedBox.shrink();
         }
 
@@ -33,14 +36,14 @@ class CartFooter extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '${cartProvider.totalItems} items',
+                      '$itemCount items',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      '${CurrencyConstants.symbol}${cartProvider.totalAmount.toStringAsFixed(0)}',
+                      '${CurrencyConstants.symbol}${totalAmount.toStringAsFixed(0)}',
                       style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.textSecondary,

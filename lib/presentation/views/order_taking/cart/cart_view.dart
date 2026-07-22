@@ -1,15 +1,18 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
+import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import '../../../../core/themes/app_colors.dart';
 import '../../../view_models/providers/animated_cart_provider.dart';
+import '../../../view_models/providers/menu_provider.dart';
 import '../../../view_models/providers/navigation_provider.dart';
 import '../../../view_models/providers/table_provider.dart';
 import '../../../../data/models/order_detail_api_response_model.dart';
 
 import '../../../../services/pdf_service.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../billing/billing_page.dart';
 import 'widgets/cart_header.dart';
 import 'widgets/cart_items_list.dart';
@@ -19,6 +22,8 @@ import 'widgets/edit_item_dialog.dart';
 import 'widgets/clear_cart_dialog.dart';
 import 'widgets/gst_info_dialog.dart';
 import 'widgets/kot_pdf_viewer_dialog.dart';
+import 'widgets/kot_section_widget.dart';
+import 'package:restaurant_pos_system/shared/widgets/images/network_image_widget.dart';
 import '../../../../shared/widgets/overlays/pdf_share_bottom_sheet.dart';
 import '../../../view_models/providers/order_provider.dart';
 import '../../../../data/local/hive_service.dart';
@@ -44,6 +49,45 @@ class CartView extends StatefulWidget {
 class _CartViewState extends State<CartView> {
   Set<String> _kotNumbers =
       {}; // Track all KOT numbers generated for this table
+  bool _isFooterVisible = true;
+  Timer? _scrollEndTimer;
+
+  @override
+  void dispose() {
+    _scrollEndTimer?.cancel();
+    super.dispose();
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification is UserScrollNotification) {
+      if (notification.direction == ScrollDirection.reverse ||
+          notification.direction == ScrollDirection.forward) {
+        if (_isFooterVisible) {
+          setState(() {
+            _isFooterVisible = false;
+          });
+        }
+        _scrollEndTimer?.cancel();
+        _scrollEndTimer = Timer(const Duration(milliseconds: 350), () {
+          if (mounted && !_isFooterVisible) {
+            setState(() {
+              _isFooterVisible = true;
+            });
+          }
+        });
+      }
+    } else if (notification is ScrollEndNotification) {
+      _scrollEndTimer?.cancel();
+      _scrollEndTimer = Timer(const Duration(milliseconds: 150), () {
+        if (mounted && !_isFooterVisible) {
+          setState(() {
+            _isFooterVisible = true;
+          });
+        }
+      });
+    }
+    return false;
+  }
 
   @override
   void initState() {
@@ -106,23 +150,34 @@ class _CartViewState extends State<CartView> {
                                 const SkeletonLoader.rectangular(
                                   width: 48,
                                   height: 48,
-                                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(8),
+                                  ),
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: const [
-                                      SkeletonLoader.rectangular(width: 140, height: 16),
+                                      SkeletonLoader.rectangular(
+                                        width: 140,
+                                        height: 16,
+                                      ),
                                       SizedBox(height: 8),
-                                      SkeletonLoader.rectangular(width: 70, height: 12),
+                                      SkeletonLoader.rectangular(
+                                        width: 70,
+                                        height: 12,
+                                      ),
                                     ],
                                   ),
                                 ),
                                 const SkeletonLoader.rectangular(
                                   width: 80,
                                   height: 32,
-                                  borderRadius: BorderRadius.all(Radius.circular(16)),
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(16),
+                                  ),
                                 ),
                               ],
                             ),
@@ -148,7 +203,8 @@ class _CartViewState extends State<CartView> {
             return Column(
               children: [
                 CartHeader(
-                  kotGenerated: hasKotItems,
+                  hasKotItems: hasKotItems,
+                  hasNewItems: hasNewItems,
                   kotOrderNumber:
                       _kotNumbers.isNotEmpty ? _kotNumbers.join(', ') : null,
                   tableName: widget.tableName,
@@ -163,37 +219,68 @@ class _CartViewState extends State<CartView> {
                   const Expanded(child: EmptyCartWidget())
                 else
                   Expanded(
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Column(
-                        children: [
-                          // Show KOT generated items section (from both local and server)
-                          if (hasKotItems)
-                            _buildKotGeneratedSection(
-                              kotGeneratedItems,
-                              serverKotItems,
+                    child: Stack(
+                      children: [
+                        NotificationListener<ScrollNotification>(
+                          onNotification: _handleScrollNotification,
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.only(bottom: 100),
+                            child: Column(
+                              children: [
+                                // Show KOT generated items section (from both local and server)
+                                if (hasKotItems)
+                                  _buildKotGeneratedSection(
+                                    kotGeneratedItems,
+                                    serverKotItems,
+                                  ),
+                                // Show new items section
+                                if (newItems.isNotEmpty)
+                                  _buildNewItemsSection(newItems),
+                              ],
                             ),
-                          // Show new items section
-                          if (newItems.isNotEmpty)
-                            _buildNewItemsSection(newItems),
-                        ],
-                      ),
+                          ),
+                        ),
+                        if (items.isNotEmpty)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: AnimatedSlide(
+                              offset:
+                                  _isFooterVisible
+                                      ? Offset.zero
+                                      : const Offset(0, 1.2),
+                              duration: const Duration(milliseconds: 320),
+                              curve: Curves.easeOutCubic,
+                              child: AnimatedOpacity(
+                                opacity: _isFooterVisible ? 1.0 : 0.0,
+                                duration: const Duration(milliseconds: 240),
+                                curve: Curves.easeOutCubic,
+                                child: CartFooter(
+                                  subtotal: cartProvider.totalAmount,
+                                  kotGenerated:
+                                      hasKotItems &&
+                                      !hasNewItems, // KOT generated and no new items
+                                  onGenerateKOT:
+                                      hasNewItems
+                                          ? () => _generateKOT(cartProvider)
+                                          : () {},
+                                  onSendToKitchen:
+                                      () => _sendToKitchen(cartProvider),
+                                  onGenerateBill:
+                                      cartProvider.canProceedToBilling
+                                          ? () => _navigateToBillingPage(
+                                            cartProvider,
+                                          )
+                                          : () => _showCannotBillDialog(),
+                                  onShowGSTInfo: _showGSTInfoDialog,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
-                if (items.isNotEmpty)
-                  CartFooter(
-                    subtotal: cartProvider.totalAmount,
-                    kotGenerated:
-                        hasKotItems &&
-                        !hasNewItems, // KOT generated and no new items
-                    onGenerateKOT:
-                        hasNewItems ? () => _generateKOT(cartProvider) : () {},
-                    onSendToKitchen: () => _sendToKitchen(cartProvider),
-                    onGenerateBill:
-                        cartProvider.canProceedToBilling
-                            ? () => _navigateToBillingPage(cartProvider)
-                            : () => _showCannotBillDialog(),
-                    onShowGSTInfo: _showGSTInfoDialog,
                   ),
               ],
             );
@@ -208,151 +295,116 @@ class _CartViewState extends State<CartView> {
     List<CartItem> kotGeneratedItems,
     List<OrderDetailList> serverKotItems,
   ) {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.kotStatus.withOpacity(0.08),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(12),
+    final count =
+        serverKotItems.length +
+        kotGeneratedItems
+            .where(
+              (localItem) =>
+                  !serverKotItems.any(
+                    (serverItem) => serverItem.productId == localItem.id,
+                  ),
+            )
+            .length;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: KotSectionWidget(
+        backgroundColor: const Color(0xFFF5F3FF),
+        headerIcon: Icons.receipt_long_rounded,
+        headerTitle: 'KOT Generated Items',
+        headerColor: const Color(0xFF7C3AED),
+        itemCountText: '$count ${count == 1 ? 'Item' : 'Items'}',
+        badgeColor: const Color(0xFF6D28D9),
+        child: Column(
+          children: [
+            if (serverKotItems.isNotEmpty)
+              _buildServerKotItemsList(serverKotItems),
+            if (serverKotItems.isNotEmpty && kotGeneratedItems.isNotEmpty)
+              const SizedBox(height: 12),
+            if (kotGeneratedItems.isNotEmpty)
+              CartItemsList(
+                items:
+                    kotGeneratedItems
+                        .where(
+                          (localItem) =>
+                              !serverKotItems.any(
+                                (serverItem) =>
+                                    serverItem.productId == localItem.id,
+                              ),
+                        )
+                        .toList(),
+                onEditItem: (item) => _showKotItemInfo(item),
               ),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.receipt_long, color: AppColors.kotStatus, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'KOT Generated Items',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.kotStatus.withOpacity(0.95),
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.kotStatus,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${serverKotItems.length + kotGeneratedItems.where((localItem) => !serverKotItems.any((serverItem) => serverItem.productId == localItem.id)).length} items',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Show server KOT items (authoritative source to prevent duplicates)
-          if (serverKotItems.isNotEmpty)
-            _buildServerKotItemsList(serverKotItems),
-          // Show any local-only KOT items that aren't in server yet (should be rare)
-          if (kotGeneratedItems.isNotEmpty)
-            CartItemsList(
-              items:
-                  kotGeneratedItems
-                      .where(
-                        (localItem) =>
-                            !serverKotItems.any(
-                              (serverItem) =>
-                                  serverItem.productId == localItem.id,
-                            ),
-                      )
-                      .toList(),
-              onEditItem: (item) => _showKotItemInfo(item),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   // Build section for new items (editable)
   Widget _buildNewItemsSection(List<CartItem> newItems) {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(12),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.shopping_cart_outlined,
-                  color: Colors.orange,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'New Items (Pending KOT)',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange[700],
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.orange,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${newItems.length} items',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          CartItemsList(items: newItems, onEditItem: _showEditItemDialog),
-        ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: KotSectionWidget(
+        backgroundColor: const Color(0xFFFFF7ED),
+        headerIcon: Icons.dinner_dining_rounded,
+        headerTitle: 'New Items (Pending KOT)',
+        headerColor: const Color(0xFFEA580C),
+        itemCountText:
+            '${newItems.length} ${newItems.length == 1 ? 'Item' : 'Items'}',
+        badgeColor: const Color(0xFFF97316),
+        child: CartItemsList(items: newItems, onEditItem: _showEditItemDialog),
       ),
     );
   }
 
   // Build widget for server KOT items
   Widget _buildServerKotItemsList(List<OrderDetailList> serverKotItems) {
-    return ListView.builder(
+    return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: serverKotItems.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final item = serverKotItems[index];
+        final unitPrice = item.itemPrice?.toDouble() ?? 0.0;
+        final qty = item.productQty?.toInt() ?? 1;
+        final totalPrice = unitPrice * qty;
+        String imageUrl = item.imageThumbUrl ?? item.imageUrl ?? '';
+        if (imageUrl.isEmpty && item.productId != null) {
+          final menuProvider = Provider.of<MenuProvider>(
+            context,
+            listen: false,
+          );
+          imageUrl = menuProvider.getImageUrlForProduct(item.productId!) ?? '';
+        }
+
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.kotStatus.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.kotStatus.withOpacity(0.2)),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
+          padding: const EdgeInsets.all(12.0),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: NetworkImageWidget(
+                  imageUrl: imageUrl,
+                  width: 90,
+                  height: 90,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -360,82 +412,118 @@ class _CartViewState extends State<CartView> {
                     Text(
                       item.productName ?? 'Unknown Item',
                       style: const TextStyle(
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        color: Color(0xFF1E1B4B),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          'Qty: ${item.productQty?.toInt() ?? 0}',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                          ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6D28D9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'KOT #${item.kotNo ?? ''}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(width: 16),
-                        Text(
-                          'Price: ₹${item.itemPrice?.toStringAsFixed(2) ?? '0.00'}',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                     if (item.instruction != null &&
-                        item.instruction!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          'Note: ${item.instruction}',
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 12,
-                            fontStyle: FontStyle.italic,
-                          ),
+                        item.instruction!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Note: ${item.instruction}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
                         ),
                       ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.kotStatus,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'KOT: ${item.kotNo ?? ''}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                    ],
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildValueColumn(
+                              value:
+                                  '${CurrencyConstants.symbol}${unitPrice.toStringAsFixed(2)}',
+                              label: 'Unit Price',
+                              valueColor: const Color(0xFF1E293B),
+                            ),
+                          ),
+                          Container(
+                            height: 24,
+                            width: 1,
+                            color: Colors.grey[300],
+                          ),
+                          Expanded(
+                            child: _buildValueColumn(
+                              value: '$qty',
+                              label: 'Quantity',
+                              valueColor: const Color(0xFF6D28D9),
+                            ),
+                          ),
+                          Container(
+                            height: 24,
+                            width: 1,
+                            color: Colors.grey[300],
+                          ),
+                          Expanded(
+                            child: _buildValueColumn(
+                              value:
+                                  '${CurrencyConstants.symbol}${totalPrice.toStringAsFixed(2)}',
+                              label: 'Total',
+                              valueColor: const Color(0xFF6D28D9),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '₹${item.totPrice?.toStringAsFixed(2) ?? '0.00'}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: AppColors.kotStatus,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildValueColumn({
+    required String value,
+    required String label,
+    required Color valueColor,
+  }) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: valueColor,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+        ),
+      ],
     );
   }
 
@@ -521,21 +609,18 @@ class _CartViewState extends State<CartView> {
   }
 
   void _showClearCartDialog(AnimatedCartProvider cartProvider) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => ClearCartDialog(
-            onConfirm:
-                cartProvider.kotGeneratedItems.isNotEmpty ||
-                        cartProvider.serverKotItems.isNotEmpty
-                    ? cartProvider.clearNewItems
-                    : cartProvider.clearCart,
-          ),
+    ClearCartDialog.show(
+      context,
+      onConfirm:
+          cartProvider.kotGeneratedItems.isNotEmpty ||
+                  cartProvider.serverKotItems.isNotEmpty
+              ? cartProvider.clearNewItems
+              : cartProvider.clearCart,
     );
   }
 
   void _showGSTInfoDialog() {
-    showDialog(context: context, builder: (context) => const GSTInfoDialog());
+    GSTInfoDialog.show(context);
   }
 
   void _navigateBackToMenu(AnimatedCartProvider cartProvider) {
@@ -584,9 +669,10 @@ class _CartViewState extends State<CartView> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => _PremiumLoaderDialog(
-          message: 'Generating KOT for ${newItems.length} new items...',
-        ),
+        builder:
+            (_) => _PremiumLoaderDialog(
+              message: 'Generating KOT for ${newItems.length} new items...',
+            ),
       );
 
       final orderProvider = context.read<OrderProvider>();
@@ -879,9 +965,10 @@ class _CartViewState extends State<CartView> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const _PremiumLoaderDialog(
-          message: 'Sending KOTs to Kitchen...',
-        ),
+        builder:
+            (_) => const _PremiumLoaderDialog(
+              message: 'Sending KOTs to Kitchen...',
+            ),
       );
 
       // Generate combined KOT for all KOT'd items
@@ -963,7 +1050,10 @@ class _CartViewState extends State<CartView> {
                   _kotNumbers.clear();
                 });
                 // Clear the active ordering session and go back to Tables dashboard
-                final navProvider = Provider.of<NavigationProvider>(context, listen: false);
+                final navProvider = Provider.of<NavigationProvider>(
+                  context,
+                  listen: false,
+                );
                 navProvider.clearTableSelection();
                 navProvider.navigateToTables();
               },
@@ -981,7 +1071,8 @@ class _PremiumLoaderDialog extends StatefulWidget {
   State<_PremiumLoaderDialog> createState() => _PremiumLoaderDialogState();
 }
 
-class _PremiumLoaderDialogState extends State<_PremiumLoaderDialog> with SingleTickerProviderStateMixin {
+class _PremiumLoaderDialogState extends State<_PremiumLoaderDialog>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override

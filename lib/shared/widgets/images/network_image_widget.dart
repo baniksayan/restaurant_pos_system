@@ -38,11 +38,34 @@ class NetworkImageWidget extends StatelessWidget {
   }
 
   String _cleanImageUrl(String url) {
-    // Fix double URL issue
-    if (url.contains('https://') && url.indexOf('https://') != url.lastIndexOf('https://')) {
-      return url.substring(url.lastIndexOf('https://'));
+    if (url.trim().isEmpty) return '';
+    String cleaned = url.trim();
+    // Fix double URL issue (e.g. duplicate https://)
+    if (cleaned.contains('https://') &&
+        cleaned.indexOf('https://') != cleaned.lastIndexOf('https://')) {
+      cleaned = cleaned.substring(cleaned.lastIndexOf('https://'));
     }
-    return url;
+    if (cleaned.contains('http://') &&
+        cleaned.indexOf('http://') != cleaned.lastIndexOf('http://')) {
+      cleaned = cleaned.substring(cleaned.lastIndexOf('http://'));
+    }
+    // Fix double slashes in path portion (e.g., images//RMS -> images/RMS)
+    if (cleaned.startsWith('https://')) {
+      final hostEnd = cleaned.indexOf('/', 8);
+      if (hostEnd != -1) {
+        final host = cleaned.substring(0, hostEnd);
+        final path = cleaned.substring(hostEnd).replaceAll(RegExp(r'/+'), '/');
+        cleaned = '$host$path';
+      }
+    } else if (cleaned.startsWith('http://')) {
+      final hostEnd = cleaned.indexOf('/', 7);
+      if (hostEnd != -1) {
+        final host = cleaned.substring(0, hostEnd);
+        final path = cleaned.substring(hostEnd).replaceAll(RegExp(r'/+'), '/');
+        cleaned = '$host$path';
+      }
+    }
+    return cleaned;
   }
 
   Widget _buildPlaceholder() {

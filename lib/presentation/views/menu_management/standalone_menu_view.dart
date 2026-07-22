@@ -640,7 +640,7 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
 
                           // Enhanced Cart Footer for tablets
                           if (_selectedTableId != null &&
-                              cartProvider.totalItems > 0)
+                              cartProvider.newItemsCount > 0)
                             Container(
                               margin: EdgeInsets.only(top: isTablet ? 16 : 12),
                               decoration: BoxDecoration(

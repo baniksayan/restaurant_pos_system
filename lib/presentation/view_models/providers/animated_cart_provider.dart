@@ -38,7 +38,14 @@ class AnimatedCartProvider extends ChangeNotifier {
   bool get hasNewItemsForKot => newItems.isNotEmpty;
 
   // Get total count of only new (non-KOT'd) items
-  int get newItemsCount => newItems.values.fold(0, (sum, item) => sum + item.quantity);
+  int get newItemsCount =>
+      newItems.values.fold(0, (sum, item) => sum + item.quantity);
+
+  // Get total amount of only new (non-KOT'd) items
+  double get newItemsTotalAmount => newItems.values.fold(
+    0.0,
+    (sum, item) => sum + (item.price * item.quantity),
+  );
 
   double get totalAmount => _cartItems.values.fold(
     0.0,
@@ -102,6 +109,7 @@ class AnimatedCartProvider extends ChangeNotifier {
     double price,
     String tableId,
     String tableName, {
+    String? imageUrl,
     String? specialNotes,
     String? categoryId,
     String? categoryName,
@@ -129,10 +137,15 @@ class AnimatedCartProvider extends ChangeNotifier {
       if (editableItem.quantity < 99) {
         editableItem.quantity++;
       } else {
-        debugPrint('[AnimatedCart] Maximum item quantity (99) reached. Blocked increment.');
+        debugPrint(
+          '[AnimatedCart] Maximum item quantity (99) reached. Blocked increment.',
+        );
       }
       if (specialNotes != null && specialNotes.isNotEmpty) {
         editableItem.specialNotes = specialNotes;
+      }
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        editableItem.imageUrl = imageUrl;
       }
       debugPrint(
         '[AnimatedCart] Incremented quantity of existing editable item $name (key: $editableKey) to ${editableItem.quantity}',
@@ -150,6 +163,7 @@ class AnimatedCartProvider extends ChangeNotifier {
           quantity: 1,
           tableId: tableId,
           tableName: tableName,
+          imageUrl: imageUrl,
           specialNotes: specialNotes,
           categoryId: categoryId,
           categoryName: categoryName,
@@ -169,6 +183,7 @@ class AnimatedCartProvider extends ChangeNotifier {
           quantity: 1,
           tableId: tableId,
           tableName: tableName,
+          imageUrl: imageUrl,
           specialNotes: specialNotes,
           categoryId: categoryId,
           categoryName: categoryName,
@@ -176,9 +191,7 @@ class AnimatedCartProvider extends ChangeNotifier {
           discountPercentage: discountPercentage,
           isKotGenerated: false,
         );
-        debugPrint(
-          '[AnimatedCart] Added new item $name with key: $itemId',
-        );
+        debugPrint('[AnimatedCart] Added new item $name with key: $itemId');
       }
     }
 
@@ -216,6 +229,7 @@ class AnimatedCartProvider extends ChangeNotifier {
     double price,
     String tableId,
     String tableName, {
+    String? imageUrl,
     String? categoryId,
     String? categoryName,
     String? uom,
@@ -245,10 +259,14 @@ class AnimatedCartProvider extends ChangeNotifier {
       final finalQty = quantity > 99 ? 99 : quantity;
       if (editableItem != null) {
         editableItem.quantity = finalQty;
+        if (imageUrl != null && imageUrl.isNotEmpty) {
+          editableItem.imageUrl = imageUrl;
+        }
       } else {
         // Create new item with specified quantity
         if (_cartItems.containsKey(itemId)) {
-          final uniqueKey = '${itemId}_${DateTime.now().millisecondsSinceEpoch}';
+          final uniqueKey =
+              '${itemId}_${DateTime.now().millisecondsSinceEpoch}';
           _cartItems[uniqueKey] = CartItem(
             id: itemId,
             name: name,
@@ -256,6 +274,7 @@ class AnimatedCartProvider extends ChangeNotifier {
             quantity: finalQty,
             tableId: tableId,
             tableName: tableName,
+            imageUrl: imageUrl,
             categoryId: categoryId,
             categoryName: categoryName,
             uom: uom,
@@ -270,6 +289,7 @@ class AnimatedCartProvider extends ChangeNotifier {
             quantity: finalQty,
             tableId: tableId,
             tableName: tableName,
+            imageUrl: imageUrl,
             categoryId: categoryId,
             categoryName: categoryName,
             uom: uom,
@@ -503,6 +523,9 @@ class AnimatedCartProvider extends ChangeNotifier {
         quantity = int.tryParse(q) ?? 1;
       }
 
+      final imageUrl =
+          (raw['imageUrl'] ?? raw['imageThumbUrl'] ?? raw['image'] ?? '')
+              .toString();
       final specialNotes =
           (raw['specialNotes'] ?? raw['note'] ?? '').toString();
       final categoryId = (raw['categoryId'] ?? '').toString();
@@ -538,6 +561,7 @@ class AnimatedCartProvider extends ChangeNotifier {
         quantity: quantity,
         tableId: tableId,
         tableName: tableName,
+        imageUrl: imageUrl.isNotEmpty ? imageUrl : null,
         specialNotes: specialNotes.isNotEmpty ? specialNotes : null,
         categoryId: categoryId.isNotEmpty ? categoryId : null,
         categoryName: categoryName.isNotEmpty ? categoryName : null,
@@ -571,6 +595,7 @@ class AnimatedCartProvider extends ChangeNotifier {
             'quantity': item.quantity,
             'tableId': item.tableId,
             'tableName': item.tableName,
+            'imageUrl': item.imageUrl,
             'specialNotes': item.specialNotes,
             'categoryId': item.categoryId,
             'categoryName': item.categoryName,
@@ -611,6 +636,7 @@ class AnimatedCartProvider extends ChangeNotifier {
             quantity: itemData['quantity'] ?? 1,
             tableId: itemData['tableId'] ?? tableId,
             tableName: itemData['tableName'] ?? '',
+            imageUrl: itemData['imageUrl'],
             specialNotes: itemData['specialNotes'],
             categoryId: itemData['categoryId'],
             categoryName: itemData['categoryName'],
@@ -644,6 +670,7 @@ class CartItem {
   int quantity;
   String tableId;
   String tableName;
+  String? imageUrl;
   String? specialNotes;
   String? categoryId;
   String? categoryName;
@@ -660,6 +687,7 @@ class CartItem {
     required this.quantity,
     required this.tableId,
     required this.tableName,
+    this.imageUrl,
     this.specialNotes,
     this.categoryId,
     this.categoryName,

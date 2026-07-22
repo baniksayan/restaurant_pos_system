@@ -306,6 +306,20 @@ class MenuProvider with ChangeNotifier {
     // No-op: Cart functionality moved to AnimatedCartProvider
   }
 
+  // Helper to look up product image URL by productId
+  String? getImageUrlForProduct(String productId) {
+    if (_apiMenuItems.isEmpty || productId.isEmpty) return null;
+    for (final item in _apiMenuItems) {
+      if (item.productId == productId) {
+        final url = item.imageThumbUrl ?? item.imageUrl;
+        if (url != null && url.isNotEmpty) {
+          return url;
+        }
+      }
+    }
+    return null;
+  }
+
   // Clear error message
   void clearError() {
     _errorMessage = null;

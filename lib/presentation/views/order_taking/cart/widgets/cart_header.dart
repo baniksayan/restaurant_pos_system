@@ -3,7 +3,8 @@ import '../../../../../core/themes/app_colors.dart';
 import '../../../../../core/utils/haptic_helper.dart';
 
 class CartHeader extends StatelessWidget {
-  final bool kotGenerated;
+  final bool hasKotItems;
+  final bool hasNewItems;
   final String? kotOrderNumber;
   final String? tableName;
   final String? selectedLocation;
@@ -15,7 +16,8 @@ class CartHeader extends StatelessWidget {
 
   const CartHeader({
     super.key,
-    required this.kotGenerated,
+    required this.hasKotItems,
+    required this.hasNewItems,
     this.kotOrderNumber,
     this.tableName,
     this.selectedLocation,
@@ -28,6 +30,17 @@ class CartHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String? statusText;
+    Color? statusColor;
+
+    if (hasNewItems) {
+      statusText = 'PENDING KOT';
+      statusColor = const Color(0xFFEA580C);
+    } else if (hasKotItems) {
+      statusText = 'KOT SENT';
+      statusColor = AppColors.kotStatus;
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -74,7 +87,7 @@ class CartHeader extends StatelessWidget {
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        if (kotGenerated) ...[
+                        if (statusText != null && statusColor != null) ...[
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -82,12 +95,12 @@ class CartHeader extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.kotStatus,
+                              color: statusColor,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Text(
-                              'KOT SENT',
-                              style: TextStyle(
+                            child: Text(
+                              statusText,
+                              style: const TextStyle(
                                 fontSize: 10,
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -135,11 +148,11 @@ class CartHeader extends StatelessWidget {
                       await HapticHelper.triggerFeedback();
                       onClearCart();
                     },
-                    icon: const Icon(Icons.clear_all, size: 16),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
                     label: const Text('Clear All'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
+                      foregroundColor: Colors.red[600],
+                      side: BorderSide(color: Colors.red[300]!),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 8,
@@ -162,7 +175,7 @@ class CartHeader extends StatelessWidget {
                   await HapticHelper.triggerFeedback();
                   onAddMore();
                 },
-                icon: const Icon(Icons.add_shopping_cart, size: 18),
+                icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
                 label: const Text('Add More Items'),
                 style: ElevatedButton.styleFrom(
                   // ✅ CHANGED FROM BRIGHT YELLOW TO SOOTHING APP COLOR

@@ -116,15 +116,16 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
             Positioned.fill(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 3.5, sigmaY: 3.5),
-                child: Container(
-                  color: Colors.black.withOpacity(0.08),
-                ),
+                child: Container(color: Colors.black.withOpacity(0.08)),
               ),
             ),
             SafeArea(
               child: Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 24,
+                  ),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 400),
                     child: GestureDetector(
@@ -156,27 +157,9 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  // Header with Back & Close buttons
+                                  // Header with Close button
                                   Row(
                                     children: [
-                                      if (widget.onBack != null) ...[
-                                        IconButton(
-                                          onPressed: _isLoading ? null : widget.onBack,
-                                          icon: const Icon(
-                                            Icons.arrow_back_rounded,
-                                            size: 18,
-                                          ),
-                                          style: IconButton.styleFrom(
-                                            backgroundColor: Colors.black
-                                                .withValues(alpha: 0.05),
-                                            foregroundColor: AppColors.textPrimary,
-                                            padding: const EdgeInsets.all(8),
-                                            minimumSize: const Size(32, 32),
-                                          ),
-                                          tooltip: 'Back to order types',
-                                        ),
-                                        const SizedBox(width: 8),
-                                      ],
                                       Container(
                                         width: 36,
                                         height: 36,
@@ -209,12 +192,17 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                                         ),
                                       ),
                                       IconButton(
-                                        onPressed: () => Navigator.of(context).pop(),
-                                        icon: const Icon(Icons.close_rounded, size: 18),
+                                        onPressed:
+                                            () => Navigator.of(context).pop(),
+                                        icon: const Icon(
+                                          Icons.close_rounded,
+                                          size: 18,
+                                        ),
                                         style: IconButton.styleFrom(
                                           backgroundColor: Colors.black
                                               .withValues(alpha: 0.05),
-                                          foregroundColor: AppColors.textSecondary,
+                                          foregroundColor:
+                                              AppColors.textSecondary,
                                           padding: const EdgeInsets.all(8),
                                           minimumSize: const Size(32, 32),
                                         ),
@@ -237,10 +225,11 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                                       fillColor: Colors.white.withValues(
                                         alpha: 0.48,
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 14,
-                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 14,
+                                          ),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(12),
                                         borderSide: BorderSide(
@@ -266,7 +255,8 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                                       ),
                                     ),
                                     validator: (value) {
-                                      if (value == null || value.trim().isEmpty) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
                                         return 'Customer name is required';
                                       }
                                       if (value.trim().length < 2) {
@@ -274,7 +264,8 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                                       }
                                       return null;
                                     },
-                                    textCapitalization: TextCapitalization.words,
+                                    textCapitalization:
+                                        TextCapitalization.words,
                                   ),
                                   const SizedBox(height: 14),
 
@@ -292,10 +283,11 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                                       fillColor: Colors.white.withValues(
                                         alpha: 0.48,
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 14,
-                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 14,
+                                          ),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(12),
                                         borderSide: BorderSide(
@@ -322,7 +314,8 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                                     ),
                                     keyboardType: TextInputType.phone,
                                     validator: (value) {
-                                      if (value == null || value.trim().isEmpty) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
                                         return 'Phone number is required';
                                       }
                                       if (value.trim().length < 10) {
@@ -338,10 +331,14 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                                     children: [
                                       Expanded(
                                         child: OutlinedButton(
-                                          onPressed: _isLoading
-                                              ? null
-                                              : (widget.onBack ??
-                                                  () => Navigator.of(context).pop()),
+                                          onPressed:
+                                              _isLoading
+                                                  ? null
+                                                  : (widget.onBack ??
+                                                      () =>
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop()),
                                           style: OutlinedButton.styleFrom(
                                             backgroundColor: Colors.white
                                                 .withValues(alpha: 0.4),
@@ -354,12 +351,13 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                                               ),
                                             ),
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                             ),
                                           ),
-                                          child: Text(
-                                            widget.onBack != null ? 'Back' : 'Cancel',
-                                            style: const TextStyle(
+                                          child: const Text(
+                                            'Back',
+                                            style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.w600,
                                               color: AppColors.textSecondary,
@@ -370,7 +368,10 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: ElevatedButton(
-                                          onPressed: _isLoading ? null : _handleConfirm,
+                                          onPressed:
+                                              _isLoading
+                                                  ? null
+                                                  : _handleConfirm,
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: AppColors.primary,
                                             foregroundColor: Colors.white,
@@ -379,28 +380,31 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                                               vertical: 14,
                                             ),
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                             ),
                                           ),
-                                          child: _isLoading
-                                              ? const SizedBox(
-                                                  height: 18,
-                                                  width: 18,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    valueColor:
-                                                        AlwaysStoppedAnimation<Color>(
-                                                      Colors.white,
+                                          child:
+                                              _isLoading
+                                                  ? const SizedBox(
+                                                    height: 18,
+                                                    width: 18,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                            Color
+                                                          >(Colors.white),
+                                                    ),
+                                                  )
+                                                  : const Text(
+                                                    'Confirm',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                     ),
                                                   ),
-                                                )
-                                              : const Text(
-                                                  'Confirm',
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
                                         ),
                                       ),
                                     ],

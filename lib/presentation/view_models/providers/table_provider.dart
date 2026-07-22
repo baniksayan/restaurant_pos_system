@@ -428,12 +428,16 @@ class TableProvider extends ChangeNotifier {
                   item.kotId != null &&
                   item.kotId!.isNotEmpty;
 
+              final imageUrl = item.imageThumbUrl ?? item.imageUrl;
+
               return <String, dynamic>{
                 'productId': item.productId,
                 'productName': item.productName,
                 'quantity': item.productQty,
                 'price': item.itemPrice,
                 'totalPrice': item.totPrice,
+                'imageUrl': imageUrl,
+                'imageThumbUrl': imageUrl,
                 // Mark as KOT generated since these items exist in backend
                 'isKotGenerated': isKotGenerated,
                 'kotNo': item.kotNo,

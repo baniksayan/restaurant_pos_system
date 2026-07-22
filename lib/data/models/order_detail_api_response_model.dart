@@ -103,6 +103,8 @@ class OrderDetailList {
   String? kotId;
   String? generatedBillNo;
   String? productId;
+  String? imageThumbUrl;
+  String? imageUrl;
 
   OrderDetailList({
     this.orderDetailId,
@@ -126,6 +128,8 @@ class OrderDetailList {
     this.kotId,
     this.generatedBillNo,
     this.productId,
+    this.imageThumbUrl,
+    this.imageUrl,
   });
 
   OrderDetailList.fromJson(Map<String, dynamic> json) {
@@ -161,5 +165,7 @@ class OrderDetailList {
     kotId = json['kotId'];
     generatedBillNo = json['generatedBillNo'];
     productId = json['productId'];
+    imageThumbUrl = json['imageThumbUrl'];
+    imageUrl = json['imageUrl'];
   }
 }

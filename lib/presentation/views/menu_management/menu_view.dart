@@ -180,7 +180,7 @@ class _MenuViewState extends State<MenuView> {
                         ),
                       ),
                     ),
-                    if (canOrder && cartProvider.totalItems > 0)
+                    if (canOrder && cartProvider.newItemsCount > 0)
                       CartFooter(
                         onPlaceOrder: () {
                           // Navigate to Cart tab (index 2)

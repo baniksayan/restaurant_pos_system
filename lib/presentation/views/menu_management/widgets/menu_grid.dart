@@ -195,6 +195,7 @@ class MenuGrid extends StatelessWidget {
         (item.productPrice?.toDouble() ?? 0.0),
         tableId,
         tableName,
+        imageUrl: item.imageThumbUrl ?? item.imageUrl,
         categoryId: item.categoryId ?? '',
         categoryName: item.categoryName ?? '',
       );
@@ -238,6 +239,7 @@ class MenuGrid extends StatelessWidget {
         (item.productPrice?.toDouble() ?? 0.0),
         tableId,
         tableName,
+        imageUrl: item.imageThumbUrl ?? item.imageUrl,
         categoryId: item.categoryId ?? '',
         categoryName: item.categoryName ?? '',
       );
