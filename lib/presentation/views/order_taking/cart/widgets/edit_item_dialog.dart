@@ -37,8 +37,8 @@ class _EditItemDialogState extends State<EditItemDialog> {
   ) async {
     await HapticHelper.triggerFeedback();
     cartProvider.updateItemNotes(widget.item.id, _notesController.text.trim());
-    if (mounted) {
-      Navigator.pop(context);
+    if (context.mounted) {
+      Navigator.of(context).pop();
     }
   }
 

@@ -1,10 +1,10 @@
 import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import '../../../../../core/themes/app_colors.dart';
-
-import '../../../../../shared/widgets/overlays/pdf_share_bottom_sheet.dart';
+import '../../../../../core/utils/haptic_helper.dart';
 
 class BillPDFViewerDialog extends StatefulWidget {
   final Uint8List pdfBytes;
@@ -23,168 +23,366 @@ class BillPDFViewerDialog extends StatefulWidget {
 }
 
 class _BillPDFViewerDialogState extends State<BillPDFViewerDialog> {
-  bool _isSharing = false;
   bool _isPrinting = false;
 
   @override
   Widget build(BuildContext context) {
-    return Dialog.fullscreen(
-      backgroundColor: AppColors.surface,
-      child: Scaffold(
-        backgroundColor: AppColors.surface,
-        appBar: AppBar(
-          backgroundColor: AppColors.primary,
-          elevation: 2,
-          title: Row(
-            children: [
-              Icon(Icons.receipt_long, color: AppColors.textOnDark, size: 24),
-              const SizedBox(width: 8),
-              Text(
-                'Bill - Order #${widget.orderNumber}',
-                style: const TextStyle(
-                  color: AppColors.textOnDark,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+    final size = MediaQuery.sizeOf(context);
+    final isTablet = size.width >= 600;
+
+    return Material(
+      type: MaterialType.transparency,
+      child: Stack(
+        children: [
+          // Minimal Backdrop Blur with outside tap to close functionality
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () async {
+                await HapticHelper.triggerFeedback();
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
+              },
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 3.5, sigmaY: 3.5),
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.12),
                 ),
               ),
-            ],
+            ),
           ),
-          centerTitle: false,
-        ),
-        body: Column(
-          children: [
-            Expanded(
+
+          // Main Centered Frosted Glass Modal
+          SafeArea(
+            child: Center(
               child: Container(
-                margin: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.cardShadow,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                width: isTablet ? size.width * 0.72 : size.width * 0.90,
+                height: isTablet ? size.height * 0.80 : size.height * 0.84,
+                constraints: BoxConstraints(
+                  maxWidth: isTablet ? 640 : 460,
+                  maxHeight: isTablet ? 720 : 640,
+                ),
+                margin: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 24 : 12,
+                  vertical: isTablet ? 20 : 12,
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: PdfPreview(
-                    build: (format) => widget.pdfBytes,
-                    allowPrinting: false,
-                    allowSharing: false,
-                    canChangePageFormat: false,
-                    canChangeOrientation: false,
-                    canDebug: false,
-                    maxPageWidth: double.infinity,
-                    pdfFileName: widget.fileName,
+                  borderRadius: BorderRadius.circular(24),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.10),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          // Header Bar
+                          _buildHeader(context),
+
+                          // PDF Canvas Sheet
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                12,
+                                10,
+                                12,
+                                10,
+                              ),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.60),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.85),
+                                    width: 1,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.05,
+                                      ),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: PdfPreview(
+                                    build: (format) => widget.pdfBytes,
+                                    allowPrinting: false,
+                                    allowSharing: false,
+                                    canChangePageFormat: false,
+                                    canChangeOrientation: false,
+                                    canDebug: false,
+                                    maxPageWidth: double.infinity,
+                                    pdfFileName: widget.fileName,
+                                    loadingWidget: Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const CircularProgressIndicator(
+                                            color: AppColors.primary,
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                            'Rendering Bill Preview...',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey[700],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Docked Action Buttons Bar (Close on LEFT with Border, Print on RIGHT)
+                          _buildActionBar(context),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
-
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.cardBackground,
-                border: Border(
-                  top: BorderSide(color: AppColors.textHint.withOpacity(0.3), width: 1),
-                ),
-              ),
-              child: SafeArea(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _isSharing ? null : _shareBill,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.info,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 2,
-                        ),
-                        icon: _isSharing
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
-                              )
-                            : const Icon(Icons.share, size: 20),
-                        label: Text(_isSharing ? 'Sharing...' : 'Share', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _isPrinting ? null : _printBill,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 2,
-                        ),
-                        icon: _isPrinting
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
-                              )
-                            : const Icon(Icons.print, size: 20),
-                        label: Text(_isPrinting ? 'Printing...' : 'Print', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _closeDialog,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.textSecondary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 2,
-                        ),
-                        icon: const Icon(Icons.close, size: 20),
-                        label: const Text('Close', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Future<void> _shareBill() async {
-    await PDFShareBottomSheet.show(
-      context,
-      pdfBytes: widget.pdfBytes,
-      fileName: widget.fileName,
-      orderNumber: widget.orderNumber,
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.35),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withValues(alpha: 0.60),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.primary, AppColors.primaryDark],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.30),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.receipt_long_rounded,
+              size: 20,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Bill Print Preview',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(7),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.30),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        'Order #${widget.orderNumber}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          IconButton(
+            icon: const Icon(Icons.close_rounded, size: 18),
+            onPressed: () async {
+              await HapticHelper.triggerFeedback();
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            },
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.black.withValues(alpha: 0.05),
+              foregroundColor: AppColors.textSecondary,
+              padding: const EdgeInsets.all(6),
+              minimumSize: const Size(32, 32),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionBar(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.35),
+        border: Border(
+          top: BorderSide(
+            color: Colors.white.withValues(alpha: 0.60),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Close Glass Button on the LEFT with Distinct Border
+          Expanded(
+            child: SizedBox(
+              height: 42,
+              child: OutlinedButton(
+                onPressed: () async {
+                  await HapticHelper.triggerFeedback();
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
+                },
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.60),
+                  foregroundColor: AppColors.textPrimary,
+                  side: const BorderSide(
+                    color: Color(0xFF94A3B8),
+                    width: 1.2,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Close',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Print Primary Button on the RIGHT
+          Expanded(
+            child: SizedBox(
+              height: 42,
+              child: ElevatedButton.icon(
+                onPressed: _isPrinting ? null : _printBill,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 3,
+                  shadowColor: AppColors.primary.withValues(alpha: 0.35),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: _isPrinting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.print_rounded, size: 17),
+                label: Text(
+                  _isPrinting ? 'Printing...' : 'Print',
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Future<void> _printBill() async {
     if (_isPrinting) return;
+    await HapticHelper.triggerFeedback();
     setState(() => _isPrinting = true);
     try {
-      await Printing.layoutPdf(onLayout: (format) async => widget.pdfBytes, name: widget.fileName, format: PdfPageFormat.a4);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Print dialog opened'), backgroundColor: AppColors.primary, duration: Duration(seconds: 2)));
+      await Printing.layoutPdf(
+        onLayout: (format) async => widget.pdfBytes,
+        name: widget.fileName,
+        format: PdfPageFormat.a4,
+      );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to print bill: $e'), backgroundColor: AppColors.error));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to print bill: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isPrinting = false);
     }
   }
-
-  void _closeDialog() => Navigator.of(context).pop();
 }

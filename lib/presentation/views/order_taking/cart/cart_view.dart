@@ -14,6 +14,7 @@ import '../../../../data/models/order_detail_api_response_model.dart';
 
 import '../../../../services/pdf_service.dart';
 import '../../billing/billing_page.dart';
+import '../../billing/widgets/generate_bill_summary_dialog.dart';
 import 'widgets/cart_header.dart';
 import 'widgets/cart_items_list.dart';
 import 'widgets/cart_footer.dart';
@@ -1034,31 +1035,27 @@ class _CartViewState extends State<CartView> {
       orderId = orderProvider.createdOrderId;
     }
 
-    Navigator.push(
+    // Show Generate Bill Summary Glassmorphic Modal Popup (No full page navigation!)
+    GenerateBillSummaryDialog.show(
       context,
-      MaterialPageRoute(
-        builder:
-            (_) => BillingPage(
-              orderNumber: orderNumber,
-              cartItems: cartProvider.cartItems.values.toList(),
-              tableId: widget.tableId,
-              orderId: orderId, // Pass the orderId
-              onBillGenerated: () {
-                // This will be called after payment is completed
-                cartProvider.clearCart();
-                setState(() {
-                  _kotNumbers.clear();
-                });
-                // Clear the active ordering session and go back to Tables dashboard
-                final navProvider = Provider.of<NavigationProvider>(
-                  context,
-                  listen: false,
-                );
-                navProvider.clearTableSelection();
-                navProvider.navigateToTables();
-              },
-            ),
-      ),
+      orderNumber: orderNumber,
+      cartItems: cartProvider.cartItems.values.toList(),
+      tableId: widget.tableId,
+      orderId: orderId,
+      onBillGenerated: () {
+        // This will be called after payment is completed
+        cartProvider.clearCart();
+        setState(() {
+          _kotNumbers.clear();
+        });
+        // Clear the active ordering session and go back to Tables dashboard
+        final navProvider = Provider.of<NavigationProvider>(
+          context,
+          listen: false,
+        );
+        navProvider.clearTableSelection();
+        navProvider.navigateToTables();
+      },
     );
   }
 }
