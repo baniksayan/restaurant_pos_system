@@ -1,7 +1,9 @@
 import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/themes/app_colors.dart';
+import '../../../core/utils/haptic_helper.dart';
 import '../../../services/pdf_service.dart';
 
 class PDFShareBottomSheet extends StatelessWidget {
@@ -25,6 +27,7 @@ class PDFShareBottomSheet extends StatelessWidget {
     return showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.18),
       isScrollControlled: true,
       builder: (BuildContext context) {
         return PDFShareBottomSheet(
@@ -38,103 +41,151 @@ class PDFShareBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(28),
+        topRight: Radius.circular(28),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.72),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
             ),
-            const SizedBox(height: 20),
-            Row(
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.88),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 24,
+                offset: const Offset(0, -6),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.kotStatus.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.share_rounded,
-                    color: AppColors.kotStatus,
-                    size: 24,
+                // Drag Indicator Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4.5,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Share Document',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                const SizedBox(height: 18),
+
+                // Header Row
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.kotStatus.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.kotStatus.withValues(alpha: 0.25),
+                          width: 1,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Ticket / Order: #$orderNumber',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                        ),
+                      child: const Icon(
+                        Icons.share_rounded,
+                        color: AppColors.kotStatus,
+                        size: 22,
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Share Document',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Order: #$orderNumber',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      onPressed: () async {
+                        await HapticHelper.triggerFeedback();
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                        }
+                      },
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.black.withValues(alpha: 0.05),
+                        foregroundColor: AppColors.textSecondary,
+                        padding: const EdgeInsets.all(8),
+                        minimumSize: const Size(32, 32),
+                      ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
+                const SizedBox(height: 20),
+
+                // Option Cards
+                _buildOptionCard(
+                  context: context,
+                  icon: Icons.message_rounded,
+                  iconColor: Colors.green[600]!,
+                  bgColor: Colors.green[50]!,
+                  title: 'WhatsApp Kitchen',
+                  subtitle: 'Send order alert text (+91 87684 12832)',
+                  onTap: () async {
+                    await HapticHelper.triggerFeedback();
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                      _sendViaWhatsApp(context);
+                    }
+                  },
                 ),
+                const SizedBox(height: 12),
+                _buildOptionCard(
+                  context: context,
+                  icon: Icons.picture_as_pdf_rounded,
+                  iconColor: AppColors.kotStatus,
+                  bgColor: AppColors.kotStatus.withValues(alpha: 0.12),
+                  title: 'Share PDF Document',
+                  subtitle: 'Open system share dialog to send the PDF file',
+                  onTap: () async {
+                    await HapticHelper.triggerFeedback();
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                      _sharePDF(context);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
               ],
             ),
-            const SizedBox(height: 20),
-            _buildOptionCard(
-              context: context,
-              icon: Icons.message_rounded,
-              iconColor: Colors.green[600]!,
-              bgColor: Colors.green[50]!,
-              title: 'WhatsApp Kitchen',
-              subtitle: 'Send order alert text (+91 87684 12832)',
-              onTap: () {
-                Navigator.of(context).pop();
-                _sendViaWhatsApp(context);
-              },
-            ),
-            const SizedBox(height: 12),
-            _buildOptionCard(
-              context: context,
-              icon: Icons.share_rounded,
-              iconColor: AppColors.kotStatus,
-              bgColor: AppColors.kotStatus.withOpacity(0.1),
-              title: 'Share PDF Document',
-              subtitle: 'Open system share dialog to send the PDF file',
-              onTap: () {
-                Navigator.of(context).pop();
-                _sharePDF(context);
-              },
-            ),
-            const SizedBox(height: 20),
-          ],
+          ),
         ),
       ),
     );
@@ -151,14 +202,17 @@ class PDFShareBottomSheet extends StatelessWidget {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withValues(alpha: 0.58),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!, width: 1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.8),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -177,7 +231,7 @@ class PDFShareBottomSheet extends StatelessWidget {
                     color: bgColor,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: iconColor, size: 24),
+                  child: Icon(icon, color: iconColor, size: 22),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -192,7 +246,7 @@ class PDFShareBottomSheet extends StatelessWidget {
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         subtitle,
                         style: const TextStyle(

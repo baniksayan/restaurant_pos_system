@@ -79,6 +79,7 @@ class _LoginFormState extends State<LoginForm> {
       child: Form(
         key: _formKey,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             CustomTextField(
               label: 'User Name',
@@ -92,7 +93,7 @@ class _LoginFormState extends State<LoginForm> {
                 return null;
               },
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             CustomTextField(
               label: 'Password',
               hintText: 'Enter your password',
@@ -117,9 +118,12 @@ class _LoginFormState extends State<LoginForm> {
                 return null;
               },
             ),
+            // Commented out Remember Me & Forgot Password option per request:
+            /*
             const SizedBox(height: 16),
             _buildRememberMeAndForgotPassword(),
-            const SizedBox(height: 30),
+            */
+            const SizedBox(height: 28),
             _buildLoginButton(),
           ],
         ),
@@ -127,6 +131,7 @@ class _LoginFormState extends State<LoginForm> {
     );
   }
 
+  /*
   Widget _buildRememberMeAndForgotPassword() {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
@@ -167,6 +172,7 @@ class _LoginFormState extends State<LoginForm> {
       },
     );
   }
+  */
 
   Widget _buildLoginButton() {
     return Consumer<AuthProvider>(

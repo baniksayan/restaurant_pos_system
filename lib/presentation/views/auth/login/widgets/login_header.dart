@@ -10,51 +10,107 @@ class LoginHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SizedBox(height: 60),
+        // Logo Container matching SplashView
         FadeInAnimation(
           delay: const Duration(milliseconds: 200),
           child: ScaleAnimation(
             duration: const Duration(milliseconds: 800),
             child: Container(
-              width: 120,
-              height: 120,
-              child: Image.asset(
-                'assets/images/logo/wizard_logo.png',
-                width: 120,
-                height: 120,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.auto_awesome,
-                      size: 60,
-                      color: AppColors.primary,
-                    ),
-                  );
-                },
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.primary, AppColors.primaryDark],
+                ),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.restaurant_menu_rounded,
+                size: 46,
+                color: Colors.white,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 20),
+
+        // Brand Name & Subtitle matching SplashView
+        FadeInAnimation(
+          delay: const Duration(milliseconds: 400),
+          child: Column(
+            children: [
+              const Text(
+                'WiZARD',
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  letterSpacing: 2.0,
+                ),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'COMMUNICATIONS',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                  letterSpacing: 2.5,
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Restaurant POS System Tagline Badge
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: const Text(
+                  'Restaurant POS System',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Log In Header Title
         const FadeInAnimation(
-          delay: Duration(milliseconds: 400),
+          delay: Duration(milliseconds: 500),
           child: Text(
             'Log In',
             style: TextStyle(
-              fontSize: 28,
+              fontSize: 22,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
+              letterSpacing: -0.3,
             ),
           ),
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 20),
       ],
     );
   }
