@@ -144,8 +144,8 @@ class DashboardLoadingState extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.6),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFFE2E8F0).withValues(alpha: 0.3),
@@ -154,38 +154,33 @@ class DashboardLoadingState extends StatelessWidget {
           ),
         ],
       ),
-      child: Container(
-        height: 140,
-        padding: const EdgeInsets.all(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
-            // Skeleton icon container (40x40)
-            SkeletonLoader.rectangular(
-              width: 40,
-              height: 40,
-              borderRadius: BorderRadius.all(Radius.circular(10)),
-            ),
+            // Skeleton circular icon container (56x56)
+            SkeletonLoader.circular(size: 56),
             SizedBox(height: 8),
             // Skeleton table name
             SkeletonLoader.rectangular(
-              width: 70,
-              height: 18,
+              width: 75,
+              height: 16,
               borderRadius: BorderRadius.all(Radius.circular(4)),
             ),
-            SizedBox(height: 6),
+            SizedBox(height: 5),
             // Skeleton capacity text
             SkeletonLoader.rectangular(
-              width: 80,
+              width: 85,
               height: 12,
               borderRadius: BorderRadius.all(Radius.circular(4)),
             ),
             SizedBox(height: 8),
             // Skeleton status badge pill
             SkeletonLoader.rectangular(
-              width: 65,
-              height: 18,
-              borderRadius: BorderRadius.all(Radius.circular(10)),
+              width: 70,
+              height: 20,
+              borderRadius: BorderRadius.all(Radius.circular(12)),
             ),
           ],
         ),
@@ -248,7 +243,8 @@ class DashboardEmptyState extends StatelessWidget {
       child: EmptyStateWidget(
         icon: Icons.table_restaurant_outlined,
         title: 'No Tables Found',
-        description: 'We couldn\'t find any tables registered for $selectedLocation.',
+        description:
+            'We couldn\'t find any tables registered for $selectedLocation.',
         action: ElevatedButton.icon(
           onPressed: onChangeLocation,
           icon: const Icon(Icons.location_on, size: 16),
@@ -258,4 +254,3 @@ class DashboardEmptyState extends StatelessWidget {
     );
   }
 }
-

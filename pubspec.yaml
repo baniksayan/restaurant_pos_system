@@ -108,5 +108,6 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/icons/
     - assets/images/logo/wizard_logo.png
     - assets/images/analytics/food/grilled-burger-french-fries-food-generative-ai.jpg

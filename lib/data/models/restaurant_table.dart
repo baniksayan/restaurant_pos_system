@@ -66,19 +66,19 @@ class RestaurantTable {
   Color get statusColor {
     switch (status) {
       case TableStatus.available:
-        return Colors.green;
+        return const Color(0xFF10B981);
       case TableStatus.occupied:
-        return Colors.red;
+        return const Color(0xFFEF4444);
       case TableStatus.kotGenerated:
-        return Colors.purple;
+        return const Color.fromRGBO(139, 92, 246, 1);
       case TableStatus.billGenerated:
-        return Colors.blue;
+        return const Color(0xFF3B82F6);
       case TableStatus.billSettled:
-        return Colors.teal;
+        return const Color(0xFF06B6D4);
       case TableStatus.reserved:
-        return Colors.orange;
+        return const Color(0xFFF59E0B);
       case TableStatus.outOfOrder:
-        return Colors.grey;
+        return const Color(0xFF64748B);
     }
   }
 

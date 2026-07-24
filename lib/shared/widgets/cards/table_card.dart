@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
-import '../../../core/themes/app_colors.dart';
 
 class TableCard extends StatelessWidget {
   final RestaurantTable table;
@@ -10,197 +9,276 @@ class TableCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardData = _getTableCardData();
+    final statusConfig = _getStatusConfig(table.status);
+    final cardSeed = table.id.hashCode ^ table.name.hashCode;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: cardData.backgroundColor,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cardData.borderColor, width: 2),
+          border: Border.all(
+            color: statusConfig.color,
+            width: 1.5,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.1),
+              color: statusConfig.color.withValues(alpha: 0.12),
               blurRadius: 8,
-              offset: const Offset(0, 2),
+              offset: const Offset(0, 3),
             ),
           ],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildTableIcon(cardData.borderColor),
-            const SizedBox(height: 12),
-            _buildTableName(cardData.borderColor),
-            const SizedBox(height: 4),
-            _buildCapacity(),
-            const SizedBox(height: 8),
-            _buildStatusBadge(cardData),
-            if (table.status == TableStatus.occupied) ...[
-              const SizedBox(height: 8),
-              _buildKotBillIndicators(),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            children: [
+              // Dynamic Random Wave Curve with Linear Gradient Fill
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: RandomWavePainter(
+                    baseColor: statusConfig.color,
+                    seed: cardSeed,
+                  ),
+                ),
+              ),
+
+              // Card Content Centered Perfectly in the Middle
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Circular Container with Soft Linear Gradient & Large PNG Icon
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              statusConfig.color.withValues(alpha: 0.14),
+                              statusConfig.color.withValues(alpha: 0.04),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: statusConfig.color.withValues(alpha: 0.15),
+                            width: 1.0,
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(3.5),
+                        child: Image.asset(
+                          statusConfig.iconPath,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              statusConfig.fallbackIcon,
+                              color: statusConfig.color,
+                              size: 32,
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+
+                      // Table Name
+                      Text(
+                        table.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1E293B),
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 1),
+
+                      // Capacity Icon & Text
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.groups_outlined,
+                            size: 12.5,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            'Capacity: ${table.capacity}',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+
+                      // Status Pill Tag
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusConfig.color,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: statusConfig.color.withValues(alpha: 0.22),
+                              blurRadius: 3,
+                              offset: const Offset(0, 1.5),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          statusConfig.displayName.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: 0.3,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 
-  TableCardData _getTableCardData() {
-    switch (table.status) {
+  _TableStatusConfig _getStatusConfig(TableStatus status) {
+    switch (status) {
       case TableStatus.available:
-        return TableCardData(
-          backgroundColor: Colors.white,
-          borderColor: Colors.grey[300]!,
-          statusText: 'Available',
+        return const _TableStatusConfig(
+          color: Color(0xFF10B981), // Emerald Green
+          iconPath: 'assets/images/icons/available_icon.png',
+          fallbackIcon: Icons.table_restaurant,
+          displayName: 'AVAILABLE',
         );
       case TableStatus.occupied:
-        return TableCardData(
-          backgroundColor: AppColors.tableOccupied.withValues(alpha: 0.1),
-          borderColor: AppColors.tableOccupied,
-          statusText: 'Occupied',
+        return const _TableStatusConfig(
+          color: Color(0xFFEF4444), // Coral Red
+          iconPath: 'assets/images/icons/occupied_icon.png',
+          fallbackIcon: Icons.table_restaurant,
+          displayName: 'OCCUPIED',
         );
       case TableStatus.kotGenerated:
-        return TableCardData(
-          backgroundColor: AppColors.kotStatus.withValues(alpha: 0.1),
-          borderColor: AppColors.kotStatus,
-          statusText: 'KOT Generated',
+        return const _TableStatusConfig(
+          color: Color.fromRGBO(139, 92, 246, 1), // Purple
+          iconPath: 'assets/images/icons/kot_generated_icon.png',
+          fallbackIcon: Icons.receipt_long,
+          displayName: 'KOT GENERATED',
         );
       case TableStatus.billGenerated:
-        return TableCardData(
-          backgroundColor: Colors.blue.withValues(alpha: 0.1),
-          borderColor: Colors.blue,
-          statusText: 'Bill Generated',
+        return const _TableStatusConfig(
+          color: Color(0xFF3B82F6), // Blue
+          iconPath: 'assets/images/icons/bill_generated_icon.png',
+          fallbackIcon: Icons.request_quote,
+          displayName: 'BILL GENERATED',
         );
       case TableStatus.billSettled:
-        return TableCardData(
-          backgroundColor: Colors.teal.withValues(alpha: 0.1),
-          borderColor: Colors.teal,
-          statusText: 'Bill Settled',
+        return const _TableStatusConfig(
+          color: Color(0xFF06B6D4), // Cyan / Teal
+          iconPath: 'assets/images/icons/bill_settled_icon.png',
+          fallbackIcon: Icons.check_circle,
+          displayName: 'BILL SETTLED',
         );
       case TableStatus.reserved:
-        return TableCardData(
-          backgroundColor: AppColors.tableReserved.withValues(alpha: 0.1),
-          borderColor: AppColors.tableReserved,
-          statusText: 'Reserved',
+        return const _TableStatusConfig(
+          color: Color(0xFFF59E0B), // Amber / Yellow
+          iconPath: 'assets/images/icons/available_icon.png',
+          fallbackIcon: Icons.bookmark,
+          displayName: 'RESERVED',
         );
       case TableStatus.outOfOrder:
-        return TableCardData(
-          backgroundColor: Colors.grey.withValues(alpha: 0.1),
-          borderColor: Colors.grey,
-          statusText: 'Out of Order',
+        return const _TableStatusConfig(
+          color: Color(0xFF64748B), // Slate Grey
+          iconPath: 'assets/images/icons/available_icon.png',
+          fallbackIcon: Icons.block,
+          displayName: 'OUT OF ORDER',
         );
     }
   }
-
-  Widget _buildTableIcon(Color borderColor) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: borderColor.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Icon(Icons.table_restaurant, color: borderColor, size: 24),
-    );
-  }
-
-  Widget _buildTableName(Color borderColor) {
-    return Text(
-      table.name,
-      style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color:
-            borderColor == Colors.grey[300]
-                ? AppColors.textPrimary
-                : borderColor,
-      ),
-    );
-  }
-
-  Widget _buildCapacity() {
-    return Text(
-      'Capacity: ${table.capacity}',
-      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-    );
-  }
-
-  Widget _buildStatusBadge(TableCardData cardData) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: cardData.borderColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        cardData.statusText,
-        style: const TextStyle(
-          fontSize: 10,
-          color: Colors.white,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildKotBillIndicators() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (table.kotGenerated) ...[
-          Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(
-              color: AppColors.kotStatus,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 2),
-          const Text(
-            'KOT',
-            style: TextStyle(
-              fontSize: 8,
-              color: AppColors.kotStatus,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-        if (table.kotGenerated && table.billGenerated) const SizedBox(width: 8),
-        if (table.billGenerated) ...[
-          Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(
-              color: AppColors.success,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 2),
-          const Text(
-            'BILL',
-            style: TextStyle(
-              fontSize: 8,
-              color: AppColors.success,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
 }
 
-class TableCardData {
-  final Color backgroundColor;
-  final Color borderColor;
-  final String statusText;
+class _TableStatusConfig {
+  final Color color;
+  final String iconPath;
+  final IconData fallbackIcon;
+  final String displayName;
 
-  TableCardData({
-    required this.backgroundColor,
-    required this.borderColor,
-    required this.statusText,
+  const _TableStatusConfig({
+    required this.color,
+    required this.iconPath,
+    required this.fallbackIcon,
+    required this.displayName,
   });
+}
+
+class RandomWavePainter extends CustomPainter {
+  final Color baseColor;
+  final int seed;
+
+  RandomWavePainter({
+    required this.baseColor,
+    required this.seed,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r1 = ((seed * 9301 + 49297) % 233280) / 233280.0;
+    final r2 = (((seed + 7) * 9301 + 49297) % 233280) / 233280.0;
+    final r3 = (((seed + 13) * 9301 + 49297) % 233280) / 233280.0;
+
+    final startY = size.height * (0.68 + r1 * 0.10);
+    final control1X = size.width * (0.20 + r2 * 0.20);
+    final control1Y = size.height * (0.52 + r3 * 0.15);
+    final control2X = size.width * (0.60 + r1 * 0.25);
+    final control2Y = size.height * (0.76 + r2 * 0.10);
+    final endY = size.height * (0.66 + r3 * 0.12);
+
+    final path = Path();
+    path.moveTo(0, startY);
+    path.cubicTo(control1X, control1Y, control2X, control2Y, size.width, endY);
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final paint = Paint()
+      ..shader = LinearGradient(
+        begin: r1 > 0.5 ? Alignment.topLeft : Alignment.topCenter,
+        end: Alignment.bottomRight,
+        colors: [
+          baseColor.withValues(alpha: 0.12),
+          baseColor.withValues(alpha: 0.02),
+        ],
+      ).createShader(rect)
+      ..style = PaintingStyle.fill;
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant RandomWavePainter oldDelegate) =>
+      oldDelegate.baseColor != baseColor || oldDelegate.seed != seed;
 }

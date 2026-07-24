@@ -471,7 +471,7 @@ class LocationHeader extends StatelessWidget {
       case TableStatus.occupied:
         return const Color(0xFFEF4444); // Red
       case TableStatus.kotGenerated:
-        return AppColors.kotStatus; // Purple (0xFF8B5CF6)
+        return const Color.fromRGBO(139, 92, 246, 1); // Purple (0xFF8B5CF6)
       case TableStatus.billGenerated:
         return const Color(0xFF3B82F6); // Blue
       case TableStatus.billSettled:

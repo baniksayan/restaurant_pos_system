@@ -22,9 +22,9 @@ class TableGrid extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
+        childAspectRatio: 1.25,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
       ),
       itemCount: tables.length,
       itemBuilder: (context, index) {

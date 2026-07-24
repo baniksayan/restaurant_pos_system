@@ -15,300 +15,276 @@ class EnhancedTableCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardData = _getEnhancedCardData();
+    final statusConfig = _getStatusConfig(table.status);
+    final cardSeed = table.id.hashCode ^ table.name.hashCode;
 
     return GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
       child: Container(
         decoration: BoxDecoration(
-          gradient: cardData['gradient'],
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cardData['borderColor'], width: 2),
+          border: Border.all(color: statusConfig.color, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: cardData['borderColor'].withOpacity(0.2),
+              color: statusConfig.color.withValues(alpha: 0.12),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
           ],
         ),
-        child: Container(
-          height: 140,
-          padding: const EdgeInsets.all(6),
-          child: ClipRect(
-            child: SingleChildScrollView(
-              physics: const NeverScrollableScrollPhysics(),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildTableIcon(cardData),
-                  const SizedBox(height: 6),
-                  _buildTableName(cardData),
-                  const SizedBox(height: 6),
-                  _buildCapacity(),
-                  const SizedBox(height: 6),
-                  _buildStatusBadge(cardData),
-                  // Temporarily hide shared-table UI (icon + badge).
-                  /*
-                  if (table.isSharedTable) ...[
-                    const SizedBox(height: 4),
-                    _buildSharedTableIndicator(),
-                  ],
-                  */
-                  // Keep layout stable while paused:
-                  const SizedBox.shrink(),
-                  if (table.status == TableStatus.reserved &&
-                      table.reservationInfo != null) ...[
-                    const SizedBox(height: 6),
-                    _buildReservationInfo(),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTableIcon(Map cardData) {
-    return Stack(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: cardData['borderColor'].withOpacity(0.2),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            Icons.table_restaurant,
-            color: cardData['borderColor'],
-            size: 30,
-          ),
-        ),
-        if (table.status == TableStatus.occupied)
-          Positioned(
-            right: -2,
-            top: -2,
-            child: Container(
-              width: 14,
-              height: 14,
-              decoration: const BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.person, size: 8, color: Colors.white),
-            ),
-          ),
-        // Temporarily hide the small shared-order count indicator.
-        /*
-        if (table.isSharedTable)
-          Positioned(
-            right: -2,
-            bottom: -2,
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                color: Colors.orange,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 1),
-              ),
-              child: Text(
-                '${table.orderCount}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 8,
-                  fontWeight: FontWeight.bold,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            children: [
+              // Dynamic Random Wave Curve with Linear Gradient Fill
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: RandomWavePainter(
+                    baseColor: statusConfig.color,
+                    seed: cardSeed,
+                  ),
                 ),
-                textAlign: TextAlign.center,
               ),
-            ),
+
+              // Card Content Centered Perfectly in the Middle
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Circular Container with Soft Linear Gradient & Large PNG Icon
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              statusConfig.color.withValues(alpha: 0.14),
+                              statusConfig.color.withValues(alpha: 0.04),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: statusConfig.color.withValues(alpha: 0.15),
+                            width: 1.0,
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(3.5),
+                        child: Image.asset(
+                          statusConfig.iconPath,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              statusConfig.fallbackIcon,
+                              color: statusConfig.color,
+                              size: 32,
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+
+                      // Table Name
+                      Text(
+                        table.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1E293B),
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 1),
+
+                      // Capacity Icon & Text
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.groups_outlined,
+                            size: 12.5,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            'Capacity: ${table.capacity}',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+
+                      // Status Pill Tag
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusConfig.color,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: statusConfig.color.withValues(alpha: 0.22),
+                              blurRadius: 3,
+                              offset: const Offset(0, 1.5),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          statusConfig.displayName.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: 0.3,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        */
-        // Keep an empty spacer so layout stays same while icon is paused:
-        Positioned(right: 8, top: 8, child: const SizedBox.shrink()),
-      ],
-    );
-  }
-
-  Widget _buildTableName(Map cardData) {
-    return Text(
-      table.name,
-      style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: cardData['textColor'],
-      ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
-
-  Widget _buildCapacity() {
-    return Text(
-      'Capacity: ${table.capacity}',
-      style: const TextStyle(
-        fontSize: 12,
-        color: Colors.grey,
-        fontWeight: FontWeight.w600,
-      ),
-    );
-  }
-
-  Widget _buildStatusBadge(Map cardData) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: cardData['borderColor'],
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: cardData['borderColor'].withOpacity(0.25),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Text(
-        table.status.name.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 10,
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.4,
         ),
       ),
     );
   }
 
-  // NEW: Shared table indicator
-  Widget _buildSharedTableIndicator() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-      decoration: BoxDecoration(
-        color: Colors.orange,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.share, size: 8, color: Colors.white),
-          const SizedBox(width: 2),
-          Text(
-            'SHARED (${table.orderCount})',
-            style: const TextStyle(
-              fontSize: 8,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReservationInfo() {
-    return Column(
-      children: [
-        Text(
-          table.reservationInfo!.timeRange,
-          style: const TextStyle(
-            fontSize: 8,
-            color: Colors.orange,
-            fontWeight: FontWeight.bold,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        Text(
-          table.reservationInfo!.customerName,
-          style: const TextStyle(
-            fontSize: 8,
-            color: Colors.orange,
-            fontWeight: FontWeight.w600,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
-  }
-
-  Map _getEnhancedCardData() {
-    switch (table.status) {
+  _TableStatusConfig _getStatusConfig(TableStatus status) {
+    switch (status) {
       case TableStatus.available:
-        return {
-          'gradient': const LinearGradient(
-            colors: [Colors.white, Color(0xFFF0FFF4)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          'borderColor': const Color(0xFF10B981),
-          'textColor': const Color(0xFF047857),
-        };
+        return const _TableStatusConfig(
+          color: Color(0xFF10B981), // Emerald Green
+          iconPath: 'assets/images/icons/available_icon.png',
+          fallbackIcon: Icons.table_restaurant,
+          displayName: 'AVAILABLE',
+        );
       case TableStatus.occupied:
-        return {
-          'gradient': const LinearGradient(
-            colors: [Colors.white, Color(0xFFFFF5F5)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          'borderColor': const Color(0xFFEF4444),
-          'textColor': const Color(0xFFDC2626),
-        };
+        return const _TableStatusConfig(
+          color: Color(0xFFEF4444), // Coral Red
+          iconPath: 'assets/images/icons/occupied_icon.png',
+          fallbackIcon: Icons.table_restaurant,
+          displayName: 'OCCUPIED',
+        );
       case TableStatus.kotGenerated:
-        return {
-          'gradient': const LinearGradient(
-            colors: [Colors.white, Color(0xFFF3F0FF)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          'borderColor': const Color(0xFF8B5CF6),
-          'textColor': const Color(0xFF7C3AED),
-        };
+        return const _TableStatusConfig(
+          color: Color.fromRGBO(139, 92, 246, 1), // Purple
+          iconPath: 'assets/images/icons/kot_generated_icon.png',
+          fallbackIcon: Icons.receipt_long,
+          displayName: 'KOT GENERATED',
+        );
       case TableStatus.billGenerated:
-        return {
-          'gradient': const LinearGradient(
-            colors: [Colors.white, Color(0xFFEFF6FF)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          'borderColor': const Color(0xFF3B82F6),
-          'textColor': const Color(0xFF2563EB),
-        };
+        return const _TableStatusConfig(
+          color: Color(0xFF3B82F6), // Blue
+          iconPath: 'assets/images/icons/bill_generated_icon.png',
+          fallbackIcon: Icons.request_quote,
+          displayName: 'BILL GENERATED',
+        );
       case TableStatus.billSettled:
-        return {
-          'gradient': const LinearGradient(
-            colors: [Colors.white, Color(0xFFECFDF5)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          'borderColor': const Color(0xFF06B6D4),
-          'textColor': const Color(0xFF0891B2),
-        };
+        return const _TableStatusConfig(
+          color: Color(0xFF06B6D4), // Cyan / Teal
+          iconPath: 'assets/images/icons/bill_settled_icon.png',
+          fallbackIcon: Icons.check_circle,
+          displayName: 'BILL SETTLED',
+        );
       case TableStatus.reserved:
-        return {
-          'gradient': const LinearGradient(
-            colors: [Colors.white, Color(0xFFFFFBF0)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          'borderColor': const Color(0xFFF59E0B),
-          'textColor': const Color(0xFFD97706),
-        };
+        return const _TableStatusConfig(
+          color: Color(0xFFF59E0B), // Amber / Yellow
+          iconPath: 'assets/images/icons/available_icon.png',
+          fallbackIcon: Icons.bookmark,
+          displayName: 'RESERVED',
+        );
       case TableStatus.outOfOrder:
-        return {
-          'gradient': const LinearGradient(
-            colors: [Colors.white, Color(0xFFF9FAFB)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          'borderColor': const Color(0xFF6B7280),
-          'textColor': const Color(0xFF4B5563),
-        };
+        return const _TableStatusConfig(
+          color: Color(0xFF64748B), // Slate Grey
+          iconPath: 'assets/images/icons/available_icon.png',
+          fallbackIcon: Icons.block,
+          displayName: 'OUT OF ORDER',
+        );
     }
   }
+}
+
+class _TableStatusConfig {
+  final Color color;
+  final String iconPath;
+  final IconData fallbackIcon;
+  final String displayName;
+
+  const _TableStatusConfig({
+    required this.color,
+    required this.iconPath,
+    required this.fallbackIcon,
+    required this.displayName,
+  });
+}
+
+class RandomWavePainter extends CustomPainter {
+  final Color baseColor;
+  final int seed;
+
+  RandomWavePainter({required this.baseColor, required this.seed});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Generate deterministic pseudo-random factors from seed
+    final r1 = ((seed * 9301 + 49297) % 233280) / 233280.0;
+    final r2 = (((seed + 7) * 9301 + 49297) % 233280) / 233280.0;
+    final r3 = (((seed + 13) * 9301 + 49297) % 233280) / 233280.0;
+
+    final startY = size.height * (0.68 + r1 * 0.10);
+    final control1X = size.width * (0.20 + r2 * 0.20);
+    final control1Y = size.height * (0.52 + r3 * 0.15);
+    final control2X = size.width * (0.60 + r1 * 0.25);
+    final control2Y = size.height * (0.76 + r2 * 0.10);
+    final endY = size.height * (0.66 + r3 * 0.12);
+
+    final path = Path();
+    path.moveTo(0, startY);
+    path.cubicTo(control1X, control1Y, control2X, control2Y, size.width, endY);
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final paint =
+        Paint()
+          ..shader = LinearGradient(
+            begin: r1 > 0.5 ? Alignment.topLeft : Alignment.topCenter,
+            end: Alignment.bottomRight,
+            colors: [
+              baseColor.withValues(alpha: 0.12),
+              baseColor.withValues(alpha: 0.02),
+            ],
+          ).createShader(rect)
+          ..style = PaintingStyle.fill;
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant RandomWavePainter oldDelegate) =>
+      oldDelegate.baseColor != baseColor || oldDelegate.seed != seed;
 }

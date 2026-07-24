@@ -152,47 +152,32 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
                                 ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(16),
-                                  child: PrimaryScrollController(
-                                    controller: ScrollController(),
-                                    child: RawScrollbar(
-                                      thumbVisibility: true,
-                                      trackVisibility: true,
-                                      thickness: 5,
-                                      radius: const Radius.circular(4),
-                                      thumbColor: AppColors.primary.withValues(
-                                        alpha: 0.6,
-                                      ),
-                                      trackColor: Colors.black.withValues(
-                                        alpha: 0.05,
-                                      ),
-                                      child: PdfPreview(
-                                        build: (format) => widget.pdfBytes,
-                                        allowPrinting: false,
-                                        allowSharing: false,
-                                        canChangePageFormat: false,
-                                        canChangeOrientation: false,
-                                        canDebug: false,
-                                        maxPageWidth: double.infinity,
-                                        pdfFileName: widget.fileName,
-                                        loadingWidget: Center(
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const CircularProgressIndicator(
-                                                color: AppColors.primary,
-                                              ),
-                                              const SizedBox(height: 10),
-                                              Text(
-                                                'Rendering KOT Preview...',
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.grey[700],
-                                                ),
-                                              ),
-                                            ],
+                                  child: PdfPreview(
+                                    build: (format) => widget.pdfBytes,
+                                    allowPrinting: false,
+                                    allowSharing: false,
+                                    canChangePageFormat: false,
+                                    canChangeOrientation: false,
+                                    canDebug: false,
+                                    maxPageWidth: double.infinity,
+                                    pdfFileName: widget.fileName,
+                                    loadingWidget: Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const CircularProgressIndicator(
+                                            color: AppColors.primary,
                                           ),
-                                        ),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                            'Rendering KOT Preview...',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey[700],
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
