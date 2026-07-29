@@ -938,6 +938,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
       MaterialPageRoute(
         builder:
             (context) => PaymentPage(
+              orderId: widget.order.orderId.toString(),
               orderNumber: _orderNo ?? widget.order.orderId.toString(),
               totalAmount: _grandTotal,
               billId: _billId,

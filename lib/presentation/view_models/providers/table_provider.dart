@@ -143,9 +143,6 @@ class TableProvider extends ChangeNotifier {
 
       _tables = mergedTables; // Replace with merged data
 
-      // Apply local status overrides after loading from API
-      _applyLocalStatusOverrides();
-
       if (_tables.isEmpty) {
         _error =
             'No tables found for this outlet. Check backend configuration.';
@@ -390,12 +387,6 @@ class TableProvider extends ChangeNotifier {
         activeOrders: orders,
       );
 
-      // Set local status override to ensure it persists across API refreshes
-      _localStatusOverrides[tableId] = status;
-      print(
-        '[TableProvider] Set local status override for $tableId: ${status.name}',
-      );
-
       notifyListeners();
     }
   }
@@ -421,12 +412,8 @@ class TableProvider extends ChangeNotifier {
         final orderDetailList = orderDetails.data!.first.orderDetailList ?? [];
         final List<Map<String, dynamic>> cartItems =
             orderDetailList.map((item) {
-              // Check if item has KOT information (exists in backend = KOT generated)
-              final bool isKotGenerated =
-                  item.kotNo != null &&
-                  item.kotNo!.isNotEmpty &&
-                  item.kotId != null &&
-                  item.kotId!.isNotEmpty;
+              // All items returned from getOrderDetailById exist on the backend = KOT generated
+              final bool isKotGenerated = true;
 
               final imageUrl = item.imageThumbUrl ?? item.imageUrl;
 
@@ -481,15 +468,14 @@ class TableProvider extends ChangeNotifier {
   Future<bool> removeOrderFromTable(String tableId, String orderId) async {
     try {
       final token = _getAuthToken();
-      final userId = HiveService.getUserId();
-      if (token == null || userId == null) return false;
+      final userId = HiveService.getUserId() ?? '041f765b-658c-47a4-b1a7-9dedf6e980b9';
 
-      // Call UpdateOrderHeadStatus API to cancel/remove order
+      // Call UpdateOrderHeadStatus API to cancel/remove order (statusId: 6, companyId: 18)
       final result = await ApiService.updateOrderHeadStatus(
-        token: token,
         orderHeadId: orderId,
-        statusId: 7, // Assuming 7 means cancelled/removed
+        statusId: 6,
         userId: userId,
+        companyId: 18,
       );
 
       if (result != null && result['isSuccess'] == true) {
@@ -608,22 +594,6 @@ class TableProvider extends ChangeNotifier {
     }
   }
 
-  // Local status overrides - these take precedence over API status
-  final Map<String, TableStatus> _localStatusOverrides = {};
-
-  void _applyLocalStatusOverrides() {
-    for (int i = 0; i < _tables.length; i++) {
-      final table = _tables[i];
-      if (_localStatusOverrides.containsKey(table.id)) {
-        final overrideStatus = _localStatusOverrides[table.id]!;
-        _tables[i] = table.copyWith(status: overrideStatus);
-        print(
-          '[TableProvider] Applied status override for ${table.name}: ${overrideStatus.name}',
-        );
-      }
-    }
-  }
-
   void updateTableStatus(String tableId, String newStatus) {
     // Convert string status to enum
     TableStatus? status;
@@ -652,27 +622,16 @@ class TableProvider extends ChangeNotifier {
     }
 
     if (status != null) {
-      _localStatusOverrides[tableId] = status;
-
-      // Apply the override to the current table list
       final tableIndex = _tables.indexWhere((table) => table.id == tableId);
       if (tableIndex != -1) {
         _tables[tableIndex] = _tables[tableIndex].copyWith(status: status);
         notifyListeners();
       }
-
-      print('[TableProvider] Updated table $tableId status to $newStatus');
-
-      // Clear override if setting to available (natural API state)
-      if (status == TableStatus.available) {
-        _localStatusOverrides.remove(tableId);
-      }
     }
   }
 
   void clearTableStatusOverride(String tableId) {
-    _localStatusOverrides.remove(tableId);
-    print('[TableProvider] Cleared status override for table $tableId');
+    // No-op for backward compatibility
   }
 
   // Store bill ID for a table (new approach)
@@ -693,9 +652,6 @@ class TableProvider extends ChangeNotifier {
         billId: billId,
         status: TableStatus.billGenerated,
       );
-
-      // Also set local status override
-      _localStatusOverrides[tableId] = TableStatus.billGenerated;
 
       notifyListeners();
       print(

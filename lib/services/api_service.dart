@@ -227,7 +227,7 @@ class ApiService {
 
   /// Save Order Head - Create new order (correct API for occupying table)
   static Future<CreateOrderHeadApiResModel?> saveOrderHead({
-    required String token,
+    String? token,
     required String orderChannelId, // Table ID
     required String waiterId,
     required String customerName,
@@ -242,6 +242,10 @@ class ApiService {
     if (!isConnected) return null;
 
     try {
+      final authToken = (token != null && token.isNotEmpty)
+          ? token
+          : HiveService.getAuthToken();
+
       final requestModel = CreateOrderHeadRequestModel(
         orderChannelId: orderChannelId,
         waiterId: waiterId,
@@ -263,7 +267,7 @@ class ApiService {
         Uri.parse('${ApiConstants.baseUrl}${ApiConstants.createOrderHead}'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer $authToken',
         },
         body: json.encode(requestModel.toJson()),
       );
@@ -391,20 +395,24 @@ class ApiService {
 
   /// Get Order Details by ID - Enhanced with proper model
   static Future<OrderDetailApiResponseModel?> getOrderDetailById({
-    required String token,
+    String? token,
     required String orderId,
   }) async {
     final isConnected = await checkInternetAndGoForward();
     if (!isConnected) return null;
 
     try {
+      final authToken = (token != null && token.isNotEmpty)
+          ? token
+          : HiveService.getAuthToken();
+
       final Map<String, dynamic> requestBody = {"orderId": orderId};
 
       final response = await http.post(
         Uri.parse('${ApiConstants.baseUrl}Order/getOrderDetailById'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer $authToken',
         },
         body: json.encode(requestBody),
       );
@@ -431,7 +439,7 @@ class ApiService {
 
   /// Update Order Head Status - Enhanced with proper parameters
   static Future<Map<String, dynamic>?> updateOrderHeadStatus({
-    required String token,
+    String? token,
     required String orderHeadId,
     required int statusId,
     required String userId,
@@ -444,6 +452,10 @@ class ApiService {
     if (!isConnected) return null;
 
     try {
+      final authToken = (token != null && token.isNotEmpty)
+          ? token
+          : HiveService.getAuthToken();
+
       Map<String, dynamic> requestBody;
 
       // Support both old and new parameter formats
@@ -468,7 +480,7 @@ class ApiService {
         Uri.parse('${ApiConstants.baseUrl}Order/UpdateOrderHeadStatus'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer $authToken',
         },
         body: json.encode(requestBody),
       );

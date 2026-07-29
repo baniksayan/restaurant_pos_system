@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/menu_provider.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/animated_cart_provider.dart';
+import 'package:restaurant_pos_system/presentation/view_models/providers/navigation_provider.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/table_provider.dart';
 import 'package:restaurant_pos_system/core/themes/app_colors.dart';
 import 'package:restaurant_pos_system/presentation/views/profile/profile_view.dart';
@@ -171,6 +172,7 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
       listen: false,
     );
     final tableProvider = Provider.of<TableProvider>(context, listen: false);
+    final navProvider = Provider.of<NavigationProvider>(context, listen: false);
 
     debugPrint('[StandaloneMenu] Switching to table: $_selectedTableId');
 
@@ -180,21 +182,16 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
     // Switch cart provider
     animatedCartProvider.switchToTable(_selectedTableId!);
 
-    // **ENHANCED: Load existing cart data for this table (if any order exists)**
-    // This handles the case where login already created an order for companySiteUrl="Menu"
+    // Load existing cart data for this order so KOT items display
     if (tableProvider.currentOrderId != null) {
-      debugPrint(
-        '[StandaloneMenu] Found existing order: ${tableProvider.currentOrderId}',
+      final items = await tableProvider.loadCartStateForOrder(
+        tableProvider.currentOrderId!,
       );
-      debugPrint('[StandaloneMenu] Loading cart data for background order...');
-
-      // Load existing cart items from the pre-created order
-      await tableProvider.loadCartStateForOrder(tableProvider.currentOrderId!);
-
-      debugPrint('[StandaloneMenu] ✅ Cart data loaded for existing order');
-    } else {
-      debugPrint(
-        '[StandaloneMenu] No existing order found - new cart will be created when items are added',
+      animatedCartProvider.importFromOrderCart(
+        items,
+        tableId: _selectedTableId!,
+        tableName: navProvider.selectedTableName ?? '',
+        clearExisting: true,
       );
     }
 

@@ -147,7 +147,7 @@ class MenuGrid extends StatelessWidget {
                 imageUrl: item.imageThumbUrl,
                 description: item.description ?? '',
                 price: item.productPrice?.toDouble() ?? 0.0,
-                quantity: cartProvider.getItemQuantity(itemId), // Use AnimatedCartProvider
+                quantity: cartProvider.getNewItemQuantity(itemId), // Show count of new (unprinted) items only
                 cid: item.categoryId ?? '',
                 cname: item.categoryName ?? '',
                 onAdd: () => _addToCart(context, item, cartProvider),

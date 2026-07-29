@@ -52,8 +52,19 @@ class AnimatedCartProvider extends ChangeNotifier {
     (sum, item) => sum + (item.price * item.quantity),
   );
 
-  // Get quantity for a specific item ID (only count editable/non-KOT'd items)
+  // Get quantity for a specific item ID (includes both KOT'd and non-KOT'd items)
   int getItemQuantity(String itemId) {
+    int qty = 0;
+    for (final item in _cartItems.values) {
+      if (item.id == itemId) {
+        qty += item.quantity;
+      }
+    }
+    return qty;
+  }
+
+  // Get quantity for only new (non-KOT'd) items for a specific item ID
+  int getNewItemQuantity(String itemId) {
     int qty = 0;
     for (final item in _cartItems.values) {
       if (item.id == itemId && !item.isKotGenerated) {
@@ -447,14 +458,19 @@ class AnimatedCartProvider extends ChangeNotifier {
   Map<String, dynamic> buildOrderMap({
     required String orderId,
     String kotNote = "",
+    bool onlyNewItems = true,
   }) {
+    final targetItems = (onlyNewItems && newItems.isNotEmpty)
+        ? newItems.values
+        : _cartItems.values;
+
     return {
       "userId": HiveService.getUserId(),
       "outletId": HiveService.getOutletId(),
       "orderId": orderId,
       "kotNote": kotNote,
       "orderDetails":
-          _cartItems.values.map((item) {
+          targetItems.map((item) {
             final orderDetail = <String, dynamic>{
               "productId": item.id,
               "productName": item.name,
@@ -553,8 +569,16 @@ class AnimatedCartProvider extends ChangeNotifier {
         }
       }
 
+      // Generate a unique item key so multiple items with the same productId (or multiple KOTs) don't overwrite each other
+      String itemKey = id;
+      int keyIndex = 1;
+      while (_cartItems.containsKey(itemKey)) {
+        itemKey = '${id}_$keyIndex';
+        keyIndex++;
+      }
+
       // Create CartItem with KOT status
-      _cartItems[id] = CartItem(
+      _cartItems[itemKey] = CartItem(
         id: id,
         name: name,
         price: price,
