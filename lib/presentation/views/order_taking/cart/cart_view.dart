@@ -1118,9 +1118,6 @@ class _PremiumLoaderDialogState extends State<_PremiumLoaderDialog>
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(height: 16),
-              // Cupertino spinner below
-              const CupertinoActivityIndicator(radius: 10),
               const SizedBox(height: 20),
               Text(
                 widget.message,

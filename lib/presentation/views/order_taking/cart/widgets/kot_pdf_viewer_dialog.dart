@@ -165,10 +165,12 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const CircularProgressIndicator(
+                                          const Icon(
+                                            Icons.hourglass_empty_rounded,
+                                            size: 40,
                                             color: AppColors.primary,
                                           ),
-                                          const SizedBox(height: 10),
+                                          const SizedBox(height: 12),
                                           Text(
                                             'Rendering KOT Preview...',
                                             style: TextStyle(

@@ -166,30 +166,6 @@ class CartHeader extends StatelessWidget {
                 ),
             ],
           ),
-          if (hasItems) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  await HapticHelper.triggerFeedback();
-                  onAddMore();
-                },
-                icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                label: const Text('Add More Items'),
-                style: ElevatedButton.styleFrom(
-                  // ✅ CHANGED FROM BRIGHT YELLOW TO SOOTHING APP COLOR
-                  backgroundColor: AppColors.primary, // Was Colors.orange
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  elevation: 2,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );

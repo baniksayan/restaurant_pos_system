@@ -133,7 +133,6 @@ class _MultiOrderManagementDialogState
               ),
             ],
           ),
-          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(

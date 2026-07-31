@@ -287,7 +287,12 @@ class _MainNavigationState extends State<MainNavigation> {
               ),
               child: Row(
                 children: List.generate(_navigationItems.length, (index) {
-                  final bool isSelected = index == navProvider.currentIndex;
+                  final int safeCurrentIndex =
+                      navProvider.currentIndex.clamp(
+                        0,
+                        _navigationItems.length - 1,
+                      );
+                  final bool isSelected = index == safeCurrentIndex;
                   final item = _navigationItems[index];
                   return Expanded(
                     child: _NavBarItem(

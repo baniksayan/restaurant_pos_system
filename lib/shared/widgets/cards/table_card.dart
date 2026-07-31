@@ -44,6 +44,54 @@ class TableCard extends StatelessWidget {
                 ),
               ),
 
+              // Shared Table Badge (Only shown if table has 2 or more active orders)
+              if (table.orderCount >= 2)
+                Positioned(
+                  top: 7,
+                  right: 7,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF3B82F6).withValues(alpha: 0.4),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1.5),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.alt_route_rounded,
+                          size: 11,
+                          color: Color(0xFF1D4ED8),
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${table.orderCount} Shared',
+                          style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1D4ED8),
+                            letterSpacing: -0.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
               // Card Content Centered Perfectly in the Middle
               Center(
                 child: Padding(

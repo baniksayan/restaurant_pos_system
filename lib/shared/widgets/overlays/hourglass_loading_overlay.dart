@@ -69,8 +69,6 @@ class _HourglassLoadingOverlayState extends State<HourglassLoadingOverlay>
                     color: AppColors.primary,
                   ),
                 ),
-                const SizedBox(height: 16),
-                const CupertinoActivityIndicator(radius: 10),
                 const SizedBox(height: 20),
                 Text(
                   widget.message,

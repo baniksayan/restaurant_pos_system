@@ -11,6 +11,7 @@ import '../../../view_models/providers/billing_provider.dart';
 import '../../../view_models/providers/navigation_provider.dart';
 import 'bill_pdf_viewer_dialog.dart';
 import 'bill_success_dialog.dart';
+import '../../../../shared/widgets/layout/skeleton_loader.dart';
 
 class GenerateBillSummaryDialog extends StatefulWidget {
   final String orderNumber;
@@ -594,17 +595,31 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
             width: 1,
           ),
         ),
-        child: const Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
+            const Text(
+              'Payment Method',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
             ),
-            SizedBox(width: 10),
-            Text(
-              'Loading payment methods...',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            const SizedBox(height: 10),
+            Row(
+              children: List.generate(
+                3,
+                (index) => Expanded(
+                  child: Container(
+                    margin: EdgeInsets.only(right: index < 2 ? 8 : 0),
+                    child: SkeletonLoader.rectangular(
+                      height: 38,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

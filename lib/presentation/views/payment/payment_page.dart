@@ -12,6 +12,7 @@ import '../../../data/models/bill_generation_models.dart';
 import 'widgets/amount_card.dart';
 import 'widgets/payment_methods.dart';
 import 'widgets/qr_section.dart';
+import 'widgets/card_section.dart';
 import 'widgets/confirm_button.dart';
 
 class PaymentPage extends StatefulWidget {
@@ -41,6 +42,7 @@ class _PaymentPageState extends State<PaymentPage>
   String _selectedPaymentMethod = 'cash';
   bool _processing = false;
   bool _showQR = false;
+  bool _showCard = false;
 
   String? _fetchedOrderNumber;
   String? _fetchedBillId;
@@ -98,7 +100,8 @@ class _PaymentPageState extends State<PaymentPage>
           }
 
           // Calculate total from item list as fallback
-          if (data.orderDetailList != null && data.orderDetailList!.isNotEmpty) {
+          if (data.orderDetailList != null &&
+              data.orderDetailList!.isNotEmpty) {
             double itemsSum = 0.0;
             for (var item in data.orderDetailList!) {
               final price =
@@ -226,35 +229,34 @@ class _PaymentPageState extends State<PaymentPage>
         opacity: _fadeIn,
         child: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             children: [
-              const SizedBox(height: 24),
-              _loadingDetails
-                  ? const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                  : AmountCard(amount: currentAmount),
+              AmountCard(amount: currentAmount, isLoading: _loadingDetails),
               const SizedBox(height: 16),
               PaymentMethods(
                 selected: _selectedPaymentMethod,
+                isLoading: _loadingDetails,
                 onChanged: (value) {
                   _triggerHapticLight();
                   setState(() {
                     _selectedPaymentMethod = value;
-                    _showQR = (value == 'upi' || value == 'card');
+                    _showQR = (value == 'upi');
+                    _showCard = (value == 'card');
                   });
                 },
               ),
               const SizedBox(height: 12),
               AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 250),
                 switchInCurve: Curves.easeIn,
                 switchOutCurve: Curves.easeOut,
                 child:
-                    _showQR
+                    _showCard
+                        ? CardSection(
+                          key: const ValueKey('card-section'),
+                          amount: currentAmount,
+                        )
+                        : _showQR
                         ? QRSection(
                           key: const ValueKey('qr-section'),
                           amount: currentAmount,
@@ -262,12 +264,31 @@ class _PaymentPageState extends State<PaymentPage>
                         )
                         : const SizedBox.shrink(key: ValueKey('empty')),
               ),
-              const SizedBox(height: 24),
-              ConfirmButton(
-                processing: _processing,
-                onPressed: _processing ? null : _processPayment,
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            border: Border(
+              top: BorderSide(color: const Color(0xFFE2E8F0), width: 1.0),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -4),
               ),
             ],
+          ),
+          child: ConfirmButton(
+            processing: _processing,
+            isLoading: _loadingDetails,
+            onPressed: _processing ? null : _processPayment,
           ),
         ),
       ),
