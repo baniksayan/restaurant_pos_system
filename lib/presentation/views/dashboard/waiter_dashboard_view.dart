@@ -313,6 +313,8 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     if (table.orderCount > 1) {
       showDialog(
         context: context,
+        barrierDismissible: true,
+        barrierColor: Colors.black.withValues(alpha: 0.15),
         builder: (context) => MultiOrderManagementDialog(table: table),
       );
       return;
@@ -440,6 +442,8 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     // Always show management dialog for long press (as per requirements)
     showDialog(
       context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.15),
       builder: (context) => MultiOrderManagementDialog(table: table),
     );
   }
