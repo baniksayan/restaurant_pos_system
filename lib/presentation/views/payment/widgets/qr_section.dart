@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import '../../../../core/constants/currency_constants.dart';
 import '../../../../core/themes/app_colors.dart';
 import '../../../../services/upi_storage_service.dart';
 
@@ -9,11 +8,7 @@ class QRSection extends StatefulWidget {
   final double amount;
   final String orderNumber;
 
-  const QRSection({
-    super.key,
-    required this.amount,
-    required this.orderNumber,
-  });
+  const QRSection({super.key, required this.amount, required this.orderNumber});
 
   @override
   State<QRSection> createState() => _QRSectionState();
@@ -53,7 +48,10 @@ class _QRSectionState extends State<QRSection> {
         return Dialog(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 24,
+          ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(24),
             child: BackdropFilter(
@@ -61,9 +59,10 @@ class _QRSectionState extends State<QRSection> {
               child: Container(
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF0F172A).withValues(alpha: 0.45)
-                      : Colors.white.withValues(alpha: 0.30),
+                  color:
+                      isDark
+                          ? const Color(0xFF0F172A).withValues(alpha: 0.45)
+                          : Colors.white.withValues(alpha: 0.30),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
                     color: Colors.white.withValues(alpha: 0.45),
@@ -91,7 +90,11 @@ class _QRSectionState extends State<QRSection> {
                               color: AppColors.primary.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(Icons.qr_code_scanner, color: AppColors.primary, size: 20),
+                            child: const Icon(
+                              Icons.qr_code_scanner,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
                           ),
                           const SizedBox(width: 10),
                           Text(
@@ -116,8 +119,14 @@ class _QRSectionState extends State<QRSection> {
                         controller: upiController,
                         decoration: const InputDecoration(
                           hintText: 'e.g. restaurant@upi or 9876543210@paytm',
-                          prefixIcon: Icon(Icons.alternate_email_rounded, size: 18),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          prefixIcon: Icon(
+                            Icons.alternate_email_rounded,
+                            size: 18,
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -204,21 +213,14 @@ class _QRSectionState extends State<QRSection> {
           // Header & Configure Button
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: cs.primary.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.qr_code_2_rounded, color: cs.primary, size: 22),
-              ),
-              const SizedBox(width: 10),
+              _PulsingLiveDot(color: cs.primary),
+              const SizedBox(width: 8),
               Text(
-                'Scan QR to Pay',
+                'Show QR Code to Customer',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
-                  fontSize: 16,
+                  fontSize: 15,
                 ),
               ),
               const Spacer(),
@@ -226,12 +228,13 @@ class _QRSectionState extends State<QRSection> {
                 onPressed: _showConfigureUpiDialog,
                 style: TextButton.styleFrom(
                   foregroundColor: cs.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
-                    side: BorderSide(
-                      color: cs.primary.withValues(alpha: 0.3),
-                    ),
+                    side: BorderSide(color: cs.primary.withValues(alpha: 0.3)),
                   ),
                 ),
                 icon: const Icon(Icons.edit_outlined, size: 16),
@@ -260,22 +263,146 @@ class _QRSectionState extends State<QRSection> {
                   ),
                 ],
               ),
-              child: _loadingUpi
-                  ? const SizedBox(
-                      width: 190,
-                      height: 190,
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  : QrImageView(
-                      data: upiPayload,
-                      version: QrVersions.auto,
-                      size: 190,
-                      backgroundColor: Colors.white,
-                    ),
+              child:
+                  _loadingUpi
+                      ? const SizedBox(
+                        width: 190,
+                        height: 190,
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                      : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              QrImageView(
+                                data: upiPayload,
+                                version: QrVersions.auto,
+                                size: 210,
+                                backgroundColor: Colors.white,
+                                errorCorrectionLevel: QrErrorCorrectLevel.H,
+                                gapless: true,
+                                eyeStyle: const QrEyeStyle(
+                                  eyeShape: QrEyeShape.square,
+                                  color: AppColors.primaryDark,
+                                ),
+                                dataModuleStyle: const QrDataModuleStyle(
+                                  dataModuleShape: QrDataModuleShape.circle,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              Container(
+                                width: 54,
+                                height: 54,
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.primary,
+                                    width: 2.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.25,
+                                      ),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Image.asset(
+                                  'assets/logo/app_icon.png',
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PulsingLiveDot extends StatefulWidget {
+  final Color color;
+
+  const _PulsingLiveDot({required this.color});
+
+  @override
+  State<_PulsingLiveDot> createState() => _PulsingLiveDotState();
+}
+
+class _PulsingLiveDotState extends State<_PulsingLiveDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final progress = _controller.value;
+        final scale = 1.0 + (progress * 1.3);
+        final opacity = (1.0 - progress).clamp(0.0, 0.6);
+
+        return SizedBox(
+          width: 14,
+          height: 14,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Transform.scale(
+                scale: scale,
+                child: Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: widget.color.withValues(alpha: opacity),
+                  ),
+                ),
+              ),
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.color,
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.color.withValues(alpha: 0.35),
+                      blurRadius: 4,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

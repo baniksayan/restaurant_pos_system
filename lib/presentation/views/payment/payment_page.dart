@@ -12,7 +12,6 @@ import '../../../data/models/bill_generation_models.dart';
 import 'widgets/amount_card.dart';
 import 'widgets/payment_methods.dart';
 import 'widgets/qr_section.dart';
-import 'widgets/card_section.dart';
 import 'widgets/confirm_button.dart';
 
 class PaymentPage extends StatefulWidget {
@@ -42,7 +41,6 @@ class _PaymentPageState extends State<PaymentPage>
   String _selectedPaymentMethod = 'cash';
   bool _processing = false;
   bool _showQR = false;
-  bool _showCard = false;
 
   String? _fetchedOrderNumber;
   String? _fetchedBillId;
@@ -241,7 +239,6 @@ class _PaymentPageState extends State<PaymentPage>
                   setState(() {
                     _selectedPaymentMethod = value;
                     _showQR = (value == 'upi');
-                    _showCard = (value == 'card');
                   });
                 },
               ),
@@ -251,12 +248,7 @@ class _PaymentPageState extends State<PaymentPage>
                 switchInCurve: Curves.easeIn,
                 switchOutCurve: Curves.easeOut,
                 child:
-                    _showCard
-                        ? CardSection(
-                          key: const ValueKey('card-section'),
-                          amount: currentAmount,
-                        )
-                        : _showQR
+                    _showQR
                         ? QRSection(
                           key: const ValueKey('qr-section'),
                           amount: currentAmount,
