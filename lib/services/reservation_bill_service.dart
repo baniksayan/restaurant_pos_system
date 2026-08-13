@@ -37,7 +37,7 @@ class ReservationBillService {
                   child: pw.Column(
                     children: [
                       pw.Text(
-                        'WiZARD RESTAURANT',
+                        'WHIZEATS PRO',
                         style: pw.TextStyle(
                           fontSize: 24,
                           fontWeight: pw.FontWeight.bold,
@@ -258,7 +258,7 @@ class ReservationBillService {
                     children: [
                       pw.Text('Thank You for Choosing', 
                         style: pw.TextStyle(fontSize: 12)),
-                      pw.Text('WiZARD RESTAURANT', 
+                      pw.Text('WHIZEATS PRO', 
                         style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16, color: PdfColors.blue800)),
                     ],
                   ),
@@ -287,7 +287,7 @@ class ReservationBillService {
 
 Dear ${reservation.customerName},
 
-Your table reservation has been confirmed at *WiZARD Restaurant*
+Your table reservation has been confirmed at *WhizEats Pro*
 
 *Reservation Details:*
 • Table: ${reservation.tableName}
@@ -302,7 +302,7 @@ Your table reservation has been confirmed at *WiZARD Restaurant*
 
 For any changes, call: +91-8768412832
 
-Thank you for choosing WiZARD Restaurant!''';
+Thank you for choosing WhizEats Pro!''';
 
       // Share PDF file with WhatsApp
       await Share.shareXFiles(
@@ -327,7 +327,7 @@ Thank you for choosing WiZARD Restaurant!''';
       if (Platform.isAndroid) {
         await Share.shareXFiles(
           [XFile(pdfFile.path)],
-          text: 'Your reservation bill from WiZARD Restaurant',
+          text: 'Your reservation bill from WhizEats Pro',
           subject: 'Table Reservation Bill',
         );
         return true;

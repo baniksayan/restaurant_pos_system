@@ -1,4 +1,4 @@
-package com.wizard.restaurant_pos
+package com.whizeats.pro
 
 import io.flutter.embedding.android.FlutterActivity
 

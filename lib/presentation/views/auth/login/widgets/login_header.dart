@@ -18,6 +18,7 @@ class LoginHeader extends StatelessWidget {
             child: Container(
               width: 88,
               height: 88,
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
@@ -33,10 +34,9 @@ class LoginHeader extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.restaurant_menu_rounded,
-                size: 46,
-                color: Colors.white,
+              child: Image.asset(
+                'assets/logo/transparent.png',
+                fit: BoxFit.contain,
               ),
             ),
           ),
@@ -49,7 +49,7 @@ class LoginHeader extends StatelessWidget {
           child: Column(
             children: [
               const Text(
-                'WiZARD',
+                'WhizEats',
                 style: TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.w800,
@@ -59,9 +59,9 @@ class LoginHeader extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               const Text(
-                'COMMUNICATIONS',
+                'PRO',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: AppColors.primary,
                   letterSpacing: 2.5,

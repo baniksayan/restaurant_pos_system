@@ -139,14 +139,16 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            width: 38,
+            height: 38,
+            padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [AppColors.primary, AppColors.primaryDark],
               ),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.primary.withValues(alpha: 0.25),
@@ -155,10 +157,9 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                 ),
               ],
             ),
-            child: const Icon(
-              Icons.restaurant_rounded,
-              color: Colors.white,
-              size: 22,
+            child: Image.asset(
+              'assets/logo/transparent.png',
+              fit: BoxFit.contain,
             ),
           ),
           const SizedBox(width: 12),
@@ -168,7 +169,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'WiZARD Restaurant',
+                  'WhizEats Pro',
                   style: TextStyle(
                     fontSize: 15.5,
                     fontWeight: FontWeight.w700,
@@ -637,7 +638,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                                       ),
                                       const SizedBox(height: 8),
                                       const Text(
-                                        'Are you sure you want to sign out of WiZARD Restaurant POS?',
+                                        'Are you sure you want to sign out of WhizEats Pro?',
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
                                           fontSize: 13.5,

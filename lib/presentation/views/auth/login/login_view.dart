@@ -156,7 +156,7 @@ class LoginView extends StatelessWidget {
     return const Column(
       children: [
         Text(
-          'Powered by WiZARD Communications',
+          'Powered by Wizard Communications Pvt. Ltd.',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,

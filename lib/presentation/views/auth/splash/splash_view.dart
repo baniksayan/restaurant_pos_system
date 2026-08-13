@@ -240,7 +240,10 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
               SafeArea(
                 child: Center(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 32,
+                    ),
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 420),
                       child: ClipRRect(
@@ -351,6 +354,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
               child: Container(
                 width: 96,
                 height: 96,
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
@@ -366,10 +370,9 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.restaurant_menu_rounded,
-                  size: 50,
-                  color: Colors.white,
+                child: Image.asset(
+                  'assets/logo/transparent.png',
+                  fit: BoxFit.contain,
                 ),
               ),
             ),
@@ -391,7 +394,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
               children: [
                 // Main title - high contrast dark text
                 const Text(
-                  'WiZARD',
+                  'WhizEats',
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w800,
@@ -403,9 +406,9 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
 
                 // Subtitle
                 const Text(
-                  'COMMUNICATIONS',
+                  'PRO',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primary,
                     letterSpacing: 3.0,
@@ -517,7 +520,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
           child: const Column(
             children: [
               Text(
-                'Powered by WiZARD Communications',
+                'Powered by Wizard Communications Pvt. Ltd.',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -542,4 +545,3 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
     );
   }
 }
-

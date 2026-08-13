@@ -650,22 +650,22 @@ class _ProfileViewState extends State<ProfileView> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            title: const Text('About WiZARD POS'),
+            title: const Text('About WhizEats Pro'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('WiZARD Restaurant Management System'),
+                const Text('WhizEats Pro - Restaurant Management System'),
                 const SizedBox(height: 8),
                 const Text('Version: 1.0.0'),
-                const Text('Build: 2025.08.21'),
+                const Text('Build: 2026.08.13'),
                 const SizedBox(height: 16),
                 const Text(
                   'A comprehensive restaurant management solution for modern dining experiences.',
                   style: TextStyle(color: Colors.grey),
                 ),
                 const SizedBox(height: 16),
-                const Text('© 2025 WiZARD Solutions'),
+                const Text('© 2026 WhizEats Pro. All rights reserved.'),
               ],
             ),
             actions: [

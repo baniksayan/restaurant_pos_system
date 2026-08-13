@@ -43,7 +43,7 @@ class DashboardHeader extends StatelessWidget {
             const SizedBox(width: 12),
             const Expanded(
               child: Text(
-                'WiZARD Restaurant',
+                'WhizEats Pro',
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w600,

@@ -16,7 +16,7 @@ class ForgotPasswordLogo extends StatelessWidget {
           width: 120,
           height: 120,
           child: Image.asset(
-            'assets/images/logo/wizard_logo.png',
+            'assets/logo/transparent.png',
             width: 120,
             height: 120,
             fit: BoxFit.contain,

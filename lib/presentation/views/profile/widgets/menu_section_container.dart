@@ -204,7 +204,7 @@ class ProfileProvider extends ChangeNotifier {
       id: 'W001',
       employeeId: 'EMP2024001',
       name: 'Rajesh Kumar',
-      email: 'rajesh.kumar@wizardrestaurant.com',
+      email: 'rajesh.kumar@whizeats.com',
       phone: '+91 98765 43210',
       profileImage: null,
       position: 'Senior Waiter',

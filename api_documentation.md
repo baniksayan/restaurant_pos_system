@@ -1,16 +1,16 @@
-# Restaurant POS System - Complete API Documentation
+# WhizEats Pro - Complete API Documentation
 
 > **Base URL**: `https://posapi.uvanij.com/api/`  
 > **Authentication Header**: `Authorization: Bearer <posToken>` and `x-access-token: <posToken>`  
 > **Central API Client Implementation**: [`lib/services/api_service.dart`](file:///c:/Flutter%20Projects/restaurant_pos_system/lib/services/api_service.dart)  
 > **API Constants File**: [`lib/core/constants/api_constants.dart`](file:///c:/Flutter%20Projects/restaurant_pos_system/lib/core/constants/api_constants.dart)  
-> **Last Updated**: July 27, 2026  
+> **Last Updated**: August 13, 2026  
 
 ---
 
 ## Executive Overview
 
-This document provides a comprehensive, production-grade technical specification of all RESTful API endpoints integrated into the **Restaurant POS System** Flutter application. Every endpoint documented below includes its route, HTTP method, service implementation file, usage location across providers/repositories/views, payload parameters, response data model, and detailed functional role within the application architecture.
+This document provides a comprehensive, production-grade technical specification of all RESTful API endpoints integrated into the **WhizEats Pro** Flutter application. Every endpoint documented below includes its route, HTTP method, service implementation file, usage location across providers/repositories/views, payload parameters, response data model, and detailed functional role within the application architecture.
 
 ---
 

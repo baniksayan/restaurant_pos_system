@@ -87,22 +87,22 @@ class ProfileDialogService {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        title: const Text('About WiZARD POS'),
+        title: const Text('About WhizEats Pro'),
         content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('WiZARD Restaurant Management System'),
+            Text('WhizEats Pro - Restaurant Management System'),
             SizedBox(height: 8),
             Text('Version: 1.0.0'),
-            Text('Build: 2025.08.21'),
+            Text('Build: 2026.08.13'),
             SizedBox(height: 16),
             Text(
               'A comprehensive restaurant management solution for modern dining experiences.',
               style: TextStyle(color: Colors.grey),
             ),
             SizedBox(height: 16),
-            Text('© 2025 WiZARD Solutions'),
+            Text('© 2026 WhizEats Pro. All rights reserved.'),
           ],
         ),
         actions: [

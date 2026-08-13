@@ -13,11 +13,11 @@ import '../core/constants/currency_constants.dart';
 
 
 class PDFService {
-  static const String restaurantName = "WiZARD Restaurant";
+  static const String restaurantName = "WhizEats Pro";
   static const String restaurantAddress =
       "123 Food Street, Gourmet City, State 12345";
   static const String restaurantPhone = "+91 98765 43210";
-  static const String restaurantEmail = "orders@wizardrestaurant.com";
+  static const String restaurantEmail = "orders@whizeats.com";
   static const String gstNumber = "22AAAAA0000A1Z5";
 
   // Use centralized currency symbol

@@ -4,7 +4,7 @@ class UpiStorageService {
   static const String _keyUpiId = 'restaurant_upi_id';
   static const String _keyMerchantName = 'restaurant_merchant_name';
   static const String defaultUpiId = '8768412832@ptsbi';
-  static const String defaultMerchantName = 'WiZARD Restaurant';
+  static const String defaultMerchantName = 'WhizEats Pro';
 
   /// Get configured UPI ID from SharedPreferences
   static Future<String> getUpiId() async {

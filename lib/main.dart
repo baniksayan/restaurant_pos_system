@@ -71,7 +71,7 @@ class RestaurantPOSApp extends StatelessWidget {
       child: Builder(
         builder: (context) {
           return MaterialApp(
-            title: 'WiZARD Restaurant POS',
+            title: 'WhizEats Pro',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             initialRoute: '/',

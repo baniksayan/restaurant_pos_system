@@ -1,6 +1,6 @@
-# restaurant_pos_system
+# WhizEats Pro
 
-A new Flutter project.
+Advanced Restaurant POS System.
 
 ## Getting Started
 

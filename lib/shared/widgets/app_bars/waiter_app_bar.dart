@@ -30,16 +30,16 @@ class WaiterAppBar extends StatelessWidget implements PreferredSizeWidget {
           Container(
             width: 40,
             height: 40,
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
               gradient: LinearGradient(
                 colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
               ),
             ),
-            child: const Icon(
-              Icons.restaurant,
-              color: Colors.white,
-              size: 24,
+            child: Image.asset(
+              'assets/logo/transparent.png',
+              fit: BoxFit.contain,
             ),
           ),
           const SizedBox(width: 12),
@@ -48,7 +48,7 @@ class WaiterAppBar extends StatelessWidget implements PreferredSizeWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'WiZARD Restaurant',
+                'WhizEats Pro',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
