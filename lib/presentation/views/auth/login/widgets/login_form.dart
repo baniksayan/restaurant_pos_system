@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/core/themes/app_colors.dart';
 import 'package:restaurant_pos_system/presentation/view_models/providers/auth_provider.dart';
 import 'package:restaurant_pos_system/shared/widgets/forms/custom_text_field.dart';
 import 'package:restaurant_pos_system/shared/widgets/animations/fade_in_animation.dart';
 import 'package:restaurant_pos_system/shared/widgets/buttons/animated_button.dart';
-import '../../../menu_management/standalone_menu_view.dart';
+import 'package:restaurant_pos_system/presentation/views/menu_management/standalone_menu_view.dart';
 
 class LoginForm extends StatefulWidget {
   final VoidCallback onForgotPassword;
@@ -37,6 +38,20 @@ class _LoginFormState extends State<LoginForm> {
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       if (!mounted) return;
+
+      final email = _usernameController.text.trim();
+      final password = _passwordController.text.trim();
+
+      // CHEF DEMO LOGIN — HARD-CODED ONLY
+      // If credentials exactly match wizdemo@gmail.com + 123456789 -> Save Chef Session & Enter Chef Screen
+      if (email.toLowerCase() == 'wizdemo@gmail.com' && password == '123456789') {
+        await HiveService.setChefSession(true);
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/chef');
+        }
+        return;
+      }
+
       final authProvider = context.read<AuthProvider>();
       final success = await authProvider.login(
         context,

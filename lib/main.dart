@@ -11,6 +11,8 @@ import 'package:restaurant_pos_system/presentation/view_models/providers/billing
 import 'package:restaurant_pos_system/presentation/views/auth/login/login_view.dart';
 import 'package:restaurant_pos_system/presentation/views/main_navigation.dart';
 import 'package:restaurant_pos_system/presentation/views/auth/splash/splash_view.dart';
+import 'package:restaurant_pos_system/presentation/view_models/providers/chef_provider.dart';
+import 'package:restaurant_pos_system/presentation/views/chef/chef_dashboard_view.dart';
 import 'core/themes/app_theme.dart';
 import 'data/local/hive_service.dart';
 import 'presentation/view_models/providers/auth_provider.dart';
@@ -53,6 +55,7 @@ class RestaurantPOSApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ChefProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => OrdersManagementProvider()),
         ChangeNotifierProvider(create: (_) => MenuProvider()),
@@ -79,6 +82,7 @@ class RestaurantPOSApp extends StatelessWidget {
               '/': (context) => const SplashView(),
               '/login': (context) => const LoginView(),
               '/dashboard': (context) => const MainNavigation(),
+              '/chef': (context) => const ChefDashboardView(),
             },
             onUnknownRoute: (settings) {
               return MaterialPageRoute(builder: (context) => const LoginView());

@@ -167,6 +167,19 @@ class HiveService {
     posBox.delete('companySiteUrl');
   }
 
+  // Chef Session Management
+  static Future<void> setChefSession(bool isChef) async {
+    await posBox.put('is_chef_logged_in', isChef);
+  }
+
+  static bool isChefLoggedIn() {
+    return posBox.get('is_chef_logged_in', defaultValue: false) == true;
+  }
+
+  static Future<void> clearChefSession() async {
+    await posBox.delete('is_chef_logged_in');
+  }
+
   // Tax Data Management
   static void saveTaxData(Map<String, dynamic> taxData) {
     posBox.put('taxData', taxData);

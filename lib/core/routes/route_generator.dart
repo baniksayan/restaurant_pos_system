@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/presentation/views/auth/login/login_view.dart';
 import 'package:restaurant_pos_system/presentation/views/auth/splash/splash_view.dart';
 import 'package:restaurant_pos_system/presentation/views/main_navigation.dart';
+import 'package:restaurant_pos_system/presentation/views/chef/chef_dashboard_view.dart';
 
 class RouteGenerator {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -12,6 +13,8 @@ class RouteGenerator {
         return _createRoute(const LoginView());
       case '/dashboard':
         return _createRoute(const MainNavigation());
+      case '/chef':
+        return _createRoute(const ChefDashboardView());
       default:
         // Handle unknown routes - redirect to login
         return _createRoute(

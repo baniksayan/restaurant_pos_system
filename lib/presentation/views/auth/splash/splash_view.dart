@@ -134,6 +134,15 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
       await Future.delayed(const Duration(seconds: 2));
 
       if (mounted) {
+        // Restore Chef Session if logged in
+        if (HiveService.isChefLoggedIn()) {
+          Navigator.of(context).pushReplacementNamed('/chef');
+          if (kDebugMode) {
+            debugPrint('Chef session restored - navigating directly to /chef');
+          }
+          return;
+        }
+
         final authProvider = context.read<AuthProvider>();
         final isAuthenticated = await authProvider.checkAuthState();
 
