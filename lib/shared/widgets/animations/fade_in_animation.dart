@@ -9,14 +9,14 @@ class FadeInAnimation extends StatefulWidget {
   final double endOpacity;
 
   const FadeInAnimation({
-    Key? key,
+    super.key,
     required this.child,
     this.duration = const Duration(milliseconds: 600),
     this.delay = Duration.zero,
     this.curve = Curves.easeInOut,
     this.beginOpacity = 0.0,
     this.endOpacity = 1.0,
-  }) : super(key: key);
+  });
 
   @override
   State<FadeInAnimation> createState() => _FadeInAnimationState();

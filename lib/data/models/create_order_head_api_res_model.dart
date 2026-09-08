@@ -25,9 +25,9 @@ class CreateOrderHeadApiResModel {
     if (this.data != null) {
       data['data'] = this.data!.toJson();
     }
-    data['message'] = this.message;
-    data['isSuccess'] = this.isSuccess;
-    data['statusCode'] = this.statusCode;
+    data['message'] = message;
+    data['isSuccess'] = isSuccess;
+    data['statusCode'] = statusCode;
     return data;
   }
 }
@@ -54,10 +54,10 @@ class OrderHeadResponseData {
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
-    data['orderId'] = this.orderId;
-    data['generatedOrderNo'] = this.generatedOrderNo;
-    data['orderNo'] = this.orderNo;
-    data['response'] = this.response;
+    data['orderId'] = orderId;
+    data['generatedOrderNo'] = generatedOrderNo;
+    data['orderNo'] = orderNo;
+    data['response'] = response;
     return data;
   }
 }

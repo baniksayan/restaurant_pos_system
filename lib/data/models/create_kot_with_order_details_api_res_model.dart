@@ -12,20 +12,20 @@ class CreateKotWithOrderDetailsApiResModel {
   });
 
   CreateKotWithOrderDetailsApiResModel.fromJson(Map<String, dynamic> json) {
-    data = json['data'] != null ? new Data.fromJson(json['data']) : null;
+    data = json['data'] != null ? Data.fromJson(json['data']) : null;
     message = json['message'];
     isSuccess = json['isSuccess'];
     statusCode = json['statusCode'];
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
+    final Map<String, dynamic> data = <String, dynamic>{};
     if (this.data != null) {
       data['data'] = this.data!.toJson();
     }
-    data['message'] = this.message;
-    data['isSuccess'] = this.isSuccess;
-    data['statusCode'] = this.statusCode;
+    data['message'] = message;
+    data['isSuccess'] = isSuccess;
+    data['statusCode'] = statusCode;
     return data;
   }
 }
@@ -44,17 +44,17 @@ class Data {
     kotHeadId = json['kotHeadId'];
     kotDetail =
         json['kotDetail'] != null
-            ? new KotDetail.fromJson(json['kotDetail'])
+            ? KotDetail.fromJson(json['kotDetail'])
             : null;
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['response'] = this.response;
-    data['kotStatus'] = this.kotStatus;
-    data['kotHeadId'] = this.kotHeadId;
-    if (this.kotDetail != null) {
-      data['kotDetail'] = this.kotDetail!.toJson();
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['response'] = response;
+    data['kotStatus'] = kotStatus;
+    data['kotHeadId'] = kotHeadId;
+    if (kotDetail != null) {
+      data['kotDetail'] = kotDetail!.toJson();
     }
     return data;
   }
@@ -104,26 +104,26 @@ class KotDetail {
     if (json['itemList'] != null) {
       itemList = <ItemList>[];
       json['itemList'].forEach((v) {
-        itemList!.add(new ItemList.fromJson(v));
+        itemList!.add(ItemList.fromJson(v));
       });
     }
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['kotNo'] = this.kotNo;
-    data['kotDateTime'] = this.kotDateTime;
-    data['customerName'] = this.customerName;
-    data['customerPhoneNo'] = this.customerPhoneNo;
-    data['waiterName'] = this.waiterName;
-    data['channelName'] = this.channelName;
-    data['orderId'] = this.orderId;
-    data['orderNo'] = this.orderNo;
-    data['kotDateTimeLocal'] = this.kotDateTimeLocal;
-    data['kotNote'] = this.kotNote;
-    data['orderIdentifier'] = this.orderIdentifier;
-    if (this.itemList != null) {
-      data['itemList'] = this.itemList!.map((v) => v.toJson()).toList();
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['kotNo'] = kotNo;
+    data['kotDateTime'] = kotDateTime;
+    data['customerName'] = customerName;
+    data['customerPhoneNo'] = customerPhoneNo;
+    data['waiterName'] = waiterName;
+    data['channelName'] = channelName;
+    data['orderId'] = orderId;
+    data['orderNo'] = orderNo;
+    data['kotDateTimeLocal'] = kotDateTimeLocal;
+    data['kotNote'] = kotNote;
+    data['orderIdentifier'] = orderIdentifier;
+    if (itemList != null) {
+      data['itemList'] = itemList!.map((v) => v.toJson()).toList();
     }
     return data;
   }
@@ -145,11 +145,11 @@ class ItemList {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['itemName'] = this.itemName;
-    data['itemQty'] = this.itemQty;
-    data['uom'] = this.uom;
-    data['itemNote'] = this.itemNote;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['itemName'] = itemName;
+    data['itemQty'] = itemQty;
+    data['uom'] = uom;
+    data['itemNote'] = itemNote;
     return data;
   }
 }

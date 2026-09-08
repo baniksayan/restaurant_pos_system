@@ -1,35 +1,29 @@
-import 'package:restaurant_pos_system/data/local/hive_service.dart';
-
 class ApiConstants {
   ApiConstants._();
 
   // Base URL
   static String baseUrl = "https://posapi.uvanij.com/api/";
-  static String accessToken = HiveService.getAuthToken();
 
   // Auth endpoints
-  static const String auth = "User/authenticate"; //done
+  static const String auth = "User/authenticate";
 
   // Payment modes endpoints
-  static const String getPaymentModes = 'api/Order/GetPaymentMode'; //done
+  static const String getPaymentModes = 'api/Order/GetPaymentMode';
 
   // Table by outlet and type
-  static const String getTablesByOutlet =
-      'Setting/OrderChannelListByType'; //done
+  static const String getTablesByOutlet = 'Setting/OrderChannelListByType';
 
   // Order endpoints
-  static const String createOrderHead = 'Order/saveOrderHead'; //done
+  static const String createOrderHead = 'Order/saveOrderHead';
 
   // KOT endpoints
-  static const String createKotWithOrderDetails =
-      'Order/CreateKotWithOrderDetails';
+  static const String createKotWithOrderDetails = 'Order/CreateKotWithOrderDetails';
 
   // Product endpoints
-  static const String getItemSearch = 'Product/GetItemSearch'; //done
+  static const String getItemSearch = 'Product/GetItemSearch';
 
   // Order Channel Types
   static const String getOrderChannelTypes = 'Setting/GetOrderChannelTypes';
-
 }
 
 class ApiMethods {

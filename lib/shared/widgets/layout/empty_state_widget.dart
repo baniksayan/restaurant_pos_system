@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/themes/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 
 class EmptyStateWidget extends StatelessWidget {
   final IconData icon;

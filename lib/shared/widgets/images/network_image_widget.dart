@@ -11,14 +11,14 @@ class NetworkImageWidget extends StatelessWidget {
   final Widget? errorWidget;
 
   const NetworkImageWidget({
-    Key? key,
+    super.key,
     required this.imageUrl,
     this.width,
     this.height,
     this.fit = BoxFit.cover,
     this.placeholder,
     this.errorWidget,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

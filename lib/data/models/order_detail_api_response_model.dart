@@ -136,15 +136,15 @@ class OrderDetailList {
     orderDetailId = json['orderDetailId'];
     createdOn = json['createdOn'];
     productName = json['productName'];
-    var _pq = json['productQty'];
-    if (_pq == null) {
+    var pq = json['productQty'];
+    if (pq == null) {
       productQty = null;
-    } else if (_pq is int) {
-      productQty = _pq;
-    } else if (_pq is String) {
-      productQty = int.tryParse(_pq) ?? double.tryParse(_pq)?.toInt();
-    } else if (_pq is num) {
-      productQty = _pq.toInt();
+    } else if (pq is int) {
+      productQty = pq;
+    } else if (pq is String) {
+      productQty = int.tryParse(pq) ?? double.tryParse(pq)?.toInt();
+    } else if (pq is num) {
+      productQty = pq.toInt();
     } else {
       productQty = null;
     }

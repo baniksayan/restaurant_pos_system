@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/themes/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 
 class AnimatedButton extends StatefulWidget {
   final String text;
@@ -12,7 +12,7 @@ class AnimatedButton extends StatefulWidget {
   final double height;
 
   const AnimatedButton({
-    Key? key,
+    super.key,
     required this.text,
     required this.onPressed,
     this.backgroundColor,
@@ -21,7 +21,7 @@ class AnimatedButton extends StatefulWidget {
     this.isLoading = false,
     this.width,
     this.height = 48,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimatedButton> createState() => _AnimatedButtonState();
@@ -85,7 +85,7 @@ class _AnimatedButtonState extends State<AnimatedButton>
                 gradient: LinearGradient(
                   colors: [
                     widget.backgroundColor ?? AppColors.primary,
-                    (widget.backgroundColor ?? AppColors.primary).withOpacity(0.8),
+                    (widget.backgroundColor ?? AppColors.primary).withValues(alpha: 0.8),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -93,7 +93,7 @@ class _AnimatedButtonState extends State<AnimatedButton>
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: (widget.backgroundColor ?? AppColors.primary).withOpacity(0.3),
+                    color: (widget.backgroundColor ?? AppColors.primary).withValues(alpha: 0.3),
                     blurRadius: _isPressed ? 5 : 10,
                     offset: Offset(0, _isPressed ? 2 : 4),
                   ),

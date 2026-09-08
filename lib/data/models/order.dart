@@ -1,4 +1,4 @@
-import 'menu_item.dart';
+import 'package:restaurant_pos_system/features/menu/models/menu_item.dart';
 
 enum OrderStatus { pending, preparing, ready, completed, cancelled }
 

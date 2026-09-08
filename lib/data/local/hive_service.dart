@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:restaurant_pos_system/data/models/auth_api_res_model.dart';
 import 'models/table_model.dart';
@@ -245,7 +246,7 @@ class HiveService {
     try {
       await posBox.put('cart_$tableId', cartData);
     } catch (e) {
-      print('Error saving table cart: $e');
+      debugPrint('Error saving table cart: $e');
     }
   }
 
@@ -256,7 +257,7 @@ class HiveService {
         return Map<String, dynamic>.from(data);
       }
     } catch (e) {
-      print('Error getting table cart: $e');
+      debugPrint('Error getting table cart: $e');
     }
     return null;
   }
@@ -265,7 +266,7 @@ class HiveService {
     try {
       await posBox.delete('cart_$tableId');
     } catch (e) {
-      print('Error clearing table cart: $e');
+      debugPrint('Error clearing table cart: $e');
     }
   }
 
@@ -273,9 +274,9 @@ class HiveService {
   static Future<void> saveTableBillId(String tableId, String billId) async {
     try {
       await posBox.put('bill_id_$tableId', billId);
-      print('Saved bill ID for table $tableId: $billId');
+      debugPrint('Saved bill ID for table $tableId: $billId');
     } catch (e) {
-      print('Error saving table bill ID: $e');
+      debugPrint('Error saving table bill ID: $e');
     }
   }
 
@@ -286,7 +287,7 @@ class HiveService {
         return billId;
       }
     } catch (e) {
-      print('Error getting table bill ID: $e');
+      debugPrint('Error getting table bill ID: $e');
     }
     return null;
   }
@@ -294,37 +295,37 @@ class HiveService {
   static Future<void> clearTableBillId(String tableId) async {
     try {
       await posBox.delete('bill_id_$tableId');
-      print('Cleared bill ID for table $tableId');
+      debugPrint('Cleared bill ID for table $tableId');
     } catch (e) {
-      print('Error clearing table bill ID: $e');
+      debugPrint('Error clearing table bill ID: $e');
     }
   }
 
   // Legacy methods for backward compatibility (temporarily kept)
-  @deprecated
+  @Deprecated('Use saveTableBillId instead')
   static Future<void> saveTableBillAmount(
     String tableId,
     double billAmount,
   ) async {
     // This method is deprecated - use saveTableBillId instead
-    print(
+    debugPrint(
       'Warning: saveTableBillAmount is deprecated. Use saveTableBillId instead.',
     );
   }
 
-  @deprecated
+  @Deprecated('Use getBillDetailByBillId API instead')
   static double? getTableBillAmount(String tableId) {
     // This method is deprecated - use getBillDetailByBillId API instead
-    print(
+    debugPrint(
       'Warning: getTableBillAmount is deprecated. Use getBillDetailByBillId API instead.',
     );
     return null;
   }
 
-  @deprecated
+  @Deprecated('Use clearTableBillId instead')
   static Future<void> clearTableBillAmount(String tableId) async {
     // This method is deprecated - use clearTableBillId instead
-    print(
+    debugPrint(
       'Warning: clearTableBillAmount is deprecated. Use clearTableBillId instead.',
     );
   }

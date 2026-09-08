@@ -8,12 +8,12 @@ class FlyingCartAnimation extends StatefulWidget {
   final Offset endPosition;
 
   const FlyingCartAnimation({
-    Key? key,
+    super.key,
     required this.child,
     required this.onComplete,
     required this.startPosition,
     required this.endPosition,
-  }) : super(key: key);
+  });
 
   @override
   State<FlyingCartAnimation> createState() => _FlyingCartAnimationState();

@@ -1,7 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import '../../../core/themes/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 
 class HourglassLoadingOverlay extends StatefulWidget {
   final String message;

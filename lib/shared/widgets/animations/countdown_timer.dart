@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:restaurant_pos_system/core/themes/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 
 class CountdownTimer extends StatefulWidget {
   final DateTime targetTime;
@@ -65,9 +65,9 @@ class _CountdownTimerState extends State<CountdownTimer> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: timerColor.withOpacity(0.1),
+        color: timerColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: timerColor.withOpacity(0.3)),
+        border: Border.all(color: timerColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

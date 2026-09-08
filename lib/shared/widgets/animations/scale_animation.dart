@@ -9,14 +9,14 @@ class ScaleAnimation extends StatefulWidget {
   final Curve curve;
 
   const ScaleAnimation({
-    Key? key,
+    super.key,
     required this.child,
     this.duration = const Duration(milliseconds: 400),
     this.delay = Duration.zero,
     this.beginScale = 0.8,
     this.endScale = 1.0,
     this.curve = Curves.elasticOut,
-  }) : super(key: key);
+  });
 
   @override
   State<ScaleAnimation> createState() => _ScaleAnimationState();

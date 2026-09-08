@@ -2,9 +2,9 @@ import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../core/themes/app_colors.dart';
-import '../../../core/utils/haptic_helper.dart';
-import '../../../services/pdf_service.dart';
+import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
+import 'package:restaurant_pos_system/shared/services/pdf_service.dart';
 
 class PDFShareBottomSheet extends StatelessWidget {
   final Uint8List pdfBytes;

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../core/themes/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 
 class SlowConnectionOverlay extends StatefulWidget {
-  const SlowConnectionOverlay({Key? key}) : super(key: key);
+  const SlowConnectionOverlay({super.key});
 
   @override
   State<SlowConnectionOverlay> createState() => _SlowConnectionOverlayState();
@@ -55,14 +55,14 @@ class _SlowConnectionOverlayState extends State<SlowConnectionOverlay>
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AppColors.warning.withOpacity(0.9),
-                AppColors.warning.withOpacity(0.8),
+                AppColors.warning.withValues(alpha: 0.9),
+                AppColors.warning.withValues(alpha: 0.8),
               ],
             ),
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: AppColors.warning.withOpacity(0.3),
+                color: AppColors.warning.withValues(alpha: 0.3),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -70,7 +70,7 @@ class _SlowConnectionOverlayState extends State<SlowConnectionOverlay>
           ),
           child: Row(
             children: [
-              Container(
+              const SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
@@ -84,7 +84,7 @@ class _SlowConnectionOverlayState extends State<SlowConnectionOverlay>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
+                    const Text(
                       'Slow Network',
                       style: TextStyle(
                         color: Colors.white,
@@ -95,7 +95,7 @@ class _SlowConnectionOverlayState extends State<SlowConnectionOverlay>
                     Text(
                       'Data is loading slowly due to poor connection',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 12,
                       ),
                     ),
@@ -106,7 +106,7 @@ class _SlowConnectionOverlayState extends State<SlowConnectionOverlay>
                 onPressed: () {
                   _slideController.reverse();
                 },
-                icon: Icon(
+                icon: const Icon(
                   Icons.close_rounded,
                   color: Colors.white,
                   size: 18,

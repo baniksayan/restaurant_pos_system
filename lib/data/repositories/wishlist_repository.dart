@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import '../../services/api_service.dart';
+import '../remote/api_service.dart';
 import '../../core/constants/api_constants.dart';
 import '../models/wishlist_api_res_model.dart'; // You'll need to create this model
 

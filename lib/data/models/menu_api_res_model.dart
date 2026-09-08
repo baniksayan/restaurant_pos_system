@@ -10,7 +10,7 @@ class MenuApiResModel {
     if (json['data'] != null) {
       data = <Data>[];
       json['data'].forEach((v) {
-        data!.add(new Data.fromJson(v));
+        data!.add(Data.fromJson(v));
       });
     }
     message = json['message'];
@@ -19,13 +19,13 @@ class MenuApiResModel {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
+    final Map<String, dynamic> data = <String, dynamic>{};
     if (this.data != null) {
       data['data'] = this.data!.map((v) => v.toJson()).toList();
     }
-    data['message'] = this.message;
-    data['isSuccess'] = this.isSuccess;
-    data['statusCode'] = this.statusCode;
+    data['message'] = message;
+    data['isSuccess'] = isSuccess;
+    data['statusCode'] = statusCode;
     return data;
   }
 }
@@ -96,26 +96,26 @@ class Data {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['productId'] = this.productId;
-    data['categoryId'] = this.categoryId;
-    data['categoryName'] = this.categoryName;
-    data['productName'] = this.productName;
-    data['productAlias'] = this.productAlias;
-    data['productNumber'] = this.productNumber;
-    data['productSKU'] = this.productSKU;
-    data['description'] = this.description;
-    data['productRemarks'] = this.productRemarks;
-    data['uom'] = this.uom;
-    data['productPrice'] = this.productPrice;
-    data['imageId'] = this.imageId;
-    data['imageUrl'] = this.imageUrl;
-    data['imageThumbUrl'] = this.imageThumbUrl;
-    data['offerID'] = this.offerID;
-    data['discountPercentage'] = this.discountPercentage;
-    data['effectivePrice'] = this.effectivePrice;
-    data['pureVeg'] = this.pureVeg;
-    data['meuSectionId'] = this.meuSectionId;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['productId'] = productId;
+    data['categoryId'] = categoryId;
+    data['categoryName'] = categoryName;
+    data['productName'] = productName;
+    data['productAlias'] = productAlias;
+    data['productNumber'] = productNumber;
+    data['productSKU'] = productSKU;
+    data['description'] = description;
+    data['productRemarks'] = productRemarks;
+    data['uom'] = uom;
+    data['productPrice'] = productPrice;
+    data['imageId'] = imageId;
+    data['imageUrl'] = imageUrl;
+    data['imageThumbUrl'] = imageThumbUrl;
+    data['offerID'] = offerID;
+    data['discountPercentage'] = discountPercentage;
+    data['effectivePrice'] = effectivePrice;
+    data['pureVeg'] = pureVeg;
+    data['meuSectionId'] = meuSectionId;
     return data;
   }
 }

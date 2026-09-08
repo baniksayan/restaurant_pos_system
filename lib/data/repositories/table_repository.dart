@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/order_channel_list_api_response_model.dart';
 import '../models/restaurant_table.dart';
-import '../../services/api_service.dart';
+import '../remote/api_service.dart';
 
 class TableRepository {
   TableRepository._();
@@ -14,10 +14,10 @@ class TableRepository {
     String orderChannelType = "Table",
   }) async {
     try {
-      print('[TableRepo] Calling OrderChannelListByType API...');
-      print('[TableRepo] Token: ${token.substring(0, 20)}...');
-      print('[TableRepo] OutletId: $outletId');
-      print('[TableRepo] OrderChannelType: $orderChannelType');
+      debugPrint('[TableRepo] Calling OrderChannelListByType API...');
+      debugPrint('[TableRepo] Token: ${token.substring(0, 20)}...');
+      debugPrint('[TableRepo] OutletId: $outletId');
+      debugPrint('[TableRepo] OrderChannelType: $orderChannelType');
 
       final response = await ApiService.getOrderChannelListByType(
         token: token,
@@ -26,25 +26,25 @@ class TableRepository {
       );
 
       if (response != null && response.isSuccess == true) {
-        print('[TableRepo] API Success: ${response.isSuccess}');
-        print('[TableRepo] API Message: ${response.message}');
-        print('[TableRepo] Raw API Response Data: ${response.data}');
-        print('[TableRepo] Tables Count: ${response.data?.length ?? 0}');
+        debugPrint('[TableRepo] API Success: ${response.isSuccess}');
+        debugPrint('[TableRepo] API Message: ${response.message}');
+        debugPrint('[TableRepo] Raw API Response Data: ${response.data}');
+        debugPrint('[TableRepo] Tables Count: ${response.data?.length ?? 0}');
 
         if (response.data != null && response.data!.isNotEmpty) {
           // Convert API data to RestaurantTable objects
           final apiTables = _convertApiDataToRestaurantTables(response.data!);
-          print(
+          debugPrint(
             '[TableRepo] Successfully converted ${apiTables.length} tables from API',
           );
 
           // Debug print each table
           for (final table in apiTables) {
-            print(
+            debugPrint(
               '[TableRepo] Table: ${table.name} - Status: ${table.status} - Orders: ${table.activeOrders.length}',
             );
             for (final order in table.activeOrders) {
-              print(
+              debugPrint(
                 '[TableRepo] Order: ${order.generatedOrderNo} - Status: ${order.orderStatus} - Billed: ${order.isBilled}',
               );
             }
@@ -52,18 +52,18 @@ class TableRepository {
 
           return apiTables;
         } else {
-          print('[TableRepo] No tables found in API response');
+          debugPrint('[TableRepo] No tables found in API response');
           return [];
         }
       } else {
-        print('[TableRepo] API Failed or returned unsuccessful response');
-        print('[TableRepo] Response: $response');
+        debugPrint('[TableRepo] API Failed or returned unsuccessful response');
+        debugPrint('[TableRepo] Response: $response');
         return [];
       }
     } catch (e) {
-      print('[TableRepo] Error fetching tables: $e');
+      debugPrint('[TableRepo] Error fetching tables: $e');
       if (kDebugMode) {
-        print('[TableRepo] Stack trace: ${StackTrace.current}');
+        debugPrint('[TableRepo] Stack trace: ${StackTrace.current}');
       }
       return [];
     }
@@ -73,22 +73,22 @@ class TableRepository {
   static List<RestaurantTable> _convertApiDataToRestaurantTables(
     List<TableData> apiTables,
   ) {
-    print('[TableRepo] Converting ${apiTables.length} API tables');
-    print('[TableRepo] Raw API tables data: $apiTables');
+    debugPrint('[TableRepo] Converting ${apiTables.length} API tables');
+    debugPrint('[TableRepo] Raw API tables data: $apiTables');
 
     return apiTables
         .where((table) {
           final isTable = table.channelType?.toLowerCase() == 'table';
-          print(
+          debugPrint(
             '[TableRepo] Table ${table.name}: channelType=${table.channelType}, isTable=$isTable',
           );
           return isTable;
         })
         .map((table) {
-          print('[TableRepo] Processing table: ${table.name}');
-          print('[TableRepo] Table ID: ${table.orderChannelId}');
-          print('[TableRepo] Table capacity: ${table.capacity}');
-          print('[TableRepo] Raw orderList: ${table.orderList}');
+          debugPrint('[TableRepo] Processing table: ${table.name}');
+          debugPrint('[TableRepo] Table ID: ${table.orderChannelId}');
+          debugPrint('[TableRepo] Table capacity: ${table.capacity}');
+          debugPrint('[TableRepo] Raw orderList: ${table.orderList}');
 
           // FIXED: Simplified filtering with proper boolean return
           final activeOrders =
@@ -102,7 +102,7 @@ class TableRepository {
                         order.orderStatus != 'Cancelled',
                   )
                   .map((order) {
-                    print(
+                    debugPrint(
                       '[TableRepo] Creating ActiveOrder: ${order.generatedOrderNo}',
                     );
                     return ActiveOrder(
@@ -115,7 +115,7 @@ class TableRepository {
                   .toList() ??
               [];
 
-          print(
+          debugPrint(
             '[TableRepo] Table ${table.name}: ${activeOrders.length} active orders',
           );
 
@@ -141,8 +141,8 @@ class TableRepository {
             tableStatus = TableStatus.occupied;
           }
 
-          print(
-            '[TableRepo] Table ${table.name}: status=$tableStatus, orders=${activeOrders.length}, billed=${billGenerated}',
+          debugPrint(
+            '[TableRepo] Table ${table.name}: status=$tableStatus, orders=${activeOrders.length}, billed=$billGenerated',
           );
 
           return RestaurantTable(
@@ -162,25 +162,25 @@ class TableRepository {
 
   /// Debug method to verify data conversion
   static void debugPrintTableData(List<RestaurantTable> tables) {
-    print('[TableRepo] === DEBUG TABLE DATA ===');
-    print('[TableRepo] Total tables: ${tables.length}');
+    debugPrint('[TableRepo] === DEBUG TABLE DATA ===');
+    debugPrint('[TableRepo] Total tables: ${tables.length}');
     for (final table in tables) {
-      print('[TableRepo] Table: ${table.name}');
-      print('[TableRepo] ID: ${table.id}');
-      print('[TableRepo] Capacity: ${table.capacity}');
-      print('[TableRepo] Location: ${table.location}');
-      print('[TableRepo] Status: ${table.status}');
-      print('[TableRepo] KOT Generated: ${table.kotGenerated}');
-      print('[TableRepo] Bill Generated: ${table.billGenerated}');
-      print('[TableRepo] Active Orders (${table.activeOrders.length}):');
+      debugPrint('[TableRepo] Table: ${table.name}');
+      debugPrint('[TableRepo] ID: ${table.id}');
+      debugPrint('[TableRepo] Capacity: ${table.capacity}');
+      debugPrint('[TableRepo] Location: ${table.location}');
+      debugPrint('[TableRepo] Status: ${table.status}');
+      debugPrint('[TableRepo] KOT Generated: ${table.kotGenerated}');
+      debugPrint('[TableRepo] Bill Generated: ${table.billGenerated}');
+      debugPrint('[TableRepo] Active Orders (${table.activeOrders.length}):');
       for (final order in table.activeOrders) {
-        print(
+        debugPrint(
           '[TableRepo] - ${order.generatedOrderNo} (${order.orderStatus}) - Billed: ${order.isBilled}',
         );
       }
-      print('[TableRepo] ---');
+      debugPrint('[TableRepo] ---');
     }
-    print('[TableRepo] === END DEBUG ===');
+    debugPrint('[TableRepo] === END DEBUG ===');
   }
 
   /// Helper method to get table statistics
@@ -233,7 +233,7 @@ class TableRepository {
           table.activeOrders.where((order) => order.isBilled).length;
     }
 
-    print('[TableRepo] Table Statistics: $stats');
+    debugPrint('[TableRepo] Table Statistics: $stats');
     return stats;
   }
 }

@@ -4,7 +4,7 @@ import '../animations/flying_cart_animation.dart';
 class CartAnimationOverlay extends StatefulWidget {
   final Widget child;
 
-  const CartAnimationOverlay({Key? key, required this.child}) : super(key: key);
+  const CartAnimationOverlay({super.key, required this.child});
 
   @override
   CartAnimationOverlayState createState() => CartAnimationOverlayState(); // |  Make public
@@ -35,7 +35,6 @@ class CartAnimationOverlayState extends State<CartAnimationOverlay> {
     late Widget flyingItem;
 
     flyingItem = FlyingCartAnimation(
-      child: item,
       startPosition: startPosition,
       endPosition: cartPosition,
       onComplete: () {
@@ -46,6 +45,7 @@ class CartAnimationOverlayState extends State<CartAnimationOverlay> {
         }
         onComplete();
       },
+      child: item,
     );
 
     if (mounted) {

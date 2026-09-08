@@ -24,13 +24,13 @@ class OrderChannelListApiResponseModel {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = Map<String, dynamic>();
+    final Map<String, dynamic> data = <String, dynamic>{};
     if (this.data != null) {
       data['data'] = this.data!.map((v) => v.toJson()).toList();
     }
-    data['message'] = this.message;
-    data['isSuccess'] = this.isSuccess;
-    data['statusCode'] = this.statusCode;
+    data['message'] = message;
+    data['isSuccess'] = isSuccess;
+    data['statusCode'] = statusCode;
     return data;
   }
 }
@@ -64,13 +64,13 @@ class TableData {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = Map<String, dynamic>();
-    data['orderChannelId'] = this.orderChannelId;
-    data['channelType'] = this.channelType;
-    data['name'] = this.name;
-    data['capacity'] = this.capacity;
-    if (this.orderList != null) {
-      data['orderList'] = this.orderList!.map((v) => v.toJson()).toList();
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['orderChannelId'] = orderChannelId;
+    data['channelType'] = channelType;
+    data['name'] = name;
+    data['capacity'] = capacity;
+    if (orderList != null) {
+      data['orderList'] = orderList!.map((v) => v.toJson()).toList();
     }
     return data;
   }
@@ -97,11 +97,11 @@ class OrderList {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = Map<String, dynamic>();
-    data['orderId'] = this.orderId;
-    data['isBilled'] = this.isBilled;
-    data['orderStatus'] = this.orderStatus;
-    data['generatedOrderNo'] = this.generatedOrderNo;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['orderId'] = orderId;
+    data['isBilled'] = isBilled;
+    data['orderStatus'] = orderStatus;
+    data['generatedOrderNo'] = generatedOrderNo;
     return data;
   }
 }

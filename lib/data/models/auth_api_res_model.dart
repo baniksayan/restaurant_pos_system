@@ -7,20 +7,20 @@ class AuthApiResModel {
   AuthApiResModel({this.data, this.message, this.isSuccess, this.statusCode});
 
   AuthApiResModel.fromJson(Map<String, dynamic> json) {
-    data = json['data'] != null ? new Data.fromJson(json['data']) : null;
+    data = json['data'] != null ? Data.fromJson(json['data']) : null;
     message = json['message'];
     isSuccess = json['isSuccess'];
     statusCode = json['statusCode'];
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
+    final Map<String, dynamic> data = <String, dynamic>{};
     if (this.data != null) {
       data['data'] = this.data!.toJson();
     }
-    data['message'] = this.message;
-    data['isSuccess'] = this.isSuccess;
-    data['statusCode'] = this.statusCode;
+    data['message'] = message;
+    data['isSuccess'] = isSuccess;
+    data['statusCode'] = statusCode;
     return data;
   }
 }
@@ -49,71 +49,71 @@ class Data {
   Data.fromJson(Map<String, dynamic> json) {
     userDetails =
         json['userDetails'] != null
-            ? new UserDetails.fromJson(json['userDetails'])
+            ? UserDetails.fromJson(json['userDetails'])
             : null;
     if (json['roles'] != null) {
       roles = <Roles>[];
       json['roles'].forEach((v) {
-        roles!.add(new Roles.fromJson(v));
+        roles!.add(Roles.fromJson(v));
       });
     }
     if (json['permissionModuleList'] != null) {
       permissionModuleList = <PermissionModuleList>[];
       json['permissionModuleList'].forEach((v) {
-        permissionModuleList!.add(new PermissionModuleList.fromJson(v));
+        permissionModuleList!.add(PermissionModuleList.fromJson(v));
       });
     }
     if (json['permissionMenuList'] != null) {
       permissionMenuList = <PermissionMenuList>[];
       json['permissionMenuList'].forEach((v) {
-        permissionMenuList!.add(new PermissionMenuList.fromJson(v));
+        permissionMenuList!.add(PermissionMenuList.fromJson(v));
       });
     }
     if (json['bindParentMenu'] != null) {
       bindParentMenu = <BindParentMenu>[];
       json['bindParentMenu'].forEach((v) {
-        bindParentMenu!.add(new BindParentMenu.fromJson(v));
+        bindParentMenu!.add(BindParentMenu.fromJson(v));
       });
     }
     if (json['bindMenu'] != null) {
       bindMenu = <BindMenu>[];
       json['bindMenu'].forEach((v) {
-        bindMenu!.add(new BindMenu.fromJson(v));
+        bindMenu!.add(BindMenu.fromJson(v));
       });
     }
     posToken = json['posToken'];
     location =
         json['location'] != null
-            ? new Location.fromJson(json['location'])
+            ? Location.fromJson(json['location'])
             : null;
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    if (this.userDetails != null) {
-      data['userDetails'] = this.userDetails!.toJson();
+    final Map<String, dynamic> data = <String, dynamic>{};
+    if (userDetails != null) {
+      data['userDetails'] = userDetails!.toJson();
     }
-    if (this.roles != null) {
-      data['roles'] = this.roles!.map((v) => v.toJson()).toList();
+    if (roles != null) {
+      data['roles'] = roles!.map((v) => v.toJson()).toList();
     }
-    if (this.permissionModuleList != null) {
+    if (permissionModuleList != null) {
       data['permissionModuleList'] =
-          this.permissionModuleList!.map((v) => v.toJson()).toList();
+          permissionModuleList!.map((v) => v.toJson()).toList();
     }
-    if (this.permissionMenuList != null) {
+    if (permissionMenuList != null) {
       data['permissionMenuList'] =
-          this.permissionMenuList!.map((v) => v.toJson()).toList();
+          permissionMenuList!.map((v) => v.toJson()).toList();
     }
-    if (this.bindParentMenu != null) {
+    if (bindParentMenu != null) {
       data['bindParentMenu'] =
-          this.bindParentMenu!.map((v) => v.toJson()).toList();
+          bindParentMenu!.map((v) => v.toJson()).toList();
     }
-    if (this.bindMenu != null) {
-      data['bindMenu'] = this.bindMenu!.map((v) => v.toJson()).toList();
+    if (bindMenu != null) {
+      data['bindMenu'] = bindMenu!.map((v) => v.toJson()).toList();
     }
-    data['posToken'] = this.posToken;
-    if (this.location != null) {
-      data['location'] = this.location!.toJson();
+    data['posToken'] = posToken;
+    if (location != null) {
+      data['location'] = location!.toJson();
     }
     return data;
   }
@@ -206,33 +206,33 @@ class UserDetails {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['userId'] = this.userId;
-    data['companyId'] = this.companyId;
-    data['email'] = this.email;
-    data['userName'] = this.userName;
-    data['password'] = this.password;
-    data['firstName'] = this.firstName;
-    data['middleName'] = this.middleName;
-    data['lastName'] = this.lastName;
-    data['address'] = this.address;
-    data['address2'] = this.address2;
-    data['city'] = this.city;
-    data['state'] = this.state;
-    data['stateCode'] = this.stateCode;
-    data['country'] = this.country;
-    data['countryCode'] = this.countryCode;
-    data['postalCode'] = this.postalCode;
-    data['phone'] = this.phone;
-    data['imagePath'] = this.imagePath;
-    data['isActive'] = this.isActive;
-    data['createdDate'] = this.createdDate;
-    data['createdBy'] = this.createdBy;
-    data['isCustomer'] = this.isCustomer;
-    data['phoneCode'] = this.phoneCode;
-    data['userPhoneCountryCode'] = this.userPhoneCountryCode;
-    data['apiKey'] = this.apiKey;
-    data['companySiteUrl'] = this.companySiteUrl;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['userId'] = userId;
+    data['companyId'] = companyId;
+    data['email'] = email;
+    data['userName'] = userName;
+    data['password'] = password;
+    data['firstName'] = firstName;
+    data['middleName'] = middleName;
+    data['lastName'] = lastName;
+    data['address'] = address;
+    data['address2'] = address2;
+    data['city'] = city;
+    data['state'] = state;
+    data['stateCode'] = stateCode;
+    data['country'] = country;
+    data['countryCode'] = countryCode;
+    data['postalCode'] = postalCode;
+    data['phone'] = phone;
+    data['imagePath'] = imagePath;
+    data['isActive'] = isActive;
+    data['createdDate'] = createdDate;
+    data['createdBy'] = createdBy;
+    data['isCustomer'] = isCustomer;
+    data['phoneCode'] = phoneCode;
+    data['userPhoneCountryCode'] = userPhoneCountryCode;
+    data['apiKey'] = apiKey;
+    data['companySiteUrl'] = companySiteUrl;
     return data;
   }
 }
@@ -251,10 +251,10 @@ class Roles {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['roleMappingId'] = this.roleMappingId;
-    data['roleId'] = this.roleId;
-    data['roleName'] = this.roleName;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['roleMappingId'] = roleMappingId;
+    data['roleId'] = roleId;
+    data['roleName'] = roleName;
     return data;
   }
 }
@@ -271,9 +271,9 @@ class PermissionModuleList {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['moduleName'] = this.moduleName;
-    data['parentMenuId'] = this.parentMenuId;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['moduleName'] = moduleName;
+    data['parentMenuId'] = parentMenuId;
     return data;
   }
 }
@@ -308,14 +308,14 @@ class PermissionMenuList {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['menuId'] = this.menuId;
-    data['menuName'] = this.menuName;
-    data['isActive'] = this.isActive;
-    data['displayOrder'] = this.displayOrder;
-    data['moduleName'] = this.moduleName;
-    data['url'] = this.url;
-    data['parentMenuId'] = this.parentMenuId;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['menuId'] = menuId;
+    data['menuName'] = menuName;
+    data['isActive'] = isActive;
+    data['displayOrder'] = displayOrder;
+    data['moduleName'] = moduleName;
+    data['url'] = url;
+    data['parentMenuId'] = parentMenuId;
     return data;
   }
 }
@@ -332,9 +332,9 @@ class BindParentMenu {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['parentMenuId'] = this.parentMenuId;
-    data['parentMenu'] = this.parentMenu;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['parentMenuId'] = parentMenuId;
+    data['parentMenu'] = parentMenu;
     return data;
   }
 }
@@ -351,9 +351,9 @@ class BindMenu {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['menuId'] = this.menuId;
-    data['menuName'] = this.menuName;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['menuId'] = menuId;
+    data['menuName'] = menuName;
     return data;
   }
 }
@@ -379,11 +379,11 @@ class Location {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['locationId'] = this.locationId;
-    data['locationName'] = this.locationName;
-    data['locationType'] = this.locationType;
-    data['locAddress'] = this.locAddress;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['locationId'] = locationId;
+    data['locationName'] = locationName;
+    data['locationType'] = locationType;
+    data['locAddress'] = locAddress;
     return data;
   }
 }

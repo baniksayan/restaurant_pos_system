@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:restaurant_pos_system/presentation/views/auth/login/login_view.dart';
-import 'package:restaurant_pos_system/presentation/views/auth/splash/splash_view.dart';
-import 'package:restaurant_pos_system/presentation/views/main_navigation.dart';
-import 'package:restaurant_pos_system/presentation/views/chef/chef_dashboard_view.dart';
+import 'package:restaurant_pos_system/features/auth/views/login_view.dart';
+import 'package:restaurant_pos_system/features/splash/views/splash_view.dart';
+import 'package:restaurant_pos_system/features/dashboard/views/main_navigation.dart';
+import 'package:restaurant_pos_system/features/chef/views/chef_dashboard_view.dart';
 
 class RouteGenerator {
   static Route<dynamic> generateRoute(RouteSettings settings) {
