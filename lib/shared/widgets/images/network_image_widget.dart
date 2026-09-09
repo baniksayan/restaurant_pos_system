@@ -88,10 +88,7 @@ class NetworkImageWidget extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Loading...',
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
             ),
           ],
         ),

@@ -24,7 +24,11 @@ class OrderTabView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.inbox_outlined, size: 64, color: AppColors.textHint),
+            const Icon(
+              Icons.inbox_outlined,
+              size: 64,
+              color: AppColors.textHint,
+            ),
             const SizedBox(height: 16),
             Text(
               'No $orderType',

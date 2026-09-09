@@ -11,7 +11,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import '../../core/constants/currency_constants.dart';
 
-
 class PDFService {
   static const String restaurantName = "WhizEats Pro";
   static const String restaurantAddress =
@@ -21,9 +20,10 @@ class PDFService {
   static const String gstNumber = "22AAAAA0000A1Z5";
 
   // Use centralized currency symbol
-  static const String rupeeSymbol = CurrencyConstants.symbol; // kept name for backward-compat in-file
+  static const String rupeeSymbol =
+      CurrencyConstants.symbol; // kept name for backward-compat in-file
 
-  static const double _kotPageWidth = 226.77; // hardcoded for KOT width  (80mm) 
+  static const double _kotPageWidth = 226.77; // hardcoded for KOT width  (80mm)
   static const double _kotMargin = 8;
   static double get _kotContentWidth => _kotPageWidth - _kotMargin * 2;
 
@@ -68,28 +68,37 @@ class PDFService {
                 padding: const pw.EdgeInsets.only(bottom: 8),
                 child: pw.Row(
                   children: [
-                    pw.SizedBox(width: 18), 
+                    pw.SizedBox(width: 18),
                     pw.Container(
                       width: 24,
                       alignment: pw.Alignment.centerRight,
                       child: pw.Text(
-                        'QTY', 
-                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                        'QTY',
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
                       ),
                     ),
                     pw.SizedBox(width: 15),
                     pw.Expanded(
                       flex: 4,
                       child: pw.Text(
-                        'ITEM NAME', 
-                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                        'ITEM NAME',
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
                       ),
                     ),
                     pw.Expanded(
                       flex: 3,
                       child: pw.Text(
-                        'NOTE', 
-                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                        'NOTE',
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -114,7 +123,11 @@ class PDFService {
                     children: [
                       pw.Text(
                         _kotLetterSpace("SPECIAL INSTRUCTIONS"),
-                        style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700),
+                        style: pw.TextStyle(
+                          fontSize: 8,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.grey700,
+                        ),
                       ),
                       pw.SizedBox(height: 4),
                       pw.Text(
@@ -126,7 +139,6 @@ class PDFService {
                 ),
                 pw.SizedBox(height: 12),
               ],
-              
             ],
           );
         },
@@ -630,7 +642,6 @@ class PDFService {
     return vegItems.any((veg) => itemName.toLowerCase().contains(veg));
   }
 
-
   // Splits a string into lines of max [maxLen] characters, breaking at spaces.
 
   // static List<String> _splitText(String text, int maxLen) {
@@ -708,18 +719,20 @@ class PDFService {
     );
   }
 
-  static pw.Widget _kotChefHatIcon({double size = 17}) { // custom chef hat icon for KOT
+  static pw.Widget _kotChefHatIcon({double size = 17}) {
+    // custom chef hat icon for KOT
     return pw.CustomPaint(
       size: PdfPoint(size, size),
       painter: (ctx, sz) {
         final double w = sz.x;
         final double h = sz.y;
 
-        final c = ctx
-          ..setColor(PdfColors.black)
-          ..setLineWidth(size * 0.04) 
-          ..setLineCap(PdfLineCap.round) 
-          ..setLineJoin(PdfLineJoin.round);
+        final c =
+            ctx
+              ..setColor(PdfColors.black)
+              ..setLineWidth(size * 0.04)
+              ..setLineCap(PdfLineCap.round)
+              ..setLineJoin(PdfLineJoin.round);
 
         double leftX = w * 0.21;
         double rightX = w * 0.79;
@@ -735,9 +748,9 @@ class PDFService {
         c.curveTo(w * 1.05, h * 0.55, w * 0.88, h * 0.75, w * 0.70, h * 0.70);
 
         c.curveTo(w * 0.60, h * 0.90, w * 0.52, h * 0.90, w * 0.50, h * 0.75);
-    
+
         c.curveTo(w * 0.48, h * 0.90, w * 0.40, h * 0.90, w * 0.30, h * 0.70);
-  
+
         c.curveTo(w * 0.12, h * 0.75, w * -0.05, h * 0.55, leftX, topY);
 
         c.strokePath();
@@ -757,9 +770,10 @@ class PDFService {
     return pw.CustomPaint(
       size: PdfPoint(size, size),
       painter: (ctx, sz) {
-        final c = ctx
-          ..setColor(PdfColors.black)
-          ..setLineWidth(0.9);
+        final c =
+            ctx
+              ..setColor(PdfColors.black)
+              ..setLineWidth(0.9);
         c.drawRect(sz.x * 0.08, sz.y * 0.60, sz.x * 0.84, sz.y * 0.14);
         c.strokePath();
         c
@@ -794,29 +808,47 @@ class PDFService {
     );
   }
 
-  static pw.Widget _kotOrderBox(String kotNo, String orderNo, String dateStr, String timeStr, String tableName) {
+  static pw.Widget _kotOrderBox(
+    String kotNo,
+    String orderNo,
+    String dateStr,
+    String timeStr,
+    String tableName,
+  ) {
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.black, width: 1),
       columnWidths: {
-        0: const pw.FlexColumnWidth(1), 
-        1: const pw.FlexColumnWidth(1), 
+        0: const pw.FlexColumnWidth(1),
+        1: const pw.FlexColumnWidth(1),
       },
       children: [
         pw.TableRow(
           children: [
             pw.Container(
-              padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+              padding: const pw.EdgeInsets.symmetric(
+                vertical: 8,
+                horizontal: 8,
+              ),
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 mainAxisAlignment: pw.MainAxisAlignment.center,
                 children: [
-                  pw.Text("KOT NO.", style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey900)),
+                  pw.Text(
+                    "KOT NO.",
+                    style: const pw.TextStyle(
+                      fontSize: 8.5,
+                      color: PdfColors.grey900,
+                    ),
+                  ),
                   pw.SizedBox(height: 4),
                   pw.FittedBox(
                     fit: pw.BoxFit.scaleDown,
                     child: pw.Text(
                       kotNo,
-                      style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+                      style: pw.TextStyle(
+                        fontSize: 11,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
                     ),
                   ),
                   pw.SizedBox(height: 6),
@@ -827,9 +859,9 @@ class PDFService {
                     color: PdfColors.grey400,
                   ),
                   pw.SizedBox(height: 6),
-                  
+
                   pw.Container(
-                    width: double.infinity, 
+                    width: double.infinity,
                     alignment: pw.Alignment.center,
                     child: pw.FittedBox(
                       fit: pw.BoxFit.scaleDown,
@@ -841,7 +873,10 @@ class PDFService {
                           pw.SizedBox(width: 4),
                           pw.Text(
                             tableName,
-                            style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold),
+                            style: pw.TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -850,32 +885,44 @@ class PDFService {
                 ],
               ),
             ),
-            
+
             pw.Container(
-              padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+              padding: const pw.EdgeInsets.symmetric(
+                vertical: 8,
+                horizontal: 8,
+              ),
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.center,
                 mainAxisAlignment: pw.MainAxisAlignment.center,
                 children: [
-                  pw.Text("ORDER NO.", style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey900)),
+                  pw.Text(
+                    "ORDER NO.",
+                    style: const pw.TextStyle(
+                      fontSize: 8.5,
+                      color: PdfColors.grey900,
+                    ),
+                  ),
                   pw.SizedBox(height: 4),
                   pw.FittedBox(
                     fit: pw.BoxFit.scaleDown,
                     child: pw.Text(
                       orderNo,
-                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                      style: pw.TextStyle(
+                        fontSize: 10,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
                       textAlign: pw.TextAlign.center,
                     ),
                   ),
                   pw.SizedBox(height: 6),
-                  
+
                   pw.Container(
                     height: 1,
                     width: double.infinity,
                     color: PdfColors.grey400,
                   ),
                   pw.SizedBox(height: 6),
-                  
+
                   pw.FittedBox(
                     fit: pw.BoxFit.scaleDown,
                     child: pw.Row(
@@ -906,7 +953,6 @@ class PDFService {
         ),
       ],
     );
-    
   }
 
   static pw.Widget _kotSectionHeading(String text) {
@@ -914,37 +960,31 @@ class PDFService {
       mainAxisAlignment: pw.MainAxisAlignment.center,
       crossAxisAlignment: pw.CrossAxisAlignment.center,
       children: [
-        pw.Expanded(
-          child: pw.Container(
-            height: 1,
-            color: PdfColors.grey700,
-          )
-        ),
+        pw.Expanded(child: pw.Container(height: 1, color: PdfColors.grey700)),
         pw.SizedBox(width: 10),
         pw.Text(
           _kotLetterSpace(text),
           style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(width: 10),
-        pw.Expanded(
-          child: pw.Container(
-            height: 1,
-            color: PdfColors.grey700,
-          )
-        ),
+        pw.Expanded(child: pw.Container(height: 1, color: PdfColors.grey700)),
       ],
     );
   }
 
   static pw.Widget _kotItemCard(int index, CartItem item) {
-    String noteText = '-'; 
+    String noteText = '-';
     if (item.specialNotes != null && item.specialNotes!.trim().isNotEmpty) {
       String rawNote = item.specialNotes!.trim();
-      noteText = rawNote.split(' ').map((word) {
-        if (word.isEmpty) return ''; 
-        return word[0].toUpperCase() + word.substring(1).toLowerCase(); 
-      }).join(' ');
-      if (noteText.length > 30) {  // 30 char limit for note
+      noteText = rawNote
+          .split(' ')
+          .map((word) {
+            if (word.isEmpty) return '';
+            return word[0].toUpperCase() + word.substring(1).toLowerCase();
+          })
+          .join(' ');
+      if (noteText.length > 30) {
+        // 30 char limit for note
         noteText = '${noteText.substring(0, 30)}...';
       }
     }
@@ -960,29 +1000,40 @@ class PDFService {
                 width: 20,
                 alignment: pw.Alignment.centerLeft,
                 child: pw.Text(
-                  '$index.', 
-                  style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700 , fontWeight: pw.FontWeight.bold),
+                  '$index.',
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    color: PdfColors.grey700,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 ),
               ),
-              
+
               pw.Container(
                 width: 20,
                 alignment: pw.Alignment.center,
                 child: pw.Text(
-                  '${item.quantity}x', 
-                  style: pw.TextStyle(fontSize: 10, color: PdfColors.grey800 , fontWeight: pw.FontWeight.bold),
+                  '${item.quantity}x',
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    color: PdfColors.grey800,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 ),
               ),
               pw.SizedBox(width: 15),
-              
+
               pw.Expanded(
                 flex: 4,
                 child: pw.Text(
                   item.name.toUpperCase(),
-                  style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 ),
               ),
-              
+
               pw.Expanded(
                 flex: 3,
                 child: pw.Text(
@@ -998,5 +1049,4 @@ class PDFService {
       ],
     );
   }
-
 }

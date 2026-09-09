@@ -2,10 +2,7 @@ class CategoryModel {
   final String categoryId;
   final String categoryName;
 
-  CategoryModel({
-    required this.categoryId,
-    required this.categoryName,
-  });
+  CategoryModel({required this.categoryId, required this.categoryName});
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
@@ -15,10 +12,7 @@ class CategoryModel {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'categoryId': categoryId,
-      'categoryName': categoryName,
-    };
+    return {'categoryId': categoryId, 'categoryName': categoryName};
   }
 
   @override

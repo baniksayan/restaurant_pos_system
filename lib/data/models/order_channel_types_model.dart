@@ -6,7 +6,12 @@ class OrderChannelTypesModel {
   bool? isSuccess;
   int? statusCode;
 
-  OrderChannelTypesModel({this.data, this.message, this.isSuccess, this.statusCode});
+  OrderChannelTypesModel({
+    this.data,
+    this.message,
+    this.isSuccess,
+    this.statusCode,
+  });
 
   OrderChannelTypesModel.fromJson(Map<String, dynamic> json) {
     if (json['data'] != null) {
@@ -51,11 +56,7 @@ class OrderChannelTypeData {
   }
 }
 
-enum OrderType {
-  dineIn,
-  phoneOrder,
-  takeaway
-}
+enum OrderType { dineIn, phoneOrder, takeaway }
 
 extension OrderTypeExtension on OrderType {
   String get displayName {

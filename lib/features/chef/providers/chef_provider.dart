@@ -30,7 +30,12 @@ class ChefProvider extends ChangeNotifier {
   String get historyFilter => _historyFilter;
   List<String> get locations => _locations;
   List<String> get statusFilters => _statusFilters;
-  List<String> get availableCategories => ['All', 'Main Course', 'Starters', 'Breads'];
+  List<String> get availableCategories => [
+    'All',
+    'Main Course',
+    'Starters',
+    'Breads',
+  ];
   String get selectedMenuCategory => 'All';
   int get currentTabIndex => _currentTabIndex;
 
@@ -56,7 +61,8 @@ class ChefProvider extends ChangeNotifier {
             quantity: 2,
             price: 280.0,
             specialInstructions: 'Extra spicy',
-            imageUrl: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=300&q=80',
+            imageUrl:
+                'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=300&q=80',
           ),
           ChefOrderItem(
             id: 'item_2',
@@ -64,14 +70,16 @@ class ChefProvider extends ChangeNotifier {
             quantity: 1,
             price: 320.0,
             specialInstructions: 'No onion',
-            imageUrl: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=300&q=80',
+            imageUrl:
+                'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=300&q=80',
           ),
           ChefOrderItem(
             id: 'item_3',
             name: 'Garlic Naan',
             quantity: 2,
             price: 60.0,
-            imageUrl: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&q=80',
+            imageUrl:
+                'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&q=80',
           ),
         ],
       ),
@@ -88,14 +96,16 @@ class ChefProvider extends ChangeNotifier {
             quantity: 1,
             price: 240.0,
             specialInstructions: 'Less spicy',
-            imageUrl: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=300&q=80',
+            imageUrl:
+                'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=300&q=80',
           ),
           ChefOrderItem(
             id: 'item_5',
             name: 'Masala Dosa',
             quantity: 2,
             price: 140.0,
-            imageUrl: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=300&q=80',
+            imageUrl:
+                'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=300&q=80',
           ),
         ],
       ),
@@ -114,7 +124,8 @@ class ChefProvider extends ChangeNotifier {
             name: 'Chicken Fried Rice',
             quantity: 2,
             price: 220.0,
-            imageUrl: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=300&q=80',
+            imageUrl:
+                'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=300&q=80',
           ),
           ChefOrderItem(
             id: 'item_7',
@@ -122,7 +133,8 @@ class ChefProvider extends ChangeNotifier {
             quantity: 1,
             price: 260.0,
             specialInstructions: 'Extra gravy',
-            imageUrl: 'https://images.unsplash.com/photo-1525755662778-989d0524087e?w=300&q=80',
+            imageUrl:
+                'https://images.unsplash.com/photo-1525755662778-989d0524087e?w=300&q=80',
           ),
         ],
       ),
@@ -140,7 +152,8 @@ class ChefProvider extends ChangeNotifier {
             quantity: 3,
             price: 280.0,
             specialInstructions: 'Medium spicy',
-            imageUrl: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=300&q=80',
+            imageUrl:
+                'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=300&q=80',
           ),
         ],
       ),
@@ -158,14 +171,16 @@ class ChefProvider extends ChangeNotifier {
             name: 'Paneer Tikka',
             quantity: 2,
             price: 240.0,
-            imageUrl: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=300&q=80',
+            imageUrl:
+                'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=300&q=80',
           ),
           ChefOrderItem(
             id: 'item_3',
             name: 'Garlic Naan',
             quantity: 3,
             price: 60.0,
-            imageUrl: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&q=80',
+            imageUrl:
+                'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&q=80',
           ),
         ],
       ),
@@ -181,7 +196,8 @@ class ChefProvider extends ChangeNotifier {
             name: 'Masala Dosa',
             quantity: 1,
             price: 140.0,
-            imageUrl: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=300&q=80',
+            imageUrl:
+                'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=300&q=80',
           ),
         ],
       ),
@@ -194,69 +210,84 @@ class ChefProvider extends ChangeNotifier {
 
     switch (_currentTabIndex) {
       case 0: // All: Shows all active orders (Pending, Preparing, Ready)
-        tabOrders = _orders.where((o) =>
-          o.status == ChefOrderStatus.pending ||
-          o.status == ChefOrderStatus.preparing ||
-          o.status == ChefOrderStatus.ready
-        ).toList();
+        tabOrders =
+            _orders
+                .where(
+                  (o) =>
+                      o.status == ChefOrderStatus.pending ||
+                      o.status == ChefOrderStatus.preparing ||
+                      o.status == ChefOrderStatus.ready,
+                )
+                .toList();
         break;
       case 1: // Queue: Only Pending
-        tabOrders = _orders.where((o) =>
-          o.status == ChefOrderStatus.pending
-        ).toList();
+        tabOrders =
+            _orders.where((o) => o.status == ChefOrderStatus.pending).toList();
         break;
       case 2: // Preparing: In Kitchen
-        tabOrders = _orders.where((o) =>
-          o.status == ChefOrderStatus.preparing
-        ).toList();
+        tabOrders =
+            _orders
+                .where((o) => o.status == ChefOrderStatus.preparing)
+                .toList();
         break;
       case 3: // Serve: Ready to Serve
       default:
-        tabOrders = _orders.where((o) =>
-          o.status == ChefOrderStatus.ready
-        ).toList();
+        tabOrders =
+            _orders.where((o) => o.status == ChefOrderStatus.ready).toList();
         break;
     }
 
     // Apply status filter dropdown if selected and not "All Statuses"
     if (_selectedStatusFilter != 'All Statuses') {
-      tabOrders = tabOrders.where((o) {
-        switch (_selectedStatusFilter.toLowerCase()) {
-          case 'pending':
-            return o.status == ChefOrderStatus.pending;
-          case 'preparing':
-            return o.status == ChefOrderStatus.preparing;
-          case 'ready to serve':
-          case 'ready':
-            return o.status == ChefOrderStatus.ready;
-          case 'served':
-            return o.status == ChefOrderStatus.served;
-          default:
-            return true;
-        }
-      }).toList();
+      tabOrders =
+          tabOrders.where((o) {
+            switch (_selectedStatusFilter.toLowerCase()) {
+              case 'pending':
+                return o.status == ChefOrderStatus.pending;
+              case 'preparing':
+                return o.status == ChefOrderStatus.preparing;
+              case 'ready to serve':
+              case 'ready':
+                return o.status == ChefOrderStatus.ready;
+              case 'served':
+                return o.status == ChefOrderStatus.served;
+              default:
+                return true;
+            }
+          }).toList();
     }
 
     return tabOrders;
   }
 
   // Footer tab badge counts
-  int get allActiveCount => _orders.where((o) =>
-    o.status == ChefOrderStatus.pending ||
-    o.status == ChefOrderStatus.preparing ||
-    o.status == ChefOrderStatus.ready
-  ).length;
+  int get allActiveCount =>
+      _orders
+          .where(
+            (o) =>
+                o.status == ChefOrderStatus.pending ||
+                o.status == ChefOrderStatus.preparing ||
+                o.status == ChefOrderStatus.ready,
+          )
+          .length;
 
-  int get queueCount => _orders.where((o) => o.status == ChefOrderStatus.pending).length;
-  int get preparingCount => _orders.where((o) => o.status == ChefOrderStatus.preparing).length;
-  int get serveCount => _orders.where((o) => o.status == ChefOrderStatus.ready).length;
+  int get queueCount =>
+      _orders.where((o) => o.status == ChefOrderStatus.pending).length;
+  int get preparingCount =>
+      _orders.where((o) => o.status == ChefOrderStatus.preparing).length;
+  int get serveCount =>
+      _orders.where((o) => o.status == ChefOrderStatus.ready).length;
   int get totalOrdersCount => _orders.length;
 
   // History orders compatibility
-  List<ChefOrder> get historyOrders => _orders.where((o) =>
-    o.status == ChefOrderStatus.served ||
-    o.status == ChefOrderStatus.rejected
-  ).toList();
+  List<ChefOrder> get historyOrders =>
+      _orders
+          .where(
+            (o) =>
+                o.status == ChefOrderStatus.served ||
+                o.status == ChefOrderStatus.rejected,
+          )
+          .toList();
 
   void setHistoryFilter(String filter) {
     _historyFilter = filter;

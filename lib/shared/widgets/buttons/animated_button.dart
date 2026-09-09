@@ -40,9 +40,10 @@ class _AnimatedButtonState extends State<AnimatedButton>
       duration: const Duration(milliseconds: 150),
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -85,7 +86,9 @@ class _AnimatedButtonState extends State<AnimatedButton>
                 gradient: LinearGradient(
                   colors: [
                     widget.backgroundColor ?? AppColors.primary,
-                    (widget.backgroundColor ?? AppColors.primary).withValues(alpha: 0.8),
+                    (widget.backgroundColor ?? AppColors.primary).withValues(
+                      alpha: 0.8,
+                    ),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -93,7 +96,8 @@ class _AnimatedButtonState extends State<AnimatedButton>
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: (widget.backgroundColor ?? AppColors.primary).withValues(alpha: 0.3),
+                    color: (widget.backgroundColor ?? AppColors.primary)
+                        .withValues(alpha: 0.3),
                     blurRadius: _isPressed ? 5 : 10,
                     offset: Offset(0, _isPressed ? 2 : 4),
                   ),
@@ -102,39 +106,40 @@ class _AnimatedButtonState extends State<AnimatedButton>
               child: Material(
                 color: Colors.transparent,
                 child: Center(
-                  child: widget.isLoading
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              widget.textColor ?? Colors.white,
-                            ),
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (widget.icon != null) ...[
-                              Icon(
-                                widget.icon,
-                                color: widget.textColor ?? Colors.white,
-                                size: 18,
+                  child:
+                      widget.isLoading
+                          ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                widget.textColor ?? Colors.white,
                               ),
-                              const SizedBox(width: 8),
+                              strokeWidth: 2,
+                            ),
+                          )
+                          : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (widget.icon != null) ...[
+                                Icon(
+                                  widget.icon,
+                                  color: widget.textColor ?? Colors.white,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Text(
+                                widget.text,
+                                style: TextStyle(
+                                  color: widget.textColor ?? Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ],
-                            Text(
-                              widget.text,
-                              style: TextStyle(
-                                color: widget.textColor ?? Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
                 ),
               ),
             ),

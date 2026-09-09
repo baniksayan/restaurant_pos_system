@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class SlowConnectionOverlay extends StatefulWidget {
   const SlowConnectionOverlay({super.key});
@@ -28,10 +29,9 @@ class _SlowConnectionOverlayState extends State<SlowConnectionOverlay>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -1),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(
+      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+    );
 
     _slideController.forward();
   }
@@ -84,16 +84,16 @@ class _SlowConnectionOverlayState extends State<SlowConnectionOverlay>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Slow Network',
-                      style: TextStyle(
+                    Text(
+                      AppStrings.network.slowNetwork,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(
-                      'Data is loading slowly due to poor connection',
+                      AppStrings.network.slowNetworkDesc,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 12,

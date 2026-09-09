@@ -4,7 +4,12 @@ class TablesApiResponseModel {
   bool? isSuccess;
   int? statusCode;
 
-  TablesApiResponseModel({this.data, this.message, this.isSuccess, this.statusCode});
+  TablesApiResponseModel({
+    this.data,
+    this.message,
+    this.isSuccess,
+    this.statusCode,
+  });
 
   TablesApiResponseModel.fromJson(Map<String, dynamic> json) {
     if (json['data'] != null) {

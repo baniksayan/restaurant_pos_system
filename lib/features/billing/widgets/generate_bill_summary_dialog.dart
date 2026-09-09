@@ -11,6 +11,8 @@ import 'package:restaurant_pos_system/features/dashboard/providers/navigation_pr
 import 'bill_pdf_viewer_dialog.dart';
 import 'bill_success_dialog.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/skeleton_loader.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class GenerateBillSummaryDialog extends StatefulWidget {
   final String orderNumber;
@@ -528,9 +530,12 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
             ),
           ),
           const SizedBox(height: 8),
-          _buildBreakdownRow(label: 'Subtotal', amount: subtotal),
+          _buildBreakdownRow(label: AppStrings.subtotal, amount: subtotal),
           const SizedBox(height: 4),
-          _buildBreakdownRow(label: 'GST (5%)', amount: gstAmount),
+          _buildBreakdownRow(
+            label: AppStrings.billing.gstFivePercent,
+            amount: gstAmount,
+          ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 6),
             child: Divider(height: 1, thickness: 0.8, color: Color(0xFFCBD5E1)),
@@ -783,7 +788,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
               color: AppColors.textPrimary,
             ),
             decoration: InputDecoration(
-              hintText: 'Enter 10-digit mobile number',
+              hintText: AppStrings.dashboard.enterTenDigitMobile,
               hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
               prefixIcon: const Icon(
                 Icons.phone_rounded,
@@ -959,13 +964,9 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              billingProvider.errorMessage ?? 'Error generating bill: $e',
-            ),
-            backgroundColor: AppColors.error,
-          ),
+        AppSnackBar.showError(
+          context,
+          billingProvider.errorMessage ?? 'Error generating bill: $e',
         );
       }
     }

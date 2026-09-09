@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_assets.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_gradients.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
 import 'package:restaurant_pos_system/features/menu/views/standalone_menu_view.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class SplashView extends StatefulWidget {
   const SplashView({super.key});
@@ -366,11 +369,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                 height: 96,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [AppColors.primary, AppColors.primaryDark],
-                  ),
+                  gradient: AppGradients.primary,
                   borderRadius: BorderRadius.circular(26),
                   boxShadow: [
                     BoxShadow(
@@ -381,7 +380,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                   ],
                 ),
                 child: Image.asset(
-                  'assets/logo/transparent.png',
+                  AppAssets.logoTransparent,
                   fit: BoxFit.contain,
                 ),
               ),
@@ -404,7 +403,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
               children: [
                 // Main title - high contrast dark text
                 const Text(
-                  'WhizEats',
+                  AppStrings.brandName,
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w800,
@@ -416,7 +415,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
 
                 // Subtitle
                 const Text(
-                  'PRO',
+                  AppStrings.brandSuffix,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -440,7 +439,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                     ),
                   ),
                   child: const Text(
-                    'Restaurant POS System',
+                    AppStrings.posTagline,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -530,7 +529,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
           child: const Column(
             children: [
               Text(
-                'Powered by Wizard Communications Pvt. Ltd.',
+                AppStrings.poweredBy,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -540,7 +539,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
               ),
               SizedBox(height: 3),
               Text(
-                'Advanced Restaurant Management Solution',
+                AppStrings.solutionTagline,
                 style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w400,

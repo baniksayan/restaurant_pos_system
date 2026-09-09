@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/empty_state_widget.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class EmptyCartWidget extends StatelessWidget {
   const EmptyCartWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const EmptyStateWidget(
+    return EmptyStateWidget(
       icon: Icons.shopping_cart_outlined,
-      title: 'Your Cart is Empty',
+      title: AppStrings.orderTaking.yourCartIsEmpty,
       description: 'Add items from menu to see them here',
     );
   }
 }
-

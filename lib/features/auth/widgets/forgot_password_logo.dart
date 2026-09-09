@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:restaurant_pos_system/core/constants/app_assets.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/shared/widgets/animations/fade_in_animation.dart';
 import 'package:restaurant_pos_system/shared/widgets/animations/scale_animation.dart';
@@ -16,7 +17,7 @@ class ForgotPasswordLogo extends StatelessWidget {
           width: 120,
           height: 120,
           child: Image.asset(
-            'assets/logo/transparent.png',
+            AppAssets.logoTransparent,
             width: 120,
             height: 120,
             fit: BoxFit.contain,

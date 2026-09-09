@@ -17,7 +17,8 @@ class ApiConstants {
   static const String createOrderHead = 'Order/saveOrderHead';
 
   // KOT endpoints
-  static const String createKotWithOrderDetails = 'Order/CreateKotWithOrderDetails';
+  static const String createKotWithOrderDetails =
+      'Order/CreateKotWithOrderDetails';
 
   // Product endpoints
   static const String getItemSearch = 'Product/GetItemSearch';

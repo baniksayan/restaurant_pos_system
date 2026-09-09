@@ -8,6 +8,8 @@ import 'package:restaurant_pos_system/features/payment/views/payment_view.dart';
 import '../providers/table_provider.dart';
 import '../providers/navigation_provider.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class MultiOrderManagementDialog extends StatefulWidget {
   final RestaurantTable table;
@@ -577,31 +579,17 @@ class _MultiOrderManagementDialogState
 
       if (context.mounted) {
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('New order added to ${table.name}'),
-              backgroundColor: AppColors.success,
-              duration: const Duration(seconds: 2),
-            ),
-          );
+          AppSnackBar.showSuccess(context, 'New order added to ${table.name}');
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to add order to server'),
-              backgroundColor: AppColors.error,
-              duration: Duration(seconds: 2),
-            ),
+          AppSnackBar.showError(
+            context,
+            AppStrings.dashboard.failedToAddOrderToServer,
           );
         }
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error creating order: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppSnackBar.showError(context, 'Error creating order: $e');
       }
     } finally {
       if (mounted) {
@@ -841,11 +829,9 @@ class _MultiOrderManagementDialogState
                                                     context,
                                                     listen: false,
                                                   );
-                                              final cartProvider =
-                                                  Provider.of<AnimatedCartProvider>(
-                                                    context,
-                                                    listen: false,
-                                                  );
+                                              final cartProvider = Provider.of<
+                                                AnimatedCartProvider
+                                              >(context, listen: false);
 
                                               final success =
                                                   await tableProvider
@@ -860,28 +846,14 @@ class _MultiOrderManagementDialogState
 
                                               if (context.mounted) {
                                                 if (success) {
-                                                  ScaffoldMessenger.of(
+                                                  AppSnackBar.showSuccess(
                                                     context,
-                                                  ).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                        'Order ${order.generatedOrderNo} removed',
-                                                      ),
-                                                      backgroundColor:
-                                                          AppColors.success,
-                                                    ),
+                                                    'Order ${order.generatedOrderNo} removed',
                                                   );
                                                 } else {
-                                                  ScaffoldMessenger.of(
+                                                  AppSnackBar.showError(
                                                     context,
-                                                  ).showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text(
-                                                        'Failed to remove order',
-                                                      ),
-                                                      backgroundColor:
-                                                          AppColors.error,
-                                                    ),
+                                                    'Failed to remove order',
                                                   );
                                                 }
                                               }

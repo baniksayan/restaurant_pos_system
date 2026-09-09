@@ -13,9 +13,11 @@ class WishListApiResModel {
     return WishListApiResModel(
       success: json['success'] ?? false,
       message: json['message'] ?? '',
-      data: (json['data'] as List?)
-          ?.map((item) => WishListItem.fromJson(item))
-          .toList() ?? [],
+      data:
+          (json['data'] as List?)
+              ?.map((item) => WishListItem.fromJson(item))
+              .toList() ??
+          [],
     );
   }
 }

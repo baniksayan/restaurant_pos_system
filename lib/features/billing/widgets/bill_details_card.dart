@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/shared/widgets/cards/app_card.dart';
 
 class BillDetailsCard extends StatelessWidget {
   final double subtotal;
@@ -16,19 +17,7 @@ class BillDetailsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -37,9 +26,15 @@ class BillDetailsCard extends StatelessWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          _buildAmountRow('Subtotal:', '${CurrencyConstants.symbol}${subtotal.toStringAsFixed(2)}'),
+          _buildAmountRow(
+            'Subtotal:',
+            '${CurrencyConstants.symbol}${subtotal.toStringAsFixed(2)}',
+          ),
           const SizedBox(height: 8),
-          _buildAmountRow('GST (10%):', '${CurrencyConstants.symbol}${gstAmount.toStringAsFixed(2)}'),
+          _buildAmountRow(
+            'GST (10%):',
+            '${CurrencyConstants.symbol}${gstAmount.toStringAsFixed(2)}',
+          ),
           const SizedBox(height: 12),
           const Divider(thickness: 1),
           const SizedBox(height: 8),

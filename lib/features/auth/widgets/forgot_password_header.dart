@@ -1,25 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/shared/widgets/animations/fade_in_animation.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class ForgotPasswordHeader extends StatelessWidget {
   final bool emailSent;
-  
-  const ForgotPasswordHeader({
-    super.key,
-    required this.emailSent,
-  });
+
+  const ForgotPasswordHeader({super.key, required this.emailSent});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         // Title
-        const FadeInAnimation(
-          delay: Duration(milliseconds: 400),
+        FadeInAnimation(
+          delay: const Duration(milliseconds: 400),
           child: Text(
-            'Forgot Password?',
-            style: TextStyle(
+            AppStrings.auth.forgotPassword,
+            style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,

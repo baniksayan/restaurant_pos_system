@@ -10,6 +10,8 @@ import '../widgets/bill_details_card.dart';
 import '../widgets/customer_phone_card.dart';
 import '../widgets/bill_success_dialog.dart';
 import '../widgets/bill_pdf_viewer_dialog.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 typedef BillingView = BillingPage;
 
@@ -139,15 +141,15 @@ class _BillingPageState extends State<BillingPage> {
 
   Widget _buildPaymentModeSelector(BillingProvider billingProvider) {
     if (billingProvider.isLoadingPaymentModes) {
-      return const Card(
+      return Card(
         margin: EdgeInsets.zero,
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Text('Loading payment modes...'),
+              const CircularProgressIndicator(),
+              const SizedBox(width: 16),
+              Text(AppStrings.billing.loadingPaymentModes),
             ],
           ),
         ),
@@ -201,10 +203,14 @@ class _BillingPageState extends State<BillingPage> {
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primary : Colors.grey[100],
+                          color:
+                              isSelected ? AppColors.primary : Colors.grey[100],
                           borderRadius: BorderRadius.circular(25),
                           border: Border.all(
-                            color: isSelected ? AppColors.primary : Colors.grey[300]!,
+                            color:
+                                isSelected
+                                    ? AppColors.primary
+                                    : Colors.grey[300]!,
                           ),
                         ),
                         child: Row(
@@ -308,11 +314,12 @@ class _BillingPageState extends State<BillingPage> {
         await showDialog(
           context: context,
           barrierDismissible: true,
-          builder: (context) => BillPDFViewerDialog(
-            pdfBytes: billBytes,
-            orderNumber: widget.orderNumber,
-            fileName: 'Bill_${widget.orderNumber}.pdf',
-          ),
+          builder:
+              (context) => BillPDFViewerDialog(
+                pdfBytes: billBytes,
+                orderNumber: widget.orderNumber,
+                fileName: 'Bill_${widget.orderNumber}.pdf',
+              ),
         );
 
         if (!mounted) return;
@@ -321,25 +328,22 @@ class _BillingPageState extends State<BillingPage> {
         await showDialog(
           context: context,
           barrierDismissible: true,
-          builder: (context) => BillSuccessDialog(
-            orderNumber: widget.orderNumber,
-            total: total,
-            customerPhone: billingProvider.customerPhone,
-            billBytes: billBytes,
-            onBillGenerated: widget.onBillGenerated,
-            tableId: widget.tableId,
-          ),
+          builder:
+              (context) => BillSuccessDialog(
+                orderNumber: widget.orderNumber,
+                total: total,
+                customerPhone: billingProvider.customerPhone,
+                billBytes: billBytes,
+                onBillGenerated: widget.onBillGenerated,
+                tableId: widget.tableId,
+              ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              billingProvider.errorMessage ?? 'Error generating bill',
-            ),
-            backgroundColor: Colors.red,
-          ),
+        AppSnackBar.showError(
+          context,
+          billingProvider.errorMessage ?? 'Error generating bill',
         );
       }
     }

@@ -15,7 +15,8 @@ class PremiumRefreshIndicator extends StatefulWidget {
   });
 
   @override
-  State<PremiumRefreshIndicator> createState() => _PremiumRefreshIndicatorState();
+  State<PremiumRefreshIndicator> createState() =>
+      _PremiumRefreshIndicatorState();
 }
 
 class _PremiumRefreshIndicatorState extends State<PremiumRefreshIndicator>
@@ -47,7 +48,7 @@ class _PremiumRefreshIndicatorState extends State<PremiumRefreshIndicator>
       _pullOffset = 60.0; // lock at 60px
     });
     _rotateController.repeat();
-    
+
     try {
       await widget.onRefresh();
     } finally {
@@ -67,7 +68,7 @@ class _PremiumRefreshIndicatorState extends State<PremiumRefreshIndicator>
     return NotificationListener<ScrollNotification>(
       onNotification: (ScrollNotification notification) {
         final double pixels = notification.metrics.pixels;
-        
+
         if (_isRefreshing) {
           return false;
         }
@@ -120,7 +121,10 @@ class _PremiumRefreshIndicatorState extends State<PremiumRefreshIndicator>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     RotationTransition(
-                      turns: _isRefreshing ? _rotateController : AlwaysStoppedAnimation(_pullOffset / 120.0),
+                      turns:
+                          _isRefreshing
+                              ? _rotateController
+                              : AlwaysStoppedAnimation(_pullOffset / 120.0),
                       child: const Icon(
                         Icons.hourglass_empty_rounded,
                         size: 24,

@@ -1,9 +1,11 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/order_provider.dart';
 import '../../providers/navigation_provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
+import 'package:restaurant_pos_system/shared/widgets/dialogs/app_glass_dialog.dart';
 
 class CustomerInfoDialog extends StatefulWidget {
   final String orderChannelType; // 'Phone' or 'Takeaway'
@@ -68,25 +70,16 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
         );
 
         // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${widget.orderChannelType} order created successfully!',
-            ),
-            backgroundColor: AppColors.success,
-          ),
+        AppSnackBar.showSuccess(
+          context,
+          '${widget.orderChannelType} order created successfully!',
         );
 
         widget.onSuccess?.call();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error creating order: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppSnackBar.showError(context, 'Error creating order: $e');
       }
     } finally {
       if (mounted) {
@@ -105,320 +98,216 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
             ? 'Phone'
             : 'Takeaway';
 
-    return Material(
-      type: MaterialType.transparency,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => Navigator.of(context).maybePop(),
-        child: Stack(
+    return AppGlassDialog(
+      maxWidth: 400,
+      padding: const EdgeInsets.all(20),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Fullscreen Background Blur matching TableActionDialog
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 3.5, sigmaY: 3.5),
-                child: Container(color: Colors.black.withValues(alpha: 0.08)),
-              ),
-            ),
-            SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 24,
+            // Header with Close button
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 400),
-                    child: GestureDetector(
-                      onTap: () {},
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(24),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                          child: Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.52),
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.75),
-                                width: 1.5,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.06),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  // Header with Close button
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 36,
-                                        height: 36,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                        child: Icon(
-                                          displayType == 'Phone'
-                                              ? Icons.phone_in_talk_rounded
-                                              : Icons.shopping_bag_rounded,
-                                          color: AppColors.primary,
-                                          size: 18,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          '$displayType Order',
-                                          style: const TextStyle(
-                                            fontSize: 16.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.textPrimary,
-                                            letterSpacing: -0.3,
-                                          ),
-                                        ),
-                                      ),
-                                      IconButton(
-                                        onPressed:
-                                            () => Navigator.of(context).pop(),
-                                        icon: const Icon(
-                                          Icons.close_rounded,
-                                          size: 18,
-                                        ),
-                                        style: IconButton.styleFrom(
-                                          backgroundColor: Colors.black
-                                              .withValues(alpha: 0.05),
-                                          foregroundColor:
-                                              AppColors.textSecondary,
-                                          padding: const EdgeInsets.all(8),
-                                          minimumSize: const Size(32, 32),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 20),
+                  child: Icon(
+                    displayType == 'Phone'
+                        ? Icons.phone_in_talk_rounded
+                        : Icons.shopping_bag_rounded,
+                    color: AppColors.primary,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '$displayType Order',
+                    style: const TextStyle(
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withValues(alpha: 0.05),
+                    foregroundColor: AppColors.textSecondary,
+                    padding: const EdgeInsets.all(8),
+                    minimumSize: const Size(32, 32),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
 
-                                  // Customer Name Field
-                                  TextFormField(
-                                    controller: _nameController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Customer Name *',
-                                      hintText: 'Enter customer name',
-                                      prefixIcon: const Icon(
-                                        Icons.person_outline_rounded,
-                                        size: 20,
-                                      ),
-                                      filled: true,
-                                      fillColor: Colors.white.withValues(
-                                        alpha: 0.48,
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 14,
-                                          ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.75,
-                                          ),
-                                        ),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.75,
-                                          ),
-                                        ),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: const BorderSide(
-                                          color: AppColors.primary,
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                    ),
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
-                                        return 'Customer name is required';
-                                      }
-                                      if (value.trim().length < 2) {
-                                        return 'Name must be at least 2 characters';
-                                      }
-                                      return null;
-                                    },
-                                    textCapitalization:
-                                        TextCapitalization.words,
-                                  ),
-                                  const SizedBox(height: 14),
+            // Customer Name Field
+            TextFormField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: AppStrings.dashboard.customerNameLabel,
+                hintText: AppStrings.dashboard.enterCustomerName,
+                prefixIcon: const Icon(Icons.person_outline_rounded, size: 20),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.48),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.75),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.75),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Customer name is required';
+                }
+                if (value.trim().length < 2) {
+                  return 'Name must be at least 2 characters';
+                }
+                return null;
+              },
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 14),
 
-                                  // Customer Phone Field
-                                  TextFormField(
-                                    controller: _phoneController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Phone Number *',
-                                      hintText: 'Enter phone number',
-                                      prefixIcon: const Icon(
-                                        Icons.phone_outlined,
-                                        size: 20,
-                                      ),
-                                      filled: true,
-                                      fillColor: Colors.white.withValues(
-                                        alpha: 0.48,
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 14,
-                                          ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.75,
-                                          ),
-                                        ),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.75,
-                                          ),
-                                        ),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: const BorderSide(
-                                          color: AppColors.primary,
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                    ),
-                                    keyboardType: TextInputType.phone,
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
-                                        return 'Phone number is required';
-                                      }
-                                      if (value.trim().length < 10) {
-                                        return 'Enter valid phone number';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 20),
+            // Customer Phone Field
+            TextFormField(
+              controller: _phoneController,
+              decoration: InputDecoration(
+                labelText: AppStrings.dashboard.phoneNumberLabel,
+                hintText: AppStrings.dashboard.enterPhoneNumber,
+                prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.48),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.75),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.75),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+              keyboardType: TextInputType.phone,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Phone number is required';
+                }
+                if (value.trim().length < 10) {
+                  return 'Enter valid phone number';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
 
-                                  // Action Buttons
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: OutlinedButton(
-                                          onPressed:
-                                              _isLoading
-                                                  ? null
-                                                  : (widget.onBack ??
-                                                      () =>
-                                                          Navigator.of(
-                                                            context,
-                                                          ).pop()),
-                                          style: OutlinedButton.styleFrom(
-                                            backgroundColor: Colors.white
-                                                .withValues(alpha: 0.4),
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 14,
-                                            ),
-                                            side: BorderSide(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.75,
-                                              ),
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            'Back',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: ElevatedButton(
-                                          onPressed:
-                                              _isLoading
-                                                  ? null
-                                                  : _handleConfirm,
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.primary,
-                                            foregroundColor: Colors.white,
-                                            elevation: 0,
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 14,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                          ),
-                                          child:
-                                              _isLoading
-                                                  ? const SizedBox(
-                                                    height: 18,
-                                                    width: 18,
-                                                    child: CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      valueColor:
-                                                          AlwaysStoppedAnimation<
-                                                            Color
-                                                          >(Colors.white),
-                                                    ),
-                                                  )
-                                                  : const Text(
-                                                    'Confirm',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed:
+                        _isLoading
+                            ? null
+                            : (widget.onBack ??
+                                () => Navigator.of(context).pop()),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: 0.4),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.75),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Back',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleConfirm,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child:
+                        _isLoading
+                            ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                            : const Text(
+                              'Confirm',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

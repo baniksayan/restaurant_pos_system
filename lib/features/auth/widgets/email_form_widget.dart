@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/utils/app_validators.dart';
 import 'package:restaurant_pos_system/shared/widgets/animations/fade_in_animation.dart';
 import 'package:restaurant_pos_system/shared/widgets/buttons/animated_button.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+
+import 'package:restaurant_pos_system/shared/widgets/forms/custom_text_field.dart';
 
 class EmailFormWidget extends StatelessWidget {
   final GlobalKey<FormState> formKey;
@@ -26,54 +30,20 @@ class EmailFormWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Email Address',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
+            CustomTextField(
+              label: AppStrings.auth.emailAddress,
+              hintText: AppStrings.auth.enterEmailAddress,
               controller: emailController,
+              prefixIcon: Icons.email_outlined,
               keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                hintText: 'Enter your email address',
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textSecondary),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.grey),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.grey),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your email address';
-                }
-                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                  return 'Please enter a valid email address';
-                }
-                return null;
-              },
+              validator: AppValidators.email,
             ),
             const SizedBox(height: 30),
             SizedBox(
               width: double.infinity,
               height: 50,
               child: AnimatedButton(
-                text: 'Send Reset Email',
+                text: AppStrings.auth.sendResetEmail,
                 onPressed: onSendResetEmail,
                 isLoading: isLoading,
                 backgroundColor: AppColors.primary,

@@ -21,10 +21,7 @@ class CartItemsList extends StatelessWidget {
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final item = items[index];
-        return CartItemCard(
-          item: item,
-          onEdit: () => onEditItem(item),
-        );
+        return CartItemCard(item: item, onEdit: () => onEditItem(item));
       },
     );
   }

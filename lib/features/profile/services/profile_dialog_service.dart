@@ -5,6 +5,7 @@ import 'package:restaurant_pos_system/features/dashboard/providers/navigation_pr
 import '../widgets/edit_profile_dialog.dart';
 import '../widgets/printer_settings_dialog.dart';
 import '../widgets/cash_management_dialog.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class ProfileDialogService {
   static void showEditProfileDialog(BuildContext context) {
@@ -31,87 +32,89 @@ class ProfileDialogService {
   static void showComingSoonDialog(BuildContext context, String feature) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.construction,
-                color: Colors.blue,
-                size: 48,
-              ),
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            const SizedBox(height: 16),
-            Text(
-              feature,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.construction,
+                    color: Colors.blue,
+                    size: 48,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  feature,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'This feature is coming soon!\nStay tuned for updates.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text(AppStrings.gotIt),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'This feature is coming soon!\nStay tuned for updates.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Got it'),
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
   static void showAboutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Text('About WhizEats Pro'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('WhizEats Pro - Restaurant Management System'),
-            SizedBox(height: 8),
-            Text('Version: 1.0.0'),
-            Text('Build: 2026.08.13'),
-            SizedBox(height: 16),
-            Text(
-              'A comprehensive restaurant management solution for modern dining experiences.',
-              style: TextStyle(color: Colors.grey),
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            SizedBox(height: 16),
-            Text('© 2026 WhizEats Pro. All rights reserved.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            title: Text(AppStrings.profile.aboutTitle),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(AppStrings.profile.aboutDescription),
+                const SizedBox(height: 8),
+                Text(AppStrings.profile.version),
+                Text(AppStrings.profile.build),
+                const SizedBox(height: 16),
+                const Text(
+                  'A comprehensive restaurant management solution for modern dining experiences.',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                const Text('© 2026 WhizEats Pro. All rights reserved.'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(AppStrings.close),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 

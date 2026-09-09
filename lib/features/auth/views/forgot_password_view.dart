@@ -41,9 +41,9 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   }
 
   void _navigateBackToLogin() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LoginView()),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginView()));
   }
 
   void _handleResendEmail() {
@@ -69,7 +69,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                 const SizedBox(height: 40),
                 ForgotPasswordHeader(emailSent: _emailSent),
                 const SizedBox(height: 40),
-                
+
                 if (!_emailSent) ...[
                   EmailFormWidget(
                     formKey: _formKey,
@@ -84,12 +84,14 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                     onResendEmail: _handleResendEmail,
                   ),
                 ],
-                
+
                 const SizedBox(height: 40),
-                
+
                 if (!_emailSent)
-                  BackToLoginWidget(onBackToLogin: () => Navigator.of(context).pop()),
-                
+                  BackToLoginWidget(
+                    onBackToLogin: () => Navigator.of(context).pop(),
+                  ),
+
                 const SizedBox(height: 40),
               ],
             ),

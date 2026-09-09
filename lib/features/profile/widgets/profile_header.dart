@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class ProfileHeader extends StatelessWidget {
   final VoidCallback? onEditPressed;
-  
+
   const ProfileHeader({super.key, this.onEditPressed});
 
   @override
@@ -19,9 +20,15 @@ class ProfileHeader extends StatelessWidget {
           if (email.contains('@')) {
             // Extract name part before @ and capitalize
             displayName = email.split('@')[0];
-            displayName = displayName.split('.').map((part) => 
-              part.isNotEmpty ? part.toUpperCase() + part.substring(1) : part
-            ).join(' ');
+            displayName = displayName
+                .split('.')
+                .map(
+                  (part) =>
+                      part.isNotEmpty
+                          ? part.toUpperCase() + part.substring(1)
+                          : part,
+                )
+                .join(' ');
           } else {
             displayName = authProvider.currentUser!;
           }
@@ -31,7 +38,10 @@ class ProfileHeader extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+              colors: [
+                AppColors.primary,
+                AppColors.primary.withValues(alpha: 0.8),
+              ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -94,7 +104,10 @@ class ProfileHeader extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -118,12 +131,8 @@ class ProfileHeader extends StatelessWidget {
                 ),
                 child: IconButton(
                   onPressed: onEditPressed,
-                  icon: const Icon(
-                    Icons.edit,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  tooltip: 'Edit Profile',
+                  icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                  tooltip: AppStrings.profile.editProfile,
                 ),
               ),
             ],

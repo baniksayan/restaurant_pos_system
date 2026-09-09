@@ -24,15 +24,16 @@ void showChefOrderHistoryDialog(BuildContext context) {
               Positioned.fill(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.12),
-                  ),
+                  child: Container(color: Colors.black.withValues(alpha: 0.12)),
                 ),
               ),
               SafeArea(
                 child: Center(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 24,
+                    ),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(maxWidth: maxWidth),
                       child: GestureDetector(
@@ -62,12 +63,21 @@ void showChefOrderHistoryDialog(BuildContext context) {
                                 children: [
                                   // Header
                                   Container(
-                                    padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+                                    padding: const EdgeInsets.fromLTRB(
+                                      20,
+                                      16,
+                                      16,
+                                      16,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.5),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       border: Border(
                                         bottom: BorderSide(
-                                          color: Colors.grey.withValues(alpha: 0.2),
+                                          color: Colors.grey.withValues(
+                                            alpha: 0.2,
+                                          ),
                                           width: 1,
                                         ),
                                       ),
@@ -78,8 +88,12 @@ void showChefOrderHistoryDialog(BuildContext context) {
                                           width: 38,
                                           height: 38,
                                           decoration: BoxDecoration(
-                                            color: AppColors.primary.withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(10),
+                                            color: AppColors.primary.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
                                           ),
                                           child: const Icon(
                                             Icons.history_rounded,
@@ -90,7 +104,8 @@ void showChefOrderHistoryDialog(BuildContext context) {
                                         const SizedBox(width: 12),
                                         const Expanded(
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 'Order History (All)',
@@ -104,17 +119,24 @@ void showChefOrderHistoryDialog(BuildContext context) {
                                                 'Completed and handed-over kitchen orders',
                                                 style: TextStyle(
                                                   fontSize: 11.5,
-                                                  color: AppColors.textSecondary,
+                                                  color:
+                                                      AppColors.textSecondary,
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
                                         IconButton(
-                                          icon: const Icon(Icons.close_rounded, size: 20),
-                                          onPressed: () => Navigator.pop(dialogContext),
+                                          icon: const Icon(
+                                            Icons.close_rounded,
+                                            size: 20,
+                                          ),
+                                          onPressed:
+                                              () =>
+                                                  Navigator.pop(dialogContext),
                                           style: IconButton.styleFrom(
-                                            backgroundColor: Colors.white.withValues(alpha: 0.6),
+                                            backgroundColor: Colors.white
+                                                .withValues(alpha: 0.6),
                                             padding: const EdgeInsets.all(8),
                                           ),
                                         ),
@@ -151,7 +173,8 @@ void showChefOrderHistoryDialog(BuildContext context) {
                                                 'Completed orders will appear here.',
                                                 style: TextStyle(
                                                   fontSize: 12,
-                                                  color: AppColors.textSecondary,
+                                                  color:
+                                                      AppColors.textSecondary,
                                                 ),
                                               ),
                                             ],
@@ -161,13 +184,19 @@ void showChefOrderHistoryDialog(BuildContext context) {
 
                                       return Container(
                                         constraints: BoxConstraints(
-                                          maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.6,
+                                          maxHeight:
+                                              MediaQuery.sizeOf(
+                                                dialogContext,
+                                              ).height *
+                                              0.6,
                                         ),
                                         child: ListView.separated(
                                           shrinkWrap: true,
                                           padding: const EdgeInsets.all(16),
                                           itemCount: history.length,
-                                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                                          separatorBuilder:
+                                              (_, __) =>
+                                                  const SizedBox(height: 12),
                                           itemBuilder: (context, index) {
                                             return ChefOrderCard(
                                               key: ValueKey(history[index].id),

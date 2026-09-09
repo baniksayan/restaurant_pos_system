@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import '../models/chef_order_model.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class RejectOrderDialog extends StatefulWidget {
   final ChefOrder order;
@@ -49,7 +50,11 @@ class _RejectOrderDialogState extends State<RejectOrderDialog> {
               color: AppColors.error.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 24),
+            child: const Icon(
+              Icons.warning_amber_rounded,
+              color: AppColors.error,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -101,7 +106,10 @@ class _RejectOrderDialogState extends State<RejectOrderDialog> {
                 },
                 borderRadius: BorderRadius.circular(10),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 6,
+                    horizontal: 4,
+                  ),
                   child: Row(
                     children: [
                       Container(
@@ -110,7 +118,10 @@ class _RejectOrderDialogState extends State<RejectOrderDialog> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: isSelected ? AppColors.error : const Color(0xFF94A3B8),
+                            color:
+                                isSelected
+                                    ? AppColors.error
+                                    : const Color(0xFF94A3B8),
                             width: isSelected ? 5.5 : 1.5,
                           ),
                         ),
@@ -121,8 +132,12 @@ class _RejectOrderDialogState extends State<RejectOrderDialog> {
                           reason,
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                            color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color:
+                                isSelected
+                                    ? AppColors.textPrimary
+                                    : AppColors.textSecondary,
                           ),
                         ),
                       ),
@@ -136,8 +151,11 @@ class _RejectOrderDialogState extends State<RejectOrderDialog> {
               TextField(
                 controller: _otherReasonController,
                 decoration: InputDecoration(
-                  hintText: 'Enter rejection reason...',
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  hintText: AppStrings.chef.enterRejectionReason,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -150,29 +168,40 @@ class _RejectOrderDialogState extends State<RejectOrderDialog> {
       actions: [
         OutlinedButton(
           style: OutlinedButton.styleFrom(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             side: const BorderSide(color: Color(0xFFCBD5E1)),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           ),
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
         ),
         FilledButton(
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.error,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           ),
           onPressed: () {
-            final finalReason = _selectedReason == 'Other'
-                ? (_otherReasonController.text.trim().isNotEmpty
-                    ? _otherReasonController.text.trim()
-                    : 'Other')
-                : _selectedReason;
+            final finalReason =
+                _selectedReason == 'Other'
+                    ? (_otherReasonController.text.trim().isNotEmpty
+                        ? _otherReasonController.text.trim()
+                        : 'Other')
+                    : _selectedReason;
             widget.onConfirmReject(finalReason);
             Navigator.pop(context);
           },
-          child: const Text('Reject Order', style: TextStyle(fontWeight: FontWeight.w700)),
+          child: const Text(
+            'Reject Order',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
       ],
     );

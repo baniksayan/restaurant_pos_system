@@ -460,9 +460,10 @@ class AnimatedCartProvider extends ChangeNotifier {
     String kotNote = "",
     bool onlyNewItems = true,
   }) {
-    final targetItems = (onlyNewItems && newItems.isNotEmpty)
-        ? newItems.values
-        : _cartItems.values;
+    final targetItems =
+        (onlyNewItems && newItems.isNotEmpty)
+            ? newItems.values
+            : _cartItems.values;
 
     return {
       "userId": HiveService.getUserId(),

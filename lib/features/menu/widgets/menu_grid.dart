@@ -7,6 +7,7 @@ import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/empty_state_widget.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/skeleton_loader.dart';
 import 'menu_item_card.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class MenuGrid extends StatelessWidget {
   final bool canOrder;
@@ -78,10 +79,11 @@ class MenuGrid extends StatelessWidget {
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
                   SizedBox(
-                    height: constraints.maxHeight > 0 ? constraints.maxHeight : 400,
+                    height:
+                        constraints.maxHeight > 0 ? constraints.maxHeight : 400,
                     child: EmptyStateWidget(
                       icon: Icons.error_outline_rounded,
-                      title: 'Failed to Load Menu',
+                      title: AppStrings.menu.failedToLoadMenu,
                       description: menuProvider.errorMessage!,
                       action: ElevatedButton.icon(
                         onPressed: () async {
@@ -91,7 +93,7 @@ class MenuGrid extends StatelessWidget {
                           }
                         },
                         icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text('Retry'),
+                        label: const Text(AppStrings.retry),
                       ),
                     ),
                   ),
@@ -110,13 +112,15 @@ class MenuGrid extends StatelessWidget {
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
                   SizedBox(
-                    height: constraints.maxHeight > 0 ? constraints.maxHeight : 400,
+                    height:
+                        constraints.maxHeight > 0 ? constraints.maxHeight : 400,
                     child: EmptyStateWidget(
                       icon: Icons.restaurant_menu_rounded,
-                      title: 'No Items Available',
-                      description: menuProvider.searchQuery.isNotEmpty
-                          ? 'No menu items match "${menuProvider.searchQuery}". Try adjusting your filters or search.'
-                          : 'There are currently no items in this category.',
+                      title: AppStrings.menu.noItemsAvailable,
+                      description:
+                          menuProvider.searchQuery.isNotEmpty
+                              ? 'No menu items match "${menuProvider.searchQuery}". Try adjusting your filters or search.'
+                              : 'There are currently no items in this category.',
                     ),
                   ),
                 ],
@@ -147,7 +151,9 @@ class MenuGrid extends StatelessWidget {
                 imageUrl: item.imageThumbUrl,
                 description: item.description ?? '',
                 price: item.productPrice?.toDouble() ?? 0.0,
-                quantity: cartProvider.getNewItemQuantity(itemId), // Show count of new (unprinted) items only
+                quantity: cartProvider.getNewItemQuantity(
+                  itemId,
+                ), // Show count of new (unprinted) items only
                 cid: item.categoryId ?? '',
                 cname: item.categoryName ?? '',
                 onAdd: () => _addToCart(context, item, cartProvider),

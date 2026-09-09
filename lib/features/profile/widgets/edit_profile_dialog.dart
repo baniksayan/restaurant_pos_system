@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class EditProfileDialog extends StatefulWidget {
   const EditProfileDialog({super.key});
@@ -20,7 +22,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
   void initState() {
     super.initState();
     final authProvider = context.read<AuthProvider>();
-    
+
     // Pre-fill with current data
     if (authProvider.currentUser != null) {
       final email = authProvider.currentUser!;
@@ -88,14 +90,17 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                   TextFormField(
                     controller: _nameController,
                     decoration: InputDecoration(
-                      labelText: 'Full Name',
+                      labelText: AppStrings.profile.fullName,
                       prefixIcon: const Icon(Icons.person_outline),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 2,
+                        ),
                       ),
                     ),
                     validator: (value) {
@@ -109,14 +114,17 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                   TextFormField(
                     controller: _roleController,
                     decoration: InputDecoration(
-                      labelText: 'Role',
+                      labelText: AppStrings.profile.role,
                       prefixIcon: const Icon(Icons.work_outline),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 2,
+                        ),
                       ),
                     ),
                     validator: (value) {
@@ -131,14 +139,17 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
-                      labelText: 'Phone Number (Optional)',
+                      labelText: AppStrings.profile.phoneNumberOptional,
                       prefixIcon: const Icon(Icons.phone_outlined),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
@@ -157,7 +168,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text('Cancel'),
+                    child: const Text(AppStrings.cancel),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -172,7 +183,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text('Save'),
+                    child: const Text(AppStrings.save),
                   ),
                 ),
               ],
@@ -192,12 +203,10 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
       );
 
       Navigator.pop(context);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated successfully'),
-          backgroundColor: AppColors.primary,
-        ),
+
+      AppSnackBar.showSuccess(
+        context,
+        AppStrings.profile.profileUpdatedSuccessfully,
       );
     }
   }

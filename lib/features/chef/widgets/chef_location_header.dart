@@ -115,7 +115,10 @@ class ChefLocationHeader extends StatelessWidget {
     );
   }
 
-  void _showStatusFilterDialog(BuildContext context, ChefProvider chefProvider) {
+  void _showStatusFilterDialog(
+    BuildContext context,
+    ChefProvider chefProvider,
+  ) {
     final statusList = chefProvider.statusFilters;
 
     showDialog(
@@ -151,7 +154,8 @@ class ChefLocationHeader extends StatelessWidget {
                       child: ConstrainedBox(
                         constraints: BoxConstraints(maxWidth: maxWidth),
                         child: GestureDetector(
-                          onTap: () {}, // Prevent backdrop tap from dismissing dialog
+                          onTap:
+                              () {}, // Prevent backdrop tap from dismissing dialog
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(24),
                             child: BackdropFilter(
@@ -166,7 +170,9 @@ class ChefLocationHeader extends StatelessWidget {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.08),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.08,
+                                      ),
                                       blurRadius: 20,
                                       offset: const Offset(0, 8),
                                     ),
@@ -177,12 +183,21 @@ class ChefLocationHeader extends StatelessWidget {
                                   children: [
                                     // Header
                                     Container(
-                                      padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+                                      padding: const EdgeInsets.fromLTRB(
+                                        20,
+                                        16,
+                                        16,
+                                        16,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.5),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.5,
+                                        ),
                                         border: Border(
                                           bottom: BorderSide(
-                                            color: Colors.grey.withValues(alpha: 0.2),
+                                            color: Colors.grey.withValues(
+                                              alpha: 0.2,
+                                            ),
                                             width: 1,
                                           ),
                                         ),
@@ -193,8 +208,10 @@ class ChefLocationHeader extends StatelessWidget {
                                             width: 36,
                                             height: 36,
                                             decoration: BoxDecoration(
-                                              color: AppColors.primary.withValues(alpha: 0.1),
-                                              borderRadius: BorderRadius.circular(10),
+                                              color: AppColors.primary
+                                                  .withValues(alpha: 0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
                                             ),
                                             child: const Icon(
                                               Icons.filter_list_rounded,
@@ -205,31 +222,41 @@ class ChefLocationHeader extends StatelessWidget {
                                           const SizedBox(width: 10),
                                           const Expanded(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 Text(
                                                   'Filter by KDS Status',
                                                   style: TextStyle(
                                                     fontSize: 16,
                                                     fontWeight: FontWeight.w700,
-                                                    color: AppColors.textPrimary,
+                                                    color:
+                                                        AppColors.textPrimary,
                                                   ),
                                                 ),
                                                 Text(
                                                   'Select a status to filter kitchen orders',
                                                   style: TextStyle(
                                                     fontSize: 12,
-                                                    color: AppColors.textSecondary,
+                                                    color:
+                                                        AppColors.textSecondary,
                                                   ),
                                                 ),
                                               ],
                                             ),
                                           ),
                                           IconButton(
-                                            icon: const Icon(Icons.close_rounded, size: 20),
-                                            onPressed: () => Navigator.pop(dialogContext),
+                                            icon: const Icon(
+                                              Icons.close_rounded,
+                                              size: 20,
+                                            ),
+                                            onPressed:
+                                                () => Navigator.pop(
+                                                  dialogContext,
+                                                ),
                                             style: IconButton.styleFrom(
-                                              backgroundColor: Colors.white.withValues(alpha: 0.6),
+                                              backgroundColor: Colors.white
+                                                  .withValues(alpha: 0.6),
                                               padding: const EdgeInsets.all(8),
                                             ),
                                           ),
@@ -239,70 +266,124 @@ class ChefLocationHeader extends StatelessWidget {
 
                                     // Status Options List
                                     Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 12,
+                                      ),
                                       child: Column(
-                                        children: statusList.map((status) {
-                                          final isSelected = chefProvider.selectedStatusFilter == status;
-                                          final color = _getStatusColor(status);
+                                        children:
+                                            statusList.map((status) {
+                                              final isSelected =
+                                                  chefProvider
+                                                      .selectedStatusFilter ==
+                                                  status;
+                                              final color = _getStatusColor(
+                                                status,
+                                              );
 
-                                          return Padding(
-                                            padding: const EdgeInsets.symmetric(vertical: 3),
-                                            child: Material(
-                                              color: Colors.transparent,
-                                              child: InkWell(
-                                                onTap: () {
-                                                  chefProvider.changeStatusFilter(status);
-                                                  Navigator.pop(dialogContext);
-                                                },
-                                                borderRadius: BorderRadius.circular(14),
-                                                child: Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                                                  decoration: BoxDecoration(
-                                                    color: isSelected
-                                                        ? color.withValues(alpha: 0.12)
-                                                        : Colors.transparent,
-                                                    borderRadius: BorderRadius.circular(14),
-                                                    border: Border.all(
-                                                      color: isSelected
-                                                          ? color.withValues(alpha: 0.4)
-                                                          : Colors.transparent,
-                                                      width: 1.2,
+                                              return Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 3,
+                                                    ),
+                                                child: Material(
+                                                  color: Colors.transparent,
+                                                  child: InkWell(
+                                                    onTap: () {
+                                                      chefProvider
+                                                          .changeStatusFilter(
+                                                            status,
+                                                          );
+                                                      Navigator.pop(
+                                                        dialogContext,
+                                                      );
+                                                    },
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          14,
+                                                        ),
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 14,
+                                                            vertical: 11,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            isSelected
+                                                                ? color
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.12,
+                                                                    )
+                                                                : Colors
+                                                                    .transparent,
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              14,
+                                                            ),
+                                                        border: Border.all(
+                                                          color:
+                                                              isSelected
+                                                                  ? color
+                                                                      .withValues(
+                                                                        alpha:
+                                                                            0.4,
+                                                                      )
+                                                                  : Colors
+                                                                      .transparent,
+                                                          width: 1.2,
+                                                        ),
+                                                      ),
+                                                      child: Row(
+                                                        children: [
+                                                          Container(
+                                                            width: 10,
+                                                            height: 10,
+                                                            decoration:
+                                                                BoxDecoration(
+                                                                  color: color,
+                                                                  shape:
+                                                                      BoxShape
+                                                                          .circle,
+                                                                ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 12,
+                                                          ),
+                                                          Expanded(
+                                                            child: Text(
+                                                              status,
+                                                              style: TextStyle(
+                                                                fontSize: 14,
+                                                                fontWeight:
+                                                                    isSelected
+                                                                        ? FontWeight
+                                                                            .w700
+                                                                        : FontWeight
+                                                                            .w500,
+                                                                color:
+                                                                    isSelected
+                                                                        ? color
+                                                                        : AppColors
+                                                                            .textPrimary,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          if (isSelected)
+                                                            Icon(
+                                                              Icons
+                                                                  .check_circle_rounded,
+                                                              color: color,
+                                                              size: 18,
+                                                            ),
+                                                        ],
+                                                      ),
                                                     ),
                                                   ),
-                                                  child: Row(
-                                                    children: [
-                                                      Container(
-                                                        width: 10,
-                                                        height: 10,
-                                                        decoration: BoxDecoration(
-                                                          color: color,
-                                                          shape: BoxShape.circle,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 12),
-                                                      Expanded(
-                                                        child: Text(
-                                                          status,
-                                                          style: TextStyle(
-                                                            fontSize: 14,
-                                                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                                            color: isSelected ? color : AppColors.textPrimary,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      if (isSelected)
-                                                        Icon(
-                                                          Icons.check_circle_rounded,
-                                                          color: color,
-                                                          size: 18,
-                                                        ),
-                                                    ],
-                                                  ),
                                                 ),
-                                              ),
-                                            ),
-                                          );
-                                        }).toList(),
+                                              );
+                                            }).toList(),
                                       ),
                                     ),
                                   ],

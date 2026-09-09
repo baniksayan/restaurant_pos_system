@@ -17,6 +17,22 @@ import '../../core/constants/api_constants.dart';
 class ApiService {
   ApiService._();
 
+  static Map<String, String> _bearerHeaders([String? token]) {
+    final effectiveToken = token ?? HiveService.getAuthToken();
+    return {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $effectiveToken',
+    };
+  }
+
+  static Map<String, String> _xAccessHeaders() {
+    return {
+      'Accept': 'application/json',
+      'x-access-token': HiveService.getAuthToken(),
+    };
+  }
+
   /// Generic GET request method
   static Future<dynamic>? apiGet(String endpoint) async {
     final isConnected = await checkInternetAndGoForward();
@@ -25,10 +41,7 @@ class ApiService {
     try {
       final response = await http.get(
         Uri.parse(ApiConstants.baseUrl + endpoint),
-        headers: {
-          'Accept': 'application/json',
-          'x-access-token': HiveService.getAuthToken(),
-        },
+        headers: _xAccessHeaders(),
       );
 
       final responseBody = jsonDecode(response.body.toString());
@@ -242,9 +255,10 @@ class ApiService {
     if (!isConnected) return null;
 
     try {
-      final authToken = (token != null && token.isNotEmpty)
-          ? token
-          : HiveService.getAuthToken();
+      final authToken =
+          (token != null && token.isNotEmpty)
+              ? token
+              : HiveService.getAuthToken();
 
       final requestModel = CreateOrderHeadRequestModel(
         orderChannelId: orderChannelId,
@@ -265,10 +279,7 @@ class ApiService {
 
       final response = await http.post(
         Uri.parse('${ApiConstants.baseUrl}${ApiConstants.createOrderHead}'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
+        headers: _bearerHeaders(authToken),
         body: json.encode(requestModel.toJson()),
       );
 
@@ -318,10 +329,7 @@ class ApiService {
 
       final response = await http.post(
         Uri.parse('${ApiConstants.baseUrl}Setting/OrderChannelListByType'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${HiveService.getAuthToken()}',
-        },
+        headers: _bearerHeaders(),
         body: json.encode(requestBody),
       );
 
@@ -371,10 +379,7 @@ class ApiService {
 
       final response = await http.post(
         Uri.parse('${ApiConstants.baseUrl}Order/getRunningTable'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: _bearerHeaders(token),
         body: json.encode(requestBody),
       );
 
@@ -402,18 +407,16 @@ class ApiService {
     if (!isConnected) return null;
 
     try {
-      final authToken = (token != null && token.isNotEmpty)
-          ? token
-          : HiveService.getAuthToken();
+      final authToken =
+          (token != null && token.isNotEmpty)
+              ? token
+              : HiveService.getAuthToken();
 
       final Map<String, dynamic> requestBody = {"orderId": orderId};
 
       final response = await http.post(
         Uri.parse('${ApiConstants.baseUrl}Order/getOrderDetailById'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
+        headers: _bearerHeaders(authToken),
         body: json.encode(requestBody),
       );
 
@@ -424,7 +427,9 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        if (kDebugMode) debugPrint('[Cart Loaded] Order $orderId data retrieved');
+        if (kDebugMode) {
+          debugPrint('[Cart Loaded] Order $orderId data retrieved');
+        }
         return OrderDetailApiResponseModel.fromJson(responseData);
       }
 
@@ -452,9 +457,10 @@ class ApiService {
     if (!isConnected) return null;
 
     try {
-      final authToken = (token != null && token.isNotEmpty)
-          ? token
-          : HiveService.getAuthToken();
+      final authToken =
+          (token != null && token.isNotEmpty)
+              ? token
+              : HiveService.getAuthToken();
 
       Map<String, dynamic> requestBody;
 
@@ -478,10 +484,7 @@ class ApiService {
 
       final response = await http.post(
         Uri.parse('${ApiConstants.baseUrl}Order/UpdateOrderHeadStatus'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
+        headers: _bearerHeaders(authToken),
         body: json.encode(requestBody),
       );
 
@@ -538,11 +541,7 @@ class ApiService {
 
       final response = await http.post(
         Uri.parse(url),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: _bearerHeaders(token),
         body: jsonEncode(requestBody),
       );
 
@@ -592,10 +591,7 @@ class ApiService {
 
       final response = await http.post(
         Uri.parse('${ApiConstants.baseUrl}${ApiConstants.getTablesByOutlet}'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${HiveService.getAuthToken()}',
-        },
+        headers: _bearerHeaders(),
         body: json.encode(requestBody),
       );
 
@@ -640,10 +636,7 @@ class ApiService {
 
       final response = await http.post(
         Uri.parse('${ApiConstants.baseUrl}${ApiConstants.getTablesByOutlet}'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${HiveService.getAuthToken()}',
-        },
+        headers: _bearerHeaders(),
         body: json.encode(requestBody),
       );
 
@@ -703,10 +696,7 @@ class ApiService {
               Uri.parse(
                 '${ApiConstants.baseUrl}${ApiConstants.getTablesByOutlet}',
               ),
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ${HiveService.getAuthToken()}',
-              },
+              headers: _bearerHeaders(),
               body: json.encode(requestBody),
             )
             .timeout(const Duration(seconds: 30)); // Add timeout

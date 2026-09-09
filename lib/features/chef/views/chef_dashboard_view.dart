@@ -10,6 +10,7 @@ import '../widgets/chef_empty_state.dart';
 import '../widgets/chef_header.dart';
 import '../widgets/chef_order_card.dart';
 import '../widgets/chef_status_filter_dialog.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class ChefDashboardView extends StatefulWidget {
   const ChefDashboardView({super.key});
@@ -25,22 +26,22 @@ class _ChefDashboardViewState extends State<ChefDashboardView> {
   final List<_KdsNavigationItem> _navItems = [
     _KdsNavigationItem(
       icon: Icons.grid_view_rounded,
-      label: 'All',
+      label: AppStrings.chef.all,
       activeColor: AppColors.primary,
     ),
     _KdsNavigationItem(
       icon: Icons.hourglass_top_rounded,
-      label: 'Queue',
+      label: AppStrings.chef.queue,
       activeColor: const Color(0xFFE11D48),
     ),
     _KdsNavigationItem(
       icon: Icons.soup_kitchen_rounded,
-      label: 'Preparing',
+      label: AppStrings.chef.preparing,
       activeColor: const Color(0xFFF59E0B),
     ),
     _KdsNavigationItem(
       icon: Icons.room_service_rounded,
-      label: 'Serve',
+      label: AppStrings.chef.serve,
       activeColor: AppColors.success,
     ),
   ];
@@ -61,46 +62,54 @@ class _ChefDashboardViewState extends State<ChefDashboardView> {
     List<ChefOrder> tabOrders;
     switch (tabIndex) {
       case 0: // All: All Active Orders (Pending, Preparing, Ready)
-        tabOrders = chefProvider.orders.where((o) =>
-          o.status == ChefOrderStatus.pending ||
-          o.status == ChefOrderStatus.preparing ||
-          o.status == ChefOrderStatus.ready
-        ).toList();
+        tabOrders =
+            chefProvider.orders
+                .where(
+                  (o) =>
+                      o.status == ChefOrderStatus.pending ||
+                      o.status == ChefOrderStatus.preparing ||
+                      o.status == ChefOrderStatus.ready,
+                )
+                .toList();
         break;
       case 1: // Queue: Only Pending (Approve & Reject)
-        tabOrders = chefProvider.orders.where((o) =>
-          o.status == ChefOrderStatus.pending
-        ).toList();
+        tabOrders =
+            chefProvider.orders
+                .where((o) => o.status == ChefOrderStatus.pending)
+                .toList();
         break;
       case 2: // Preparing: In Kitchen (Ready to Serve)
-        tabOrders = chefProvider.orders.where((o) =>
-          o.status == ChefOrderStatus.preparing
-        ).toList();
+        tabOrders =
+            chefProvider.orders
+                .where((o) => o.status == ChefOrderStatus.preparing)
+                .toList();
         break;
       case 3: // Serve: Ready to Serve (Give Order)
       default:
-        tabOrders = chefProvider.orders.where((o) =>
-          o.status == ChefOrderStatus.ready
-        ).toList();
+        tabOrders =
+            chefProvider.orders
+                .where((o) => o.status == ChefOrderStatus.ready)
+                .toList();
         break;
     }
 
     if (chefProvider.selectedStatusFilter != 'All Statuses') {
-      tabOrders = tabOrders.where((o) {
-        switch (chefProvider.selectedStatusFilter.toLowerCase()) {
-          case 'pending':
-            return o.status == ChefOrderStatus.pending;
-          case 'preparing':
-            return o.status == ChefOrderStatus.preparing;
-          case 'ready to serve':
-          case 'ready':
-            return o.status == ChefOrderStatus.ready;
-          case 'served':
-            return o.status == ChefOrderStatus.served;
-          default:
-            return true;
-        }
-      }).toList();
+      tabOrders =
+          tabOrders.where((o) {
+            switch (chefProvider.selectedStatusFilter.toLowerCase()) {
+              case 'pending':
+                return o.status == ChefOrderStatus.pending;
+              case 'preparing':
+                return o.status == ChefOrderStatus.preparing;
+              case 'ready to serve':
+              case 'ready':
+                return o.status == ChefOrderStatus.ready;
+              case 'served':
+                return o.status == ChefOrderStatus.served;
+              default:
+                return true;
+            }
+          }).toList();
     }
 
     return tabOrders;
@@ -129,7 +138,8 @@ class _ChefDashboardViewState extends State<ChefDashboardView> {
             ChefHeader(
               showFilter: chefProvider.currentTabIndex == 0,
               onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
-              onFilterPressed: () => showChefStatusFilterDialog(context, chefProvider),
+              onFilterPressed:
+                  () => showChefStatusFilterDialog(context, chefProvider),
             ),
 
             // Swipeable PageView across 4 tabs (All, Queue, Preparing, Serve)
@@ -161,42 +171,75 @@ class _ChefDashboardViewState extends State<ChefDashboardView> {
     );
   }
 
-  Widget _buildOrdersPage(BuildContext context, ChefProvider chefProvider, int tabIndex) {
+  Widget _buildOrdersPage(
+    BuildContext context,
+    ChefProvider chefProvider,
+    int tabIndex,
+  ) {
     final orders = _getOrdersForTab(chefProvider, tabIndex);
 
     return PremiumRefreshIndicator(
       onRefresh: () async {
         await Future.delayed(const Duration(milliseconds: 500));
       },
-      child: orders.isEmpty
-          ? ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                SizedBox(height: MediaQuery.of(context).size.height * 0.15),
-                ChefEmptyState(
-                  title: 'No Orders in this View',
-                  description: _getEmptyStateDescription(tabIndex),
-                ),
-              ],
-            )
-          : LayoutBuilder(
-              builder: (context, constraints) {
-                final width = constraints.maxWidth;
-                int crossAxisCount = 1;
-                if (width >= 900) {
-                  crossAxisCount = 3;
-                } else if (width >= 600) {
-                  crossAxisCount = 2;
-                }
+      child:
+          orders.isEmpty
+              ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.15),
+                  ChefEmptyState(
+                    title: AppStrings.chef.noOrdersInView,
+                    description: _getEmptyStateDescription(tabIndex),
+                  ),
+                ],
+              )
+              : LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  int crossAxisCount = 1;
+                  if (width >= 900) {
+                    crossAxisCount = 3;
+                  } else if (width >= 600) {
+                    crossAxisCount = 2;
+                  }
 
-                if (crossAxisCount == 1) {
-                  return ListView.separated(
+                  if (crossAxisCount == 1) {
+                    return ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      itemCount: orders.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        return ChefOrderCard(
+                          key: ValueKey(orders[index].id),
+                          order: orders[index],
+                        );
+                      },
+                    );
+                  }
+
+                  // Multi-column Grid for Tablets/Desktop
+                  return GridView.builder(
                     physics: const AlwaysScrollableScrollPhysics(
                       parent: BouncingScrollPhysics(),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: 14,
+                      mainAxisSpacing: 14,
+                      mainAxisExtent: 330,
+                    ),
                     itemCount: orders.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       return ChefOrderCard(
                         key: ValueKey(orders[index].id),
@@ -204,34 +247,15 @@ class _ChefDashboardViewState extends State<ChefDashboardView> {
                       );
                     },
                   );
-                }
-
-                // Multi-column Grid for Tablets/Desktop
-                return GridView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    crossAxisSpacing: 14,
-                    mainAxisSpacing: 14,
-                    mainAxisExtent: 330,
-                  ),
-                  itemCount: orders.length,
-                  itemBuilder: (context, index) {
-                    return ChefOrderCard(
-                      key: ValueKey(orders[index].id),
-                      order: orders[index],
-                    );
-                  },
-                );
-              },
-            ),
+                },
+              ),
     );
   }
 
-  Widget _buildBottomNavigationBar(BuildContext context, ChefProvider chefProvider) {
+  Widget _buildBottomNavigationBar(
+    BuildContext context,
+    ChefProvider chefProvider,
+  ) {
     return Container(
       color: Colors.white,
       child: SafeArea(
@@ -248,9 +272,7 @@ class _ChefDashboardViewState extends State<ChefDashboardView> {
                 offset: const Offset(0, -4),
               ),
             ],
-            border: Border(
-              top: BorderSide(color: Colors.grey[200]!, width: 1),
-            ),
+            border: Border(top: BorderSide(color: Colors.grey[200]!, width: 1)),
           ),
           child: Row(
             children: List.generate(_navItems.length, (index) {
@@ -352,15 +374,16 @@ class _KdsNavBarItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected ? item.activeColor : Colors.transparent,
           borderRadius: BorderRadius.circular(28),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: item.activeColor.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [],
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: item.activeColor.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                  : [],
         ),
         child: FittedBox(
           fit: BoxFit.scaleDown,
@@ -407,7 +430,9 @@ class _KdsNavBarItem extends StatelessWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFFFF6B6B).withValues(alpha: 0.4),
+                              color: const Color(
+                                0xFFFF6B6B,
+                              ).withValues(alpha: 0.4),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
                             ),
@@ -436,28 +461,29 @@ class _KdsNavBarItem extends StatelessWidget {
               AnimatedSize(
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOutCubic,
-                child: isSelected
-                    ? Padding(
-                        padding: const EdgeInsets.only(left: 4),
-                        child: AnimatedOpacity(
-                          duration: const Duration(milliseconds: 220),
-                          opacity: isSelected ? 1 : 0,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              item.label,
-                              maxLines: 1,
-                              style: const TextStyle(
-                                fontSize: 12.0,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                letterSpacing: 0.1,
+                child:
+                    isSelected
+                        ? Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: AnimatedOpacity(
+                            duration: const Duration(milliseconds: 220),
+                            opacity: isSelected ? 1 : 0,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                item.label,
+                                maxLines: 1,
+                                style: const TextStyle(
+                                  fontSize: 12.0,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 0.1,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+                        )
+                        : const SizedBox.shrink(),
               ),
             ],
           ),

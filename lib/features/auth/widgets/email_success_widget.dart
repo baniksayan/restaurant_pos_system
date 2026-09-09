@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/shared/widgets/animations/fade_in_animation.dart';
 import 'package:restaurant_pos_system/shared/widgets/buttons/animated_button.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class EmailSuccessWidget extends StatelessWidget {
   final String email;
@@ -35,9 +36,9 @@ class EmailSuccessWidget extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'Email sent to:',
-            style: TextStyle(
+          Text(
+            AppStrings.auth.emailSentTo,
+            style: const TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
             ),
@@ -56,7 +57,7 @@ class EmailSuccessWidget extends StatelessWidget {
             width: double.infinity,
             height: 50,
             child: AnimatedButton(
-              text: 'Back to Login',
+              text: AppStrings.auth.backToLogin,
               onPressed: onBackToLogin,
               backgroundColor: AppColors.primary,
             ),
@@ -64,9 +65,9 @@ class EmailSuccessWidget extends StatelessWidget {
           const SizedBox(height: 16),
           TextButton(
             onPressed: onResendEmail,
-            child: const Text(
-              'Resend Email',
-              style: TextStyle(
+            child: Text(
+              AppStrings.auth.resendEmail,
+              style: const TextStyle(
                 color: AppColors.primary,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,

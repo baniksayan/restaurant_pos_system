@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:restaurant_pos_system/core/constants/app_assets.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
 
 class EnhancedTableCard extends StatelessWidget {
@@ -67,7 +68,9 @@ class EnhancedTableCard extends StatelessWidget {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFF3B82F6,
+                          ).withValues(alpha: 0.15),
                           blurRadius: 4,
                           offset: const Offset(0, 1.5),
                         ),
@@ -225,49 +228,49 @@ class EnhancedTableCard extends StatelessWidget {
       case TableStatus.available:
         return const _TableStatusConfig(
           color: Color(0xFF10B981), // Emerald Green
-          iconPath: 'assets/images/icons/available_icon.png',
+          iconPath: AppAssets.tableAvailable,
           fallbackIcon: Icons.table_restaurant,
           displayName: 'AVAILABLE',
         );
       case TableStatus.occupied:
         return const _TableStatusConfig(
           color: Color(0xFFEF4444), // Coral Red
-          iconPath: 'assets/images/icons/occupied_icon.png',
+          iconPath: AppAssets.tableOccupied,
           fallbackIcon: Icons.table_restaurant,
           displayName: 'OCCUPIED',
         );
       case TableStatus.kotGenerated:
         return const _TableStatusConfig(
           color: Color.fromRGBO(139, 92, 246, 1), // Purple
-          iconPath: 'assets/images/icons/kot_generated_icon.png',
+          iconPath: AppAssets.tableKotGenerated,
           fallbackIcon: Icons.receipt_long,
           displayName: 'KOT GENERATED',
         );
       case TableStatus.billGenerated:
         return const _TableStatusConfig(
           color: Color(0xFF3B82F6), // Blue
-          iconPath: 'assets/images/icons/bill_generated_icon.png',
+          iconPath: AppAssets.tableBillGenerated,
           fallbackIcon: Icons.request_quote,
           displayName: 'BILL GENERATED',
         );
       case TableStatus.billSettled:
         return const _TableStatusConfig(
           color: Color(0xFF06B6D4), // Cyan / Teal
-          iconPath: 'assets/images/icons/bill_settled_icon.png',
+          iconPath: AppAssets.tableBillSettled,
           fallbackIcon: Icons.check_circle,
           displayName: 'BILL SETTLED',
         );
       case TableStatus.reserved:
         return const _TableStatusConfig(
           color: Color(0xFFF59E0B), // Amber / Yellow
-          iconPath: 'assets/images/icons/available_icon.png',
+          iconPath: AppAssets.tableAvailable,
           fallbackIcon: Icons.bookmark,
           displayName: 'RESERVED',
         );
       case TableStatus.outOfOrder:
         return const _TableStatusConfig(
           color: Color(0xFF64748B), // Slate Grey
-          iconPath: 'assets/images/icons/available_icon.png',
+          iconPath: AppAssets.tableAvailable,
           fallbackIcon: Icons.block,
           displayName: 'OUT OF ORDER',
         );

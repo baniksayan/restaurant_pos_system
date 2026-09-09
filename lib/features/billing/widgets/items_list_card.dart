@@ -1,30 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
+import 'package:restaurant_pos_system/shared/widgets/cards/app_card.dart';
 
 class ItemsListCard extends StatelessWidget {
   final List cartItems;
 
-  const ItemsListCard({
-    super.key,
-    required this.cartItems,
-  });
+  const ItemsListCard({super.key, required this.cartItems});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -74,7 +60,7 @@ class ItemsListCard extends StatelessWidget {
                             'Note: ${item.specialNotes}',
                             style: const TextStyle(
                               fontSize: 11,
-                               color: AppColors.primary,
+                              color: AppColors.primary,
                               fontStyle: FontStyle.italic,
                             ),
                           ),
@@ -92,7 +78,7 @@ class ItemsListCard extends StatelessWidget {
                         '${CurrencyConstants.symbol}${(item.price * item.quantity).toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                           color: AppColors.primary,
+                          color: AppColors.primary,
                         ),
                       ),
                     ],

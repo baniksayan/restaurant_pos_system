@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class CashManagementDialog extends StatefulWidget {
   const CashManagementDialog({super.key});
@@ -24,7 +25,7 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
   @override
   void initState() {
     super.initState();
-  _openingBalanceController.text = _openingBalance.toStringAsFixed(0);
+    _openingBalanceController.text = _openingBalance.toStringAsFixed(0);
   }
 
   @override
@@ -113,7 +114,9 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: Colors.blue.withValues(alpha: 0.2),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,7 +170,7 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
-                        labelText: 'Opening Balance',
+                        labelText: AppStrings.profile.openingBalance,
                         prefixIcon: const Icon(Icons.attach_money, size: 20),
                         prefixText: CurrencyConstants.symbol,
                         contentPadding: const EdgeInsets.symmetric(
@@ -200,14 +203,14 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
-                        labelText: 'Additional Cash In',
+                        labelText: AppStrings.profile.additionalCashIn,
                         prefixIcon: const Icon(
                           Icons.add_circle,
                           color: Colors.green,
                           size: 20,
                         ),
                         prefixText: '',
-                        hintText: 'Other receipts, loans, etc.',
+                        hintText: AppStrings.profile.cashInHint,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 12,
@@ -234,14 +237,14 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
-                        labelText: 'Additional Cash Out',
+                        labelText: AppStrings.profile.additionalCashOut,
                         prefixIcon: const Icon(
                           Icons.remove_circle,
                           color: Colors.red,
                           size: 20,
                         ),
                         prefixText: '',
-                        hintText: 'Withdrawals, petty cash, etc.',
+                        hintText: AppStrings.profile.cashOutHint,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 12,
@@ -366,7 +369,7 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
         Flexible(
           flex: 1,
           child: Text(
-              '${CurrencyConstants.symbol}${amount.toStringAsFixed(0)}',
+            '${CurrencyConstants.symbol}${amount.toStringAsFixed(0)}',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: color,

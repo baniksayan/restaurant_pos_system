@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class CartHeader extends StatelessWidget {
   final bool hasKotItems;
@@ -149,7 +150,7 @@ class CartHeader extends StatelessWidget {
                       onClearCart();
                     },
                     icon: const Icon(Icons.delete_outline_rounded, size: 16),
-                    label: const Text('Clear All'),
+                    label: Text(AppStrings.orderTaking.clearAll),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.red[600],
                       side: BorderSide(color: Colors.red[300]!),

@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import 'package:restaurant_pos_system/shared/services/pdf_service.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class PDFShareBottomSheet extends StatelessWidget {
   final Uint8List pdfBytes;
@@ -156,8 +158,8 @@ class PDFShareBottomSheet extends StatelessWidget {
                   icon: Icons.message_rounded,
                   iconColor: Colors.green[600]!,
                   bgColor: Colors.green[50]!,
-                  title: 'WhatsApp Kitchen',
-                  subtitle: 'Send order alert text (+91 87684 12832)',
+                  title: AppStrings.pdf.whatsAppKitchen,
+                  subtitle: AppStrings.pdf.whatsAppKitchenSubtitle,
                   onTap: () async {
                     await HapticHelper.triggerFeedback();
                     if (context.mounted) {
@@ -172,8 +174,8 @@ class PDFShareBottomSheet extends StatelessWidget {
                   icon: Icons.picture_as_pdf_rounded,
                   iconColor: AppColors.kotStatus,
                   bgColor: AppColors.kotStatus.withValues(alpha: 0.12),
-                  title: 'Share PDF Document',
-                  subtitle: 'Open system share dialog to send the PDF file',
+                  title: AppStrings.pdf.sharePdfDocument,
+                  subtitle: AppStrings.pdf.sharePdfSubtitle,
                   onTap: () async {
                     await HapticHelper.triggerFeedback();
                     if (context.mounted) {
@@ -286,12 +288,7 @@ class PDFShareBottomSheet extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error sending via WhatsApp: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppSnackBar.showError(context, 'Error sending via WhatsApp: $e');
       }
     }
   }
@@ -301,12 +298,7 @@ class PDFShareBottomSheet extends StatelessWidget {
       await PDFService.sharePDF(pdfBytes, fileName);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error sharing PDF: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppSnackBar.showError(context, 'Error sharing PDF: $e');
       }
     }
   }

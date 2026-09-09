@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/waiter_profile.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class ProfileProvider extends ChangeNotifier {
   WaiterProfile? _currentWaiter;
@@ -76,7 +77,14 @@ class ProfileProvider extends ChangeNotifier {
         shiftStart: DateTime.now().subtract(const Duration(hours: 4)),
         shiftEnd: null,
         shiftType: 'Evening',
-        assignedTables: ['Table 1', 'Table 2', 'Table 5', 'Table 8', 'Terrace 1', 'Terrace 2'],
+        assignedTables: [
+          'Table 1',
+          'Table 2',
+          'Table 5',
+          'Table 8',
+          'Terrace 1',
+          'Terrace 2',
+        ],
         shiftSales: 12450.75,
         ordersCompleted: 18,
       ),
@@ -118,14 +126,14 @@ class ProfileProvider extends ChangeNotifier {
   void _loadAchievements() {
     _achievements = [
       Achievement(
-        title: 'Top Performer',
+        title: AppStrings.profile.topPerformer,
         description: 'Highest sales this month',
         icon: Icons.star,
         earnedDate: DateTime.now().subtract(const Duration(days: 2)),
         type: 'Monthly',
       ),
       Achievement(
-        title: 'Customer Favorite',
+        title: AppStrings.profile.customerFavorite,
         description: '50+ compliments received',
         icon: Icons.favorite,
         earnedDate: DateTime.now().subtract(const Duration(days: 15)),

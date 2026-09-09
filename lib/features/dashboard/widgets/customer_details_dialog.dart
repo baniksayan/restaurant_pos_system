@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/utils/app_validators.dart';
 import 'package:restaurant_pos_system/data/models/order_channel_types_model.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class CustomerDetailsDialog extends StatefulWidget {
   final OrderType orderType;
@@ -105,12 +107,12 @@ class _CustomerDetailsDialogState extends State<CustomerDetailsDialog> {
                   ],
                   style: TextStyle(fontSize: 16, color: Colors.grey.shade800),
                   decoration: InputDecoration(
-                    labelText: 'Customer Name *',
+                    labelText: AppStrings.dashboard.customerNameLabel,
                     labelStyle: TextStyle(
                       color: Colors.grey.shade600,
                       fontSize: 14,
                     ),
-                    hintText: 'Enter customer name',
+                    hintText: AppStrings.dashboard.enterCustomerName,
                     hintStyle: TextStyle(color: Colors.grey.shade400),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -139,15 +141,8 @@ class _CustomerDetailsDialogState extends State<CustomerDetailsDialog> {
                       vertical: 16,
                     ),
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter customer name';
-                    }
-                    if (value.trim().length < 2) {
-                      return 'Name must be at least 2 characters';
-                    }
-                    return null;
-                  },
+                  validator:
+                      (value) => AppValidators.name(value, 'customer name'),
                 ),
                 const SizedBox(height: 16),
 
@@ -164,12 +159,12 @@ class _CustomerDetailsDialogState extends State<CustomerDetailsDialog> {
                   ],
                   style: TextStyle(fontSize: 16, color: Colors.grey.shade800),
                   decoration: InputDecoration(
-                    labelText: 'Phone Number *',
+                    labelText: AppStrings.dashboard.phoneNumberLabel,
                     labelStyle: TextStyle(
                       color: Colors.grey.shade600,
                       fontSize: 14,
                     ),
-                    hintText: 'Enter 10-digit mobile number',
+                    hintText: AppStrings.dashboard.enterTenDigitMobile,
                     hintStyle: TextStyle(color: Colors.grey.shade400),
                     // helperText: 'Must start with 6, 7, 8, or 9',
                     helperStyle: TextStyle(
@@ -224,23 +219,7 @@ class _CustomerDetailsDialogState extends State<CustomerDetailsDialog> {
                       vertical: 16,
                     ),
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter phone number';
-                    }
-
-                    // Check if exactly 10 digits
-                    if (value.length != 10) {
-                      return 'Phone number must be exactly 10 digits';
-                    }
-
-                    // Check if starts with 6, 7, 8, or 9 (Indian mobile number format)
-                    if (!RegExp(r'^[6-9]').hasMatch(value)) {
-                      return 'Phone number must start with 6, 7, 8, or 9';
-                    }
-
-                    return null;
-                  },
+                  validator: AppValidators.indianPhone,
                 ),
                 const SizedBox(height: 24),
 

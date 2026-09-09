@@ -11,6 +11,8 @@ import '../widgets/category_tabs.dart';
 import '../widgets/menu_grid.dart';
 import '../widgets/cart_footer.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/premium_refresh_indicator.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class MenuView extends StatefulWidget {
   final String? selectedTableId;
@@ -221,12 +223,7 @@ class _MenuViewState extends State<MenuView> {
   }
 
   void _printKOT() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('KOT sent to kitchen printer!'),
-        backgroundColor: Colors.blue,
-      ),
-    );
+    AppSnackBar.showInfo(context, AppStrings.menu.kotSentToKitchen);
   }
 
   String? _getOrderDisplayName(NavigationProvider navProvider) {

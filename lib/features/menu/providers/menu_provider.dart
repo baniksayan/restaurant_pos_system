@@ -101,7 +101,10 @@ class MenuProvider with ChangeNotifier {
     // Filter by dietary preference
     if (selectedDietaryFilter != 'All') {
       final isVegFilter = selectedDietaryFilter == 'Veg';
-      filtered = filtered.where((item) => (item.pureVeg ?? false) == isVegFilter).toList();
+      filtered =
+          filtered
+              .where((item) => (item.pureVeg ?? false) == isVegFilter)
+              .toList();
     }
 
     // Filter by search query (use getter to support table-wise search)

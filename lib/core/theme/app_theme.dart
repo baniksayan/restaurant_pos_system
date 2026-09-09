@@ -46,7 +46,10 @@ class AppTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          side: BorderSide(color: Color(0xFFE2E8F0), width: 1), // Slate 200 border
+          side: BorderSide(
+            color: Color(0xFFE2E8F0),
+            width: 1,
+          ), // Slate 200 border
           borderRadius: BorderRadius.all(Radius.circular(16)),
         ),
       ),
@@ -113,29 +116,105 @@ class AppTheme {
           horizontal: 16,
           vertical: 14,
         ),
-        hintStyle: const TextStyle(
-          color: AppColors.textHint,
-          fontSize: 14,
-        ),
+        hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 14),
       ),
 
       // Text Theme with system fonts and hierarchy
       textTheme: const TextTheme(
-        displayLarge: TextStyle(fontFamily: 'Roboto', color: AppColors.textPrimary, fontWeight: FontWeight.bold, letterSpacing: -1.0),
-        displayMedium: TextStyle(fontFamily: 'Roboto', color: AppColors.textPrimary, fontWeight: FontWeight.bold, letterSpacing: -0.5),
-        displaySmall: TextStyle(fontFamily: 'Roboto', color: AppColors.textPrimary, fontWeight: FontWeight.bold),
-        headlineLarge: TextStyle(fontFamily: 'Roboto', color: AppColors.textPrimary, fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: -0.5),
-        headlineMedium: TextStyle(fontFamily: 'Roboto', color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.5),
-        headlineSmall: TextStyle(fontFamily: 'Roboto', color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.3),
-        titleLarge: TextStyle(fontFamily: 'Roboto', color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: -0.2),
-        titleMedium: TextStyle(fontFamily: 'Roboto', color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.1),
-        titleSmall: TextStyle(fontFamily: 'Roboto', color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
-        bodyLarge: TextStyle(fontFamily: 'Roboto', color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.normal),
-        bodyMedium: TextStyle(fontFamily: 'Roboto', color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.normal),
-        bodySmall: TextStyle(fontFamily: 'Roboto', color: AppColors.textHint, fontSize: 12, fontWeight: FontWeight.normal),
-        labelLarge: TextStyle(fontFamily: 'Roboto', color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
-        labelMedium: TextStyle(fontFamily: 'Roboto', color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
-        labelSmall: TextStyle(fontFamily: 'Roboto', color: AppColors.textHint, fontSize: 10, fontWeight: FontWeight.w600),
+        displayLarge: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.bold,
+          letterSpacing: -1.0,
+        ),
+        displayMedium: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.bold,
+          letterSpacing: -0.5,
+        ),
+        displaySmall: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.bold,
+        ),
+        headlineLarge: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textPrimary,
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          letterSpacing: -0.5,
+        ),
+        headlineMedium: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textPrimary,
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.5,
+        ),
+        headlineSmall: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textPrimary,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.3,
+        ),
+        titleLarge: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.2,
+        ),
+        titleMedium: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textPrimary,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.1,
+        ),
+        titleSmall: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textPrimary,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        bodyLarge: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textPrimary,
+          fontSize: 16,
+          fontWeight: FontWeight.normal,
+        ),
+        bodyMedium: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textSecondary,
+          fontSize: 14,
+          fontWeight: FontWeight.normal,
+        ),
+        bodySmall: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textHint,
+          fontSize: 12,
+          fontWeight: FontWeight.normal,
+        ),
+        labelLarge: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textPrimary,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        labelMedium: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        labelSmall: TextStyle(
+          fontFamily: 'Roboto',
+          color: AppColors.textHint,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

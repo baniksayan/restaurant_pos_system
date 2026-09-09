@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/utils/app_validators.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 import '../providers/auth_provider.dart';
 import 'package:restaurant_pos_system/shared/widgets/forms/custom_text_field.dart';
 import 'package:restaurant_pos_system/shared/widgets/animations/fade_in_animation.dart';
 import 'package:restaurant_pos_system/shared/widgets/buttons/animated_button.dart';
 import 'package:restaurant_pos_system/features/menu/views/standalone_menu_view.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class LoginForm extends StatefulWidget {
   final VoidCallback onForgotPassword;
@@ -44,7 +47,8 @@ class _LoginFormState extends State<LoginForm> {
 
       // CHEF DEMO LOGIN — HARD-CODED ONLY
       // If credentials exactly match wizdemo@gmail.com + 123456789 -> Save Chef Session & Enter Chef Screen
-      if (email.toLowerCase() == 'wizdemo@gmail.com' && password == '123456789') {
+      if (email.toLowerCase() == 'wizdemo@gmail.com' &&
+          password == '123456789') {
         await HiveService.setChefSession(true);
         if (mounted) {
           Navigator.of(context).pushReplacementNamed('/chef');
@@ -77,12 +81,7 @@ class _LoginFormState extends State<LoginForm> {
           widget.onLoginSuccess();
         }
       } else if (mounted && authProvider.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.errorMessage!),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppSnackBar.showError(context, authProvider.errorMessage!);
       }
     }
   }
@@ -97,21 +96,17 @@ class _LoginFormState extends State<LoginForm> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             CustomTextField(
-              label: 'User Name',
-              hintText: 'Enter your username',
+              label: AppStrings.auth.userName,
+              hintText: AppStrings.auth.enterUsername,
               controller: _usernameController,
               prefixIcon: Icons.person_outline,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your username';
-                }
-                return null;
-              },
+              validator:
+                  (value) => AppValidators.required(value, 'your username'),
             ),
             const SizedBox(height: 18),
             CustomTextField(
-              label: 'Password',
-              hintText: 'Enter your password',
+              label: AppStrings.auth.password,
+              hintText: AppStrings.auth.enterPassword,
               controller: _passwordController,
               prefixIcon: Icons.lock_outline,
               obscureText: _obscurePassword,
@@ -126,12 +121,8 @@ class _LoginFormState extends State<LoginForm> {
                   });
                 },
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your password';
-                }
-                return null;
-              },
+              validator:
+                  (value) => AppValidators.required(value, 'your password'),
             ),
             // Commented out Remember Me & Forgot Password option per request:
             /*
@@ -196,7 +187,7 @@ class _LoginFormState extends State<LoginForm> {
           width: double.infinity,
           height: 50,
           child: AnimatedButton(
-            text: 'Login',
+            text: AppStrings.login,
             onPressed: _handleLogin,
             isLoading: authProvider.isLoading,
             backgroundColor: AppColors.primary,

@@ -5,14 +5,13 @@ import '../models/chef_order_model.dart';
 class ChefOrderItemTile extends StatelessWidget {
   final ChefOrderItem item;
 
-  const ChefOrderItemTile({
-    super.key,
-    required this.item,
-  });
+  const ChefOrderItemTile({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {
-    final hasNote = item.specialInstructions != null && item.specialInstructions!.trim().isNotEmpty;
+    final hasNote =
+        item.specialInstructions != null &&
+        item.specialInstructions!.trim().isNotEmpty;
     final hasImage = item.imageUrl != null && item.imageUrl!.isNotEmpty;
 
     return Padding(
@@ -26,7 +25,9 @@ class ChefOrderItemTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.25),
+              ),
             ),
             child: Text(
               '${item.quantity}×',
@@ -57,7 +58,10 @@ class ChefOrderItemTile extends StatelessWidget {
                 if (hasNote) ...[
                   const SizedBox(height: 3),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2.5,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFEF3C7), // Amber 100
                       borderRadius: BorderRadius.circular(6),
@@ -95,15 +99,18 @@ class ChefOrderItemTile extends StatelessWidget {
           // Item Image on the Right
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: hasImage
-                ? Image.network(
-                    item.imageUrl!,
-                    width: 44,
-                    height: 44,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
-                  )
-                : _buildPlaceholderImage(),
+            child:
+                hasImage
+                    ? Image.network(
+                      item.imageUrl!,
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
+                      errorBuilder:
+                          (context, error, stackTrace) =>
+                              _buildPlaceholderImage(),
+                    )
+                    : _buildPlaceholderImage(),
           ),
         ],
       ),

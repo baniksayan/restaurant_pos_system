@@ -7,11 +7,7 @@ class AmountCard extends StatelessWidget {
   final double amount;
   final bool isLoading;
 
-  const AmountCard({
-    super.key,
-    required this.amount,
-    this.isLoading = false,
-  });
+  const AmountCard({super.key, required this.amount, this.isLoading = false});
 
   @override
   Widget build(BuildContext context) {

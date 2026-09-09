@@ -38,9 +38,14 @@ class CartFooter extends StatelessWidget {
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.22), // Ultra translucent frosted glass fill
+                    color: Colors.white.withValues(
+                      alpha: 0.22,
+                    ), // Ultra translucent frosted glass fill
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.50),
@@ -80,10 +85,7 @@ class CartFooter extends StatelessWidget {
                           await HapticHelper.triggerFeedback();
                           onPlaceOrder();
                         },
-                        icon: const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 18,
-                        ),
+                        icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                         label: const Text(
                           'Go to Cart',
                           style: TextStyle(

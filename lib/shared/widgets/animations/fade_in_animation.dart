@@ -30,18 +30,12 @@ class _FadeInAnimationState extends State<FadeInAnimation>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
 
     _opacityAnimation = Tween<double>(
       begin: widget.beginOpacity,
       end: widget.endOpacity,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: widget.curve,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: widget.curve));
 
     _startAnimation();
   }
@@ -61,9 +55,6 @@ class _FadeInAnimationState extends State<FadeInAnimation>
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacityAnimation,
-      child: widget.child,
-    );
+    return FadeTransition(opacity: _opacityAnimation, child: widget.child);
   }
 }

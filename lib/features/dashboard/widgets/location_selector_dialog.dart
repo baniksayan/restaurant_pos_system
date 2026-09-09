@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import '../providers/dashboard_provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class LocationSelectorDialog extends StatelessWidget {
   final List<LocationSection> locations;
@@ -17,11 +18,11 @@ class LocationSelectorDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.location_on, color: AppColors.primary),
-          SizedBox(width: 8),
-          Text('Select Location'),
+          const Icon(Icons.location_on, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Text(AppStrings.dashboard.selectLocation),
         ],
       ),
       content: SizedBox(
@@ -45,9 +46,10 @@ class LocationSelectorDialog extends StatelessWidget {
                   color: isSelected ? AppColors.primary : null,
                 ),
               ),
-              trailing: isSelected
-                  ? const Icon(Icons.check, color: AppColors.primary)
-                  : null,
+              trailing:
+                  isSelected
+                      ? const Icon(Icons.check, color: AppColors.primary)
+                      : null,
               selected: isSelected,
               onTap: () {
                 onLocationChanged(location.name);
@@ -60,7 +62,7 @@ class LocationSelectorDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
       ],
     );

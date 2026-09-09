@@ -4,10 +4,7 @@ import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 class AuthAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onBackPressed;
 
-  const AuthAppBar({
-    super.key,
-    this.onBackPressed,
-  });
+  const AuthAppBar({super.key, this.onBackPressed});
 
   @override
   Widget build(BuildContext context) {

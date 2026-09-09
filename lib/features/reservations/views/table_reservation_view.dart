@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:vibration/vibration.dart';
+import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import 'dart:io';
 
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
@@ -11,6 +11,9 @@ import '../models/reservation.dart';
 import '../providers/reservation_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/navigation_provider.dart';
 import '../services/reservation_bill_service.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/app_validators.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class TableReservationView extends StatefulWidget {
   final RestaurantTable table;
@@ -104,16 +107,7 @@ class _TableReservationViewState extends State<TableReservationView> {
     }
   }
 
-  Future<void> _triggerHapticFeedback() async {
-    try {
-      if (await Vibration.hasVibrator()) {
-        await Vibration.vibrate(duration: 50, amplitude: 128);
-      }
-      await HapticFeedback.lightImpact();
-    } catch (e) {
-      await HapticFeedback.lightImpact();
-    }
-  }
+  Future<void> _triggerHapticFeedback() => HapticHelper.triggerFeedback();
 
   @override
   Widget build(BuildContext context) {
@@ -357,8 +351,8 @@ class _TableReservationViewState extends State<TableReservationView> {
           TextFormField(
             controller: _customerNameController,
             decoration: InputDecoration(
-              labelText: 'Customer Name *',
-              hintText: 'Enter full name',
+              labelText: AppStrings.reservations.customerNameRequired,
+              hintText: AppStrings.reservations.enterFullName,
               prefixIcon: const Icon(Icons.person_outline),
               filled: true,
               fillColor: Colors.grey[50],
@@ -374,15 +368,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                 ),
               ),
             ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please enter customer name';
-              }
-              if (value.trim().length < 2) {
-                return 'Name must be at least 2 characters';
-              }
-              return null;
-            },
+            validator: (value) => AppValidators.name(value, 'customer name'),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -393,8 +379,8 @@ class _TableReservationViewState extends State<TableReservationView> {
               LengthLimitingTextInputFormatter(10),
             ],
             decoration: InputDecoration(
-              labelText: 'Phone Number *',
-              hintText: 'Enter 10-digit number',
+              labelText: AppStrings.reservations.phoneNumberRequired,
+              hintText: AppStrings.reservations.enterTenDigitNumber,
               prefixIcon: const Icon(Icons.phone_outlined),
               filled: true,
               fillColor: Colors.grey[50],
@@ -410,15 +396,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                 ),
               ),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter phone number';
-              }
-              if (value.length != 10) {
-                return 'Phone number must be 10 digits';
-              }
-              return null;
-            },
+            validator: AppValidators.indianPhone,
           ),
         ],
       ),
@@ -471,8 +449,8 @@ class _TableReservationViewState extends State<TableReservationView> {
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       decoration: InputDecoration(
-        labelText: 'Number of Persons',
-        hintText: 'Enter number of persons',
+        labelText: AppStrings.reservations.numberOfPersons,
+        hintText: AppStrings.reservations.enterNumberOfPersons,
         prefixIcon: const Icon(Icons.people_outline),
         filled: true,
         fillColor: Colors.grey[50],
@@ -527,7 +505,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                   size: 16,
                 ),
               ),
-              tooltip: 'Reservation Rules',
+              tooltip: AppStrings.reservations.reservationRules,
             ),
           ],
         ),
@@ -536,7 +514,7 @@ class _TableReservationViewState extends State<TableReservationView> {
           children: [
             Expanded(
               child: _buildTimeSelector(
-                label: 'From',
+                label: AppStrings.reservations.from,
                 time: _fromTime,
                 icon: Icons.schedule,
                 onTimeSelected: (time) {
@@ -554,7 +532,7 @@ class _TableReservationViewState extends State<TableReservationView> {
             const SizedBox(width: 16),
             Expanded(
               child: _buildTimeSelector(
-                label: 'To',
+                label: AppStrings.reservations.to,
                 time: _toTime,
                 icon: Icons.schedule_outlined,
                 onTimeSelected: (time) {
@@ -686,7 +664,7 @@ class _TableReservationViewState extends State<TableReservationView> {
     return DropdownButtonFormField<String>(
       initialValue: _selectedOccasion,
       decoration: InputDecoration(
-        labelText: 'Special Occasion',
+        labelText: AppStrings.reservations.specialOccasion,
         filled: true,
         fillColor: Colors.grey[50],
         border: OutlineInputBorder(
@@ -722,8 +700,8 @@ class _TableReservationViewState extends State<TableReservationView> {
       controller: _specialNotesController,
       maxLines: 3,
       decoration: InputDecoration(
-        labelText: 'Special Notes (Optional)',
-        hintText: 'Any special requirements or notes...',
+        labelText: AppStrings.reservations.specialNotesOptional,
+        hintText: AppStrings.reservations.specialNotesHint,
         prefixIcon: const Icon(Icons.note_outlined),
         filled: true,
         fillColor: Colors.grey[50],
@@ -865,11 +843,14 @@ class _TableReservationViewState extends State<TableReservationView> {
           ),
           if (_decoration) ...[
             const SizedBox(height: 4),
-                const Row(
+            const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Decoration:', style: TextStyle(fontSize: 14)),
-                Text('${CurrencyConstants.symbol}500', style: TextStyle(fontSize: 14)),
+                Text(
+                  '${CurrencyConstants.symbol}500',
+                  style: TextStyle(fontSize: 14),
+                ),
               ],
             ),
           ],
@@ -964,7 +945,7 @@ class _TableReservationViewState extends State<TableReservationView> {
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           decoration: InputDecoration(
-            hintText: 'Enter advance amount',
+            hintText: AppStrings.reservations.enterAdvanceAmount,
             prefixIcon: const Icon(Icons.attach_money),
             suffixText: 'USD',
             filled: true,
@@ -977,8 +958,8 @@ class _TableReservationViewState extends State<TableReservationView> {
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
-      helperText:
-        'Minimum: ${CurrencyConstants.symbol}${_minAdvanceAmount.toStringAsFixed(0)} • Maximum: ${CurrencyConstants.symbol}${_calculatedPrice.toStringAsFixed(0)}',
+            helperText:
+                'Minimum: ${CurrencyConstants.symbol}${_minAdvanceAmount.toStringAsFixed(0)} • Maximum: ${CurrencyConstants.symbol}${_calculatedPrice.toStringAsFixed(0)}',
             helperStyle: const TextStyle(fontSize: 11),
           ),
           onChanged: (value) {
@@ -1023,7 +1004,7 @@ class _TableReservationViewState extends State<TableReservationView> {
             ),
           ],
         ),
-            subtitle: const Text('400 - Balloons, flowers & table setup'),
+        subtitle: Text(AppStrings.reservations.decorationSubtitle),
         value: _decoration,
         activeThumbColor: AppColors.primary,
         onChanged: (value) {
@@ -1212,24 +1193,25 @@ class _TableReservationViewState extends State<TableReservationView> {
                 const SizedBox(height: 16),
                 _buildInfoItem(
                   icon: Icons.schedule,
-                  title: 'Advance Booking',
+                  title: AppStrings.reservations.advanceBooking,
                   description: 'Reserve at least 2 hours in advance',
                 ),
                 _buildInfoItem(
                   icon: Icons.access_time,
-                  title: 'Operating Hours',
+                  title: AppStrings.reservations.operatingHours,
                   description:
                       'Reservations until 12:00 AM (restaurant closing)',
                 ),
                 _buildInfoItem(
                   icon: Icons.timer,
-                  title: 'Duration Limits',
+                  title: AppStrings.reservations.durationLimits,
                   description: 'Minimum 30 minutes, Maximum 6 hours',
                 ),
                 _buildInfoItem(
                   icon: Icons.attach_money,
-                  title: 'Advance Payment',
-                  description: 'Minimum 20% of total amount, ${CurrencyConstants.symbol}100 minimum',
+                  title: AppStrings.reservations.advancePayment,
+                  description:
+                      'Minimum 20% of total amount, ${CurrencyConstants.symbol}100 minimum',
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -1294,7 +1276,7 @@ class _TableReservationViewState extends State<TableReservationView> {
   Future<void> _confirmReservation() async {
     if (!_formKey.currentState!.validate()) return;
     if (_fromTime == null || _toTime == null) {
-      _showErrorSnackBar('Please select reservation time');
+      _showErrorSnackBar(AppStrings.reservations.selectReservationTime);
       return;
     }
     if (_timeValidationError != null) {
@@ -1308,7 +1290,7 @@ class _TableReservationViewState extends State<TableReservationView> {
       fromTime: _fromTime!,
       toTime: _toTime!,
     )) {
-      _showErrorSnackBar('Table is already reserved for this time slot');
+      _showErrorSnackBar(AppStrings.reservations.tableAlreadyReserved);
       return;
     }
 
@@ -1349,7 +1331,7 @@ class _TableReservationViewState extends State<TableReservationView> {
         await _generateAndShowAdvanceBill(reservation);
       }
     } else {
-      _showErrorSnackBar('Failed to create reservation');
+      _showErrorSnackBar(AppStrings.reservations.failedToCreateReservation);
     }
   }
 
@@ -1361,13 +1343,13 @@ class _TableReservationViewState extends State<TableReservationView> {
         context: context,
         barrierDismissible: false,
         builder:
-            (context) => const AlertDialog(
+            (context) => AlertDialog(
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Generating PDF bill...'),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(AppStrings.reservations.generatingPdfBill),
                 ],
               ),
             ),
@@ -1437,7 +1419,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                               );
                             },
                             icon: const Icon(Icons.share, size: 18),
-                            label: const Text('Share Bill'),
+                            label: Text(AppStrings.reservations.shareBill),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.green,
                               side: const BorderSide(color: Colors.green),
@@ -1455,7 +1437,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
                             ),
-                            child: const Text('Done'),
+                            child: const Text(AppStrings.done),
                           ),
                         ),
                       ],
@@ -1483,13 +1465,13 @@ class _TableReservationViewState extends State<TableReservationView> {
         context: context,
         barrierDismissible: false,
         builder:
-            (context) => const AlertDialog(
+            (context) => AlertDialog(
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Sharing bill to WhatsApp...'),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(AppStrings.reservations.sharingBillToWhatsApp),
                 ],
               ),
             ),
@@ -1520,12 +1502,10 @@ class _TableReservationViewState extends State<TableReservationView> {
 
           if (!mounted) return;
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please select WhatsApp from the share options'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 3),
-            ),
+          AppSnackBar.showWarning(
+            context,
+            AppStrings.reservations.selectWhatsApp,
+            duration: const Duration(seconds: 3),
           );
         }
       }
@@ -1538,20 +1518,7 @@ class _TableReservationViewState extends State<TableReservationView> {
   }
 
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
+    AppSnackBar.showError(context, message);
   }
 
   @override

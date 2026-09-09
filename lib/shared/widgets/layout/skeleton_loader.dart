@@ -5,26 +5,20 @@ class SkeletonLoader extends StatefulWidget {
   final double? height;
   final BorderRadiusGeometry? borderRadius;
 
-  const SkeletonLoader({
-    super.key,
-    this.width,
-    this.height,
-    this.borderRadius,
-  });
+  const SkeletonLoader({super.key, this.width, this.height, this.borderRadius});
 
   const SkeletonLoader.rectangular({
     super.key,
     this.width,
     required this.height,
     BorderRadiusGeometry? borderRadius,
-  }) : borderRadius = borderRadius ?? const BorderRadius.all(Radius.circular(8));
+  }) : borderRadius =
+           borderRadius ?? const BorderRadius.all(Radius.circular(8));
 
-  const SkeletonLoader.circular({
-    super.key,
-    required double size,
-  })  : width = size,
-        height = size,
-        borderRadius = const BorderRadius.all(Radius.circular(999));
+  const SkeletonLoader.circular({super.key, required double size})
+    : width = size,
+      height = size,
+      borderRadius = const BorderRadius.all(Radius.circular(999));
 
   @override
   State<SkeletonLoader> createState() => _SkeletonLoaderState();
@@ -43,12 +37,10 @@ class _SkeletonLoaderState extends State<SkeletonLoader>
       duration: const Duration(milliseconds: 1000),
     );
 
-    _animation = Tween<double>(begin: 0.45, end: 0.9).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeInOut,
-      ),
-    );
+    _animation = Tween<double>(
+      begin: 0.45,
+      end: 0.9,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     _controller.repeat(reverse: true);
   }

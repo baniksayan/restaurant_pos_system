@@ -1,10 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:restaurant_pos_system/core/constants/app_assets.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_gradients.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/features/profile/views/profile_view.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
 import 'chef_order_history_dialog.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class ChefDrawer extends StatelessWidget {
   const ChefDrawer({super.key});
@@ -37,18 +40,24 @@ class ChefDrawer extends StatelessWidget {
                   // Scrollable Content
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Section: Navigation & Account
-                          _buildSectionHeader('KITCHEN MENU', Icons.grid_view_rounded),
+                          _buildSectionHeader(
+                            'KITCHEN MENU',
+                            Icons.grid_view_rounded,
+                          ),
                           const SizedBox(height: 8),
 
                           // Option 1: Order History (All)
                           _buildCleanNavTile(
-                            title: 'Order History (All)',
-                            subtitle: 'View past completed orders',
+                            title: AppStrings.chef.orderHistory,
+                            subtitle: AppStrings.chef.orderHistorySubtitle,
                             icon: Icons.history_rounded,
                             onTap: () {
                               Navigator.pop(context);
@@ -59,14 +68,16 @@ class ChefDrawer extends StatelessWidget {
 
                           // Option 2: Chef Profile (as it is)
                           _buildCleanNavTile(
-                            title: 'Chef Profile',
-                            subtitle: 'Kitchen account details',
+                            title: AppStrings.chef.chefProfile,
+                            subtitle: AppStrings.chef.chefProfileSubtitle,
                             icon: Icons.person_outline_rounded,
                             onTap: () {
                               Navigator.pop(context);
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const ProfileView()),
+                                MaterialPageRoute(
+                                  builder: (context) => const ProfileView(),
+                                ),
                               );
                             },
                           ),
@@ -134,11 +145,7 @@ class ChefDrawer extends StatelessWidget {
             height: 40,
             padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.primary, AppColors.primaryDark],
-              ),
+              gradient: AppGradients.primary,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
@@ -151,13 +158,14 @@ class ChefDrawer extends StatelessWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(
-                'assets/logo/transparent.png',
+                AppAssets.logoTransparent,
                 fit: BoxFit.contain,
-                errorBuilder: (ctx, err, stack) => const Icon(
-                  Icons.soup_kitchen_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
+                errorBuilder:
+                    (ctx, err, stack) => const Icon(
+                      Icons.soup_kitchen_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
               ),
             ),
           ),
@@ -220,11 +228,7 @@ class ChefDrawer extends StatelessWidget {
                   color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  icon,
-                  color: AppColors.primary,
-                  size: 16,
-                ),
+                child: Icon(icon, color: AppColors.primary, size: 16),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -267,10 +271,7 @@ class ChefDrawer extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.5),
         border: Border(
-          top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.7),
-            width: 1,
-          ),
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.7), width: 1),
         ),
       ),
       child: Material(
@@ -290,11 +291,7 @@ class ChefDrawer extends StatelessWidget {
             ),
             child: const Row(
               children: [
-                Icon(
-                  Icons.logout_rounded,
-                  color: Colors.redAccent,
-                  size: 18,
-                ),
+                Icon(Icons.logout_rounded, color: Colors.redAccent, size: 18),
                 SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -344,15 +341,16 @@ class ChefDrawer extends StatelessWidget {
               Positioned.fill(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 3.5, sigmaY: 3.5),
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.08),
-                  ),
+                  child: Container(color: Colors.black.withValues(alpha: 0.08)),
                 ),
               ),
               SafeArea(
                 child: Center(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 24,
+                    ),
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 380),
                       child: ClipRRect(
@@ -414,12 +412,19 @@ class ChefDrawer extends StatelessWidget {
                                   children: [
                                     Expanded(
                                       child: OutlinedButton(
-                                        onPressed: () => Navigator.pop(dialogContext),
+                                        onPressed:
+                                            () => Navigator.pop(dialogContext),
                                         style: OutlinedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(vertical: 13),
-                                          side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 13,
+                                          ),
+                                          side: const BorderSide(
+                                            color: Color(0xFFCBD5E1),
+                                          ),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
                                           ),
                                         ),
                                         child: const Text(
@@ -437,23 +442,37 @@ class ChefDrawer extends StatelessWidget {
                                       child: ElevatedButton(
                                         onPressed: () async {
                                           Navigator.pop(dialogContext);
-                                          Navigator.pop(context); // Close drawer
+                                          Navigator.pop(
+                                            context,
+                                          ); // Close drawer
 
                                           showDialog(
                                             context: context,
                                             barrierDismissible: false,
                                             barrierColor: Colors.transparent,
-                                            builder: (ctx) => const HourglassLoadingOverlay(
-                                              message: 'Signing out of KDS...',
-                                            ),
+                                            builder:
+                                                (
+                                                  ctx,
+                                                ) => const HourglassLoadingOverlay(
+                                                  message:
+                                                      'Signing out of KDS...',
+                                                ),
                                           );
 
                                           await HiveService.clearChefSession();
-                                          await Future.delayed(const Duration(milliseconds: 400));
+                                          await Future.delayed(
+                                            const Duration(milliseconds: 400),
+                                          );
 
                                           if (context.mounted) {
-                                            Navigator.of(context, rootNavigator: true).pop();
-                                            Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
+                                            Navigator.of(
+                                              context,
+                                              rootNavigator: true,
+                                            ).pop();
+                                            Navigator.of(
+                                              context,
+                                              rootNavigator: true,
+                                            ).pushNamedAndRemoveUntil(
                                               '/',
                                               (Route<dynamic> route) => false,
                                             );
@@ -463,9 +482,13 @@ class ChefDrawer extends StatelessWidget {
                                           backgroundColor: Colors.redAccent,
                                           foregroundColor: Colors.white,
                                           elevation: 0,
-                                          padding: const EdgeInsets.symmetric(vertical: 13),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 13,
+                                          ),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
                                           ),
                                         ),
                                         child: const Text(

@@ -6,6 +6,7 @@ import 'package:restaurant_pos_system/features/dashboard/views/main_navigation.d
 import '../widgets/login_form.dart';
 import '../widgets/login_header.dart';
 import 'forgot_password_view.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class LoginView extends StatelessWidget {
   const LoginView({super.key});
@@ -150,7 +151,7 @@ class LoginView extends StatelessWidget {
     return const Column(
       children: [
         Text(
-          'Powered by Wizard Communications Pvt. Ltd.',
+          AppStrings.poweredBy,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
@@ -160,7 +161,7 @@ class LoginView extends StatelessWidget {
         ),
         SizedBox(height: 3),
         Text(
-          'Advanced Restaurant Management Solution',
+          AppStrings.solutionTagline,
           style: TextStyle(
             fontSize: 10.5,
             fontWeight: FontWeight.w400,

@@ -12,6 +12,8 @@ import '../widgets/category_tabs.dart';
 import '../widgets/menu_grid.dart';
 import '../widgets/cart_footer.dart';
 import 'package:restaurant_pos_system/features/order_taking/views/cart_view.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class StandaloneMenuView extends StatefulWidget {
   final String? autoSelectedTableId;
@@ -102,14 +104,10 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
 
             // Show error in UI
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'No outlet ID available. Menu cannot be loaded.',
-                  ),
-                  backgroundColor: Colors.red,
-                  duration: Duration(seconds: 5),
-                ),
+              AppSnackBar.showError(
+                context,
+                'No outlet ID available. Menu cannot be loaded.',
+                duration: const Duration(seconds: 5),
               );
             }
 
@@ -154,12 +152,7 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
     } catch (e) {
       debugPrint('[StandaloneMenu] Error initializing menu: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error initializing menu: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppSnackBar.showError(context, 'Error initializing menu: $e');
       }
     }
   }
@@ -226,12 +219,10 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
     );
 
     // Show confirmation
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$itemName added to cart for $_selectedTableName!'),
-        backgroundColor: Colors.green,
-        duration: const Duration(milliseconds: 1000),
-      ),
+    AppSnackBar.showSuccess(
+      context,
+      '$itemName added to cart for $_selectedTableName!',
+      duration: const Duration(milliseconds: 1000),
     );
   }
 
@@ -361,7 +352,9 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
                                   borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.1),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.1,
+                                      ),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
@@ -466,13 +459,9 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
                                   );
                                   final outletId = HiveService.getOutletId();
                                   if (outletId == null || outletId <= 0) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'No valid outlet ID available. Cannot load menu.',
-                                        ),
-                                        backgroundColor: Colors.red,
-                                      ),
+                                    AppSnackBar.showError(
+                                      context,
+                                      'No valid outlet ID available. Cannot load menu.',
                                     );
                                     return;
                                   }
@@ -481,7 +470,7 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
                                   );
                                 },
                                 icon: const Icon(Icons.refresh),
-                                label: const Text('Try Again'),
+                                label: const Text(AppStrings.tryAgain),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primary,
                                   foregroundColor: Colors.white,
@@ -563,13 +552,9 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
                                 onPressed: () async {
                                   final outletId = HiveService.getOutletId();
                                   if (outletId == null || outletId <= 0) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'No valid outlet ID available. Cannot load menu.',
-                                        ),
-                                        backgroundColor: Colors.red,
-                                      ),
+                                    AppSnackBar.showError(
+                                      context,
+                                      'No valid outlet ID available. Cannot load menu.',
                                     );
                                     return;
                                   }
@@ -578,7 +563,7 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
                                   );
                                 },
                                 icon: const Icon(Icons.refresh),
-                                label: const Text('Load Menu'),
+                                label: Text(AppStrings.menu.loadMenu),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primary,
                                   foregroundColor: Colors.white,

@@ -7,16 +7,13 @@ import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import 'package:restaurant_pos_system/features/menu/providers/menu_provider.dart';
 import '../providers/animated_cart_provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class CartItemCard extends StatelessWidget {
   final CartItem item;
   final VoidCallback onEdit;
 
-  const CartItemCard({
-    super.key,
-    required this.item,
-    required this.onEdit,
-  });
+  const CartItemCard({super.key, required this.item, required this.onEdit});
 
   String _getImageUrl(BuildContext context) {
     if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
@@ -134,7 +131,8 @@ class CartItemCard extends StatelessWidget {
                 ),
 
                 // Special Notes (if present)
-                if (item.specialNotes != null && item.specialNotes!.isNotEmpty) ...[
+                if (item.specialNotes != null &&
+                    item.specialNotes!.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   _buildSpecialInstructions(context),
                 ],
@@ -143,8 +141,10 @@ class CartItemCard extends StatelessWidget {
 
                 // Bottom Calculation Bar
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(10),
@@ -204,8 +204,9 @@ class CartItemCard extends StatelessWidget {
                               ),
                             ),
                             Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8.0),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0,
+                              ),
                               child: Text(
                                 '${item.quantity}',
                                 style: const TextStyle(
@@ -319,8 +320,10 @@ class CartItemCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: accentColor,
                     borderRadius: BorderRadius.circular(12),
@@ -334,7 +337,8 @@ class CartItemCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (item.specialNotes != null && item.specialNotes!.isNotEmpty) ...[
+                if (item.specialNotes != null &&
+                    item.specialNotes!.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   _buildSpecialInstructions(context),
                 ],
@@ -351,7 +355,7 @@ class CartItemCard extends StatelessWidget {
                         child: _buildValueColumn(
                           value:
                               '${CurrencyConstants.symbol}${item.price.toStringAsFixed(2)}',
-                          label: 'Unit Price',
+                          label: AppStrings.unitPrice,
                           valueColor: const Color(0xFF1E293B),
                         ),
                       ),
@@ -359,7 +363,7 @@ class CartItemCard extends StatelessWidget {
                       Expanded(
                         child: _buildValueColumn(
                           value: '${item.quantity}',
-                          label: 'Quantity',
+                          label: AppStrings.quantity,
                           valueColor: accentColor,
                         ),
                       ),
@@ -368,7 +372,7 @@ class CartItemCard extends StatelessWidget {
                         child: _buildValueColumn(
                           value:
                               '${CurrencyConstants.symbol}${(item.price * item.quantity).toStringAsFixed(2)}',
-                          label: 'Total',
+                          label: AppStrings.total,
                           valueColor: accentColor,
                         ),
                       ),
@@ -401,10 +405,7 @@ class CartItemCard extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 11,
-            color: Color(0xFF64748B),
-          ),
+          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
         ),
       ],
     );
@@ -467,7 +468,9 @@ class CartItemCard extends StatelessWidget {
                 Positioned.fill(
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 3.5, sigmaY: 3.5),
-                    child: Container(color: Colors.black.withValues(alpha: 0.08)),
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.08),
+                    ),
                   ),
                 ),
                 SafeArea(
@@ -498,8 +501,12 @@ class CartItemCard extends StatelessWidget {
                                 ],
                               ),
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  24,
+                                  20,
+                                  20,
+                                ),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -655,7 +662,9 @@ class CartItemCard extends StatelessWidget {
                 Positioned.fill(
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 3.5, sigmaY: 3.5),
-                    child: Container(color: Colors.black.withValues(alpha: 0.08)),
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.08),
+                    ),
                   ),
                 ),
                 SafeArea(
@@ -686,8 +695,12 @@ class CartItemCard extends StatelessWidget {
                                 ],
                               ),
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  24,
+                                  20,
+                                  20,
+                                ),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -837,7 +850,7 @@ class CartItemCard extends StatelessWidget {
             children: [
               Icon(Icons.note_alt, color: Colors.blue[700], size: 24),
               const SizedBox(width: 8),
-              const Text('Special Instructions'),
+              Text(AppStrings.orderTaking.specialInstructions),
             ],
           ),
           content: SingleChildScrollView(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class DashboardHeader extends StatelessWidget {
   final VoidCallback onMenuPressed;
@@ -63,7 +64,7 @@ class DashboardHeader extends StatelessWidget {
                 onPressed: onAddOrderPressed,
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                 padding: const EdgeInsets.all(6),
-                tooltip: 'New Order',
+                tooltip: AppStrings.dashboard.newOrder,
               ),
             ),
           ],

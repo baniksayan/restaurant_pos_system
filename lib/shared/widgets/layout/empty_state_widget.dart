@@ -6,6 +6,7 @@ class EmptyStateWidget extends StatelessWidget {
   final String title;
   final String description;
   final Widget? action;
+  final Color? iconColor;
 
   const EmptyStateWidget({
     super.key,
@@ -13,12 +14,24 @@ class EmptyStateWidget extends StatelessWidget {
     required this.title,
     required this.description,
     this.action,
+    this.iconColor,
+  });
+
+  /// Factory constructor for error states
+  const EmptyStateWidget.error({
+    super.key,
+    this.icon = Icons.error_outline_rounded,
+    this.title = 'Something went wrong',
+    required this.description,
+    this.action,
+    this.iconColor = AppColors.error,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+    final effectiveColor = iconColor ?? theme.colorScheme.primary;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
@@ -30,14 +43,10 @@ class EmptyStateWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                color: effectiveColor.withValues(alpha: 0.05),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                size: 48,
-                color: theme.colorScheme.primary,
-              ),
+              child: Icon(icon, size: 48, color: effectiveColor),
             ),
             const SizedBox(height: 20),
             Text(
@@ -56,10 +65,7 @@ class EmptyStateWidget extends StatelessWidget {
                 color: AppColors.textSecondary,
               ),
             ),
-            if (action != null) ...[
-              const SizedBox(height: 24),
-              action!,
-            ],
+            if (action != null) ...[const SizedBox(height: 24), action!],
           ],
         ),
       ),

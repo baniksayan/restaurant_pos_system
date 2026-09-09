@@ -13,6 +13,8 @@ import '../widgets/amount_card.dart';
 import '../widgets/payment_methods.dart';
 import '../widgets/qr_section.dart';
 import '../widgets/confirm_button.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 typedef PaymentView = PaymentPage;
 
@@ -188,7 +190,7 @@ class _PaymentPageState extends State<PaymentPage>
         elevation: 0,
         backgroundColor: theme.scaffoldBackgroundColor,
         foregroundColor: theme.colorScheme.onSurface,
-        title: const Text('Payment'),
+        title: Text(AppStrings.payment.paymentTitle),
         centerTitle: false,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new),
@@ -358,12 +360,7 @@ class _PaymentPageState extends State<PaymentPage>
       setState(() => _processing = false);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Payment failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.showError(context, 'Payment failed: $e');
       }
       return;
     }

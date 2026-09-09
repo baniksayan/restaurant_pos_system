@@ -13,6 +13,7 @@ import 'package:restaurant_pos_system/features/order_taking/views/cart_view.dart
 import 'package:restaurant_pos_system/features/reports/views/reports_view.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/cart_animation_overlay.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -107,17 +108,17 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<NavigationItem> _navigationItems = [
     NavigationItem(
       icon: Icons.table_restaurant,
-      label: 'Tables',
+      label: AppStrings.dashboard.tables,
       activeColor: AppColors.primary,
     ),
     NavigationItem(
       icon: Icons.restaurant_menu,
-      label: 'Menu',
+      label: AppStrings.dashboard.menuLabel,
       activeColor: Colors.orange,
     ),
     NavigationItem(
       icon: Icons.shopping_cart,
-      label: 'Cart',
+      label: AppStrings.dashboard.cart,
       activeColor: Colors.green,
     ),
   ];
@@ -199,60 +200,60 @@ class _MainNavigationState extends State<MainNavigation> {
               navProvider.navigateToIndex(0);
             },
             child: Scaffold(
-            body: CartAnimationOverlay(
-              key: _overlayKey,
-              child: PageView(
-                controller: _pageController,
-                physics:
-                    navProvider.currentIndex == 3
-                        ? const NeverScrollableScrollPhysics()
-                        : const ClampingScrollPhysics(),
-                onPageChanged: (index) {
-                  if (navProvider.currentIndex != index) {
-                    navProvider.navigateToIndex(index);
-                  }
-                },
-                children: [
-                  // Tables Tab
-                  WaiterDashboardView(
-                    onTableSelected: (tableId, tableName) {
-                      navProvider.selectTable(
-                        tableId,
-                        tableName,
-                        navProvider.selectedLocation ?? '',
-                      );
-                    },
-                  ),
-                  // Menu Tab
-                  MenuView(
-                    selectedTableId: navProvider.selectedTableId,
-                    tableName: navProvider.selectedTableName,
-                    selectedLocation: navProvider.selectedLocation,
-                    onAddToCart: _handleAddToCart,
-                  ),
-                  // Cart Tab
-                  CartView(
-                    tableId:
-                        navProvider.selectedTableId ??
-                        navProvider.selectedOrderType,
-                    tableName:
-                        navProvider.selectedTableName ??
-                        (navProvider.selectedOrderType == 'PhoneOrder'
-                            ? 'Phone Order - ${navProvider.customerName ?? "Unknown"}'
-                            : navProvider.selectedOrderType == 'Takeaway'
-                            ? 'Takeaway - ${navProvider.customerName ?? "Unknown"}'
-                            : null),
-                    selectedLocation: navProvider.selectedLocation,
-                  ),
-                  if (navProvider.currentIndex == 3) const ReportsView(),
-                ],
+              body: CartAnimationOverlay(
+                key: _overlayKey,
+                child: PageView(
+                  controller: _pageController,
+                  physics:
+                      navProvider.currentIndex == 3
+                          ? const NeverScrollableScrollPhysics()
+                          : const ClampingScrollPhysics(),
+                  onPageChanged: (index) {
+                    if (navProvider.currentIndex != index) {
+                      navProvider.navigateToIndex(index);
+                    }
+                  },
+                  children: [
+                    // Tables Tab
+                    WaiterDashboardView(
+                      onTableSelected: (tableId, tableName) {
+                        navProvider.selectTable(
+                          tableId,
+                          tableName,
+                          navProvider.selectedLocation ?? '',
+                        );
+                      },
+                    ),
+                    // Menu Tab
+                    MenuView(
+                      selectedTableId: navProvider.selectedTableId,
+                      tableName: navProvider.selectedTableName,
+                      selectedLocation: navProvider.selectedLocation,
+                      onAddToCart: _handleAddToCart,
+                    ),
+                    // Cart Tab
+                    CartView(
+                      tableId:
+                          navProvider.selectedTableId ??
+                          navProvider.selectedOrderType,
+                      tableName:
+                          navProvider.selectedTableName ??
+                          (navProvider.selectedOrderType == 'PhoneOrder'
+                              ? 'Phone Order - ${navProvider.customerName ?? "Unknown"}'
+                              : navProvider.selectedOrderType == 'Takeaway'
+                              ? 'Takeaway - ${navProvider.customerName ?? "Unknown"}'
+                              : null),
+                      selectedLocation: navProvider.selectedLocation,
+                    ),
+                    if (navProvider.currentIndex == 3) const ReportsView(),
+                  ],
+                ),
+              ),
+              bottomNavigationBar: _buildBottomNavigationBar(
+                context,
+                navProvider,
               ),
             ),
-            bottomNavigationBar: _buildBottomNavigationBar(
-              context,
-              navProvider,
-            ),
-          ),
           );
         },
       ),
@@ -287,11 +288,10 @@ class _MainNavigationState extends State<MainNavigation> {
               ),
               child: Row(
                 children: List.generate(_navigationItems.length, (index) {
-                  final int safeCurrentIndex =
-                      navProvider.currentIndex.clamp(
-                        0,
-                        _navigationItems.length - 1,
-                      );
+                  final int safeCurrentIndex = navProvider.currentIndex.clamp(
+                    0,
+                    _navigationItems.length - 1,
+                  );
                   final bool isSelected = index == safeCurrentIndex;
                   final item = _navigationItems[index];
                   return Expanded(
@@ -400,7 +400,9 @@ class _NavBarItem extends StatelessWidget {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFFF6B6B).withValues(alpha: 0.4),
+                            color: const Color(
+                              0xFFFF6B6B,
+                            ).withValues(alpha: 0.4),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),

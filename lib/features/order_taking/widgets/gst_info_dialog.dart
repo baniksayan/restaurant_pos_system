@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import 'package:restaurant_pos_system/features/billing/providers/tax_provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class GSTInfoDialog extends StatelessWidget {
   const GSTInfoDialog({super.key});
@@ -93,7 +94,9 @@ class GSTInfoDialog extends StatelessWidget {
                                       Container(
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
-                                          color: Colors.blue.withValues(alpha: 0.12),
+                                          color: Colors.blue.withValues(
+                                            alpha: 0.12,
+                                          ),
                                           borderRadius: BorderRadius.circular(
                                             12,
                                           ),
@@ -178,10 +181,14 @@ class GSTInfoDialog extends StatelessWidget {
                                     Container(
                                       padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
-                                        color: Colors.green.withValues(alpha: 0.1),
+                                        color: Colors.green.withValues(
+                                          alpha: 0.1,
+                                        ),
                                         borderRadius: BorderRadius.circular(10),
                                         border: Border.all(
-                                          color: Colors.green.withValues(alpha: 0.25),
+                                          color: Colors.green.withValues(
+                                            alpha: 0.25,
+                                          ),
                                         ),
                                       ),
                                       child: Row(
@@ -216,10 +223,14 @@ class GSTInfoDialog extends StatelessWidget {
                                     Container(
                                       padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
-                                        color: Colors.orange.withValues(alpha: 0.1),
+                                        color: Colors.orange.withValues(
+                                          alpha: 0.1,
+                                        ),
                                         borderRadius: BorderRadius.circular(10),
                                         border: Border.all(
-                                          color: Colors.orange.withValues(alpha: 0.25),
+                                          color: Colors.orange.withValues(
+                                            alpha: 0.25,
+                                          ),
                                         ),
                                       ),
                                       child: Row(
@@ -323,7 +334,9 @@ class GSTInfoDialog extends StatelessWidget {
                                               Icons.refresh_rounded,
                                               size: 16,
                                             ),
-                                            label: const Text('Refresh'),
+                                            label: Text(
+                                              AppStrings.orderTaking.refresh,
+                                            ),
                                             style: OutlinedButton.styleFrom(
                                               foregroundColor: Colors.blue[700],
                                               padding:
@@ -331,7 +344,9 @@ class GSTInfoDialog extends StatelessWidget {
                                                     vertical: 12,
                                                   ),
                                               side: BorderSide(
-                                                color: Colors.blue.withValues(alpha: 0.3),
+                                                color: Colors.blue.withValues(
+                                                  alpha: 0.3,
+                                                ),
                                               ),
                                               shape: RoundedRectangleBorder(
                                                 borderRadius:

@@ -43,9 +43,5 @@ class OrderItem {
   final int quantity;
   final String? notes;
 
-  OrderItem({
-    required this.menuItem,
-    required this.quantity,
-    this.notes,
-  });
+  OrderItem({required this.menuItem, required this.quantity, this.notes});
 }

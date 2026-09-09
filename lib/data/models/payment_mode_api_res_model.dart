@@ -5,10 +5,10 @@ class PaymentModeApiResModel {
   int? statusCode;
 
   PaymentModeApiResModel({
-    this.data, 
-    this.message, 
-    this.isSuccess, 
-    this.statusCode
+    this.data,
+    this.message,
+    this.isSuccess,
+    this.statusCode,
   });
 
   PaymentModeApiResModel.fromJson(Map<String, dynamic> json) {

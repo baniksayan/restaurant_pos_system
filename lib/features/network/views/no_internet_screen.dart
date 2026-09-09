@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import '../providers/network_provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class NoInternetScreen extends StatefulWidget {
   const NoInternetScreen({super.key});
@@ -29,27 +31,19 @@ class _NoInternetScreenState extends State<NoInternetScreen>
       duration: const Duration(seconds: 2),
       vsync: this,
     );
-    
+
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
 
-    _bounceAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _bounceController,
-      curve: Curves.elasticOut,
-    ));
+    _bounceAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut),
+    );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
   }
 
   void _startAnimations() async {
@@ -76,10 +70,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFF8F9FF),
-              Color(0xFFE8F0FF),
-            ],
+            colors: [Color(0xFFF8F9FF), Color(0xFFE8F0FF)],
           ),
         ),
         child: SafeArea(
@@ -120,24 +111,24 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                 // Main message
                 FadeTransition(
                   opacity: _fadeAnimation,
-                  child: const Column(
+                  child: Column(
                     children: [
                       Text(
-                        'Uh oh!',
-                        style: TextStyle(
+                        AppStrings.network.uhOh,
+                        style: const TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
                           letterSpacing: 1.2,
                         ),
                       ),
-                      
-                      SizedBox(height: 16),
-                      
+
+                      const SizedBox(height: 16),
+
                       Text(
-                        'Looks like you haven\'t turned on your mobile data or WiFi',
+                        AppStrings.network.noDataOrWifi,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w500,
                           color: AppColors.textSecondary,
@@ -145,12 +136,12 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                         ),
                       ),
 
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
 
                       Text(
-                        'Please check your internet connection and try again',
+                        AppStrings.network.checkInternetAndRetry,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w400,
                           color: AppColors.textHint,
@@ -181,26 +172,32 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 elevation: 8,
-                                shadowColor: AppColors.primary.withValues(alpha: 0.4),
+                                shadowColor: AppColors.primary.withValues(
+                                  alpha: 0.4,
+                                ),
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  if (networkProvider.status == NetworkStatus.checking)
+                                  if (networkProvider.status ==
+                                      NetworkStatus.checking)
                                     Container(
                                       width: 20,
                                       height: 20,
                                       margin: const EdgeInsets.only(right: 12),
                                       child: const CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white,
-                                        ),
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
                                       ),
                                     )
                                   else
@@ -212,9 +209,10 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                                       ),
                                     ),
                                   Text(
-                                    networkProvider.status == NetworkStatus.checking
+                                    networkProvider.status ==
+                                            NetworkStatus.checking
                                         ? 'Checking...'
-                                        : 'Try Again',
+                                        : AppStrings.tryAgain,
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
@@ -236,11 +234,9 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                         child: OutlinedButton(
                           onPressed: () {
                             // You can integrate app_settings package here
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please check your device network settings'),
-                                backgroundColor: AppColors.info,
-                              ),
+                            AppSnackBar.showInfo(
+                              context,
+                              AppStrings.network.checkDeviceSettings,
                             );
                           },
                           style: OutlinedButton.styleFrom(
@@ -253,18 +249,18 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                               width: 2,
                             ),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.settings_rounded,
                                 size: 18,
                                 color: AppColors.primary,
                               ),
-                              SizedBox(width: 8),
+                              const SizedBox(width: 8),
                               Text(
-                                'Open Settings',
-                                style: TextStyle(
+                                AppStrings.network.openSettings,
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.primary,
@@ -295,17 +291,17 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                     ),
                     child: Column(
                       children: [
-                        const Row(
+                        Row(
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.lightbulb_outline_rounded,
                               color: AppColors.warning,
                               size: 20,
                             ),
-                            SizedBox(width: 8),
+                            const SizedBox(width: 8),
                             Text(
-                              'Quick Tips',
-                              style: TextStyle(
+                              AppStrings.network.quickTips,
+                              style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textPrimary,
@@ -314,9 +310,9 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                           ],
                         ),
                         const SizedBox(height: 12),
-                        _buildTip('Turn on WiFi or Mobile Data'),
-                        _buildTip('Check if Airplane mode is off'),
-                        _buildTip('Move to an area with better signal'),
+                        _buildTip(AppStrings.network.tipWifi),
+                        _buildTip(AppStrings.network.tipAirplane),
+                        _buildTip(AppStrings.network.tipSignal),
                       ],
                     ),
                   ),

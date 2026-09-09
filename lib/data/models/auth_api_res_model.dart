@@ -83,9 +83,7 @@ class Data {
     }
     posToken = json['posToken'];
     location =
-        json['location'] != null
-            ? Location.fromJson(json['location'])
-            : null;
+        json['location'] != null ? Location.fromJson(json['location']) : null;
   }
 
   Map<String, dynamic> toJson() {
@@ -105,8 +103,7 @@ class Data {
           permissionMenuList!.map((v) => v.toJson()).toList();
     }
     if (bindParentMenu != null) {
-      data['bindParentMenu'] =
-          bindParentMenu!.map((v) => v.toJson()).toList();
+      data['bindParentMenu'] = bindParentMenu!.map((v) => v.toJson()).toList();
     }
     if (bindMenu != null) {
       data['bindMenu'] = bindMenu!.map((v) => v.toJson()).toList();

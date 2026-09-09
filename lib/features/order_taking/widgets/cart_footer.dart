@@ -46,12 +46,19 @@ class _CartFooterState extends State<CartFooter> {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.72), // Transparent frosted glass fill
+                  color: Colors.white.withValues(
+                    alpha: 0.72,
+                  ), // Transparent frosted glass fill
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.85), // Clean white glass border
+                    color: Colors.white.withValues(
+                      alpha: 0.85,
+                    ), // Clean white glass border
                     width: 1.5,
                   ),
                   boxShadow: [
@@ -178,7 +185,11 @@ class _CartFooterState extends State<CartFooter> {
                         "${CurrencyConstants.symbol}${gstAmount.toStringAsFixed(2)}",
                       ),
                       const SizedBox(height: 8),
-                      Divider(thickness: 1, height: 1, color: Colors.grey.withValues(alpha: 0.3)),
+                      Divider(
+                        thickness: 1,
+                        height: 1,
+                        color: Colors.grey.withValues(alpha: 0.3),
+                      ),
                       const SizedBox(height: 8),
                       _buildPriceRow(
                         "TOTAL AMOUNT:",
@@ -236,14 +247,20 @@ class _CartFooterState extends State<CartFooter> {
         icon: const Icon(Icons.print_rounded, size: 18),
         label: const Text(
           'Generate KOT',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.3,
+          ),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF16A34A).withValues(alpha: 0.92),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 11),
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
     );

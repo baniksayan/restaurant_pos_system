@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/menu_provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class MenuSearchBar extends StatelessWidget {
   const MenuSearchBar({super.key});
@@ -21,12 +22,16 @@ class MenuSearchBar extends StatelessWidget {
         ],
       ),
       child: TextField(
-        onChanged: (value) => context.read<MenuProvider>().updateSearchQuery(value),
-        decoration: const InputDecoration(
-          hintText: 'Search dishes...',
-          prefixIcon: Icon(Icons.search, color: Colors.grey),
+        onChanged:
+            (value) => context.read<MenuProvider>().updateSearchQuery(value),
+        decoration: InputDecoration(
+          hintText: AppStrings.menu.searchDishes,
+          prefixIcon: const Icon(Icons.search, color: Colors.grey),
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 15,
+          ),
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/shared/widgets/cards/app_card.dart';
 
 class OrderSummaryCard extends StatelessWidget {
   final String orderNumber;
@@ -13,19 +14,7 @@ class OrderSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -86,14 +75,9 @@ class OrderSummaryCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _buildInfoItem(
-                  'Table',
-                  cartItems.first.tableName,
-                ),
+                child: _buildInfoItem('Table', cartItems.first.tableName),
               ),
-              Expanded(
-                child: _buildInfoItem('Items', '${cartItems.length}'),
-              ),
+              Expanded(child: _buildInfoItem('Items', '${cartItems.length}')),
             ],
           ),
           const SizedBox(height: 8),

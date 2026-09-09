@@ -11,6 +11,8 @@ import 'package:restaurant_pos_system/shared/services/pdf_service.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class OrderDetailView extends StatefulWidget {
   final OrderItem order;
@@ -923,12 +925,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
 
   void _navigateToPaymentWithBillId() {
     if (_billId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bill ID not available'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      AppSnackBar.showError(context, AppStrings.orders.billIdNotAvailable);
       return;
     }
 
@@ -1082,25 +1079,16 @@ class _OrderDetailViewState extends State<OrderDetailView> {
 
       // Show success message
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Order items loaded to cart (${cartItems.length} items)',
-            ),
-            backgroundColor: AppColors.success,
-            duration: const Duration(seconds: 1),
-          ),
+        AppSnackBar.showSuccess(
+          context,
+          'Order items loaded to cart (${cartItems.length} items)',
+          duration: const Duration(seconds: 1),
         );
       }
     } catch (e) {
       debugPrint('[OrderDetailView] Error loading items into cart: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading order items: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppSnackBar.showError(context, 'Error loading order items: $e');
       }
     }
   }
@@ -1146,20 +1134,13 @@ class _OrderDetailViewState extends State<OrderDetailView> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bill regenerated successfully!'),
-          backgroundColor: AppColors.success,
-        ),
+      AppSnackBar.showSuccess(
+        context,
+        AppStrings.orders.billRegeneratedSuccessfully,
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error regenerating bill: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppSnackBar.showError(context, 'Error regenerating bill: $e');
       }
     }
   }

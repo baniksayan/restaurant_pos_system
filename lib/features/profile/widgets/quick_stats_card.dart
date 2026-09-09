@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class QuickStatsCard extends StatelessWidget {
   const QuickStatsCard({super.key});
@@ -37,7 +38,7 @@ class QuickStatsCard extends StatelessWidget {
               Expanded(
                 child: _buildStatItem(
                   icon: Icons.attach_money,
-                  title: 'Sales',
+                  title: AppStrings.profile.sales,
                   value: '${CurrencyConstants.symbol}15,240',
                   color: Colors.green,
                 ),
@@ -45,7 +46,7 @@ class QuickStatsCard extends StatelessWidget {
               Expanded(
                 child: _buildStatItem(
                   icon: Icons.shopping_cart,
-                  title: 'Orders',
+                  title: AppStrings.profile.ordersLabel,
                   value: '47',
                   color: Colors.blue,
                 ),
@@ -58,7 +59,7 @@ class QuickStatsCard extends StatelessWidget {
               Expanded(
                 child: _buildStatItem(
                   icon: Icons.table_restaurant,
-                  title: 'Tables',
+                  title: AppStrings.profile.tablesLabel,
                   value: '8/12',
                   color: Colors.orange,
                 ),
@@ -66,7 +67,7 @@ class QuickStatsCard extends StatelessWidget {
               Expanded(
                 child: _buildStatItem(
                   icon: Icons.event_seat,
-                  title: 'Reservations',
+                  title: AppStrings.profile.reservationsLabel,
                   value: '6',
                   color: Colors.purple,
                 ),
@@ -103,13 +104,7 @@ class QuickStatsCard extends StatelessWidget {
               color: color,
             ),
           ),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-          ),
+          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
         ],
       ),
     );

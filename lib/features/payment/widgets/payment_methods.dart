@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/skeleton_loader.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/empty_state_widget.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 /// Data class representing a payment method definition.
 class PaymentMethodData {
@@ -39,19 +40,19 @@ class PaymentMethods extends StatelessWidget {
     this.customMethods,
   });
 
-  static const List<PaymentMethodData> defaultMethods = [
+  static List<PaymentMethodData> defaultMethods = [
     PaymentMethodData(
       value: 'cash',
-      title: 'Cash',
-      subtitle: 'Collect cash payment from customer',
+      title: AppStrings.payment.cash,
+      subtitle: AppStrings.payment.cashSubtitle,
       icon: Icons.payments_outlined,
       badgeText: 'Popular',
       badgeColor: AppColors.success,
     ),
     PaymentMethodData(
       value: 'upi',
-      title: 'UPI',
-      subtitle: 'Ask customer to scan QR & pay',
+      title: AppStrings.payment.upi,
+      subtitle: AppStrings.payment.upiSubtitle,
       icon: Icons.qr_code_2_rounded,
       badgeText: 'Instant QR',
       badgeColor: AppColors.accent,
@@ -69,9 +70,9 @@ class PaymentMethods extends StatelessWidget {
     }
 
     if (methods.isEmpty) {
-      return const EmptyStateWidget(
+      return EmptyStateWidget(
         icon: Icons.payment_outlined,
-        title: 'No Payment Methods',
+        title: AppStrings.payment.noPaymentMethods,
         description: 'No payment methods are currently available.',
       );
     }

@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class BillPDFViewerDialog extends StatefulWidget {
   final Uint8List pdfBytes;
@@ -45,9 +46,7 @@ class _BillPDFViewerDialogState extends State<BillPDFViewerDialog> {
               },
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 3.5, sigmaY: 3.5),
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.12),
-                ),
+                child: Container(color: Colors.black.withValues(alpha: 0.12)),
               ),
             ),
           ),
@@ -304,20 +303,14 @@ class _BillPDFViewerDialogState extends State<BillPDFViewerDialog> {
                 style: OutlinedButton.styleFrom(
                   backgroundColor: Colors.white.withValues(alpha: 0.60),
                   foregroundColor: AppColors.textPrimary,
-                  side: const BorderSide(
-                    color: Color(0xFF94A3B8),
-                    width: 1.2,
-                  ),
+                  side: const BorderSide(color: Color(0xFF94A3B8), width: 1.2),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: const Text(
                   'Close',
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -339,16 +332,17 @@ class _BillPDFViewerDialogState extends State<BillPDFViewerDialog> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                icon: _isPrinting
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.print_rounded, size: 17),
+                icon:
+                    _isPrinting
+                        ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Icon(Icons.print_rounded, size: 17),
                 label: Text(
                   _isPrinting ? 'Printing...' : 'Print',
                   style: const TextStyle(
@@ -376,12 +370,7 @@ class _BillPDFViewerDialogState extends State<BillPDFViewerDialog> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to print bill: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppSnackBar.showError(context, 'Failed to print bill: $e');
       }
     } finally {
       if (mounted) setState(() => _isPrinting = false);

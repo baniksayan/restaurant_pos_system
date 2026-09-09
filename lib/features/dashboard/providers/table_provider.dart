@@ -54,7 +54,9 @@ class TableProvider extends ChangeNotifier {
     // Also save to Hive for persistence
     HiveService.setOutletId(outletId);
     if (kDebugMode) {
-      debugPrint('[TableProvider] Updated outlet ID: $outletId (saved to Hive)');
+      debugPrint(
+        '[TableProvider] Updated outlet ID: $outletId (saved to Hive)',
+      );
     }
     notifyListeners();
   }
@@ -102,7 +104,9 @@ class TableProvider extends ChangeNotifier {
     _error = null;
     notifyListeners(); // First notification: Loading state
     try {
-      debugPrint('[TableProvider] Fetching REAL API tables - Outlet: $outletId');
+      debugPrint(
+        '[TableProvider] Fetching REAL API tables - Outlet: $outletId',
+      );
       final tables = await TableRepository.fetchTablesFromOrderChannelAPI(
         token: token,
         outletId: outletId,
@@ -145,7 +149,9 @@ class TableProvider extends ChangeNotifier {
       if (_tables.isEmpty) {
         _error =
             'No tables found for this outlet. Check backend configuration.';
-        debugPrint('[TableProvider] API returned no tables - Check backend data');
+        debugPrint(
+          '[TableProvider] API returned no tables - Check backend data',
+        );
       } else {
         debugPrint(
           '[TableProvider] Successfully loaded ${_tables.length} REAL tables from API',
@@ -175,7 +181,9 @@ class TableProvider extends ChangeNotifier {
     _tableApiError = null;
     notifyListeners(); // Notify loading state change
     try {
-      debugPrint('[TableProvider] fetchTablesByOutlet called - Outlet: $outletId');
+      debugPrint(
+        '[TableProvider] fetchTablesByOutlet called - Outlet: $outletId',
+      );
       debugPrint('[TableProvider] Token: ${token.substring(0, 10)}...');
 
       // Call the API service directly
@@ -466,7 +474,8 @@ class TableProvider extends ChangeNotifier {
   /// Remove order from table (API-driven) - FIXED
   Future<bool> removeOrderFromTable(String tableId, String orderId) async {
     try {
-      final userId = HiveService.getUserId() ?? '041f765b-658c-47a4-b1a7-9dedf6e980b9';
+      final userId =
+          HiveService.getUserId() ?? '041f765b-658c-47a4-b1a7-9dedf6e980b9';
 
       // Call UpdateOrderHeadStatus API to cancel/remove order (statusId: 6, companyId: 18)
       final result = await ApiService.updateOrderHeadStatus(
@@ -497,7 +506,9 @@ class TableProvider extends ChangeNotifier {
           );
 
           if (currentOrders.isEmpty) {
-            debugPrint('[API Call] Table $tableId -> Available (no more orders)');
+            debugPrint(
+              '[API Call] Table $tableId -> Available (no more orders)',
+            );
           }
 
           // Clear cart state for this order
@@ -663,13 +674,17 @@ class TableProvider extends ChangeNotifier {
   // Backward compatibility method (deprecated)
   @Deprecated('Use storeBillId instead')
   void storeBillAmount(String tableId, double billAmount) {
-    debugPrint('Warning: storeBillAmount is deprecated. Use storeBillId instead.');
+    debugPrint(
+      'Warning: storeBillAmount is deprecated. Use storeBillId instead.',
+    );
     // This method is kept for backward compatibility but does nothing
   }
 
   // Get stored bill ID for a table
   String? getBillId(String tableId) {
-    debugPrint('[TableProvider] Attempting to get bill ID for table ID: $tableId');
+    debugPrint(
+      '[TableProvider] Attempting to get bill ID for table ID: $tableId',
+    );
     debugPrint(
       '[TableProvider] Available tables: ${_tables.map((t) => '${t.id}:${t.name}:${t.billId}').toList()}',
     );
@@ -756,7 +771,9 @@ class TableProvider extends ChangeNotifier {
       final billDetails = await getBillDetails(tableId);
       return billDetails?.data?.billHeadDt.billAmountInclTax;
     } catch (e) {
-      debugPrint('[TableProvider] Error getting bill amount for table $tableId: $e');
+      debugPrint(
+        '[TableProvider] Error getting bill amount for table $tableId: $e',
+      );
       return null;
     }
   }

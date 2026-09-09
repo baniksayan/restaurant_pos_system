@@ -318,7 +318,9 @@ class OrdersManagementProvider extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      if (kDebugMode) debugPrint('[OrdersProvider] Error fetching $channelType: $e');
+      if (kDebugMode) {
+        debugPrint('[OrdersProvider] Error fetching $channelType: $e');
+      }
     }
   }
 

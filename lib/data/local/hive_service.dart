@@ -1,15 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:restaurant_pos_system/core/constants/storage_keys.dart';
 import 'package:restaurant_pos_system/data/models/auth_api_res_model.dart';
 import 'models/table_model.dart';
 import 'models/order_model.dart';
 
 class HiveService {
-  static const String _tablesBoxName = 'tables';
-  static const String _ordersBoxName = 'orders';
-  static const String _syncBoxName = 'sync_queue';
-  static const String _posBoxName = 'pos';
-  static const String _authBoxName = 'auth';
+  static const String _tablesBoxName = StorageKeys.tablesBox;
+  static const String _ordersBoxName = StorageKeys.ordersBox;
+  static const String _syncBoxName = StorageKeys.syncQueueBox;
+  static const String _posBoxName = StorageKeys.posBox;
+  static const String _authBoxName = StorageKeys.authBox;
 
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -81,30 +82,30 @@ class HiveService {
 
   // Auth Token Management
   static Future<void> saveAuthToken(String token) async {
-    await posBox.put('token', token);
+    await posBox.put(StorageKeys.token, token);
   }
 
   static String getAuthToken() {
-    return posBox.get('token', defaultValue: '');
+    return posBox.get(StorageKeys.token, defaultValue: '');
   }
 
   static Future<void> clearAuthToken() async {
-    await posBox.delete('token');
+    await posBox.delete(StorageKeys.token);
   }
 
   // Auth Data Management
   static Future<void> saveAuthData(dynamic data) async {
     // Store as a plain Map (JSON) to avoid requiring a Hive TypeAdapter
     if (data is AuthApiResModel) {
-      await posBox.put('auth_data', data.toJson());
+      await posBox.put(StorageKeys.authData, data.toJson());
     } else {
       // Fallback: store whatever was provided (defensive)
-      await posBox.put('auth_data', data);
+      await posBox.put(StorageKeys.authData, data);
     }
   }
 
   static AuthApiResModel? getAuthData() {
-    final raw = posBox.get('auth_data');
+    final raw = posBox.get(StorageKeys.authData);
     if (raw == null) return null;
     // If the stored value is already the model (unlikely), return it.
     if (raw is AuthApiResModel) return raw;
@@ -122,85 +123,88 @@ class HiveService {
   }
 
   static Future<void> clearAuthData() async {
-    await posBox.delete('token');
-    await posBox.delete('auth_data');
+    await posBox.delete(StorageKeys.token);
+    await posBox.delete(StorageKeys.authData);
   }
 
   // User ID Management (Updated methods using both posBox and authBox)
   static String? getUserId() {
-    return posBox.get('userId');
+    return posBox.get(StorageKeys.userId);
   }
 
   static void setUserId(String userId) {
     // Store in both boxes for consistenc
-    posBox.put('userId', userId);
+    posBox.put(StorageKeys.userId, userId);
   }
 
   // Waiter ID Management (Updated methods using both posBox and authBox)
   static String? getWaiterId() {
-    return posBox.get('waiterId'); // Fallback to userId
+    return posBox.get(StorageKeys.waiterId); // Fallback to userId
   }
 
   static void setWaiterId(String waiterId) {
     // Store in both boxes for consistency
-    posBox.put('waiterId', waiterId);
+    posBox.put(StorageKeys.waiterId, waiterId);
   }
 
   // Outlet ID Management
   static int? getOutletId() {
-    return posBox.get('outletId');
+    return posBox.get(StorageKeys.outletId);
   }
 
   static void setOutletId(int outletId) {
-    posBox.put('outletId', outletId);
+    posBox.put(StorageKeys.outletId, outletId);
   }
 
   // Company Site URL Management
   static String? getCompanySiteUrl() {
-    return posBox.get('companySiteUrl');
+    return posBox.get(StorageKeys.companySiteUrl);
   }
 
   static void setCompanySiteUrl(String companySiteUrl) {
-    posBox.put('companySiteUrl', companySiteUrl);
+    posBox.put(StorageKeys.companySiteUrl, companySiteUrl);
   }
 
   static void clearCompanySiteUrl() {
-    posBox.delete('companySiteUrl');
+    posBox.delete(StorageKeys.companySiteUrl);
   }
 
   // Chef Session Management
   static Future<void> setChefSession(bool isChef) async {
-    await posBox.put('is_chef_logged_in', isChef);
+    await posBox.put(StorageKeys.isChefLoggedIn, isChef);
   }
 
   static bool isChefLoggedIn() {
-    return posBox.get('is_chef_logged_in', defaultValue: false) == true;
+    return posBox.get(StorageKeys.isChefLoggedIn, defaultValue: false) == true;
   }
 
   static Future<void> clearChefSession() async {
-    await posBox.delete('is_chef_logged_in');
+    await posBox.delete(StorageKeys.isChefLoggedIn);
   }
 
   // Tax Data Management
   static void saveTaxData(Map<String, dynamic> taxData) {
-    posBox.put('taxData', taxData);
-    posBox.put('taxDataTimestamp', DateTime.now().millisecondsSinceEpoch);
+    posBox.put(StorageKeys.taxData, taxData);
+    posBox.put(
+      StorageKeys.taxDataTimestamp,
+      DateTime.now().millisecondsSinceEpoch,
+    );
   }
 
   static Map<String, dynamic>? getTaxData() {
-    return posBox.get('taxData');
+    return posBox.get(StorageKeys.taxData);
   }
 
   static DateTime? getTaxDataTimestamp() {
-    final timestamp = posBox.get('taxDataTimestamp');
+    final timestamp = posBox.get(StorageKeys.taxDataTimestamp);
     return timestamp != null
         ? DateTime.fromMillisecondsSinceEpoch(timestamp)
         : null;
   }
 
   static void clearTaxData() {
-    posBox.delete('taxData');
-    posBox.delete('taxDataTimestamp');
+    posBox.delete(StorageKeys.taxData);
+    posBox.delete(StorageKeys.taxDataTimestamp);
   }
 
   static bool isTaxDataExpired({int maxAgeHours = 24}) {

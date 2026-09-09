@@ -10,6 +10,7 @@ import '../widgets/hamburger_drawer.dart';
 import '../widgets/location_header.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/premium_refresh_indicator.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../providers/table_provider.dart';
@@ -86,7 +87,9 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
         body: Consumer<TableProvider>(
           builder: (context, tableProvider, child) {
             if (kDebugMode) {
-              debugPrint('[UI] Building with ${tableProvider.tables.length} tables');
+              debugPrint(
+                '[UI] Building with ${tableProvider.tables.length} tables',
+              );
               debugPrint('[UI] Loading: ${tableProvider.isLoading}');
               debugPrint('[UI] Error: ${tableProvider.error}');
             }
@@ -139,7 +142,9 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                                       .initializeTables();
                                   // Removed green SnackBar per request
                                 } catch (e) {
-                                  if (kDebugMode) debugPrint('Refresh error: $e');
+                                  if (kDebugMode) {
+                                    debugPrint('Refresh error: $e');
+                                  }
                                   _showSnackBar(
                                     'Failed to refresh tables',
                                     Colors.red,
@@ -332,13 +337,17 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
       }
     }
 
-    if (billedOrder != null || table.status == TableStatus.billGenerated || table.billGenerated) {
+    if (billedOrder != null ||
+        table.status == TableStatus.billGenerated ||
+        table.billGenerated) {
       final targetOrderId =
           billedOrder?.orderId ??
           (table.hasActiveOrders ? table.activeOrders.last.orderId : null);
       final orderNumber =
           billedOrder?.generatedOrderNo ??
-          (table.hasActiveOrders ? table.activeOrders.last.generatedOrderNo : null);
+          (table.hasActiveOrders
+              ? table.activeOrders.last.generatedOrderNo
+              : null);
 
       final storedBillId = tableProvider.getBillId(table.id);
       final navProvider = context.read<NavigationProvider>();
@@ -474,14 +483,15 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
   }
 
   void _showSnackBar(String message, Color color) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: color,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+    if (!mounted) return;
+    if (color == Colors.red) {
+      AppSnackBar.showError(context, message);
+    } else if (color == Colors.blue) {
+      AppSnackBar.showInfo(context, message);
+    } else if (color == Colors.orange) {
+      AppSnackBar.showWarning(context, message);
+    } else {
+      AppSnackBar.showSuccess(context, message);
     }
   }
 

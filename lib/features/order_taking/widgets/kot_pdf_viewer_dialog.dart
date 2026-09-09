@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/pdf_share_bottom_sheet.dart';
 
 class KOTPDFViewerDialog extends StatefulWidget {
@@ -472,12 +473,10 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to print KOT: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-            duration: const Duration(seconds: 3),
-          ),
+        AppSnackBar.showError(
+          context,
+          'Failed to print KOT: ${e.toString()}',
+          duration: const Duration(seconds: 3),
         );
       }
     } finally {

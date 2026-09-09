@@ -48,7 +48,7 @@ class CategoryTabs extends StatelessWidget {
             itemCount: tabs.length,
             itemBuilder: (context, index) {
               final tab = tabs[index];
-              
+
               // Check active selection
               bool isSelected = false;
               if (tab == 'All') {
@@ -60,7 +60,10 @@ class CategoryTabs extends StatelessWidget {
               }
 
               // Color configuration
-              final Color activeColor = tab == 'Veg Only' ? const Color(0xFF4CAF50) : AppColors.primary;
+              final Color activeColor =
+                  tab == 'Veg Only'
+                      ? const Color(0xFF4CAF50)
+                      : AppColors.primary;
 
               return Center(
                 child: Container(
@@ -86,31 +89,32 @@ class CategoryTabs extends StatelessWidget {
                         minHeight: 36,
                         maxHeight: 36,
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
                         color: isSelected ? activeColor : Colors.white,
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color: isSelected ? activeColor : Colors.grey.shade300,
+                          color:
+                              isSelected ? activeColor : Colors.grey.shade300,
                           width: 1.5,
                         ),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: activeColor.withValues(alpha: 0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
+                        boxShadow:
+                            isSelected
+                                ? [
+                                  BoxShadow(
+                                    color: activeColor.withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                                : null,
                       ),
                       child: Text(
                         tab,
                         style: TextStyle(
                           color: isSelected ? Colors.white : Colors.grey[700],
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
                           fontSize: 14,
                         ),
                       ),

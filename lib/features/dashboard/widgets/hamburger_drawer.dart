@@ -3,13 +3,17 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_assets.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_gradients.dart';
 import 'package:restaurant_pos_system/features/orders/views/orders_management_view.dart';
 import 'package:restaurant_pos_system/features/profile/views/profile_view.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class HamburgerDrawer extends StatefulWidget {
   final String selectedLocation;
@@ -58,24 +62,36 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                   // Scrollable Content
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Section 1: Locations
-                          _buildSectionHeader('LOCATIONS', Icons.location_on_rounded),
+                          _buildSectionHeader(
+                            'LOCATIONS',
+                            Icons.location_on_rounded,
+                          ),
                           const SizedBox(height: 6),
                           _buildLocationFilters(),
                           const SizedBox(height: 16),
 
                           // Section 2: Quick Actions
-                          _buildSectionHeader('QUICK ACTIONS', Icons.grid_view_rounded),
+                          _buildSectionHeader(
+                            'QUICK ACTIONS',
+                            Icons.grid_view_rounded,
+                          ),
                           const SizedBox(height: 6),
                           _buildOrdersManagementTile(),
                           const SizedBox(height: 16),
 
                           // Section 3: Clean Account List (Profile)
-                          _buildSectionHeader('ACCOUNT', Icons.account_circle_rounded),
+                          _buildSectionHeader(
+                            'ACCOUNT',
+                            Icons.account_circle_rounded,
+                          ),
                           const SizedBox(height: 6),
                           _buildCleanAccountList(),
                           const SizedBox(height: 12),
@@ -142,11 +158,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
             height: 38,
             padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.primary, AppColors.primaryDark],
-              ),
+              gradient: AppGradients.primary,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
@@ -156,10 +168,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                 ),
               ],
             ),
-            child: Image.asset(
-              'assets/logo/transparent.png',
-              fit: BoxFit.contain,
-            ),
+            child: Image.asset(AppAssets.logoTransparent, fit: BoxFit.contain),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -208,9 +217,10 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
         );
 
         return Column(
-          children: availableLocations.map(
-            (location) => _buildLocationTile(location),
-          ).toList(),
+          children:
+              availableLocations
+                  .map((location) => _buildLocationTile(location))
+                  .toList(),
         );
       },
     );
@@ -241,14 +251,16 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? location.color.withValues(alpha: 0.16)
-                  : Colors.white.withValues(alpha: 0.35),
+              color:
+                  isSelected
+                      ? location.color.withValues(alpha: 0.16)
+                      : Colors.white.withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: isSelected
-                    ? location.color.withValues(alpha: 0.4)
-                    : Colors.white.withValues(alpha: 0.6),
+                color:
+                    isSelected
+                        ? location.color.withValues(alpha: 0.4)
+                        : Colors.white.withValues(alpha: 0.6),
                 width: 1,
               ),
             ),
@@ -257,9 +269,10 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? location.color
-                        : location.color.withValues(alpha: 0.1),
+                    color:
+                        isSelected
+                            ? location.color
+                            : location.color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -273,8 +286,10 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                   child: Text(
                     location.name,
                     style: TextStyle(
-                      color: isSelected ? location.color : AppColors.textPrimary,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color:
+                          isSelected ? location.color : AppColors.textPrimary,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w500,
                       fontSize: 13.5,
                     ),
                   ),
@@ -370,8 +385,8 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
     return Column(
       children: [
         _buildCleanNavTile(
-          title: 'Profile',
-          subtitle: 'View user account details',
+          title: AppStrings.dashboard.profileTitle,
+          subtitle: AppStrings.dashboard.profileSubtitle,
           icon: Icons.person_outline_rounded,
           onTap: () {
             Navigator.pop(context);
@@ -385,20 +400,20 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
         /*
         const SizedBox(height: 6),
         _buildCleanNavTile(
-          title: 'Settings',
-          subtitle: 'App preferences & configuration',
+          title: AppStrings.dashboard.settings,
+          subtitle: AppStrings.dashboard.settingsSubtitle,
           icon: Icons.settings_outlined,
           onTap: () {
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Settings coming soon!')),
+              SnackBar(content: Text(AppStrings.dashboard.settingsComingSoon)),
             );
           },
         ),
         const SizedBox(height: 6),
         _buildCleanNavTile(
-          title: 'Performance',
-          subtitle: 'Reports & analytics overview',
+          title: AppStrings.dashboard.performance,
+          subtitle: AppStrings.dashboard.performanceSubtitle,
           icon: Icons.analytics_outlined,
           onTap: () {
             Navigator.pop(context);
@@ -439,11 +454,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                   color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  icon,
-                  color: AppColors.primary,
-                  size: 16,
-                ),
+                child: Icon(icon, color: AppColors.primary, size: 16),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -486,10 +497,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.2),
         border: Border(
-          top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.5),
-            width: 1,
-          ),
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.5), width: 1),
         ),
       ),
       child: Material(
@@ -584,11 +592,15 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                 SafeArea(
                   child: Center(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 24,
+                      ),
                       child: ConstrainedBox(
                         constraints: BoxConstraints(maxWidth: maxWidth),
                         child: GestureDetector(
-                          onTap: () {}, // Prevent backdrop tap from dismissing dialog
+                          onTap:
+                              () {}, // Prevent backdrop tap from dismissing dialog
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(24),
                             child: BackdropFilter(
@@ -603,7 +615,9 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.06),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.06,
+                                      ),
                                       blurRadius: 20,
                                       offset: const Offset(0, 8),
                                     ),
@@ -617,7 +631,9 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                                       Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
-                                          color: Colors.red.withValues(alpha: 0.12),
+                                          color: Colors.red.withValues(
+                                            alpha: 0.12,
+                                          ),
                                           shape: BoxShape.circle,
                                         ),
                                         child: const Icon(
@@ -650,15 +666,24 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                                         children: [
                                           Expanded(
                                             child: OutlinedButton(
-                                              onPressed: () => Navigator.pop(dialogContext),
+                                              onPressed:
+                                                  () => Navigator.pop(
+                                                    dialogContext,
+                                                  ),
                                               style: OutlinedButton.styleFrom(
-                                                backgroundColor: Colors.white.withValues(alpha: 0.4),
-                                                padding: const EdgeInsets.symmetric(vertical: 13),
+                                                backgroundColor: Colors.white
+                                                    .withValues(alpha: 0.4),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 13,
+                                                    ),
                                                 side: BorderSide(
-                                                  color: Colors.white.withValues(alpha: 0.75),
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.75),
                                                 ),
                                                 shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
                                                 ),
                                               ),
                                               child: const Text(
@@ -666,7 +691,8 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                                                 style: TextStyle(
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w600,
-                                                  color: AppColors.textSecondary,
+                                                  color:
+                                                      AppColors.textSecondary,
                                                 ),
                                               ),
                                             ),
@@ -679,12 +705,17 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                                                 _performLogout();
                                               },
                                               style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.redAccent,
+                                                backgroundColor:
+                                                    Colors.redAccent,
                                                 foregroundColor: Colors.white,
                                                 elevation: 0,
-                                                padding: const EdgeInsets.symmetric(vertical: 13),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 13,
+                                                    ),
                                                 shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
                                                 ),
                                               ),
                                               child: const Text(
@@ -724,9 +755,8 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
         barrierDismissible: false,
         barrierColor: Colors.transparent,
         builder:
-            (context) => const HourglassLoadingOverlay(
-              message: 'Signing out...',
-            ),
+            (context) =>
+                const HourglassLoadingOverlay(message: 'Signing out...'),
       );
 
       final authProvider = context.read<AuthProvider>();
@@ -736,20 +766,18 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
 
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
-        Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
-          '/',
-          (Route<dynamic> route) => false,
-        );
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
       }
     } catch (e) {
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Sign out failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
+        AppSnackBar.showError(
+          context,
+          'Sign out failed: ${e.toString()}',
+          duration: const Duration(seconds: 3),
         );
       }
     }

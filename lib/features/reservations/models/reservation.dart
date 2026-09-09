@@ -2,7 +2,7 @@ class Reservation {
   final String id;
   final String tableId;
   final String tableName;
-  final String customerName;  // NEW: Customer name
+  final String customerName; // NEW: Customer name
   final String customerPhone; // NEW: Customer phone
   final int persons;
   final DateTime fromTime;
@@ -40,9 +40,9 @@ class Reservation {
   });
 
   Duration get duration => toTime.difference(fromTime);
-  
+
   double get durationInHours => duration.inMinutes / 60.0;
-  
+
   // Calculate minimum advance amount (20% of total or ₹100, whichever is higher)
   static double getMinAdvanceAmount(double totalAmount) {
     final twentyPercent = totalAmount * 0.2;

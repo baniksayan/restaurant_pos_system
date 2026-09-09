@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import '../services/upi_storage_service.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class QRSection extends StatefulWidget {
   final double amount;
@@ -117,13 +119,13 @@ class _QRSectionState extends State<QRSection> {
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: upiController,
-                        decoration: const InputDecoration(
-                          hintText: 'e.g. restaurant@upi or 9876543210@paytm',
-                          prefixIcon: Icon(
+                        decoration: InputDecoration(
+                          hintText: AppStrings.payment.upiHint,
+                          prefixIcon: const Icon(
                             Icons.alternate_email_rounded,
                             size: 18,
                           ),
-                          contentPadding: EdgeInsets.symmetric(
+                          contentPadding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 12,
                           ),
@@ -144,7 +146,7 @@ class _QRSectionState extends State<QRSection> {
                         children: [
                           TextButton(
                             onPressed: () => Navigator.pop(ctx),
-                            child: const Text('Cancel'),
+                            child: const Text(AppStrings.cancel),
                           ),
                           const SizedBox(width: 8),
                           FilledButton(
@@ -160,11 +162,9 @@ class _QRSectionState extends State<QRSection> {
                                     Navigator.pop(ctx);
                                   }
                                   if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('UPI ID saved: $newUpi'),
-                                        backgroundColor: AppColors.success,
-                                      ),
+                                    AppSnackBar.showSuccess(
+                                      context,
+                                      'UPI ID saved: $newUpi',
                                     );
                                   }
                                 }
@@ -175,7 +175,7 @@ class _QRSectionState extends State<QRSection> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Text('Save UPI ID'),
+                            child: Text(AppStrings.payment.saveUpiId),
                           ),
                         ],
                       ),

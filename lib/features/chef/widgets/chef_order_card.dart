@@ -7,20 +7,19 @@ import '../providers/chef_provider.dart';
 import 'chef_order_item.dart';
 import 'chef_status_badge.dart';
 import 'reject_order_dialog.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class ChefOrderCard extends StatefulWidget {
   final ChefOrder order;
 
-  const ChefOrderCard({
-    super.key,
-    required this.order,
-  });
+  const ChefOrderCard({super.key, required this.order});
 
   @override
   State<ChefOrderCard> createState() => _ChefOrderCardState();
 }
 
-class _ChefOrderCardState extends State<ChefOrderCard> with SingleTickerProviderStateMixin {
+class _ChefOrderCardState extends State<ChefOrderCard>
+    with SingleTickerProviderStateMixin {
   bool _isHandedOver = false;
   int _remainingSeconds = 5;
   Timer? _countdownTimer;
@@ -94,20 +93,17 @@ class _ChefOrderCardState extends State<ChefOrderCard> with SingleTickerProvider
   void _showRejectDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (ctx) => RejectOrderDialog(
-        order: widget.order,
-        onConfirmReject: (reason) {
-          context.read<ChefProvider>().rejectOrder(widget.order.id, reason);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Order #${widget.order.orderNumber} rejected'),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
-        },
-      ),
+      builder:
+          (ctx) => RejectOrderDialog(
+            order: widget.order,
+            onConfirmReject: (reason) {
+              context.read<ChefProvider>().rejectOrder(widget.order.id, reason);
+              AppSnackBar.showError(
+                context,
+                'Order #${widget.order.orderNumber} rejected',
+              );
+            },
+          ),
     );
   }
 
@@ -136,7 +132,10 @@ class _ChefOrderCardState extends State<ChefOrderCard> with SingleTickerProvider
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor.withValues(alpha: 0.6), width: 1.2),
+            border: Border.all(
+              color: borderColor.withValues(alpha: 0.6),
+              width: 1.2,
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.04),
@@ -151,13 +150,14 @@ class _ChefOrderCardState extends State<ChefOrderCard> with SingleTickerProvider
             children: [
               // Header Row: Order Number, Table Name, Time Ago & Status Badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: const BoxDecoration(
                   color: Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
-                  border: Border(
-                    bottom: BorderSide(color: Color(0xFFF1F5F9)),
-                  ),
+                  border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -176,7 +176,10 @@ class _ChefOrderCardState extends State<ChefOrderCard> with SingleTickerProvider
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2.5,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
@@ -207,7 +210,10 @@ class _ChefOrderCardState extends State<ChefOrderCard> with SingleTickerProvider
                         ),
                         const SizedBox(width: 8),
                         ChefStatusBadge(
-                          status: _isHandedOver ? ChefOrderStatus.served : order.status,
+                          status:
+                              _isHandedOver
+                                  ? ChefOrderStatus.served
+                                  : order.status,
                         ),
                       ],
                     ),
@@ -256,7 +262,9 @@ class _ChefOrderCardState extends State<ChefOrderCard> with SingleTickerProvider
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.error,
                   side: const BorderSide(color: AppColors.error, width: 1.2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   padding: const EdgeInsets.symmetric(vertical: 11),
                 ),
                 onPressed: () => _showRejectDialog(context),
@@ -275,19 +283,17 @@ class _ChefOrderCardState extends State<ChefOrderCard> with SingleTickerProvider
               child: FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   padding: const EdgeInsets.symmetric(vertical: 11),
                 ),
                 onPressed: () {
                   provider.approveOrder(order.id);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Order #${order.orderNumber} Approved -> Moved to Preparing'),
-                      backgroundColor: AppColors.primary,
-                      behavior: SnackBarBehavior.floating,
-                      duration: const Duration(seconds: 1),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
+                  AppSnackBar.showSuccess(
+                    context,
+                    'Order #${order.orderNumber} Approved -> Moved to Preparing',
+                    duration: const Duration(seconds: 1),
                   );
                 },
                 child: const Text(
@@ -310,7 +316,9 @@ class _ChefOrderCardState extends State<ChefOrderCard> with SingleTickerProvider
           child: FilledButton.icon(
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFFF59E0B), // Amber/Orange
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
             icon: const Icon(Icons.soup_kitchen_rounded, size: 18),
@@ -330,7 +338,9 @@ class _ChefOrderCardState extends State<ChefOrderCard> with SingleTickerProvider
                   backgroundColor: const Color(0xFFF59E0B),
                   behavior: SnackBarBehavior.floating,
                   duration: const Duration(seconds: 1),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               );
             },
@@ -344,7 +354,9 @@ class _ChefOrderCardState extends State<ChefOrderCard> with SingleTickerProvider
           child: FilledButton.icon(
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.success,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
             icon: const Icon(Icons.room_service_rounded, size: 18),
@@ -377,7 +389,11 @@ class _ChefOrderCardState extends State<ChefOrderCard> with SingleTickerProvider
               const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.highlight_off_rounded, size: 15, color: AppColors.error),
+                  Icon(
+                    Icons.highlight_off_rounded,
+                    size: 15,
+                    color: AppColors.error,
+                  ),
                   SizedBox(width: 6),
                   Text(
                     'Order Rejected',

@@ -3,6 +3,7 @@ import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/empty_state_widget.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/skeleton_loader.dart';
 import '../providers/table_provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class DashboardLoadingState extends StatelessWidget {
   const DashboardLoadingState({super.key});
@@ -201,14 +202,14 @@ class DashboardErrorState extends StatelessWidget {
       body: Center(
         child: EmptyStateWidget(
           icon: Icons.error_outline_rounded,
-          title: 'Error Loading Tables',
+          title: AppStrings.dashboard.errorLoadingTables,
           description: tableProvider.error ?? 'Unknown error occurred',
           action: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               OutlinedButton(
                 onPressed: () => tableProvider.clearError(),
-                child: const Text('Clear Error'),
+                child: Text(AppStrings.dashboard.clearError),
               ),
               const SizedBox(width: 12),
               ElevatedButton.icon(
@@ -217,7 +218,7 @@ class DashboardErrorState extends StatelessWidget {
                   tableProvider.fetchTables();
                 },
                 icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Retry'),
+                label: const Text(AppStrings.retry),
               ),
             ],
           ),
@@ -242,13 +243,13 @@ class DashboardEmptyState extends StatelessWidget {
     return Center(
       child: EmptyStateWidget(
         icon: Icons.table_restaurant_outlined,
-        title: 'No Tables Found',
+        title: AppStrings.dashboard.noTablesFound,
         description:
             'We couldn\'t find any tables registered for $selectedLocation.',
         action: ElevatedButton.icon(
           onPressed: onChangeLocation,
           icon: const Icon(Icons.location_on, size: 16),
-          label: const Text('Change Location'),
+          label: Text(AppStrings.dashboard.changeLocation),
         ),
       ),
     );

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:provider/provider.dart';
 import '../providers/billing_provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/shared/widgets/cards/app_card.dart';
 
 class CustomerPhoneCard extends StatefulWidget {
   final TextEditingController phoneController;
@@ -20,19 +22,7 @@ class CustomerPhoneCard extends StatefulWidget {
 class _CustomerPhoneCardState extends State<CustomerPhoneCard> {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -51,11 +41,11 @@ class _CustomerPhoneCardState extends State<CustomerPhoneCard> {
               return IntlPhoneField(
                 controller: widget.phoneController,
                 initialCountryCode: 'IN',
-                decoration: const InputDecoration(
-                  labelText: 'Customer Phone Number',
-                  hintText: 'Enter phone number',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.phone),
+                decoration: InputDecoration(
+                  labelText: AppStrings.payment.customerPhoneNumber,
+                  hintText: AppStrings.dashboard.enterPhoneNumber,
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.phone),
                 ),
                 showCountryFlag: true,
                 showDropdownIcon: true,

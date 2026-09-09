@@ -39,4 +39,20 @@ class AppSpacing {
   static const EdgeInsets pVSm = EdgeInsets.symmetric(vertical: sm);
   static const EdgeInsets pVMd = EdgeInsets.symmetric(vertical: md);
   static const EdgeInsets pVLg = EdgeInsets.symmetric(vertical: lg);
+
+  // Semantic Insets
+  static const EdgeInsets screen = EdgeInsets.symmetric(
+    horizontal: 16,
+    vertical: 12,
+  );
+  static const EdgeInsets screenHorizontal = EdgeInsets.symmetric(
+    horizontal: 16,
+  );
+  static const EdgeInsets card = EdgeInsets.all(16);
+  static const EdgeInsets cardLg = EdgeInsets.all(20);
+  static const EdgeInsets dialog = EdgeInsets.all(20);
+  static const EdgeInsets button = EdgeInsets.symmetric(
+    horizontal: 20,
+    vertical: 14,
+  );
 }

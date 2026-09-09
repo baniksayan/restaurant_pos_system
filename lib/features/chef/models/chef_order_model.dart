@@ -1,9 +1,9 @@
 enum ChefOrderStatus {
-  pending,   // New order received, needs Approve / Reject
+  pending, // New order received, needs Approve / Reject
   preparing, // Chef approved, currently cooking
-  ready,     // Food ready to serve, awaiting Give Order
-  served,    // Handed over / completed
-  rejected,  // Rejected by chef
+  ready, // Food ready to serve, awaiting Give Order
+  served, // Handed over / completed
+  rejected, // Rejected by chef
 }
 
 class ChefOrderItem {
@@ -71,7 +71,8 @@ class ChefOrder {
 
   int get totalItemCount => items.fold(0, (sum, item) => sum + item.quantity);
 
-  double get totalAmount => items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
+  double get totalAmount =>
+      items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
 
   String get timeAgo {
     final diff = DateTime.now().difference(orderTime);

@@ -7,6 +7,7 @@ import '../providers/orders_management_provider.dart';
 import '../widgets/order_tab_view.dart';
 import '../widgets/order_detail_view.dart';
 import '../widgets/channel_partner_order_detail_view.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class OrdersManagementView extends StatefulWidget {
   const OrdersManagementView({super.key});
@@ -119,9 +120,9 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
             fontWeight: FontWeight.w500,
           ),
           tabs: [
-            const Tab(text: 'Table'), // Simplified tab text
-            const Tab(text: 'Phone'), // Simplified tab text
-            const Tab(text: 'Takeaway'), // Simplified tab text
+            Tab(text: AppStrings.orders.tableTab), // Simplified tab text
+            Tab(text: AppStrings.orders.phoneTab), // Simplified tab text
+            Tab(text: AppStrings.orders.takeawayTab), // Simplified tab text
             // Blinking Channel Partner Tab
             Tab(
               child: BlinkingWidget(
@@ -130,7 +131,7 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Channel'),
+                    Text(AppStrings.orders.channelTab),
                     if (_hasNewChannelPartnerOrders && _currentTabIndex != 3)
                       Container(
                         margin: const EdgeInsets.only(left: 4),
@@ -173,7 +174,7 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
                       provider.updateSearchQuery(value);
                     },
                     decoration: InputDecoration(
-                      hintText: 'Search orders by ID, customer, phone, etc...',
+                      hintText: AppStrings.orders.searchOrders,
                       hintStyle: const TextStyle(color: AppColors.textHint),
                       prefixIcon: const Icon(
                         Icons.search,

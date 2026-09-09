@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/shared/widgets/badges/app_status_badge.dart';
 import '../models/chef_order_model.dart';
 
 class ChefStatusBadge extends StatelessWidget {
   final ChefOrderStatus status;
 
-  const ChefStatusBadge({
-    super.key,
-    required this.status,
-  });
+  const ChefStatusBadge({super.key, required this.status});
 
   @override
   Widget build(BuildContext context) {
@@ -56,29 +54,16 @@ class ChefStatusBadge extends StatelessWidget {
         break;
     }
 
-    return Container(
+    return AppStatusBadge(
+      label: label,
+      color: text,
+      icon: icon,
+      backgroundColor: bg,
+      borderColor: border.withValues(alpha: 0.5),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: border.withValues(alpha: 0.5), width: 1.0),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: text),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w800,
-              color: text,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
-      ),
+      borderRadius: 8,
+      fontSize: 10.5,
+      fontWeight: FontWeight.w800,
     );
   }
 }

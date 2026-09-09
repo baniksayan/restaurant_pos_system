@@ -6,6 +6,8 @@ import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import '../services/reports_csv_service.dart';
 import '../services/reports_pdf_service.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class ReportsView extends StatefulWidget {
   const ReportsView({super.key});
@@ -165,7 +167,7 @@ class _ReportsViewState extends State<ReportsView>
                 child: DropdownButton<String>(
                   value: _selectedTimeFrame,
                   isExpanded: true,
-                  hint: const Text('Select Time Period'),
+                  hint: Text(AppStrings.reports.selectTimePeriod),
                   icon: Icon(
                     Icons.keyboard_arrow_down,
                     color: Colors.grey[600],
@@ -218,7 +220,7 @@ class _ReportsViewState extends State<ReportsView>
       children: [
         Expanded(
           child: _buildKPICard(
-            title: 'Total Revenue',
+            title: AppStrings.reports.totalRevenue,
             value: data['revenue']!,
             change: data['revenueChange']!,
             changeColor:
@@ -231,7 +233,7 @@ class _ReportsViewState extends State<ReportsView>
         const SizedBox(width: 16),
         Expanded(
           child: _buildKPICard(
-            title: 'Total Orders',
+            title: AppStrings.reports.totalOrders,
             value: data['orders']!,
             change: data['ordersChange']!,
             changeColor:
@@ -249,7 +251,7 @@ class _ReportsViewState extends State<ReportsView>
       children: [
         Expanded(
           child: _buildKPICard(
-            title: 'Avg Order Value',
+            title: AppStrings.reports.avgOrderValue,
             value: data['avgOrder']!,
             change: data['avgOrderChange']!,
             changeColor:
@@ -262,7 +264,7 @@ class _ReportsViewState extends State<ReportsView>
         const SizedBox(width: 16),
         Expanded(
           child: _buildKPICard(
-            title: 'Table Turnover Rate',
+            title: AppStrings.reports.tableTurnoverRate,
             value: data['turnover']!,
             change: data['turnoverChange']!,
             changeColor:
@@ -539,7 +541,8 @@ class _ReportsViewState extends State<ReportsView>
       lineTouchData: LineTouchData(
         enabled: true,
         touchTooltipData: LineTouchTooltipData(
-          getTooltipColor: (touchedSpot) => AppColors.primary.withValues(alpha: 0.9),
+          getTooltipColor:
+              (touchedSpot) => AppColors.primary.withValues(alpha: 0.9),
           getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
             return touchedBarSpots.map((barSpot) {
               return LineTooltipItem(
@@ -730,11 +733,17 @@ class _ReportsViewState extends State<ReportsView>
                                         isSelected
                                             ? [
                                               AppColors.primary,
-                                              AppColors.primary.withValues(alpha: 0.7),
+                                              AppColors.primary.withValues(
+                                                alpha: 0.7,
+                                              ),
                                             ]
                                             : [
-                                              AppColors.primary.withValues(alpha: 0.3),
-                                              AppColors.primary.withValues(alpha: 0.1),
+                                              AppColors.primary.withValues(
+                                                alpha: 0.3,
+                                              ),
+                                              AppColors.primary.withValues(
+                                                alpha: 0.1,
+                                              ),
                                             ],
                                     begin: Alignment.topCenter,
                                     end: Alignment.bottomCenter,
@@ -1015,17 +1024,35 @@ class _ReportsViewState extends State<ReportsView>
   Map<String, String> _getChartData() {
     switch (_selectedTimeFrame) {
       case 'Today':
-        return {'totalRevenue': '${CurrencyConstants.symbol}3,245', 'change': '+5%'};
+        return {
+          'totalRevenue': '${CurrencyConstants.symbol}3,245',
+          'change': '+5%',
+        };
       case 'Last 7 Days':
-        return {'totalRevenue': '${CurrencyConstants.symbol}12,450', 'change': '+12%'};
+        return {
+          'totalRevenue': '${CurrencyConstants.symbol}12,450',
+          'change': '+12%',
+        };
       case 'Last 30 Days':
-        return {'totalRevenue': '${CurrencyConstants.symbol}54,780', 'change': '+18%'};
+        return {
+          'totalRevenue': '${CurrencyConstants.symbol}54,780',
+          'change': '+18%',
+        };
       case 'This Month':
-        return {'totalRevenue': '${CurrencyConstants.symbol}48,920', 'change': '+14%'};
+        return {
+          'totalRevenue': '${CurrencyConstants.symbol}48,920',
+          'change': '+14%',
+        };
       case 'Last 3 Months':
-        return {'totalRevenue': '${CurrencyConstants.symbol}1,84,350', 'change': '+28%'};
+        return {
+          'totalRevenue': '${CurrencyConstants.symbol}1,84,350',
+          'change': '+28%',
+        };
       default:
-        return {'totalRevenue': '${CurrencyConstants.symbol}12,450', 'change': '+12%'};
+        return {
+          'totalRevenue': '${CurrencyConstants.symbol}12,450',
+          'change': '+12%',
+        };
     }
   }
 
@@ -1268,7 +1295,7 @@ class _ReportsViewState extends State<ReportsView>
                           _exportReport('PDF');
                         },
                         icon: const Icon(Icons.picture_as_pdf),
-                        label: const Text('PDF'),
+                        label: Text(AppStrings.reports.pdfLabel),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,
@@ -1287,7 +1314,7 @@ class _ReportsViewState extends State<ReportsView>
                           _exportReport('CSV');
                         },
                         icon: const Icon(Icons.table_chart),
-                        label: const Text('CSV'),
+                        label: Text(AppStrings.reports.csvLabel),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
@@ -1308,7 +1335,7 @@ class _ReportsViewState extends State<ReportsView>
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text('Cancel'),
+                    child: const Text(AppStrings.cancel),
                   ),
                 ),
               ],
@@ -1336,83 +1363,65 @@ class _ReportsViewState extends State<ReportsView>
   //   );
   // }
   void _exportReport(String format) async {
-  // Show loading indicator
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => const Dialog(
-      child: Padding(
-        padding: EdgeInsets.all(20),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 16),
-            Text('Generating report...'),
-          ],
-        ),
-      ),
-    ),
-  );
-
-  try {
-    final kpiData = _getKPIData();
-    final chartData = _getChartData();
-    final orderStats = _getOrderStatsData();
-    final channelData = _getChannelData();
-
-    File? file;
-    if (format == 'PDF') {
-      file = await ReportsPdfService.generateAnalyticsReport(
-        timeFrame: _selectedTimeFrame,
-        kpiData: kpiData,
-        chartData: chartData,
-        orderStats: orderStats,
-        channelData: channelData,
-      );
-    } else if (format == 'CSV') {
-      file = await ReportsCsvService.generateAnalyticsReport(
-        timeFrame: _selectedTimeFrame,
-        kpiData: kpiData,
-        chartData: chartData,
-        orderStats: orderStats,
-        channelData: channelData,
-      );
-    }
-
-    if (!mounted) return;
-    Navigator.of(context).pop(); // Close loading dialog
-
-    if (file != null) {
-      // Removed green SnackBar per request: report generation success message
-    } else {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline, color: Colors.white),
-              const SizedBox(width: 12),
-              Text('Failed to generate $format report'),
-            ],
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => Dialog(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(width: 16),
+                  Text(AppStrings.reports.generatingReport),
+                ],
+              ),
+            ),
           ),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
-    }
-  } catch (e) {
-    if (mounted) {
+    );
+
+    try {
+      final kpiData = _getKPIData();
+      final chartData = _getChartData();
+      final orderStats = _getOrderStatsData();
+      final channelData = _getChannelData();
+
+      File? file;
+      if (format == 'PDF') {
+        file = await ReportsPdfService.generateAnalyticsReport(
+          timeFrame: _selectedTimeFrame,
+          kpiData: kpiData,
+          chartData: chartData,
+          orderStats: orderStats,
+          channelData: channelData,
+        );
+      } else if (format == 'CSV') {
+        file = await ReportsCsvService.generateAnalyticsReport(
+          timeFrame: _selectedTimeFrame,
+          kpiData: kpiData,
+          chartData: chartData,
+          orderStats: orderStats,
+          channelData: channelData,
+        );
+      }
+
+      if (!mounted) return;
       Navigator.of(context).pop(); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+
+      if (file != null) {
+        // Removed green SnackBar per request: report generation success message
+      } else {
+        if (!mounted) return;
+        AppSnackBar.showError(context, 'Failed to generate $format report');
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        AppSnackBar.showError(context, 'Error: ${e.toString()}');
+      }
     }
   }
-}
-
 }

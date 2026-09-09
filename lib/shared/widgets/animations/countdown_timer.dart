@@ -6,11 +6,7 @@ class CountdownTimer extends StatefulWidget {
   final DateTime targetTime;
   final String label;
 
-  const CountdownTimer({
-    super.key,
-    required this.targetTime,
-    this.label = '',
-  });
+  const CountdownTimer({super.key, required this.targetTime, this.label = ''});
 
   @override
   State<CountdownTimer> createState() => _CountdownTimerState();
@@ -55,10 +51,11 @@ class _CountdownTimerState extends State<CountdownTimer> {
   Widget build(BuildContext context) {
     final minutes = _remaining.inMinutes.toString().padLeft(2, '0');
     final seconds = (_remaining.inSeconds % 60).toString().padLeft(2, '0');
-    
-    Color timerColor = _remaining > const Duration(minutes: 5) 
-        ? AppColors.success 
-        : _remaining > const Duration(minutes: 2)
+
+    Color timerColor =
+        _remaining > const Duration(minutes: 5)
+            ? AppColors.success
+            : _remaining > const Duration(minutes: 2)
             ? AppColors.warning
             : AppColors.error;
 
@@ -72,11 +69,7 @@ class _CountdownTimerState extends State<CountdownTimer> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.timer,
-            color: timerColor,
-            size: 16,
-          ),
+          Icon(Icons.timer, color: timerColor, size: 16),
           const SizedBox(width: 6),
           Text(
             '${widget.label.isNotEmpty ? '${widget.label}: ' : ''}$minutes:$seconds',

@@ -12,9 +12,10 @@ class CreateOrderHeadApiResModel {
   });
 
   CreateOrderHeadApiResModel.fromJson(Map<String, dynamic> json) {
-    data = json['data'] != null 
-        ? OrderHeadResponseData.fromJson(json['data']) 
-        : null;
+    data =
+        json['data'] != null
+            ? OrderHeadResponseData.fromJson(json['data'])
+            : null;
     message = json['message'];
     isSuccess = json['isSuccess'];
     statusCode = json['statusCode'];

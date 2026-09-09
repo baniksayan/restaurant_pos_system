@@ -4,8 +4,12 @@ import 'package:flutter/material.dart';
 
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
+import 'package:restaurant_pos_system/core/utils/date_time_formatter.dart';
 import 'package:restaurant_pos_system/shared/widgets/animations/countdown_timer.dart';
+import 'package:restaurant_pos_system/shared/widgets/badges/app_status_badge.dart';
 import '../models/order_management_model.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class ChannelPartnerOrderCard extends StatefulWidget {
   final OrderItem order;
@@ -79,37 +83,15 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
                     Row(
                       children: [
                         if (showActionButtons)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
+                          const AppStatusBadge(
+                            label: 'New',
+                            color: Colors.red,
+                            icon: Icons.notifications_active,
+                            padding: EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 2,
                             ),
-                            decoration: BoxDecoration(
-                              color: Colors.red.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: Colors.red.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.notifications_active,
-                                  color: Colors.red,
-                                  size: 12,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'New',
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
+                            borderRadius: 4,
                           ),
                         const Spacer(),
                         _buildStatusBadge(),
@@ -175,7 +157,7 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
                       const SizedBox(height: 12),
                       CountdownTimer(
                         targetTime: _currentOrder.expectedDeliveryTime!,
-                        label: 'Remaining Time',
+                        label: AppStrings.orders.remainingTime,
                       ),
                     ],
                   ],
@@ -258,21 +240,10 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
   }
 
   Widget _buildStatusBadge() {
-    return Container(
+    return AppStatusBadge(
+      label: _currentOrder.statusDisplayText,
+      color: _getStatusColor(),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: _getStatusColor().withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _getStatusColor().withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        _currentOrder.statusDisplayText,
-        style: TextStyle(
-          color: _getStatusColor(),
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
     );
   }
 
@@ -306,24 +277,16 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Order #${_currentOrder.orderId} accepted! Preparation started.',
-            ),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnackBar.showSuccess(
+          context,
+          'Order #${_currentOrder.orderId} accepted! Preparation started.',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to accept order: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnackBar.showError(
+          context,
+          'Failed to accept order: ${e.toString()}',
         );
       }
     } finally {
@@ -344,22 +307,16 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Order #${_currentOrder.orderId} declined.'),
-            backgroundColor: AppColors.warning,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnackBar.showWarning(
+          context,
+          'Order #${_currentOrder.orderId} declined.',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to decline order: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnackBar.showError(
+          context,
+          'Failed to decline order: ${e.toString()}',
         );
       }
     } finally {
@@ -389,14 +346,9 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
   }
 
   String _formatOrderTime(DateTime orderTime) {
-    final now = DateTime.now();
-    final difference = now.difference(orderTime);
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} min ago';
-    } else {
-      return '${difference.inHours}h ago';
-    }
+    return DateTimeFormatter.formatRelative(
+      orderTime,
+      includeDateForOlderDays: false,
+    );
   }
 }

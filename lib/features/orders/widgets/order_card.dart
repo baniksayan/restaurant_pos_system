@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/shared/widgets/badges/app_status_badge.dart';
 import '../models/order_management_model.dart';
 
 class OrderCard extends StatelessWidget {
@@ -106,22 +107,7 @@ class OrderCard extends StatelessWidget {
   }
 
   Widget _buildStatusBadge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: _getStatusColor().withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _getStatusColor().withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        _getStatusText(),
-        style: TextStyle(
-          color: _getStatusColor(),
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
+    return AppStatusBadge(label: _getStatusText(), color: _getStatusColor());
   }
 
   Color _getStatusColor() {

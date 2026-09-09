@@ -5,7 +5,7 @@ import '../models/wishlist_api_res_model.dart'; // You'll need to create this mo
 
 class WishlistRepository {
   WishlistRepository._();
-  
+
   static Future<WishListApiResModel?> getCustomerWishItems({
     int wishListCategoryId = 237,
     int customerId = 300,
@@ -18,23 +18,23 @@ class WishlistRepository {
         "customerId": customerId,
         "companyId": companyId,
       };
- 
+
       if (kDebugMode) {
         debugPrint('Calling Wishlist API: $endpoint');
         debugPrint('Request Body: $body');
       }
- 
+
       final response = await ApiService.apiRequestHttpRawBody(
         endpoint,
         body,
         method: ApiMethods.post,
       );
- 
+
       if (response != null) {
         if (kDebugMode) {
           debugPrint('Wishlist API Response: $response');
         }
- 
+
         return WishListApiResModel.fromJson(response);
       } else {
         if (kDebugMode) {

@@ -27,6 +27,8 @@ import 'package:restaurant_pos_system/shared/widgets/overlays/pdf_share_bottom_s
 import '../providers/order_provider.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/skeleton_loader.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class CartView extends StatefulWidget {
   final String? tableId;
@@ -459,7 +461,7 @@ class _CartViewState extends State<CartView> {
                             child: _buildValueColumn(
                               value:
                                   '${CurrencyConstants.symbol}${unitPrice.toStringAsFixed(2)}',
-                              label: 'Unit Price',
+                              label: AppStrings.unitPrice,
                               valueColor: const Color(0xFF1E293B),
                             ),
                           ),
@@ -471,7 +473,7 @@ class _CartViewState extends State<CartView> {
                           Expanded(
                             child: _buildValueColumn(
                               value: '$qty',
-                              label: 'Quantity',
+                              label: AppStrings.quantity,
                               valueColor: const Color(0xFF6D28D9),
                             ),
                           ),
@@ -484,7 +486,7 @@ class _CartViewState extends State<CartView> {
                             child: _buildValueColumn(
                               value:
                                   '${CurrencyConstants.symbol}${totalPrice.toStringAsFixed(2)}',
-                              label: 'Total',
+                              label: AppStrings.total,
                               valueColor: const Color(0xFF6D28D9),
                             ),
                           ),
@@ -543,11 +545,11 @@ class _CartViewState extends State<CartView> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Row(
+            title: Row(
               children: [
-                Icon(Icons.receipt_long, color: AppColors.kotStatus),
-                SizedBox(width: 8),
-                Text('KOT Generated'),
+                const Icon(Icons.receipt_long, color: AppColors.kotStatus),
+                const SizedBox(width: 8),
+                Text(AppStrings.orderTaking.kotGenerated),
               ],
             ),
             content: Column(
@@ -574,7 +576,7 @@ class _CartViewState extends State<CartView> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
+                child: const Text(AppStrings.ok),
               ),
             ],
           ),
@@ -586,11 +588,11 @@ class _CartViewState extends State<CartView> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Row(
+            title: Row(
               children: [
-                Icon(Icons.warning, color: Colors.orange),
-                SizedBox(width: 8),
-                Text('Cannot Generate Bill'),
+                const Icon(Icons.warning, color: Colors.orange),
+                const SizedBox(width: 8),
+                Text(AppStrings.orderTaking.cannotGenerateBill),
               ],
             ),
             content: const Text(
@@ -599,7 +601,7 @@ class _CartViewState extends State<CartView> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
+                child: const Text(AppStrings.ok),
               ),
             ],
           ),
@@ -629,12 +631,7 @@ class _CartViewState extends State<CartView> {
     try {
       final items = cartProvider.cartItems.values.toList();
       if (items.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No items in cart to navigate back'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        AppSnackBar.showWarning(context, AppStrings.orderTaking.noItemsInCart);
         return;
       }
 
@@ -655,11 +652,9 @@ class _CartViewState extends State<CartView> {
       final newItems = cartProvider.newItems.values.toList();
 
       if (newItems.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No new items to generate KOT for'),
-            backgroundColor: Colors.orange,
-          ),
+        AppSnackBar.showWarning(
+          context,
+          AppStrings.orderTaking.noNewItemsForKot,
         );
         return;
       }
@@ -686,13 +681,9 @@ class _CartViewState extends State<CartView> {
 
       if (backendOrderId == null) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Error: No order ID found. Please create an order first.',
-            ),
-            backgroundColor: Colors.red,
-          ),
+        AppSnackBar.showError(
+          context,
+          'Error: No order ID found. Please create an order first.',
         );
         return;
       }
@@ -700,8 +691,12 @@ class _CartViewState extends State<CartView> {
       if (kDebugMode) {
         debugPrint('=== New Items KOT Generation ===');
         debugPrint('Using backend order ID: $backendOrderId');
-        debugPrint('OrderProvider createdOrderId: ${orderProvider.createdOrderId}');
-        debugPrint('TableProvider currentOrderId: ${tableProvider.currentOrderId}');
+        debugPrint(
+          'OrderProvider createdOrderId: ${orderProvider.createdOrderId}',
+        );
+        debugPrint(
+          'TableProvider currentOrderId: ${tableProvider.currentOrderId}',
+        );
         debugPrint('Generated Order No: ${orderProvider.generatedOrderNo}');
         debugPrint('Order No: ${orderProvider.orderNo}');
         debugPrint('New items count: ${newItems.length}');
@@ -865,11 +860,11 @@ class _CartViewState extends State<CartView> {
           context: context,
           builder:
               (context) => AlertDialog(
-                title: const Row(
+                title: Row(
                   children: [
-                    Icon(Icons.error, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('KOT Creation Failed'),
+                    const Icon(Icons.error, color: Colors.red),
+                    const SizedBox(width: 8),
+                    Text(AppStrings.orderTaking.kotCreationFailed),
                   ],
                 ),
                 content: Column(
@@ -890,8 +885,8 @@ class _CartViewState extends State<CartView> {
                     const Text(
                       '• Try generating the KOT again in a few moments',
                     ),
-                    const Text('• Check if the items are still in your cart'),
-                    const Text('• Contact support if the issue persists'),
+                    Text(AppStrings.orderTaking.checkItemsInCart),
+                    Text(AppStrings.orderTaking.contactSupport),
                     if (kDebugMode) ...[
                       const SizedBox(height: 12),
                       const Text(
@@ -908,7 +903,7 @@ class _CartViewState extends State<CartView> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('OK'),
+                    child: const Text(AppStrings.ok),
                   ),
                   ElevatedButton(
                     onPressed: () {
@@ -919,7 +914,7 @@ class _CartViewState extends State<CartView> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange,
                     ),
-                    child: const Text('Retry'),
+                    child: const Text(AppStrings.retry),
                   ),
                 ],
               ),
@@ -936,12 +931,10 @@ class _CartViewState extends State<CartView> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error generating KOT: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
+        AppSnackBar.showError(
+          context,
+          'Error generating KOT: ${e.toString()}',
+          duration: const Duration(seconds: 4),
         );
       }
     }
@@ -951,11 +944,9 @@ class _CartViewState extends State<CartView> {
   Future<void> _sendToKitchen(AnimatedCartProvider cartProvider) async {
     final kotGeneratedItems = cartProvider.kotGeneratedItems.values.toList();
     if (kotGeneratedItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please generate KOT first'),
-          backgroundColor: Colors.orange,
-        ),
+      AppSnackBar.showWarning(
+        context,
+        AppStrings.orderTaking.pleaseGenerateKotFirst,
       );
       return;
     }
@@ -991,12 +982,7 @@ class _CartViewState extends State<CartView> {
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error sending to kitchen: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.showError(context, 'Error sending to kitchen: $e');
       }
     }
   }
@@ -1016,11 +1002,9 @@ class _CartViewState extends State<CartView> {
   void _navigateToBillingPage(AnimatedCartProvider cartProvider) {
     // Check if all items have been KOT'd
     if (!cartProvider.canProceedToBilling) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('All items must have KOT generated before billing'),
-          backgroundColor: Colors.orange,
-        ),
+      AppSnackBar.showWarning(
+        context,
+        AppStrings.orderTaking.allItemsMustHaveKot,
       );
       return;
     }

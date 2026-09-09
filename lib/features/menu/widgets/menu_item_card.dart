@@ -77,7 +77,9 @@ class _MenuItemCardState extends State<MenuItemCard>
     _locallySelected = widget.quantity > 0;
 
     final displayQuantity = widget.quantity > 0 ? widget.quantity : 1;
-    _quantityController = TextEditingController(text: displayQuantity.toString());
+    _quantityController = TextEditingController(
+      text: displayQuantity.toString(),
+    );
 
     _focusNode = FocusNode();
     _focusNode.addListener(() {
@@ -122,7 +124,8 @@ class _MenuItemCardState extends State<MenuItemCard>
     }
 
     final displayQuantity = widget.quantity > 0 ? widget.quantity : 1;
-    if (_quantityController.text != displayQuantity.toString() && !_focusNode.hasFocus) {
+    if (_quantityController.text != displayQuantity.toString() &&
+        !_focusNode.hasFocus) {
       _quantityController.text = displayQuantity.toString();
     }
   }
@@ -233,123 +236,140 @@ class _MenuItemCardState extends State<MenuItemCard>
                       child: Material(
                         color: Colors.transparent,
                         child: Container(
-                      constraints: const BoxConstraints(maxWidth: 360),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.55)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.12),
-                            blurRadius: 24,
-                            offset: const Offset(0, 10),
+                          constraints: const BoxConstraints(maxWidth: 360),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.55),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.12),
+                                blurRadius: 24,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Align(
-                              alignment: Alignment.topRight,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(16),
-                                onTap: closeDialog,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.05),
-                                    shape: BoxShape.circle,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Align(
+                                  alignment: Alignment.topRight,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(16),
+                                    onTap: closeDialog,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.05,
+                                        ),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.close_rounded,
+                                        size: 16,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
                                   ),
-                                  child: const Icon(
-                                    Icons.close_rounded,
-                                    size: 16,
+                                ),
+                                const SizedBox(height: 4),
+                                const Icon(
+                                  Icons.delete_forever_rounded,
+                                  size: 28,
+                                  color: Colors.red,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Remove ${widget.name} from cart?',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'This will remove it completely.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12,
                                     color: AppColors.textSecondary,
                                   ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const Icon(
-                              Icons.delete_forever_rounded,
-                              size: 28,
-                              color: Colors.red,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Remove ${widget.name} from cart?',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'This will remove it completely.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: closeDialog,
-                                    style: OutlinedButton.styleFrom(
-                                      minimumSize: const Size.fromHeight(40),
-                                      side: BorderSide(
-                                        color: Colors.black.withValues(alpha: 0.1),
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: closeDialog,
+                                        style: OutlinedButton.styleFrom(
+                                          minimumSize: const Size.fromHeight(
+                                            40,
+                                          ),
+                                          side: BorderSide(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Cancel',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                    child: const Text(
-                                      'Cancel',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        onPressed: () {
+                                          closeDialog();
+                                          _handleRemoveAll();
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red,
+                                          foregroundColor: Colors.white,
+                                          minimumSize: const Size.fromHeight(
+                                            40,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          elevation: 0,
+                                        ),
+                                        icon: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 15,
+                                        ),
+                                        label: const Text(
+                                          'Remove',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () {
-                                      closeDialog();
-                                      _handleRemoveAll();
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red,
-                                      foregroundColor: Colors.white,
-                                      minimumSize: const Size.fromHeight(40),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      elevation: 0,
-                                    ),
-                                    icon: const Icon(Icons.delete_outline_rounded, size: 15),
-                                    label: const Text(
-                                      'Remove',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                      ),
+                          ),
                         ),
                       ),
                     ),
@@ -449,19 +469,19 @@ class _MenuItemCardState extends State<MenuItemCard>
                     child:
                         widget.imageUrl != null
                             ? ClipRRect(
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(16),
-                                  topRight: Radius.circular(16),
-                                ),
-                                child: _buildMenuItemImage(widget.imageUrl!),
-                              )
-                            : Center(
-                                child: Icon(
-                                  Icons.restaurant_menu,
-                                  size: 40,
-                                  color: Colors.grey[400],
-                                ),
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(16),
+                                topRight: Radius.circular(16),
                               ),
+                              child: _buildMenuItemImage(widget.imageUrl!),
+                            )
+                            : Center(
+                              child: Icon(
+                                Icons.restaurant_menu,
+                                size: 40,
+                                color: Colors.grey[400],
+                              ),
+                            ),
                   ),
                 ),
 
@@ -555,7 +575,10 @@ class _MenuItemCardState extends State<MenuItemCard>
                       color: AppColors.textPrimary.withValues(alpha: 0.95),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     showDuration: const Duration(seconds: 3),
                     textStyle: const TextStyle(
@@ -667,9 +690,7 @@ class _MenuItemCardState extends State<MenuItemCard>
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(vertical: 2),
                 ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 onChanged: _handleQuantityChanged,
               ),
             ),
@@ -693,10 +714,7 @@ class _MenuItemCardState extends State<MenuItemCard>
       onTap: onPressed,
       child: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-        ),
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         child: Icon(icon, color: Colors.white, size: 14),
       ),
     );
@@ -781,22 +799,22 @@ class _MenuItemCardState extends State<MenuItemCard>
               child:
                   widget.isVeg
                       ? Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF4CAF50),
-                            shape: BoxShape.circle,
-                          ),
-                        )
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF4CAF50),
+                          shape: BoxShape.circle,
+                        ),
+                      )
                       : SizedBox(
-                          width: 8,
-                          height: 8,
-                          child: CustomPaint(
-                            painter: TrianglePainter(
-                              color: const Color(0xFF8D6E63),
-                            ),
+                        width: 8,
+                        height: 8,
+                        child: CustomPaint(
+                          painter: TrianglePainter(
+                            color: const Color(0xFF8D6E63),
                           ),
                         ),
+                      ),
             ),
           ],
         ),
@@ -851,10 +869,7 @@ class _SubtleTappingBadgeState extends State<_SubtleTappingBadge>
     )..repeat(reverse: true);
 
     _scaleAnimation = Tween<double>(begin: 0.92, end: 1.08).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
   }
 

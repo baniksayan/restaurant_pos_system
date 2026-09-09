@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
+import 'package:restaurant_pos_system/core/utils/date_time_formatter.dart';
 import '../models/order_management_model.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class ChannelPartnerOrderDetailView extends StatefulWidget {
   final OrderItem order;
@@ -43,19 +46,19 @@ class _ChannelPartnerOrderDetailViewState
             onSelected: _handleMenuAction,
             itemBuilder:
                 (BuildContext context) => <PopupMenuEntry<String>>[
-                  const PopupMenuItem<String>(
+                  PopupMenuItem<String>(
                     value: 'print',
                     child: ListTile(
-                      leading: Icon(Icons.print),
-                      title: Text('Print Order'),
+                      leading: const Icon(Icons.print),
+                      title: Text(AppStrings.orders.printOrder),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
-                  const PopupMenuItem<String>(
+                  PopupMenuItem<String>(
                     value: 'share',
                     child: ListTile(
-                      leading: Icon(Icons.share),
-                      title: Text('Share Details'),
+                      leading: const Icon(Icons.share),
+                      title: Text(AppStrings.orders.shareDetails),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
@@ -141,7 +144,9 @@ class _ChannelPartnerOrderDetailViewState
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                ),
               ),
               child: Text(
                 '${CurrencyConstants.symbol}${widget.order.totalAmount.toStringAsFixed(2)}',
@@ -573,18 +578,7 @@ class _ChannelPartnerOrderDetailViewState
   }
 
   String _formatDateTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inDays > 0) {
-      return '${dateTime.day}/${dateTime.month}/${dateTime.year} at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
-      return 'Just now';
-    }
+    return DateTimeFormatter.formatRelative(dateTime);
   }
 
   void _handleMenuAction(String action) {
@@ -599,21 +593,11 @@ class _ChannelPartnerOrderDetailViewState
   }
 
   void _printOrder() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Print functionality coming soon'),
-        backgroundColor: AppColors.info,
-      ),
-    );
+    AppSnackBar.showInfo(context, AppStrings.orders.printComingSoon);
   }
 
   void _shareOrder() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Share functionality coming soon'),
-        backgroundColor: AppColors.info,
-      ),
-    );
+    AppSnackBar.showInfo(context, AppStrings.orders.shareComingSoon);
   }
 
   Future<void> _updateOrderStatus(String status) async {
@@ -624,15 +608,11 @@ class _ChannelPartnerOrderDetailViewState
       await Future.delayed(const Duration(seconds: 2)); // Simulate API call
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Order ${status == 'accepted' ? 'accepted' : 'declined'} successfully',
-            ),
-            backgroundColor:
-                status == 'accepted' ? AppColors.success : AppColors.warning,
-          ),
-        );
+        if (status == 'accepted') {
+          AppSnackBar.showSuccess(context, 'Order accepted successfully');
+        } else {
+          AppSnackBar.showWarning(context, 'Order declined successfully');
+        }
 
         if (status == 'accepted') {
           // Navigate back after successful acceptance
@@ -641,13 +621,9 @@ class _ChannelPartnerOrderDetailViewState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Failed to ${status == 'accepted' ? 'accept' : 'decline'} order: ${e.toString()}',
-            ),
-            backgroundColor: AppColors.error,
-          ),
+        AppSnackBar.showError(
+          context,
+          'Failed to ${status == 'accepted' ? 'accept' : 'decline'} order: ${e.toString()}',
         );
       }
     } finally {

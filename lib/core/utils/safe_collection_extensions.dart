@@ -3,10 +3,10 @@
 extension SafeIterable<T> on Iterable<T> {
   /// Safely gets the first element, returns null if empty
   T? get safeFirst => isEmpty ? null : first;
-  
+
   /// Safely gets the last element, returns null if empty
   T? get safeLast => isEmpty ? null : last;
-  
+
   /// Safely gets the first element where condition matches
   T? safeFirstWhere(bool Function(T) test) {
     try {
@@ -15,11 +15,11 @@ extension SafeIterable<T> on Iterable<T> {
       return null;
     }
   }
-  
+
   /// Gets first element or default value
   T firstOrDefault(T defaultValue) => isEmpty ? defaultValue : first;
-  
-  /// Gets last element or default value  
+
+  /// Gets last element or default value
   T lastOrDefault(T defaultValue) => isEmpty ? defaultValue : last;
 }
 
@@ -29,7 +29,7 @@ extension SafeList<T> on List<T> {
     if (index < 0 || index >= length) return null;
     return this[index];
   }
-  
+
   /// Gets element at index or default value
   T elementAtOrDefault(int index, T defaultValue) {
     if (index < 0 || index >= length) return defaultValue;

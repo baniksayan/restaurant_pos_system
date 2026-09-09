@@ -25,12 +25,7 @@ class NetworkAwareWidget extends StatelessWidget {
 
         // Slow connection - show overlay
         if (networkProvider.isSlow && showSlowConnectionOverlay) {
-          return Stack(
-            children: [
-              child,
-              const SlowConnectionOverlay(),
-            ],
-          );
+          return Stack(children: [child, const SlowConnectionOverlay()]);
         }
 
         // Normal connection

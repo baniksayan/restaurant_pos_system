@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:restaurant_pos_system/core/constants/app_assets.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_gradients.dart';
 import 'package:restaurant_pos_system/shared/widgets/animations/fade_in_animation.dart';
 import 'package:restaurant_pos_system/shared/widgets/animations/scale_animation.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class LoginHeader extends StatelessWidget {
   const LoginHeader({super.key});
@@ -20,11 +23,7 @@ class LoginHeader extends StatelessWidget {
               height: 88,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppColors.primary, AppColors.primaryDark],
-                ),
+                gradient: AppGradients.primary,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
@@ -35,7 +34,7 @@ class LoginHeader extends StatelessWidget {
                 ],
               ),
               child: Image.asset(
-                'assets/logo/transparent.png',
+                AppAssets.logoTransparent,
                 fit: BoxFit.contain,
               ),
             ),
@@ -49,7 +48,7 @@ class LoginHeader extends StatelessWidget {
           child: Column(
             children: [
               const Text(
-                'WhizEats',
+                AppStrings.brandName,
                 style: TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.w800,
@@ -59,7 +58,7 @@ class LoginHeader extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               const Text(
-                'PRO',
+                AppStrings.brandSuffix,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -83,7 +82,7 @@ class LoginHeader extends StatelessWidget {
                   ),
                 ),
                 child: const Text(
-                  'Restaurant POS System',
+                  AppStrings.posTagline,
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
@@ -98,11 +97,11 @@ class LoginHeader extends StatelessWidget {
         const SizedBox(height: 24),
 
         // Log In Header Title
-        const FadeInAnimation(
-          delay: Duration(milliseconds: 500),
+        FadeInAnimation(
+          delay: const Duration(milliseconds: 500),
           child: Text(
-            'Log In',
-            style: TextStyle(
+            AppStrings.auth.logIn,
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,

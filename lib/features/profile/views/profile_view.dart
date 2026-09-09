@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/navigation_provider.dart';
@@ -10,6 +10,8 @@ import '../widgets/quick_stats_card.dart';
 import '../widgets/edit_profile_dialog.dart';
 import '../widgets/printer_settings_dialog.dart';
 import '../widgets/cash_management_dialog.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({super.key});
@@ -19,13 +21,7 @@ class ProfileView extends StatefulWidget {
 }
 
 class _ProfileViewState extends State<ProfileView> {
-  Future<void> _triggerHapticFeedback() async {
-    try {
-      await HapticFeedback.lightImpact();
-    } catch (e) {
-      // Handle error silently
-    }
-  }
+  Future<void> _triggerHapticFeedback() => HapticHelper.triggerFeedback();
 
   @override
   Widget build(BuildContext context) {
@@ -123,30 +119,30 @@ class _ProfileViewState extends State<ProfileView> {
       children: [
         // Restaurant Management Section
         _buildSimpleMenuSection(
-          title: 'Restaurant Management',
+          title: AppStrings.profile.restaurantManagement,
           items: [
             _buildMenuItem(
               icon: Icons.store,
-              title: 'Restaurant Details',
-              subtitle: 'Edit restaurant information',
+              title: AppStrings.profile.restaurantDetails,
+              subtitle: AppStrings.profile.restaurantDetailsSubtitle,
               onTap: () => _navigateToPage('restaurant_details'),
             ),
             _buildMenuItem(
               icon: Icons.people,
-              title: 'Staff Management',
-              subtitle: 'Manage staff and permissions',
+              title: AppStrings.profile.staffManagement,
+              subtitle: AppStrings.profile.staffManagementSubtitle,
               onTap: () => _navigateToPage('staff_management'),
             ),
             _buildMenuItem(
               icon: Icons.table_restaurant,
-              title: 'Table Configuration',
-              subtitle: 'Manage tables and seating',
+              title: AppStrings.profile.tableConfiguration,
+              subtitle: AppStrings.profile.tableConfigurationSubtitle,
               onTap: () => _navigateToPage('table_config'),
             ),
             _buildMenuItem(
               icon: Icons.restaurant_menu,
-              title: 'Menu Management',
-              subtitle: 'Update menu items and prices',
+              title: AppStrings.profile.menuManagement,
+              subtitle: AppStrings.profile.menuManagementSubtitle,
               onTap: () => _navigateToPage('menu_management'),
             ),
           ],
@@ -154,30 +150,30 @@ class _ProfileViewState extends State<ProfileView> {
         const SizedBox(height: 20),
         // Business Analytics Section
         _buildSimpleMenuSection(
-          title: 'Business Analytics',
+          title: AppStrings.profile.businessAnalytics,
           items: [
             _buildMenuItem(
               icon: Icons.bar_chart,
-              title: 'Sales Reports',
-              subtitle: 'Daily, weekly, monthly reports',
+              title: AppStrings.profile.salesReports,
+              subtitle: AppStrings.profile.salesReportsSubtitle,
               onTap: () => _navigateToReports(),
             ),
             _buildMenuItem(
               icon: Icons.trending_up,
-              title: 'Performance Metrics',
-              subtitle: 'Popular items and peak hours',
+              title: AppStrings.profile.performanceMetrics,
+              subtitle: AppStrings.profile.performanceMetricsSubtitle,
               onTap: () => _navigateToPage('performance'),
             ),
             _buildMenuItem(
               icon: Icons.inventory,
-              title: 'Inventory Reports',
-              subtitle: 'Stock levels and alerts',
+              title: AppStrings.profile.inventoryReports,
+              subtitle: AppStrings.profile.inventoryReportsSubtitle,
               onTap: () => _navigateToPage('inventory_reports'),
             ),
             _buildMenuItem(
               icon: Icons.group,
-              title: 'Customer Analytics',
-              subtitle: 'Customer behavior insights',
+              title: AppStrings.profile.customerAnalytics,
+              subtitle: AppStrings.profile.customerAnalyticsSubtitle,
               onTap: () => _navigateToPage('customer_analytics'),
             ),
           ],
@@ -185,30 +181,30 @@ class _ProfileViewState extends State<ProfileView> {
         const SizedBox(height: 20),
         // Financial Management Section
         _buildSimpleMenuSection(
-          title: 'Financial Management',
+          title: AppStrings.profile.financialManagement,
           items: [
             _buildMenuItem(
               icon: Icons.receipt_long,
-              title: 'Daily Cash Management',
-              subtitle: 'Opening, closing balance',
+              title: AppStrings.profile.dailyCashManagement,
+              subtitle: AppStrings.profile.dailyCashManagementSubtitle,
               onTap: () => _showCashManagementDialog(),
             ),
             _buildMenuItem(
               icon: Icons.money_off,
-              title: 'Expense Tracking',
-              subtitle: 'Record daily expenses',
+              title: AppStrings.profile.expenseTracking,
+              subtitle: AppStrings.profile.expenseTrackingSubtitle,
               onTap: () => _navigateToPage('expenses'),
             ),
             _buildMenuItem(
               icon: Icons.assessment,
-              title: 'Profit & Loss',
-              subtitle: 'Financial performance',
+              title: AppStrings.profile.profitAndLoss,
+              subtitle: AppStrings.profile.profitAndLossSubtitle,
               onTap: () => _navigateToPage('profit_loss'),
             ),
             _buildMenuItem(
               icon: Icons.file_copy,
-              title: 'Tax Reports',
-              subtitle: 'GST and tax calculations',
+              title: AppStrings.profile.taxReports,
+              subtitle: AppStrings.profile.taxReportsSubtitle,
               onTap: () => _navigateToPage('tax_reports'),
             ),
           ],
@@ -216,30 +212,30 @@ class _ProfileViewState extends State<ProfileView> {
         const SizedBox(height: 20),
         // System & Settings Section
         _buildSimpleMenuSection(
-          title: 'System & Settings',
+          title: AppStrings.profile.systemAndSettings,
           items: [
             _buildMenuItem(
               icon: Icons.print,
-              title: 'Printer Settings',
-              subtitle: 'Configure receipt and kitchen printers',
+              title: AppStrings.profile.printerSettings,
+              subtitle: AppStrings.profile.printerSettingsSubtitle,
               onTap: () => _showPrinterSettingsDialog(),
             ),
             _buildMenuItem(
               icon: Icons.payment,
-              title: 'Payment Methods',
-              subtitle: 'Enable payment options',
+              title: AppStrings.profile.paymentMethods,
+              subtitle: AppStrings.profile.paymentMethodsSubtitle,
               onTap: () => _navigateToPage('payment_settings'),
             ),
             _buildMenuItem(
               icon: Icons.percent,
-              title: 'Tax Configuration',
-              subtitle: 'GST rates and service charges',
+              title: AppStrings.profile.taxConfiguration,
+              subtitle: AppStrings.profile.taxConfigurationSubtitle,
               onTap: () => _navigateToPage('tax_config'),
             ),
             _buildMenuItem(
               icon: Icons.backup,
-              title: 'Data Backup',
-              subtitle: 'Backup and restore data',
+              title: AppStrings.profile.dataBackup,
+              subtitle: AppStrings.profile.dataBackupSubtitle,
               onTap: () => _navigateToPage('backup'),
             ),
           ],
@@ -247,30 +243,30 @@ class _ProfileViewState extends State<ProfileView> {
         const SizedBox(height: 20),
         // Help & Support Section
         _buildSimpleMenuSection(
-          title: 'Help & Support',
+          title: AppStrings.profile.helpAndSupport,
           items: [
             _buildMenuItem(
               icon: Icons.book,
-              title: 'User Manual',
-              subtitle: 'How to use the app',
+              title: AppStrings.profile.userManual,
+              subtitle: AppStrings.profile.userManualSubtitle,
               onTap: () => _navigateToPage('user_manual'),
             ),
             _buildMenuItem(
               icon: Icons.support_agent,
-              title: 'Technical Support',
-              subtitle: 'Contact support team',
+              title: AppStrings.profile.technicalSupport,
+              subtitle: AppStrings.profile.technicalSupportSubtitle,
               onTap: () => _navigateToPage('support'),
             ),
             _buildMenuItem(
               icon: Icons.system_update,
-              title: 'App Updates',
-              subtitle: 'Check for updates',
+              title: AppStrings.profile.appUpdates,
+              subtitle: AppStrings.profile.appUpdatesSubtitle,
               onTap: () => _navigateToPage('updates'),
             ),
             _buildMenuItem(
               icon: Icons.info,
-              title: 'About App',
-              subtitle: 'Version and app information',
+              title: AppStrings.profile.aboutApp,
+              subtitle: AppStrings.profile.aboutAppSubtitle,
               onTap: () => _navigateToPage('about'),
             ),
           ],
@@ -506,7 +502,7 @@ class _ProfileViewState extends State<ProfileView> {
               children: [
                 Icon(Icons.logout, color: Colors.red, size: 24),
                 SizedBox(width: 8),
-                Text('Sign Out'),
+                Text(AppStrings.signOut),
               ],
             ),
             content: const Text(
@@ -516,7 +512,7 @@ class _ProfileViewState extends State<ProfileView> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
+                child: const Text(AppStrings.cancel),
               ),
               ElevatedButton(
                 onPressed: () async {
@@ -530,7 +526,7 @@ class _ProfileViewState extends State<ProfileView> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('Sign Out'),
+                child: const Text(AppStrings.signOut),
               ),
             ],
           ),
@@ -544,13 +540,13 @@ class _ProfileViewState extends State<ProfileView> {
         context: context,
         barrierDismissible: false,
         builder:
-            (context) => const AlertDialog(
+            (context) => AlertDialog(
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Signing out...'),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(AppStrings.profile.signingOut),
                 ],
               ),
             ),
@@ -585,12 +581,10 @@ class _ProfileViewState extends State<ProfileView> {
     } catch (e) {
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Logout failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
+        AppSnackBar.showError(
+          context,
+          'Logout failed: ${e.toString()}',
+          duration: const Duration(seconds: 3),
         );
       }
     }
@@ -641,7 +635,7 @@ class _ProfileViewState extends State<ProfileView> {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('Got it'),
+                  child: const Text(AppStrings.gotIt),
                 ),
               ],
             ),
@@ -657,28 +651,28 @@ class _ProfileViewState extends State<ProfileView> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            title: const Text('About WhizEats Pro'),
-            content: const Column(
+            title: Text(AppStrings.profile.aboutTitle),
+            content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('WhizEats Pro - Restaurant Management System'),
-                SizedBox(height: 8),
-                Text('Version: 1.0.0'),
-                Text('Build: 2026.08.13'),
-                SizedBox(height: 16),
-                Text(
+                Text(AppStrings.profile.aboutDescription),
+                const SizedBox(height: 8),
+                Text(AppStrings.profile.version),
+                Text(AppStrings.profile.build),
+                const SizedBox(height: 16),
+                const Text(
                   'A comprehensive restaurant management solution for modern dining experiences.',
                   style: TextStyle(color: Colors.grey),
                 ),
-                SizedBox(height: 16),
-                Text('© 2026 WhizEats Pro. All rights reserved.'),
+                const SizedBox(height: 16),
+                const Text('© 2026 WhizEats Pro. All rights reserved.'),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
+                child: const Text(AppStrings.close),
               ),
             ],
           ),

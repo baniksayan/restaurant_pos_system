@@ -6,7 +6,7 @@ import '../../core/utils/connectivity_helper.dart';
 
 class SyncService {
   static const String baseUrl = 'https://your-api-server.com/api';
-  
+
   static Future<bool> syncAllData() async {
     if (!await ConnectivityHelper.hasInternetConnection()) {
       debugPrint('No internet connection. Sync postponed.');
@@ -16,20 +16,19 @@ class SyncService {
     try {
       // Get all unsynced items
       final unsyncedItems = HiveService.getUnsyncedItems();
-      
+
       for (final item in unsyncedItems) {
         await _syncItem(item);
       }
 
       // Sync tables
       await _syncTables();
-      
+
       // Sync orders
       await _syncOrders();
-      
+
       debugPrint('All data synced successfully');
       return true;
-      
     } catch (e) {
       debugPrint('Sync failed: ${e.toString()}');
       return false;
@@ -39,7 +38,7 @@ class SyncService {
   static Future<void> _syncTables() async {
     final tables = HiveService.getAllTables();
     final unsyncedTables = tables.where((t) => !t.synced).toList();
-    
+
     for (final table in unsyncedTables) {
       try {
         final response = await http.post(
@@ -71,7 +70,7 @@ class SyncService {
   static Future<void> _syncOrders() async {
     final orders = HiveService.getAllOrders();
     final unsyncedOrders = orders.where((o) => !o.synced).toList();
-    
+
     for (final order in unsyncedOrders) {
       try {
         final response = await http.post(
@@ -80,13 +79,18 @@ class SyncService {
           body: json.encode({
             'id': order.id,
             'tableId': order.tableId,
-            'items': order.items.map((item) => {
-              'menuItemId': item.menuItemId,
-              'name': item.name,
-              'price': item.price,
-              'quantity': item.quantity,
-              'notes': item.notes,
-            }).toList(),
+            'items':
+                order.items
+                    .map(
+                      (item) => {
+                        'menuItemId': item.menuItemId,
+                        'name': item.name,
+                        'price': item.price,
+                        'quantity': item.quantity,
+                        'notes': item.notes,
+                      },
+                    )
+                    .toList(),
             'createdAt': order.createdAt.toIso8601String(),
             'status': order.status,
             'totalAmount': order.totalAmount,
@@ -110,7 +114,7 @@ class SyncService {
     try {
       final action = item['action'];
       // final entityId = item['entityId'];
-      
+
       // Process based on action type
       switch (action) {
         case 'table_update':
@@ -121,7 +125,6 @@ class SyncService {
           // Order already handled in _syncOrders
           break;
       }
-      
     } catch (e) {
       debugPrint('Failed to sync item: $e');
     }
@@ -131,7 +134,7 @@ class SyncService {
   static Future<void> scheduleEndOfDaySync() async {
     final now = DateTime.now();
     final endOfDay = DateTime(now.year, now.month, now.day, 23, 59); // 11:59 PM
-    
+
     if (now.isAfter(endOfDay)) {
       // If it's past end of day, schedule for next day
       final tomorrow = endOfDay.add(const Duration(days: 1));
@@ -139,7 +142,7 @@ class SyncService {
     } else {
       debugPrint('Sync scheduled for: $endOfDay');
     }
-    
+
     // In a real app, you'd use a background task scheduler
     // For now, we'll just call sync immediately if needed
     await syncAllData();
