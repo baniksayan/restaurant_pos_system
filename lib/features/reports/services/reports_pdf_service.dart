@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:restaurant_pos_system/core/permissions/app_permission_service.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 
@@ -470,11 +470,11 @@ class ReportsPdfService {
         ),
       );
 
-      // Check permissions
-      if (Platform.isAndroid) {
-        if (!await Permission.storage.request().isGranted) {
-          return null;
-        }
+      // Ensure storage access where required
+      final hasStoragePermission =
+          await AppPermissionService.ensureStoragePermission();
+      if (!hasStoragePermission) {
+        return null;
       }
 
       // Save file

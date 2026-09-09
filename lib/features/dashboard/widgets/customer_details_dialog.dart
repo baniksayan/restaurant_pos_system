@@ -4,6 +4,7 @@ import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/utils/app_validators.dart';
 import 'package:restaurant_pos_system/data/models/order_channel_types_model.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/shared/widgets/forms/custom_text_field.dart';
 
 class CustomerDetailsDialog extends StatefulWidget {
   final OrderType orderType;
@@ -97,49 +98,19 @@ class _CustomerDetailsDialogState extends State<CustomerDetailsDialog> {
                 const SizedBox(height: 20),
 
                 // Customer Name Field with automatic capitalization
-                TextFormField(
+                CustomTextField(
                   controller: _nameController,
-                  textCapitalization:
-                      TextCapitalization.words, // Auto capitalize each word
+                  textCapitalization: TextCapitalization.words,
                   inputFormatters: [
-                    // Allow only letters and spaces
                     FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
                   ],
-                  style: TextStyle(fontSize: 16, color: Colors.grey.shade800),
-                  decoration: InputDecoration(
-                    labelText: AppStrings.dashboard.customerNameLabel,
-                    labelStyle: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 14,
-                    ),
-                    hintText: AppStrings.dashboard.enterCustomerName,
-                    hintStyle: TextStyle(color: Colors.grey.shade400),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppColors.primary,
-                        width: 2,
-                      ),
-                    ),
-                    errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.red, width: 2),
-                    ),
-                    prefixIcon: Icon(Icons.person, color: Colors.grey.shade600),
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
+                  labelText: AppStrings.dashboard.customerNameLabel,
+                  hintText: AppStrings.dashboard.enterCustomerName,
+                  prefixIcon: Icons.person,
+                  fillColor: Colors.grey.shade50,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
                   ),
                   validator:
                       (value) => AppValidators.name(value, 'customer name'),
@@ -147,77 +118,42 @@ class _CustomerDetailsDialogState extends State<CustomerDetailsDialog> {
                 const SizedBox(height: 16),
 
                 // Phone Number Field with Indian validation
-                TextFormField(
+                CustomTextField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
-                  maxLength: 10, // Limit to 10 digits
+                  maxLength: 10,
+                  counterText: '',
                   inputFormatters: [
-                    // Allow only digits
                     FilteringTextInputFormatter.digitsOnly,
-                    // Limit to 10 digits
                     LengthLimitingTextInputFormatter(10),
                   ],
-                  style: TextStyle(fontSize: 16, color: Colors.grey.shade800),
-                  decoration: InputDecoration(
-                    labelText: AppStrings.dashboard.phoneNumberLabel,
-                    labelStyle: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 14,
-                    ),
-                    hintText: AppStrings.dashboard.enterTenDigitMobile,
-                    hintStyle: TextStyle(color: Colors.grey.shade400),
-                    // helperText: 'Must start with 6, 7, 8, or 9',
-                    helperStyle: TextStyle(
-                      color: Colors.grey.shade500,
-                      fontSize: 12,
-                    ),
-                    counterText: '', // Hide character counter
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppColors.primary,
-                        width: 2,
+                  labelText: AppStrings.dashboard.phoneNumberLabel,
+                  hintText: AppStrings.dashboard.enterTenDigitMobile,
+                  prefixWidget: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: 12),
+                      Text(
+                        '+91',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                    errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.red, width: 2),
-                    ),
-                    prefixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(width: 12),
-                        Text(
-                          '+91',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          height: 20,
-                          width: 1,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
+                      const SizedBox(width: 8),
+                      Container(
+                        height: 20,
+                        width: 1,
+                        color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+                  fillColor: Colors.grey.shade50,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
                   ),
                   validator: AppValidators.indianPhone,
                 ),

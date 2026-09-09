@@ -4,6 +4,7 @@ import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
+import 'package:restaurant_pos_system/shared/widgets/forms/custom_text_field.dart';
 
 class EditProfileDialog extends StatefulWidget {
   const EditProfileDialog({super.key});
@@ -87,22 +88,10 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
               key: _formKey,
               child: Column(
                 children: [
-                  TextFormField(
+                  CustomTextField(
                     controller: _nameController,
-                    decoration: InputDecoration(
-                      labelText: AppStrings.profile.fullName,
-                      prefixIcon: const Icon(Icons.person_outline),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: AppColors.primary,
-                          width: 2,
-                        ),
-                      ),
-                    ),
+                    labelText: AppStrings.profile.fullName,
+                    prefixIcon: Icons.person_outline,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter your name';
@@ -111,22 +100,10 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
+                  CustomTextField(
                     controller: _roleController,
-                    decoration: InputDecoration(
-                      labelText: AppStrings.profile.role,
-                      prefixIcon: const Icon(Icons.work_outline),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: AppColors.primary,
-                          width: 2,
-                        ),
-                      ),
-                    ),
+                    labelText: AppStrings.profile.role,
+                    prefixIcon: Icons.work_outline,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter your role';
@@ -135,23 +112,11 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
+                  CustomTextField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
-                    decoration: InputDecoration(
-                      labelText: AppStrings.profile.phoneNumberOptional,
-                      prefixIcon: const Icon(Icons.phone_outlined),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: AppColors.primary,
-                          width: 2,
-                        ),
-                      ),
-                    ),
+                    labelText: AppStrings.profile.phoneNumberOptional,
+                    prefixIcon: Icons.phone_outlined,
                   ),
                 ],
               ),

@@ -6,6 +6,7 @@ import '../../providers/navigation_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 import 'package:restaurant_pos_system/shared/widgets/dialogs/app_glass_dialog.dart';
+import 'package:restaurant_pos_system/shared/widgets/forms/custom_text_field.dart';
 
 class CustomerInfoDialog extends StatefulWidget {
   final String orderChannelType; // 'Phone' or 'Takeaway'
@@ -152,37 +153,15 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
             const SizedBox(height: 20),
 
             // Customer Name Field
-            TextFormField(
+            CustomTextField(
               controller: _nameController,
-              decoration: InputDecoration(
-                labelText: AppStrings.dashboard.customerNameLabel,
-                hintText: AppStrings.dashboard.enterCustomerName,
-                prefixIcon: const Icon(Icons.person_outline_rounded, size: 20),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.48),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.75),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.75),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
-                    width: 1.5,
-                  ),
-                ),
+              labelText: AppStrings.dashboard.customerNameLabel,
+              hintText: AppStrings.dashboard.enterCustomerName,
+              prefixIcon: Icons.person_outline_rounded,
+              fillColor: Colors.white.withValues(alpha: 0.48),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -198,37 +177,15 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
             const SizedBox(height: 14),
 
             // Customer Phone Field
-            TextFormField(
+            CustomTextField(
               controller: _phoneController,
-              decoration: InputDecoration(
-                labelText: AppStrings.dashboard.phoneNumberLabel,
-                hintText: AppStrings.dashboard.enterPhoneNumber,
-                prefixIcon: const Icon(Icons.phone_outlined, size: 20),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.48),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.75),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.75),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
-                    width: 1.5,
-                  ),
-                ),
+              labelText: AppStrings.dashboard.phoneNumberLabel,
+              hintText: AppStrings.dashboard.enterPhoneNumber,
+              prefixIcon: Icons.phone_outlined,
+              fillColor: Colors.white.withValues(alpha: 0.48),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
               ),
               keyboardType: TextInputType.phone,
               validator: (value) {

@@ -8,6 +8,7 @@ import 'package:restaurant_pos_system/features/profile/views/profile_view.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
 import 'chef_order_history_dialog.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/shared/widgets/feedback/app_version_label.dart';
 
 class ChefDrawer extends StatelessWidget {
   const ChefDrawer({super.key});
@@ -86,6 +87,10 @@ class ChefDrawer extends StatelessWidget {
                       ),
                     ),
                   ),
+
+                  // App Version Label (Just Above Sign Out Button)
+                  const AppVersionLabel(),
+                  const SizedBox(height: 6),
 
                   // Dedicated Sign Out Button Fixed at Bottom
                   _buildLogoutButton(context),

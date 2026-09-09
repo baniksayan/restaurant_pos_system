@@ -334,6 +334,21 @@ class HiveService {
     );
   }
 
+  // Permissions Management
+  static bool hasCheckedInitialPermissions() {
+    return posBox.get(
+          StorageKeys.hasCheckedInitialPermissions,
+          defaultValue: false,
+        )
+        as bool;
+  }
+
+  static Future<void> setInitialPermissionsChecked([
+    bool checked = true,
+  ]) async {
+    await posBox.put(StorageKeys.hasCheckedInitialPermissions, checked);
+  }
+
   // Utility method to clear all data (useful for logout)
   static Future<void> clearAllData() async {
     await posBox.clear();

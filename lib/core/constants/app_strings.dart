@@ -11,6 +11,12 @@ class AppStrings {
   static const String solutionTagline =
       'Advanced Restaurant Management Solution';
 
+  // Legal & Policy URLs
+  static const String privacyPolicyUrl =
+      'https://stdpos.wizardcomm.net/WhizEatsPro/privacy-policy.html';
+  static const String termsAndConditionsUrl =
+      'https://stdpos.wizardcomm.net/WhizEatsPro/terms-and-conditions.html';
+
   // Common button labels
   static const String ok = 'OK';
   static const String cancel = 'Cancel';
@@ -78,6 +84,27 @@ class _AuthStrings {
   final String backToLogin = 'Back to Login';
   final String resendEmail = 'Resend Email';
   final String rememberPassword = 'Remember your password? ';
+
+  // Consent & Legal
+  final String iAgreeToThe = 'I agree to the ';
+  final String termsAndConditions = 'Terms & Conditions';
+  final String and = ' and ';
+  final String privacyPolicy = 'Privacy Policy';
+
+  // Error messages
+  final String noServerResponse =
+      'No response from server. Please check your connection.';
+  final String authCheckError = 'Error checking authentication state';
+  final String invalidCredentials = 'Invalid username or password';
+  final String loginFailedCredentials =
+      'Login failed. Please check your credentials.';
+  final String serverResponseError = 'Server response error. Please try again.';
+  final String serverError =
+      'Server error. Please try again later or contact support.';
+  final String noInternet =
+      'No internet connection. Please check your network.';
+  final String connectionTimeout = 'Connection timeout. Please try again.';
+  final String loginFailed = 'Login failed. Please try again.';
 }
 
 // --- Dashboard ---

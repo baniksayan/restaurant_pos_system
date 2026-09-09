@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/shared/widgets/forms/custom_text_field.dart';
 
 class CashManagementDialog extends StatefulWidget {
   const CashManagementDialog({super.key});
@@ -165,28 +166,16 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
                     const SizedBox(height: 12),
 
                     // Opening Balance
-                    TextFormField(
+                    CustomTextField(
                       controller: _openingBalanceController,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: InputDecoration(
-                        labelText: AppStrings.profile.openingBalance,
-                        prefixIcon: const Icon(Icons.attach_money, size: 20),
-                        prefixText: CurrencyConstants.symbol,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.primary,
-                            width: 2,
-                          ),
-                        ),
+                      labelText: AppStrings.profile.openingBalance,
+                      prefixIcon: Icons.attach_money,
+                      prefixText: CurrencyConstants.symbol,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
                       ),
                       onChanged: (value) {
                         setState(() {
@@ -198,33 +187,20 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
                     const SizedBox(height: 16),
 
                     // Cash In
-                    TextFormField(
+                    CustomTextField(
                       controller: _cashInController,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: InputDecoration(
-                        labelText: AppStrings.profile.additionalCashIn,
-                        prefixIcon: const Icon(
-                          Icons.add_circle,
-                          color: Colors.green,
-                          size: 20,
-                        ),
-                        prefixText: '',
-                        hintText: AppStrings.profile.cashInHint,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.primary,
-                            width: 2,
-                          ),
-                        ),
+                      labelText: AppStrings.profile.additionalCashIn,
+                      prefixWidget: const Icon(
+                        Icons.add_circle,
+                        color: Colors.green,
+                        size: 20,
+                      ),
+                      hintText: AppStrings.profile.cashInHint,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
@@ -232,33 +208,20 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
                     const SizedBox(height: 16),
 
                     // Cash Out
-                    TextFormField(
+                    CustomTextField(
                       controller: _cashOutController,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: InputDecoration(
-                        labelText: AppStrings.profile.additionalCashOut,
-                        prefixIcon: const Icon(
-                          Icons.remove_circle,
-                          color: Colors.red,
-                          size: 20,
-                        ),
-                        prefixText: '',
-                        hintText: AppStrings.profile.cashOutHint,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.primary,
-                            width: 2,
-                          ),
-                        ),
+                      labelText: AppStrings.profile.additionalCashOut,
+                      prefixWidget: const Icon(
+                        Icons.remove_circle,
+                        color: Colors.red,
+                        size: 20,
+                      ),
+                      hintText: AppStrings.profile.cashOutHint,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
                       ),
                       onChanged: (_) => setState(() {}),
                     ),

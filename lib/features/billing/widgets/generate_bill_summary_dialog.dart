@@ -13,6 +13,7 @@ import 'bill_success_dialog.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/skeleton_loader.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
+import 'package:restaurant_pos_system/shared/widgets/forms/custom_text_field.dart';
 
 class GenerateBillSummaryDialog extends StatefulWidget {
   final String orderNumber;
@@ -757,16 +758,8 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Customer Phone Number (Optional)',
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
+          CustomTextField(
+            label: 'Customer Phone Number (Optional)',
             controller: _phoneController,
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -774,54 +767,14 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
               LengthLimitingTextInputFormatter(10),
             ],
             maxLength: 10,
-            buildCounter:
-                (
-                  context, {
-                  required currentLength,
-                  required isFocused,
-                  maxLength,
-                }) => null,
+            counterText: '',
             onChanged: (val) => billingProvider.setCustomerPhone(val),
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-            decoration: InputDecoration(
-              hintText: AppStrings.dashboard.enterTenDigitMobile,
-              hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
-              prefixIcon: const Icon(
-                Icons.phone_rounded,
-                size: 18,
-                color: AppColors.primary,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.85),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(
-                  color: Color(0xFF94A3B8),
-                  width: 1.2,
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(
-                  color: Color(0xFF94A3B8),
-                  width: 1.2,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
-                  width: 1.5,
-                ),
-              ),
+            hintText: AppStrings.dashboard.enterTenDigitMobile,
+            prefixIcon: Icons.phone_rounded,
+            fillColor: Colors.white.withValues(alpha: 0.85),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
             ),
             validator: (value) {
               if (value != null && value.isNotEmpty) {

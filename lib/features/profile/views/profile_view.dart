@@ -11,6 +11,7 @@ import '../widgets/edit_profile_dialog.dart';
 import '../widgets/printer_settings_dialog.dart';
 import '../widgets/cash_management_dialog.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/services/app_version_service.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class ProfileView extends StatefulWidget {
@@ -381,17 +382,12 @@ class _ProfileViewState extends State<ProfileView> {
           Icon(Icons.info_outline, color: Colors.grey[400], size: 24),
           const SizedBox(height: 12),
           Text(
-            'App Version 1.0.0',
+            AppVersionService.displayVersion,
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[600],
               fontWeight: FontWeight.w500,
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Build 2025.08.21',
-            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
           ),
         ],
       ),

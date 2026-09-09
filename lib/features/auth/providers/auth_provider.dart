@@ -8,6 +8,7 @@ import 'package:restaurant_pos_system/data/models/auth_api_res_model.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/billing/providers/tax_provider.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class AuthProvider with ChangeNotifier {
   bool _isAuthenticated = false;
@@ -85,7 +86,7 @@ class AuthProvider with ChangeNotifier {
       return false; // User needs to login
     } catch (e) {
       debugPrint('Error checking auth state: $e');
-      _errorMessage = 'Error checking authentication state';
+      _errorMessage = AppStrings.auth.authCheckError;
       _isAuthenticated = false;
       _isLoading = false;
       notifyListeners();
@@ -125,8 +126,7 @@ class AuthProvider with ChangeNotifier {
       );
 
       if (response == null) {
-        _errorMessage =
-            'No response from server. Please check your connection.';
+        _errorMessage = AppStrings.auth.noServerResponse;
         _isLoading = false;
         notifyListeners();
         return false;
@@ -227,13 +227,11 @@ class AuthProvider with ChangeNotifier {
       } else {
         // Handle different error scenarios
         if (model.statusCode == 500) {
-          _errorMessage =
-              'Server error. Please try again later or contact support.';
+          _errorMessage = AppStrings.auth.serverError;
         } else if (model.message != null && model.message!.isNotEmpty) {
           _errorMessage = model.message!;
         } else {
-          _errorMessage =
-              'Authentication failed. Please check your credentials.';
+          _errorMessage = AppStrings.auth.loginFailedCredentials;
         }
 
         if (kDebugMode) {
@@ -250,14 +248,14 @@ class AuthProvider with ChangeNotifier {
       if (e.toString().contains(
         'type \'_Map<dynamic, dynamic>\' is not a subtype',
       )) {
-        _errorMessage = 'Server response error. Please try again.';
+        _errorMessage = AppStrings.auth.serverResponseError;
       } else if (e.toString().contains('SocketException') ||
           e.toString().contains('NetworkImageLoadException')) {
-        _errorMessage = 'No internet connection. Please check your network.';
+        _errorMessage = AppStrings.auth.noInternet;
       } else if (e.toString().contains('TimeoutException')) {
-        _errorMessage = 'Connection timeout. Please try again.';
+        _errorMessage = AppStrings.auth.connectionTimeout;
       } else {
-        _errorMessage = 'Login failed. Please try again.';
+        _errorMessage = AppStrings.auth.loginFailed;
       }
 
       _isLoading = false;

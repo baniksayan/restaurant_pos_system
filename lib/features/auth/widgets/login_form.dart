@@ -3,13 +3,15 @@ import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/utils/app_validators.dart';
-import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 import '../providers/auth_provider.dart';
 import 'package:restaurant_pos_system/shared/widgets/forms/custom_text_field.dart';
 import 'package:restaurant_pos_system/shared/widgets/animations/fade_in_animation.dart';
 import 'package:restaurant_pos_system/shared/widgets/buttons/animated_button.dart';
 import 'package:restaurant_pos_system/features/menu/views/standalone_menu_view.dart';
+import 'package:flutter/gestures.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/url_helper.dart';
+import 'package:restaurant_pos_system/shared/widgets/feedback/app_message_banner.dart';
 
 class LoginForm extends StatefulWidget {
   final VoidCallback onForgotPassword;
@@ -30,15 +32,46 @@ class _LoginFormState extends State<LoginForm> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _agreeToTerms = true;
+  late final TapGestureRecognizer _termsRecognizer;
+  late final TapGestureRecognizer _privacyRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _usernameController.addListener(_clearErrorOnTyping);
+    _passwordController.addListener(_clearErrorOnTyping);
+    _termsRecognizer =
+        TapGestureRecognizer()
+          ..onTap =
+              () =>
+                  UrlHelper.openUrl(context, AppStrings.termsAndConditionsUrl);
+    _privacyRecognizer =
+        TapGestureRecognizer()
+          ..onTap =
+              () => UrlHelper.openUrl(context, AppStrings.privacyPolicyUrl);
+  }
+
+  void _clearErrorOnTyping() {
+    final auth = context.read<AuthProvider>();
+    if (auth.errorMessage != null) {
+      auth.clearError();
+    }
+  }
 
   @override
   void dispose() {
+    _usernameController.removeListener(_clearErrorOnTyping);
+    _passwordController.removeListener(_clearErrorOnTyping);
+    _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _handleLogin() async {
+    if (!_agreeToTerms) return;
     if (_formKey.currentState!.validate()) {
       if (!mounted) return;
 
@@ -80,8 +113,6 @@ class _LoginFormState extends State<LoginForm> {
           // Normal navigation to dashboard
           widget.onLoginSuccess();
         }
-      } else if (mounted && authProvider.errorMessage != null) {
-        AppSnackBar.showError(context, authProvider.errorMessage!);
       }
     }
   }
@@ -95,6 +126,19 @@ class _LoginFormState extends State<LoginForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Consumer<AuthProvider>(
+              builder: (context, auth, _) {
+                final error = auth.errorMessage;
+                if (error == null || error.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return AppMessageBanner(
+                  message: error,
+                  type: MessageBannerType.error,
+                  onDismiss: () => auth.clearError(),
+                );
+              },
+            ),
             CustomTextField(
               label: AppStrings.auth.userName,
               hintText: AppStrings.auth.enterUsername,
@@ -124,16 +168,72 @@ class _LoginFormState extends State<LoginForm> {
               validator:
                   (value) => AppValidators.required(value, 'your password'),
             ),
-            // Commented out Remember Me & Forgot Password option per request:
-            /*
-            const SizedBox(height: 16),
-            _buildRememberMeAndForgotPassword(),
-            */
-            const SizedBox(height: 28),
+            const SizedBox(height: 14),
+            _buildTermsAndPrivacyConsent(),
+            const SizedBox(height: 20),
             _buildLoginButton(),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTermsAndPrivacyConsent() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 20,
+          width: 20,
+          child: Checkbox(
+            value: _agreeToTerms,
+            onChanged: (val) {
+              setState(() {
+                _agreeToTerms = val ?? false;
+              });
+            },
+            activeColor: AppColors.primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+            ),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              text: AppStrings.auth.iAgreeToThe,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                height: 1.35,
+              ),
+              children: [
+                TextSpan(
+                  text: AppStrings.auth.termsAndConditions,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
+                  ),
+                  recognizer: _termsRecognizer,
+                ),
+                TextSpan(text: AppStrings.auth.and),
+                TextSpan(
+                  text: AppStrings.auth.privacyPolicy,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
+                  ),
+                  recognizer: _privacyRecognizer,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -183,12 +283,14 @@ class _LoginFormState extends State<LoginForm> {
   Widget _buildLoginButton() {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
+        final isEnabled = _agreeToTerms && !authProvider.isLoading;
         return SizedBox(
           width: double.infinity,
           height: 50,
           child: AnimatedButton(
             text: AppStrings.login,
-            onPressed: _handleLogin,
+            onPressed: isEnabled ? _handleLogin : null,
+            isEnabled: isEnabled,
             isLoading: authProvider.isLoading,
             backgroundColor: AppColors.primary,
           ),

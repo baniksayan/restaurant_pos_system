@@ -7,9 +7,25 @@ import '../widgets/login_form.dart';
 import '../widgets/login_header.dart';
 import 'forgot_password_view.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/permissions/app_permission_service.dart';
 
-class LoginView extends StatelessWidget {
+class LoginView extends StatefulWidget {
   const LoginView({super.key});
+
+  @override
+  State<LoginView> createState() => _LoginViewState();
+}
+
+class _LoginViewState extends State<LoginView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        AppPermissionService.checkInitialPermissions(context);
+      }
+    });
+  }
 
   void _navigateToForgotPassword(BuildContext context) {
     Navigator.of(

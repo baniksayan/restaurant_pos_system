@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import 'core/services/app_version_service.dart';
 import 'core/theme/app_theme.dart';
 import 'data/local/hive_service.dart';
 import 'data/local/sync_service.dart';
@@ -41,6 +42,9 @@ void main() async {
 
   // Initialize Hive for offline storage
   await HiveService.init();
+
+  // Initialize App Version from pubspec package info
+  await AppVersionService.init();
 
   // Schedule end-of-day sync for offline data
   SyncService.scheduleEndOfDaySync();

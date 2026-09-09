@@ -14,6 +14,7 @@ import '../providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
+import 'package:restaurant_pos_system/shared/widgets/feedback/app_version_label.dart';
 
 class HamburgerDrawer extends StatefulWidget {
   final String selectedLocation;
@@ -99,6 +100,10 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                       ),
                     ),
                   ),
+
+                  // App Version Label (Just Above Sign Out Button)
+                  const AppVersionLabel(),
+                  const SizedBox(height: 6),
 
                   // Dedicated Logout Button Fixed at Bottom
                   _buildLogoutButton(),

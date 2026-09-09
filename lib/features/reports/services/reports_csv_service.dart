@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:csv/csv.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:restaurant_pos_system/core/permissions/app_permission_service.dart';
 import 'package:intl/intl.dart';
 
 class ReportsCsvService {
@@ -84,11 +84,11 @@ class ReportsCsvService {
       // Convert to CSV string
       String csv = const ListToCsvConverter().convert(csvData);
 
-      // Check permissions
-      if (Platform.isAndroid) {
-        if (!await Permission.storage.request().isGranted) {
-          return null;
-        }
+      // Ensure storage access where required
+      final hasStoragePermission =
+          await AppPermissionService.ensureStoragePermission();
+      if (!hasStoragePermission) {
+        return null;
       }
 
       // Save file

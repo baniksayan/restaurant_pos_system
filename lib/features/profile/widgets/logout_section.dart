@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/services/app_version_service.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class LogoutSection extends StatelessWidget {
@@ -44,7 +45,7 @@ class LogoutSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'App Version 1.0.0',
+            AppVersionService.displayVersion,
             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
           ),
         ],
