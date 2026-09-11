@@ -250,6 +250,10 @@ class ApiService {
     int totalAdult = 1,
     int totalChild = 0,
     String custEmailId = "",
+    /// Human-readable label for this party, e.g. "Table 10 P2". Several
+    /// parties can share a table, and the order number alone does not say
+    /// which group a card belongs to.
+    String orderIdentifier = "",
   }) async {
     final isConnected = await checkInternetAndGoForward();
     if (!isConnected) return null;
@@ -270,6 +274,7 @@ class ApiService {
         totalAdult: totalAdult,
         totalChild: totalChild,
         custEmailId: custEmailId,
+        orderIdentifier: orderIdentifier,
       );
       debugPrint('[API Call] Request Body: ${requestModel.toJson()}');
       if (kDebugMode) {
@@ -443,12 +448,16 @@ class ApiService {
   }
 
   /// Update Order Head Status - Enhanced with proper parameters
+  /// Update an order header's status (Order/UpdateOrderHeadStatus).
+  ///
+  /// Deliberately sends neither companyId nor userId: the API binds only
+  /// orderHeadId/statusId and resolves the company and the acting user from
+  /// the auth token. Sending a client-side company id was both ignored and
+  /// misleading — it hardcoded a single tenant.
   static Future<Map<String, dynamic>?> updateOrderHeadStatus({
     String? token,
     required String orderHeadId,
     required int statusId,
-    required String userId,
-    int companyId = 18,
     String? orderId, // Legacy support
     String? status, // Legacy support
     String? tableId, // Legacy support
@@ -474,12 +483,7 @@ class ApiService {
         };
       } else {
         // New format
-        requestBody = {
-          "companyId": companyId,
-          "orderHeadId": orderHeadId,
-          "statusId": statusId,
-          "userId": userId,
-        };
+        requestBody = {"orderHeadId": orderHeadId, "statusId": statusId};
       }
 
       final response = await http.post(
@@ -1031,6 +1035,105 @@ class ApiService {
     }
   }
 
+  /// Create a KOT for order lines already saved on the server, sending no
+  /// items (Order/CreateKotWithoutBatch).
+  ///
+  /// Use this to retry after [createKotWithOrderDetails] failed having already
+  /// persisted its items — resending that call would duplicate them.
+  static Future<CreateKotWithOrderDetailsApiResModel?> createKotWithoutBatch({
+    required int outletId,
+    required String orderId,
+    String kotNote = "",
+  }) async {
+    final isConnected = await checkInternetAndGoForward();
+    if (!isConnected) return null;
+
+    try {
+      final response = await apiRequestHttpRawBody(
+        ApiConstants.createKotWithoutBatch,
+        {"outletId": outletId, "orderId": orderId, "kotNote": kotNote},
+        method: 'POST',
+      );
+
+      if (response != null) {
+        if (kDebugMode) {
+          debugPrint('createKotWithoutBatch API Response: $response');
+        }
+        return CreateKotWithOrderDetailsApiResModel.fromJson(response);
+      }
+
+      return null;
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Error in createKotWithoutBatch: $e');
+        debugPrint('StackTrace: $stackTrace');
+      }
+      return null;
+    }
+  }
+
+  /// Number of order lines on [orderId] that have not been sent to the kitchen
+  /// yet, or null when the order could not be read.
+  ///
+  /// Used to tell the two KOT failure modes apart on retry: items never saved
+  /// (resend them) versus items saved but the KOT step failed (KOT only).
+  static Future<int?> countUnKotdOrderLines({required String orderId}) async {
+    try {
+      final details = await getOrderDetailById(orderId: orderId);
+      if (details == null ||
+          details.isSuccess != true ||
+          details.data == null ||
+          details.data!.isEmpty) {
+        return null;
+      }
+
+      final lines = details.data!.first.orderDetailList;
+      if (lines == null) return 0;
+
+      return lines
+          .where(
+            (line) =>
+                (line.kotId ?? '').isEmpty ||
+                line.kotId == '00000000-0000-0000-0000-000000000000',
+          )
+          .length;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error in countUnKotdOrderLines: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Number of order lines on [orderId] that have not been billed yet, or
+  /// null when the order could not be read.
+  ///
+  /// OrderHead.IsBilled cannot answer this: SP_CreateBill sets it to 1 for the
+  /// whole order even when only a subset of lines was billed, so a
+  /// part-billed split order still reports itself as billed. The line-level
+  /// GeneratedBillNo is the only reliable signal that items remain to bill.
+  static Future<int?> countUnbilledOrderLines({required String orderId}) async {
+    try {
+      final details = await getOrderDetailById(orderId: orderId);
+      if (details == null ||
+          details.isSuccess != true ||
+          details.data == null ||
+          details.data!.isEmpty) {
+        return null;
+      }
+
+      final lines = details.data!.first.orderDetailList;
+      if (lines == null) return 0;
+
+      return lines.where((line) => (line.generatedBillNo ?? '').isEmpty).length;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error in countUnbilledOrderLines: $e');
+      }
+      return null;
+    }
+  }
+
   /// Get Order Details for Bill Generation
   static Future<GetOrderDetailForBillResponse?> getOrderDetailForBill({
     required String orderId,
@@ -1167,6 +1270,51 @@ class ApiService {
     } catch (e, stackTrace) {
       if (kDebugMode) {
         debugPrint('Error in savePayment: $e');
+        debugPrint('StackTrace: $stackTrace');
+      }
+      return null;
+    }
+  }
+
+  /// Payments already recorded against a bill (Order/GetPaymentDtByBillId).
+  ///
+  /// Returns the sum of `paymentAmount` across every payment row on the bill,
+  /// or null when the call fails. Used to work out the outstanding balance on
+  /// a partially-paid bill — billing allows a bill to be created with zero
+  /// payment and settled later, so the bill total on its own is not what is
+  /// still owed.
+  static Future<double?> getPaidAmountForBill({required String billId}) async {
+    try {
+      final response = await apiRequestHttpRawBody(
+        ApiConstants.getPaymentDetailsByBillId,
+        {"billId": billId},
+      );
+
+      if (response == null) return null;
+      if (response['isSuccess'] != true) return null;
+
+      final payments = response['data'];
+      if (payments is! List) return null;
+
+      double paid = 0.0;
+      for (final row in payments) {
+        if (row is Map) {
+          final amount = row['paymentAmount'];
+          if (amount is num) {
+            paid += amount.toDouble();
+          } else if (amount is String) {
+            paid += double.tryParse(amount) ?? 0.0;
+          }
+        }
+      }
+
+      if (kDebugMode) {
+        debugPrint('getPaidAmountForBill($billId) -> $paid');
+      }
+      return paid;
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Error in getPaidAmountForBill: $e');
         debugPrint('StackTrace: $stackTrace');
       }
       return null;

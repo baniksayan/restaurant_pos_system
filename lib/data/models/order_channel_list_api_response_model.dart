@@ -82,11 +82,22 @@ class OrderList {
   String? orderStatus;
   String? generatedOrderNo;
 
+  // Party details, so several groups sharing one table can be told apart.
+  // All three are null until Sp_GetOrderChannelListByType is updated to
+  // select them (they already exist on OrderHead) - the UI falls back to the
+  // order number until then, so this is safe to ship ahead of the SQL change.
+  String? orderIdentifier;
+  int? totalAdult;
+  int? totalChild;
+
   OrderList({
     this.orderId,
     this.isBilled,
     this.orderStatus,
     this.generatedOrderNo,
+    this.orderIdentifier,
+    this.totalAdult,
+    this.totalChild,
   });
 
   OrderList.fromJson(Map<String, dynamic> json) {
@@ -94,6 +105,9 @@ class OrderList {
     isBilled = json['isBilled'];
     orderStatus = json['orderStatus'];
     generatedOrderNo = json['generatedOrderNo'];
+    orderIdentifier = json['orderIdentifier'];
+    totalAdult = json['totalAdult'];
+    totalChild = json['totChild'] ?? json['totalChild'];
   }
 
   Map<String, dynamic> toJson() {
@@ -102,6 +116,9 @@ class OrderList {
     data['isBilled'] = isBilled;
     data['orderStatus'] = orderStatus;
     data['generatedOrderNo'] = generatedOrderNo;
+    data['orderIdentifier'] = orderIdentifier;
+    data['totalAdult'] = totalAdult;
+    data['totChild'] = totalChild;
     return data;
   }
 }

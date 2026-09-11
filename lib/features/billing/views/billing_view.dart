@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import '../providers/billing_provider.dart';
+import '../providers/tax_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/navigation_provider.dart';
 import '../widgets/order_summary_card.dart';
 import '../widgets/items_list_card.dart';
@@ -73,10 +74,13 @@ class _BillingPageState extends State<BillingPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<BillingProvider>(
-      builder: (context, billingProvider, child) {
+    return Consumer2<BillingProvider, TaxProvider>(
+      builder: (context, billingProvider, taxProvider, child) {
         final subtotal = billingProvider.calculateSubtotal(widget.cartItems);
-        final gstAmount = billingProvider.calculateGST(subtotal);
+        final gstAmount = billingProvider.calculateGST(
+          subtotal,
+          taxProvider.totalGstPercentage,
+        );
         final total = billingProvider.calculateTotal(subtotal, gstAmount);
 
         return Scaffold(

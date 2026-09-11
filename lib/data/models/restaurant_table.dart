@@ -11,7 +11,6 @@ class RestaurantTable {
   final TableStatus status;
   final bool kotGenerated;
   final bool billGenerated;
-  final String? billId; // NEW: Store bill ID when bill is generated
   final ReservationInfo? reservationInfo;
   final List<ActiveOrder> activeOrders; // NEW: Multiple orders support
 
@@ -23,7 +22,6 @@ class RestaurantTable {
     required this.status,
     required this.kotGenerated,
     required this.billGenerated,
-    this.billId,
     this.reservationInfo,
     this.activeOrders = const [], // NEW: Default empty list
   });
@@ -45,7 +43,6 @@ class RestaurantTable {
     TableStatus? status,
     bool? kotGenerated,
     bool? billGenerated,
-    String? billId,
     ReservationInfo? reservationInfo,
     List<ActiveOrder>? activeOrders,
   }) {
@@ -57,7 +54,6 @@ class RestaurantTable {
       status: status ?? this.status,
       kotGenerated: kotGenerated ?? this.kotGenerated,
       billGenerated: billGenerated ?? this.billGenerated,
-      billId: billId ?? this.billId,
       reservationInfo: reservationInfo ?? this.reservationInfo,
       activeOrders: activeOrders ?? this.activeOrders,
     );
@@ -113,12 +109,66 @@ class ActiveOrder {
   final String orderStatus;
   final bool isBilled;
 
+  /// Bill generated for THIS order, resolved from local storage.
+  ///
+  /// Lives per order rather than per table: a table can host several groups
+  /// at once, each with its own bill, and the API cannot give a bill id back
+  /// (getOrderDetailById returns none), so this is the only record of it.
+  final String? billId;
+
+  /// Party label for this order, e.g. "Table 10 P2" - the billing counter's
+  /// convention for telling groups on a shared table apart. Null until the
+  /// channel-list proc returns it.
+  final String? orderIdentifier;
+  final int? totalAdult;
+  final int? totalChild;
+
   const ActiveOrder({
     required this.orderId,
     required this.generatedOrderNo,
     required this.orderStatus,
     required this.isBilled,
+    this.billId,
+    this.orderIdentifier,
+    this.totalAdult,
+    this.totalChild,
   });
+
+  /// Guests on this order, or null when the server has not sent the counts.
+  int? get guestCount {
+    if (totalAdult == null && totalChild == null) return null;
+    return (totalAdult ?? 0) + (totalChild ?? 0);
+  }
+
+  /// What to show on the order card: the party label when known, else the
+  /// generated order number.
+  String get displayLabel =>
+      (orderIdentifier != null && orderIdentifier!.trim().isNotEmpty)
+          ? orderIdentifier!.trim()
+          : generatedOrderNo;
+
+  ActiveOrder copyWith({
+    String? orderId,
+    String? generatedOrderNo,
+    String? orderStatus,
+    bool? isBilled,
+    String? billId,
+    bool clearBillId = false,
+    String? orderIdentifier,
+    int? totalAdult,
+    int? totalChild,
+  }) {
+    return ActiveOrder(
+      orderId: orderId ?? this.orderId,
+      generatedOrderNo: generatedOrderNo ?? this.generatedOrderNo,
+      orderStatus: orderStatus ?? this.orderStatus,
+      isBilled: isBilled ?? this.isBilled,
+      billId: clearBillId ? null : (billId ?? this.billId),
+      orderIdentifier: orderIdentifier ?? this.orderIdentifier,
+      totalAdult: totalAdult ?? this.totalAdult,
+      totalChild: totalChild ?? this.totalChild,
+    );
+  }
 
   // Factory for NEW API (OrderChannelListByType)
   factory ActiveOrder.fromNewApiOrderList(new_api.OrderList orderList) {
@@ -127,6 +177,9 @@ class ActiveOrder {
       generatedOrderNo: orderList.generatedOrderNo ?? '',
       orderStatus: orderList.orderStatus ?? '',
       isBilled: orderList.isBilled ?? false,
+      orderIdentifier: orderList.orderIdentifier,
+      totalAdult: orderList.totalAdult,
+      totalChild: orderList.totalChild,
     );
   }
 

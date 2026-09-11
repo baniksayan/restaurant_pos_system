@@ -242,66 +242,109 @@ class HiveService {
     }
   }
 
-  // Table-wise cart storage methods
-  static Future<void> saveTableCart(
-    String tableId,
+  // Order-wise cart and bill storage.
+  //
+  // These are keyed by orderId, not tableId. One table can host several
+  // simultaneous orders — separate groups sharing a large table, each with its
+  // own bill (OrderHead.OrderChannelId is many-to-one). Keying by table gave
+  // those groups a single shared cart and a single shared bill id, so the
+  // second group's bill silently overwrote the first's.
+  static Future<void> saveOrderCart(
+    String orderId,
     Map<String, dynamic> cartData,
   ) async {
     try {
-      await posBox.put('cart_$tableId', cartData);
+      await posBox.put('cart_$orderId', cartData);
     } catch (e) {
-      debugPrint('Error saving table cart: $e');
+      debugPrint('Error saving order cart: $e');
     }
   }
 
-  static Map<String, dynamic>? getTableCart(String tableId) {
+  static Map<String, dynamic>? getOrderCart(String orderId) {
     try {
-      final data = posBox.get('cart_$tableId');
+      final data = posBox.get('cart_$orderId');
       if (data != null && data is Map) {
         return Map<String, dynamic>.from(data);
       }
     } catch (e) {
-      debugPrint('Error getting table cart: $e');
+      debugPrint('Error getting order cart: $e');
     }
     return null;
   }
 
-  static Future<void> clearTableCart(String tableId) async {
+  static Future<void> clearOrderCart(String orderId) async {
     try {
-      await posBox.delete('cart_$tableId');
+      await posBox.delete('cart_$orderId');
     } catch (e) {
-      debugPrint('Error clearing table cart: $e');
+      debugPrint('Error clearing order cart: $e');
     }
   }
 
-  // Table-wise bill ID storage methods (replacing bill amount storage)
-  static Future<void> saveTableBillId(String tableId, String billId) async {
+  static Future<void> saveOrderBillId(String orderId, String billId) async {
     try {
-      await posBox.put('bill_id_$tableId', billId);
-      debugPrint('Saved bill ID for table $tableId: $billId');
+      await posBox.put('bill_id_$orderId', billId);
+      debugPrint('Saved bill ID for order $orderId: $billId');
     } catch (e) {
-      debugPrint('Error saving table bill ID: $e');
+      debugPrint('Error saving order bill ID: $e');
     }
   }
 
-  static String? getTableBillId(String tableId) {
+  static String? getOrderBillId(String orderId) {
     try {
-      final billId = posBox.get('bill_id_$tableId');
+      final billId = posBox.get('bill_id_$orderId');
       if (billId != null && billId is String) {
         return billId;
       }
     } catch (e) {
-      debugPrint('Error getting table bill ID: $e');
+      debugPrint('Error getting order bill ID: $e');
     }
     return null;
   }
 
-  static Future<void> clearTableBillId(String tableId) async {
+  static Future<void> clearOrderBillId(String orderId) async {
     try {
-      await posBox.delete('bill_id_$tableId');
-      debugPrint('Cleared bill ID for table $tableId');
+      await posBox.delete('bill_id_$orderId');
+      debugPrint('Cleared bill ID for order $orderId');
     } catch (e) {
-      debugPrint('Error clearing table bill ID: $e');
+      debugPrint('Error clearing order bill ID: $e');
+    }
+  }
+
+  /// Moves a cart/bill still stored under the old table-scoped key onto
+  /// [orderId], once.
+  ///
+  /// Installs upgrading mid-service can have live carts and unsettled bills
+  /// saved as `cart_<tableId>` / `bill_id_<tableId>`. Without this they would
+  /// be invisible after the upgrade: the cart would look empty and the bill
+  /// unsettleable, because nothing else can recover a bill id (the API's
+  /// getOrderDetailById does not return one). Only fills gaps — an existing
+  /// order-scoped value always wins — and drops the old key afterwards so the
+  /// migration cannot run twice.
+  static Future<void> migrateTableScopedData({
+    required String tableId,
+    required String orderId,
+  }) async {
+    if (tableId.isEmpty || orderId.isEmpty) return;
+    try {
+      final legacyCart = posBox.get('cart_$tableId');
+      if (legacyCart != null) {
+        if (posBox.get('cart_$orderId') == null) {
+          await posBox.put('cart_$orderId', legacyCart);
+          debugPrint('Migrated cart from table $tableId to order $orderId');
+        }
+        await posBox.delete('cart_$tableId');
+      }
+
+      final legacyBillId = posBox.get('bill_id_$tableId');
+      if (legacyBillId != null) {
+        if (posBox.get('bill_id_$orderId') == null) {
+          await posBox.put('bill_id_$orderId', legacyBillId);
+          debugPrint('Migrated bill ID from table $tableId to order $orderId');
+        }
+        await posBox.delete('bill_id_$tableId');
+      }
+    } catch (e) {
+      debugPrint('Error migrating table-scoped data: $e');
     }
   }
 

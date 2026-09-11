@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
+import 'add_party_dialog.dart';
 import 'package:restaurant_pos_system/features/payment/views/payment_view.dart';
 import '../providers/table_provider.dart';
 import '../providers/navigation_provider.dart';
@@ -354,7 +355,7 @@ class _MultiOrderManagementDialogState
                     children: [
                       Expanded(
                         child: Text(
-                          order.generatedOrderNo,
+                          order.displayLabel,
                           style: TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w800,
@@ -406,6 +407,26 @@ class _MultiOrderManagementDialogState
                     ],
                   ),
                   const SizedBox(height: 2),
+                  if (order.guestCount != null ||
+                      order.displayLabel != order.generatedOrderNo)
+                    Text(
+                      [
+                        if (order.displayLabel != order.generatedOrderNo)
+                          order.generatedOrderNo,
+                        if (order.guestCount != null)
+                          '${order.guestCount} '
+                              '${order.guestCount == 1 ? 'guest' : 'guests'}',
+                      ].join('  ·  '),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            isDark
+                                ? Colors.white70
+                                : AppColors.textSecondary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   Text(
                     isBilled ? 'Tap to pay' : 'Tap to view cart',
                     style: TextStyle(
@@ -570,11 +591,23 @@ class _MultiOrderManagementDialogState
     RestaurantTable table,
     TableProvider tableProvider,
   ) async {
+    final party = await AddPartyDialog.show(
+      context,
+      tableName: table.name,
+      existingPartyCount: table.orderCount,
+      capacity: table.capacity,
+    );
+    if (party == null) return; // cancelled
+    if (!context.mounted) return;
+
     setState(() => _isCreatingOrder = true);
     try {
       final success = await tableProvider.createOrderForTable(
         table.id,
         table.name,
+        adults: party.adults,
+        children: party.children,
+        customerName: party.customerName,
       );
 
       if (context.mounted) {
@@ -606,7 +639,7 @@ class _MultiOrderManagementDialogState
     TableProvider tableProvider,
   ) async {
     if (order.isBilled) {
-      final storedBillId = tableProvider.getBillId(table.id);
+      final storedBillId = tableProvider.getBillId(order.orderId);
       Navigator.pop(context); // Close dialog
 
       Navigator.push(
@@ -639,6 +672,7 @@ class _MultiOrderManagementDialogState
         );
         animatedCart.importFromOrderCart(
           items,
+          orderId: order.orderId,
           tableId: table.id,
           tableName: table.name,
           clearExisting: true,

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
 import 'package:restaurant_pos_system/data/models/bill_details_response.dart';
@@ -116,32 +117,30 @@ class TableProvider extends ChangeNotifier {
       final List<RestaurantTable> mergedTables = [];
 
       for (final apiTable in tables) {
-        // Find existing table to preserve local data
-        final existingTable = _tables.firstWhere(
-          (t) => t.id == apiTable.id,
-          orElse: () => apiTable,
-        );
+        // Re-attach each order's own bill id. The API never returns one, so
+        // local storage is the only record — and it is keyed per order, since
+        // a shared table can have several orders each with its own bill.
+        final mergedOrders =
+            apiTable.activeOrders.map((order) {
+              if (order.orderId.isEmpty) return order;
 
-        // Get bill ID from memory or persistent storage
-        String? preservedBillId = existingTable.billId;
-        if (preservedBillId == null || preservedBillId.isEmpty) {
-          // Fallback to persistent storage if not in memory
-          preservedBillId = HiveService.getTableBillId(apiTable.id);
-        }
+              // One-time move of anything still stored against the table.
+              HiveService.migrateTableScopedData(
+                tableId: apiTable.id,
+                orderId: order.orderId,
+              );
 
-        // Merge API data with existing local data (preserve billId)
-        final mergedTable = apiTable.copyWith(
-          billId: preservedBillId, // Preserve existing bill ID
-        );
+              final storedBillId = HiveService.getOrderBillId(order.orderId);
+              if (GuidHelper.isNullOrEmpty(storedBillId)) return order;
 
-        mergedTables.add(mergedTable);
+              debugPrint(
+                '[TableProvider] Preserved bill ID for ${apiTable.name} / '
+                'order ${order.generatedOrderNo}: $storedBillId',
+              );
+              return order.copyWith(billId: storedBillId);
+            }).toList();
 
-        // Debug log for bill ID preservation
-        if (preservedBillId != null && preservedBillId.isNotEmpty) {
-          debugPrint(
-            '[TableProvider] Preserved bill ID for ${apiTable.name}: $preservedBillId',
-          );
-        }
+        mergedTables.add(apiTable.copyWith(activeOrders: mergedOrders));
       }
 
       _tables = mergedTables; // Replace with merged data
@@ -303,7 +302,21 @@ class TableProvider extends ChangeNotifier {
   }
 
   /// Create new order for table (API-driven) - FIXED
-  Future<bool> createOrderForTable(String tableId, String tableName) async {
+  /// Opens a new order on [tableId].
+  ///
+  /// Called for the first group at a table and for every additional party
+  /// after it — each call creates a separate OrderHead against the same
+  /// channel (empty OrderIdUI means "new order" server-side). [adults],
+  /// [children] and [customerName] describe this party; the label follows the
+  /// billing counter's convention, "<table> P<n>", so the order list can tell
+  /// the groups apart.
+  Future<bool> createOrderForTable(
+    String tableId,
+    String tableName, {
+    int adults = 1,
+    int children = 0,
+    String? customerName,
+  }) async {
     try {
       final token = _getAuthToken();
       final userId = HiveService.getUserId();
@@ -317,14 +330,39 @@ class TableProvider extends ChangeNotifier {
       debugPrint('[Table Manager] Table $tableName tapped - Status: available');
       debugPrint('[Popup] Options shown: Occupy & Order, Reserve');
 
+      // Next party number for this table, so labels read P1, P2, P3...
+      final existingParties =
+          _tables
+              .firstWhere(
+                (t) => t.id == tableId,
+                orElse:
+                    () => const RestaurantTable(
+                      id: '',
+                      name: '',
+                      capacity: 0,
+                      location: '',
+                      status: TableStatus.available,
+                      kotGenerated: false,
+                      billGenerated: false,
+                    ),
+              )
+              .activeOrders
+              .length;
+
       // Step 1: Create new order using saveOrderHead API
       final orderResponse = await ApiService.saveOrderHead(
         token: token,
         orderChannelId: tableId,
         waiterId: waiterId ?? userId, // Use userId as fallback
-        customerName: 'Walk-in Customer',
+        customerName:
+            (customerName != null && customerName.trim().isNotEmpty)
+                ? customerName.trim()
+                : 'Walk-in Customer',
         outletId: outletId, // Use getter instead of private field
         userId: userId,
+        totalAdult: adults,
+        totalChild: children,
+        orderIdentifier: '$tableName P${existingParties + 1}',
       );
 
       if (orderResponse != null && orderResponse.isSuccess == true) {
@@ -474,15 +512,12 @@ class TableProvider extends ChangeNotifier {
   /// Remove order from table (API-driven) - FIXED
   Future<bool> removeOrderFromTable(String tableId, String orderId) async {
     try {
-      final userId =
-          HiveService.getUserId() ?? '041f765b-658c-47a4-b1a7-9dedf6e980b9';
-
-      // Call UpdateOrderHeadStatus API to cancel/remove order (statusId: 6, companyId: 18)
+      // Company and acting user come from the auth token server-side; this
+      // used to pass a hardcoded companyId of 18 and fall back to a literal
+      // user GUID when no user was logged in.
       final result = await ApiService.updateOrderHeadStatus(
         orderHeadId: orderId,
         statusId: 6,
-        userId: userId,
-        companyId: 18,
       );
 
       if (result != null && result['isSuccess'] == true) {
@@ -643,32 +678,74 @@ class TableProvider extends ChangeNotifier {
     // No-op for backward compatibility
   }
 
-  // Store bill ID for a table (new approach)
-  void storeBillId(String tableId, String billId) {
-    debugPrint(
-      '[TableProvider] Attempting to store bill ID for table ID: $tableId, billId: $billId',
-    );
-    debugPrint(
-      '[TableProvider] Available tables: ${_tables.map((t) => '${t.id}:${t.name}').toList()}',
-    );
-
-    // Save to persistent storage first
-    HiveService.saveTableBillId(tableId, billId);
-
-    final tableIndex = _tables.indexWhere((table) => table.id == tableId);
-    if (tableIndex != -1) {
-      _tables[tableIndex] = _tables[tableIndex].copyWith(
-        billId: billId,
-        status: TableStatus.billGenerated,
-      );
-
-      notifyListeners();
+  /// Remember the bill generated for [orderId].
+  ///
+  /// Keyed by order, not table: a table can host several groups at once and
+  /// each gets its own bill, so a table-level key let the second group's bill
+  /// overwrite the first's.
+  void storeBillId(String orderId, String billId) {
+    if (GuidHelper.isNullOrEmpty(orderId) || GuidHelper.isNullOrEmpty(billId)) {
       debugPrint(
-        '[TableProvider] Successfully stored bill ID for table $tableId: $billId',
+        '[TableProvider] Refusing to store bill ID '
+        '(orderId: $orderId, billId: $billId)',
       );
-    } else {
-      debugPrint('[TableProvider] ERROR: Table with ID $tableId not found!');
+      return;
     }
+
+    HiveService.saveOrderBillId(orderId, billId);
+    _applyToOrder(orderId, (order) => order.copyWith(billId: billId));
+
+    debugPrint('[TableProvider] Stored bill ID for order $orderId: $billId');
+  }
+
+  /// Forget the bill attached to [orderId], in memory and in Hive.
+  ///
+  /// Must be called once that order is settled. Bill ids are re-attached on
+  /// every refresh, so without this the next group seated at the same table
+  /// under a new order could still surface a stale bill.
+  Future<void> clearBillId(String orderId) async {
+    if (orderId.isEmpty) return;
+
+    await HiveService.clearOrderBillId(orderId);
+    _applyToOrder(orderId, (order) => order.copyWith(clearBillId: true));
+
+    debugPrint('[TableProvider] Cleared bill ID for order $orderId');
+  }
+
+  /// Bill generated for [orderId], from memory or local storage.
+  String? getBillId(String orderId) {
+    if (orderId.isEmpty) return null;
+
+    for (final table in _tables) {
+      for (final order in table.activeOrders) {
+        if (order.orderId == orderId && GuidHelper.isValid(order.billId)) {
+          return GuidHelper.orNull(order.billId);
+        }
+      }
+    }
+
+    return GuidHelper.orNull(HiveService.getOrderBillId(orderId));
+  }
+
+  /// Rewrites the matching order in place, wherever it sits.
+  void _applyToOrder(
+    String orderId,
+    ActiveOrder Function(ActiveOrder order) update,
+  ) {
+    var changed = false;
+
+    for (var i = 0; i < _tables.length; i++) {
+      final orders = _tables[i].activeOrders;
+      final index = orders.indexWhere((o) => o.orderId == orderId);
+      if (index == -1) continue;
+
+      final updated = List<ActiveOrder>.from(orders);
+      updated[index] = update(orders[index]);
+      _tables[i] = _tables[i].copyWith(activeOrders: updated);
+      changed = true;
+    }
+
+    if (changed) notifyListeners();
   }
 
   // Backward compatibility method (deprecated)
@@ -680,99 +757,49 @@ class TableProvider extends ChangeNotifier {
     // This method is kept for backward compatibility but does nothing
   }
 
-  // Get stored bill ID for a table
-  String? getBillId(String tableId) {
-    debugPrint(
-      '[TableProvider] Attempting to get bill ID for table ID: $tableId',
-    );
-    debugPrint(
-      '[TableProvider] Available tables: ${_tables.map((t) => '${t.id}:${t.name}:${t.billId}').toList()}',
-    );
-
-    try {
-      final table = _tables.firstWhere((table) => table.id == tableId);
-      debugPrint(
-        '[TableProvider] Found table ${table.name}, bill ID: ${table.billId}',
-      );
-
-      // If table bill ID is null, try loading from persistent storage
-      if (table.billId == null || table.billId!.isEmpty) {
-        final persistedBillId = HiveService.getTableBillId(tableId);
-        if (persistedBillId != null && persistedBillId.isNotEmpty) {
-          debugPrint(
-            '[TableProvider] Loaded bill ID from persistent storage: $persistedBillId',
-          );
-          // Update the table with persisted bill ID
-          final tableIndex = _tables.indexWhere((t) => t.id == tableId);
-          if (tableIndex != -1) {
-            _tables[tableIndex] = _tables[tableIndex].copyWith(
-              billId: persistedBillId,
-            );
-            notifyListeners();
-          }
-          return persistedBillId;
-        }
-      }
-
-      return table.billId;
-    } catch (e) {
-      debugPrint(
-        '[TableProvider] ERROR: Table with ID $tableId not found, trying persistent storage',
-      );
-      // Fallback to persistent storage
-      final persistedBillId = HiveService.getTableBillId(tableId);
-      if (persistedBillId != null && persistedBillId.isNotEmpty) {
-        debugPrint(
-          '[TableProvider] Found bill ID in persistent storage: $persistedBillId',
-        );
-      }
-      return persistedBillId;
-    }
-  }
-
   // Fetch bill details using the new API
-  Future<BillDetailsResponse?> getBillDetails(String tableId) async {
+  Future<BillDetailsResponse?> getBillDetails(String orderId) async {
     try {
-      final billId = getBillId(tableId);
-      if (billId == null || billId.isEmpty) {
-        debugPrint('[TableProvider] No bill ID found for table $tableId');
+      final billId = getBillId(orderId);
+      if (GuidHelper.isNullOrEmpty(billId)) {
+        debugPrint('[TableProvider] No bill ID found for order $orderId');
         return null;
       }
 
       debugPrint(
-        '[TableProvider] Fetching bill details for table $tableId with billId: $billId',
+        '[TableProvider] Fetching bill details for order $orderId with billId: $billId',
       );
       final billDetails = await ApiService.getBillDetailByBillId(
-        billId: billId,
+        billId: billId!,
       );
 
       if (billDetails != null && billDetails.isSuccess) {
         debugPrint(
-          '[TableProvider] Successfully fetched bill details for table $tableId',
+          '[TableProvider] Successfully fetched bill details for order $orderId',
         );
         return billDetails;
       } else {
         debugPrint(
-          '[TableProvider] Failed to fetch bill details for table $tableId: ${billDetails?.message}',
+          '[TableProvider] Failed to fetch bill details for order $orderId: ${billDetails?.message}',
         );
         return null;
       }
     } catch (e) {
       debugPrint(
-        '[TableProvider] Error fetching bill details for table $tableId: $e',
+        '[TableProvider] Error fetching bill details for order $orderId: $e',
       );
       return null;
     }
   }
 
   // Get bill amount using the new API (backward compatibility)
-  Future<double?> getBillAmount(String tableId) async {
+  Future<double?> getBillAmount(String orderId) async {
     try {
-      final billDetails = await getBillDetails(tableId);
+      final billDetails = await getBillDetails(orderId);
       return billDetails?.data?.billHeadDt.billAmountInclTax;
     } catch (e) {
       debugPrint(
-        '[TableProvider] Error getting bill amount for table $tableId: $e',
+        '[TableProvider] Error getting bill amount for order $orderId: $e',
       );
       return null;
     }

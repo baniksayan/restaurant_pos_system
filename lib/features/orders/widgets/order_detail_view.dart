@@ -1012,7 +1012,11 @@ class _OrderDetailViewState extends State<OrderDetailView> {
       cartProvider.clearAllSessionData();
 
       // Switch to the appropriate cart context
-      cartProvider.switchToTable(tableId);
+      cartProvider.switchToOrder(
+        widget.order.orderId.toString(),
+        tableId: tableId,
+        tableName: tableName,
+      );
 
       // Prepare items for import using the proper importFromOrderCart method
       List<Map<String, dynamic>> cartItems = [];
@@ -1066,6 +1070,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
       // Use importFromOrderCart to properly load items (this clears existing and replaces)
       cartProvider.importFromOrderCart(
         cartItems,
+        orderId: widget.order.orderId.toString(),
         tableId: tableId,
         tableName: tableName,
         clearExisting: true, // This ensures no duplicates

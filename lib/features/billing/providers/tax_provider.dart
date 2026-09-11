@@ -157,16 +157,22 @@ class TaxProvider with ChangeNotifier {
     }
   }
 
-  Future<void> fetchTaxes(int companyId) async {
+  /// Loads the company's tax components (Order/getTaxDt).
+  ///
+  /// [outletId] is only carried for logging: the API resolves the company
+  /// from the auth token and ignores any tenant id sent in the body. This
+  /// parameter used to be named `companyId` while every caller passed an
+  /// outlet id into it.
+  Future<void> fetchTaxes(int outletId) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      debugPrint('Fetching tax data from API for company: $companyId');
+      debugPrint('Fetching tax data from API (outlet: $outletId)');
 
       // Get the Map response from API
-      final response = await ApiService.getAllTaxes(companyId: companyId);
+      final response = await ApiService.getAllTaxes(companyId: outletId);
 
       if (response != null) {
         // Convert Map to TaxApiResModel

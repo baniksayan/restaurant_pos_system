@@ -187,7 +187,17 @@ class _BillingStrings {
   const _BillingStrings();
 
   final String loadingPaymentModes = 'Loading payment modes...';
-  final String gstFivePercent = 'GST (5%)';
+
+  /// GST label carrying the live rate, e.g. "GST (5%)" / "GST (18%)".
+  /// Replaces the old fixed `gstFivePercent`, which claimed 5% while the
+  /// bill was actually being computed at a different rate.
+  String gstWithRate(double percentage) {
+    final rate =
+        percentage == percentage.roundToDouble()
+            ? percentage.toStringAsFixed(0)
+            : percentage.toStringAsFixed(2);
+    return 'GST ($rate%)';
+  }
 }
 
 // --- Payment ---
@@ -203,6 +213,15 @@ class _PaymentStrings {
   final String upiHint = 'e.g. restaurant@upi or 8768412832@ptsbi';
   final String saveUpiId = 'Save UPI ID';
   final String customerPhoneNumber = 'Customer Phone Number';
+
+  // Cash tendered / change
+  final String cashReceived = 'Cash Received';
+  final String cashReceivedHint = 'Amount handed by customer';
+  final String changeToReturn = 'Change to Return';
+  final String cashShortBy = 'Cash Short By';
+  final String exactAmount = 'Exact';
+  final String cashShortError =
+      'Cash received is less than the bill amount.';
 }
 
 // --- Chef ---

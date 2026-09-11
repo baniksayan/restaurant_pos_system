@@ -7,12 +7,14 @@ class TableGrid extends StatelessWidget {
   final List<RestaurantTable> tables;
   final Function(RestaurantTable) onTableTap;
   final Function(RestaurantTable) onTableLongPress;
+  final Function(RestaurantTable)? onAddParty;
 
   const TableGrid({
     super.key,
     required this.tables,
     required this.onTableTap,
     required this.onTableLongPress,
+    this.onAddParty,
   });
 
   @override
@@ -31,6 +33,8 @@ class TableGrid extends StatelessWidget {
         final table = tables[index];
         return EnhancedTableCard(
           table: table,
+          onAddParty:
+              onAddParty == null ? null : () => onAddParty!(table),
           onTap: () => onTableTap(table),
           onLongPress: () {
             // Restrict cleaning request trigger to Reserved/Occupied only

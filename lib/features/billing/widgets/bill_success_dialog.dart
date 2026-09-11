@@ -7,6 +7,7 @@ import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import '../providers/billing_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/payment/views/payment_view.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class BillSuccessDialog extends StatelessWidget {
   final String orderNumber;
@@ -16,6 +17,17 @@ class BillSuccessDialog extends StatelessWidget {
   final VoidCallback onBillGenerated;
   final String? tableId;
 
+  /// Order this bill belongs to. Required to remember the bill id, which is
+  /// stored per order rather than per table — a shared table runs several
+  /// orders at once and each has its own bill.
+  final String? orderId;
+
+  /// How many items on this order were left unbilled by a split bill (0 for
+  /// a normal, full-order bill). When this is > 0, the table isn't actually
+  /// finished yet — paying this bill returns to the order screen instead of
+  /// clearing the table, so the cashier can split the rest.
+  final int remainingUnbilledCount;
+
   const BillSuccessDialog({
     super.key,
     required this.orderNumber,
@@ -24,6 +36,8 @@ class BillSuccessDialog extends StatelessWidget {
     required this.billBytes,
     required this.onBillGenerated,
     this.tableId,
+    this.orderId,
+    this.remainingUnbilledCount = 0,
   });
 
   @override
@@ -35,21 +49,30 @@ class BillSuccessDialog extends StatelessWidget {
           listen: false,
         );
 
-        await tableProvider.refreshTables();
-        if (!context.mounted) return;
-
+        // Persist the bill id BEFORE anything is awaited. It used to be
+        // stored after `await refreshTables()`, behind a `context.mounted`
+        // check — so dismissing this dialog while the refresh was in flight
+        // dropped the id entirely. It is only held in BillingProvider memory,
+        // which is cleared when the billing screen is disposed, and
+        // getOrderDetailById cannot supply it (Sp_GetOrderViewNew returns no
+        // BillId). Losing it here means the bill can never be settled later.
         try {
           final billingProvider = Provider.of<BillingProvider>(
             context,
             listen: false,
           );
-          final billId = billingProvider.billId;
-          if (billId != null && billId.isNotEmpty) {
-            tableProvider.storeBillId(tableId!, billId);
+          if (orderId != null && orderId!.isNotEmpty) {
+            tableProvider.storeBillId(orderId!, billingProvider.billId ?? '');
+          } else {
+            debugPrint(
+              'BillSuccessDialog - No orderId supplied; bill id not stored',
+            );
           }
         } catch (e) {
           debugPrint('BillSuccessDialog - Error storing billId: $e');
         }
+
+        await tableProvider.refreshTables();
       });
     }
 
@@ -346,13 +369,33 @@ class BillSuccessDialog extends StatelessWidget {
       MaterialPageRoute(
         builder:
             (context) => PaymentPage(
+              orderId: orderId,
               orderNumber: orderNumber,
               totalAmount: total,
               tableId: tableId,
               billId: billId,
+              // Gates PaymentPage's own table-release + auto-clear + final
+              // dashboard navigation. false here is what actually stops a
+              // split bill from releasing the table early — see the fix in
+              // payment_view.dart's executeRedirect.
+              isFinalSettlement: remainingUnbilledCount == 0,
               onPaymentCompleted: () {
-                onBillGenerated();
-                Navigator.of(context).popUntil((route) => route.isFirst);
+                if (remainingUnbilledCount > 0) {
+                  // This was one split of a bigger order — other guests'
+                  // items are still unbilled, so the table stays open and
+                  // we just return to the order screen for the next split.
+                  AppSnackBar.showSuccess(
+                    context,
+                    'Bill settled. $remainingUnbilledCount item'
+                    '${remainingUnbilledCount == 1 ? '' : 's'} still '
+                    'unbilled on this order.',
+                  );
+                  Navigator.of(context).pop();
+                } else {
+                  // PaymentPage's own step 5 (isFinalSettlement: true)
+                  // already returns to the dashboard.
+                  onBillGenerated();
+                }
               },
             ),
       ),

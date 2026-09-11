@@ -4,6 +4,7 @@ import 'package:restaurant_pos_system/data/local/hive_service.dart';
 
 import '../providers/menu_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/navigation_provider.dart';
+import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import '../widgets/menu_header.dart';
 import '../widgets/menu_search_bar.dart';
@@ -102,7 +103,11 @@ class _MenuViewState extends State<MenuView> {
       '[MenuView] Switching cart provider to table ${widget.selectedTableId}',
     );
 
-    animatedCartProvider.switchToTable(widget.selectedTableId!);
+    animatedCartProvider.switchToOrder(
+      context.read<TableProvider>().currentOrderId,
+      tableId: widget.selectedTableId!,
+      tableName: widget.tableName,
+    );
 
     debugPrint('[MenuView] Table switch completed');
   }

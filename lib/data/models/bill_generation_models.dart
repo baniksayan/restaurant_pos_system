@@ -225,11 +225,18 @@ class SavePaymentRequest {
 }
 
 class PaymentDetail {
+  /// Payment row status written to Payment.Status. The server flattens each
+  /// entry to "amount#refId#modeId#cardNo#status#returnAmt" before calling
+  /// SP_SavePayment, so omitting this left every row stored with the default
+  /// 0. 2 = settled, which is what the billing counter client sends.
+  static const int statusSettled = 2;
+
   final double paymentAmount;
   final int modeId;
   final String refId;
   final String cardNo;
   final double returnAmt;
+  final int status;
 
   PaymentDetail({
     required this.paymentAmount,
@@ -237,6 +244,7 @@ class PaymentDetail {
     required this.refId,
     required this.cardNo,
     required this.returnAmt,
+    this.status = statusSettled,
   });
 
   Map<String, dynamic> toJson() {
@@ -245,6 +253,7 @@ class PaymentDetail {
       'modeId': modeId,
       'refId': refId,
       'cardNo': cardNo,
+      'status': status,
       'returnAmt': returnAmt,
     };
   }

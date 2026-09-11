@@ -7,11 +7,20 @@ class EnhancedTableCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
+  /// Seats another group at this table, alongside the ones already here.
+  ///
+  /// A table already holding an order otherwise opens straight into that
+  /// order, giving a second group no way in — their items would land on the
+  /// first group's bill. Shown only while the table has orders; an empty
+  /// table starts its first order by being tapped.
+  final VoidCallback? onAddParty;
+
   const EnhancedTableCard({
     super.key,
     required this.table,
     required this.onTap,
     required this.onLongPress,
+    this.onAddParty,
   });
 
   @override
@@ -95,6 +104,61 @@ class EnhancedTableCard extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                ),
+
+              // Seat another group alongside the ones already here.
+              if (table.hasActiveOrders && onAddParty != null)
+                Positioned(
+                  bottom: 6,
+                  right: 6,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onAddParty,
+                      borderRadius: BorderRadius.circular(9),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(9),
+                          border: Border.all(
+                            color: statusConfig.color.withValues(alpha: 0.45),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: statusConfig.color.withValues(alpha: 0.18),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1.5),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.group_add_rounded,
+                              size: 11,
+                              color: statusConfig.color,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              'Party',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                color: statusConfig.color,
+                                letterSpacing: -0.1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),

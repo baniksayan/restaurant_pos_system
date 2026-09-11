@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
+import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/features/billing/providers/billing_provider.dart';
@@ -12,6 +13,7 @@ import 'package:restaurant_pos_system/data/models/bill_generation_models.dart';
 import '../widgets/amount_card.dart';
 import '../widgets/payment_methods.dart';
 import '../widgets/qr_section.dart';
+import '../widgets/cash_tender_card.dart';
 import '../widgets/confirm_button.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
@@ -26,6 +28,14 @@ class PaymentPage extends StatefulWidget {
   final String? tableId;
   final String? billId;
 
+  /// Whether this payment closes out the whole order. Defaults to true —
+  /// every existing caller keeps releasing the table and returning to the
+  /// dashboard exactly as before. A split bill that still leaves other
+  /// items unbilled passes `false` so the table stays occupied and the
+  /// local cart isn't wiped out from under the other guests' items — see
+  /// [GenerateBillSummaryDialog]'s split-bill flow.
+  final bool isFinalSettlement;
+
   const PaymentPage({
     super.key,
     this.orderId,
@@ -34,6 +44,7 @@ class PaymentPage extends StatefulWidget {
     this.onPaymentCompleted,
     this.tableId,
     this.billId,
+    this.isFinalSettlement = true,
   });
 
   @override
@@ -49,7 +60,21 @@ class _PaymentPageState extends State<PaymentPage>
   String? _fetchedOrderNumber;
   String? _fetchedBillId;
   double? _actualBillAmount;
+
+  /// Sum of payments already recorded against this bill, from
+  /// Order/GetPaymentDtByBillId. Subtracted from the bill total so the screen
+  /// asks for the outstanding balance rather than the whole bill again.
+  double _alreadyPaidAmount = 0;
+
   bool _loadingDetails = false;
+
+  /// Cash tendered by the customer — drives the live change display and the
+  /// `returnAmt` sent with the payment. See [CashTenderCard].
+  final TextEditingController _cashReceivedController = TextEditingController();
+
+  /// Change actually handed back on the payment that just succeeded, shown
+  /// in the success dialog.
+  double _lastReturnAmt = 0;
 
   late final AnimationController _fadeController;
   late final Animation<double> _fadeIn;
@@ -96,9 +121,19 @@ class _PaymentPageState extends State<PaymentPage>
             orderDetails.data!.isNotEmpty) {
           final data = orderDetails.data!.first;
           _fetchedOrderNumber = data.orderNo;
-          if (data.billId != null && data.billId!.isNotEmpty) {
+          // getOrderDetailById cannot actually supply a bill id -
+          // Sp_GetOrderViewNew never selects one, so this always arrives as
+          // the all-zero placeholder. Accepting it here used to overwrite the
+          // real bill id handed in by the caller, and the payment was then
+          // saved against a bill that does not exist.
+          if (GuidHelper.isValid(data.billId)) {
             _fetchedBillId = data.billId;
             effectiveBillId = data.billId;
+          } else if (data.billId != null) {
+            debugPrint(
+              '[PaymentPage] Ignoring placeholder billId from order details: '
+              '${data.billId}',
+            );
           }
 
           // Calculate total from item list as fallback
@@ -140,6 +175,18 @@ class _PaymentPageState extends State<PaymentPage>
           }
           debugPrint('[PaymentPage] Bill details fetched. Amount: ₹$billAmt');
         }
+
+        // A bill can be created unpaid and settled later, and can take more
+        // than one payment. Without subtracting what has already been paid,
+        // reopening a part-paid bill asks the customer for the full total a
+        // second time.
+        final paid = await ApiService.getPaidAmountForBill(
+          billId: effectiveBillId,
+        );
+        if (paid != null && paid > 0) {
+          _alreadyPaidAmount = paid;
+          debugPrint('[PaymentPage] Already paid on this bill: ₹$paid');
+        }
       }
     } catch (e) {
       debugPrint('[PaymentPage] Error loading payment details: $e');
@@ -147,9 +194,26 @@ class _PaymentPageState extends State<PaymentPage>
       if (mounted) {
         setState(() {
           _loadingDetails = false;
+          _prefillCashReceivedIfNeeded();
         });
       }
     }
+  }
+
+  /// Defaults the cash-received field to the exact bill amount so the
+  /// cashier only has to edit it when the customer actually overpays.
+  void _prefillCashReceivedIfNeeded() {
+    if (_selectedPaymentMethod == 'cash' &&
+        _cashReceivedController.text.trim().isEmpty &&
+        currentAmount > 0) {
+      _cashReceivedController.text = currentAmount.toStringAsFixed(2);
+    }
+  }
+
+  double? get _cashReceivedAmount {
+    final text = _cashReceivedController.text.trim();
+    if (text.isEmpty) return null;
+    return double.tryParse(text);
   }
 
   String get currentOrderNumber {
@@ -159,23 +223,35 @@ class _PaymentPageState extends State<PaymentPage>
     return widget.orderNumber ?? '';
   }
 
-  double get currentAmount {
+  /// Full value of the bill, before considering anything already paid.
+  double get billTotalAmount {
     if (_actualBillAmount != null && _actualBillAmount! > 0) {
       return _actualBillAmount!;
     }
     return widget.totalAmount ?? 0.0;
   }
 
+  /// What the customer still owes: bill total minus payments already taken.
+  /// Never negative — an overpaid bill owes nothing further.
+  double get currentAmount {
+    final due = billTotalAmount - _alreadyPaidAmount;
+    return due > 0 ? due : 0.0;
+  }
+
+  /// The bill this payment settles. Only ever a real id — the all-zero
+  /// placeholder is rejected at every source so it can never shadow the id the
+  /// caller passed in.
   String? get effectiveBillId {
-    if (_fetchedBillId != null && _fetchedBillId!.isNotEmpty) {
+    if (GuidHelper.isValid(_fetchedBillId)) {
       return _fetchedBillId;
     }
-    return widget.billId;
+    return GuidHelper.orNull(widget.billId);
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
+    _cashReceivedController.dispose();
     super.dispose();
   }
 
@@ -243,6 +319,7 @@ class _PaymentPageState extends State<PaymentPage>
                   setState(() {
                     _selectedPaymentMethod = value;
                     _showQR = (value == 'upi');
+                    _prefillCashReceivedIfNeeded();
                   });
                 },
               ),
@@ -251,14 +328,20 @@ class _PaymentPageState extends State<PaymentPage>
                 duration: const Duration(milliseconds: 250),
                 switchInCurve: Curves.easeIn,
                 switchOutCurve: Curves.easeOut,
-                child:
-                    _showQR
-                        ? QRSection(
-                          key: const ValueKey('qr-section'),
-                          amount: currentAmount,
-                          orderNumber: currentOrderNumber,
-                        )
-                        : const SizedBox.shrink(key: ValueKey('empty')),
+                child: switch (_selectedPaymentMethod) {
+                  'cash' => CashTenderCard(
+                    key: const ValueKey('cash-tender'),
+                    dueAmount: currentAmount,
+                    controller: _cashReceivedController,
+                    onChanged: () => setState(() {}),
+                  ),
+                  'upi' when _showQR => QRSection(
+                    key: const ValueKey('qr-section'),
+                    amount: currentAmount,
+                    orderNumber: currentOrderNumber,
+                  ),
+                  _ => const SizedBox.shrink(key: ValueKey('empty')),
+                },
               ),
               const SizedBox(height: 16),
             ],
@@ -310,18 +393,18 @@ class _PaymentPageState extends State<PaymentPage>
 
       String? billId = effectiveBillId;
 
-      if (billId == null || billId.isEmpty) {
+      if (GuidHelper.isNullOrEmpty(billId)) {
         try {
           final billingProvider = Provider.of<BillingProvider>(
             context,
             listen: false,
           );
-          billId = billingProvider.billId;
+          billId = GuidHelper.orNull(billingProvider.billId);
         } catch (e) {
           debugPrint('Payment Page - Error accessing BillingProvider: $e');
         }
 
-        if (billId == null || billId.isEmpty) {
+        if (GuidHelper.isNullOrEmpty(billId)) {
           throw Exception('No bill ID found. Please generate bill first.');
         }
       }
@@ -333,15 +416,38 @@ class _PaymentPageState extends State<PaymentPage>
         paymentModeId = 3;
       }
 
+      // Cash is the only method where the customer can hand over more than
+      // the bill and expect change back — every other mode settles exact.
+      double returnAmt = 0;
+      if (_selectedPaymentMethod == 'cash') {
+        final received = _cashReceivedAmount;
+        if (received == null || received < currentAmount) {
+          final shortfall = currentAmount - (received ?? 0);
+          throw Exception(
+            'Cash received is short by '
+            '${CurrencyConstants.symbol}${shortfall.toStringAsFixed(2)}.',
+          );
+        }
+        returnAmt = received - currentAmount;
+      }
+      _lastReturnAmt = returnAmt;
+
+      debugPrint(
+        'Payment Page - Cash received: ${_cashReceivedController.text}, '
+        'Return amount: $returnAmt',
+      );
+
       final savePaymentRequest = SavePaymentRequest(
-        billId: billId,
+        // Non-null by this point: the guard above throws when no real bill id
+        // could be resolved.
+        billId: billId!,
         paymentDetails: [
           PaymentDetail(
             paymentAmount: currentAmount,
             modeId: paymentModeId,
             refId: "",
             cardNo: "",
-            returnAmt: 0,
+            returnAmt: returnAmt,
           ),
         ],
       );
@@ -396,27 +502,44 @@ class _PaymentPageState extends State<PaymentPage>
       isRedirecting = true;
       timer?.cancel();
 
-      // 1. Update table status if tableId is present
+      // 1. Update table status if tableId is present — only when this
+      // payment actually finishes the order. A split bill with other
+      // guests' items still unbilled must NOT release the table or wipe
+      // the shared cart data; just refresh so it reflects the latest paid
+      // amount from the server.
       if (widget.tableId != null && tableProvider != null) {
-        try {
-          tableProvider.updateTableStatus(widget.tableId!, 'billSettled');
-          await tableProvider.refreshTables();
-
-          if (animatedCartProvider != null) {
-            animatedCartProvider.clearTableData(widget.tableId!);
-          }
-
-          // Auto-clear table after 5 seconds
-          Future.delayed(const Duration(seconds: 5), () async {
-            try {
-              tableProvider?.updateTableStatus(widget.tableId!, 'available');
-              await tableProvider?.refreshTables();
-            } catch (e) {
-              debugPrint('Error auto-clearing table: $e');
+        if (widget.isFinalSettlement) {
+          try {
+            // Forget the settled order's bill and cart before refreshing. The
+            // server frees the table on its own once the order is fully paid
+            // (see SP_UpdPaymentStatusOrder — it sets OrderHead.IsPaid, and the
+            // channel list only reports orders that are still unpaid), so the
+            // refresh below already returns it as available. What the server
+            // cannot do is clear this device's cached bill id, and leaving it
+            // behind hands the next customer the previous bill. Scoped to the
+            // order so settling one group on a shared table does not wipe
+            // another group's still-unpaid bill.
+            final settledOrderId = widget.orderId;
+            if (settledOrderId != null && settledOrderId.isNotEmpty) {
+              await tableProvider.clearBillId(settledOrderId);
             }
-          });
-        } catch (e) {
-          debugPrint('Error updating table status: $e');
+
+            if (animatedCartProvider != null &&
+                settledOrderId != null &&
+                settledOrderId.isNotEmpty) {
+              animatedCartProvider.clearOrderData(settledOrderId);
+            }
+
+            await tableProvider.refreshTables();
+          } catch (e) {
+            debugPrint('Error releasing table after settlement: $e');
+          }
+        } else {
+          try {
+            await tableProvider.refreshTables();
+          } catch (e) {
+            debugPrint('Error refreshing table after split payment: $e');
+          }
         }
       }
 
@@ -437,8 +560,10 @@ class _PaymentPageState extends State<PaymentPage>
       // 4. Trigger payment completed callback
       onCompleted?.call();
 
-      // 5. Navigate back to first route (Dashboard)
-      if (mounted) {
+      // 5. Navigate back to first route (Dashboard) — a split bill with
+      // items still unbilled leaves navigation to onCompleted instead, so
+      // it can return to the order screen rather than the whole dashboard.
+      if (mounted && widget.isFinalSettlement) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     }
@@ -523,6 +648,15 @@ class _PaymentPageState extends State<PaymentPage>
                             _selectedPaymentMethod.toUpperCase(),
                             context,
                           ),
+                          if (_lastReturnAmt > 0) ...[
+                            const SizedBox(height: 6),
+                            _kv(
+                              'Change Given',
+                              CurrencyConstants.format(_lastReturnAmt),
+                              context,
+                              valueColor: Colors.green[700],
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -556,7 +690,7 @@ class _PaymentPageState extends State<PaymentPage>
     );
   }
 
-  Widget _kv(String k, String v, BuildContext context) {
+  Widget _kv(String k, String v, BuildContext context, {Color? valueColor}) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return Row(
@@ -574,6 +708,7 @@ class _PaymentPageState extends State<PaymentPage>
           v,
           style: theme.textTheme.bodyMedium?.copyWith(
             fontWeight: FontWeight.w700,
+            color: valueColor,
           ),
         ),
       ],

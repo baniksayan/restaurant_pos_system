@@ -106,8 +106,15 @@ class BillingProvider extends ChangeNotifier {
     );
   }
 
-  double calculateGST(double subtotal) {
-    return subtotal * 0.10;
+  /// GST amount for [subtotal] at [gstPercentage].
+  ///
+  /// [gstPercentage] must be the live CGST+SGST rate from TaxProvider
+  /// (Order/getTaxDt). It is never hardcoded here: the server computes the
+  /// bill from its own TaxComponent rows inside SP_CreateBill, so a fixed
+  /// rate on this side makes the amount shown/printed to the customer
+  /// diverge from what is actually charged.
+  double calculateGST(double subtotal, double gstPercentage) {
+    return subtotal * (gstPercentage / 100);
   }
 
   double calculateTotal(double subtotal, double gst) {
@@ -122,6 +129,12 @@ class BillingProvider extends ChangeNotifier {
     required double gstAmount,
     required double total,
     String? orderId, // Add orderId parameter
+    // Split-bill support: bill only these OrderDetailIds instead of every
+    // unbilled item on the order. Null/empty falls back to the original
+    // "bill everything still unbilled" behaviour — every existing caller is
+    // unaffected. See SP_CreateBill's @ItemList — it already accepts a
+    // subset, this just stops the app from always sending the full set.
+    List<String>? selectedOrderDetailIds,
   }) async {
     _isGenerating = true;
     _errorMessage = null;
@@ -231,6 +244,18 @@ class BillingProvider extends ChangeNotifier {
           'BillingProvider - Creating bill with customerId: $customerId',
         );
 
+        // A split bill sends only the items the cashier picked; otherwise
+        // bill every unbilled item on the order, as before.
+        final itemList =
+            (selectedOrderDetailIds != null &&
+                    selectedOrderDetailIds.isNotEmpty)
+                ? selectedOrderDetailIds.join(',')
+                : orderDetail.orderDetailId;
+        debugPrint(
+          'BillingProvider - itemList for createBill (split: '
+          '${selectedOrderDetailIds != null}): $itemList',
+        );
+
         final createBillRequest = CreateBillRequest(
           customerFirstName: "",
           customerLastName: "",
@@ -239,7 +264,7 @@ class BillingProvider extends ChangeNotifier {
           paymentModeId: _selectedPaymentMode?.paymentModeId ?? 1,
           discountPercBillHd: 0,
           customerIdUI: customerId,
-          itemList: orderDetail.orderDetailId,
+          itemList: itemList,
           splDisPer: 0,
           splDisReason: "",
           outletId:

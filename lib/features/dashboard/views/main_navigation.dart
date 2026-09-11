@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/navigation_provider.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
+import '../providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/menu/providers/menu_provider.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
 import 'waiter_dashboard_view.dart';
@@ -161,7 +162,11 @@ class _MainNavigationState extends State<MainNavigation> {
 
       // Switch cart provider to current context if not already
       if (animatedCartProvider.currentTableId != tableId) {
-        animatedCartProvider.switchToTable(tableId);
+        animatedCartProvider.switchToOrder(
+          context.read<TableProvider>().currentOrderId,
+          tableId: tableId,
+          tableName: tableName,
+        );
       }
     }
 

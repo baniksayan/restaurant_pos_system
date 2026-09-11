@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
+import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/features/reservations/views/table_reservation_view.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
@@ -16,6 +17,7 @@ import '../providers/navigation_provider.dart';
 import '../providers/table_provider.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/dashboard_states.dart';
+import '../widgets/add_party_dialog.dart';
 import '../widgets/table_action_dialog.dart';
 import '../widgets/table_grid.dart';
 import '../widgets/multi_order_management_dialog.dart';
@@ -70,14 +72,19 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
             return HamburgerDrawer(
               selectedLocation: dashboardProvider.selectedLocation,
               selectedStatusFilter: dashboardProvider.selectedStatusFilter,
+              // These callbacks must not pop. Every tile in HamburgerDrawer
+              // already closes the drawer itself before invoking its callback,
+              // so popping again here popped the route underneath instead.
+              // MainNavigation is reached with pushReplacementNamed /
+              // pushNamedAndRemoveUntil, making it the only route on the
+              // stack — so that second pop emptied the navigator and left a
+              // black screen.
               onLocationChanged: (location) {
                 dashboardProvider.changeLocation(location);
-                Navigator.pop(context);
                 _showSnackBar('Showing: $location', Colors.blue);
               },
               onStatusFilterChanged: (statusFilter) {
                 dashboardProvider.changeStatusFilter(statusFilter);
-                Navigator.pop(context);
                 // Removed green SnackBar per request: previously showed filtered-by message in green
               },
             );
@@ -196,6 +203,11 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                                         onTableLongPress:
                                             (table) =>
                                                 _handleTableLongPress(table),
+                                        onAddParty:
+                                            (table) => _handleAddParty(
+                                              table,
+                                              tableProvider,
+                                            ),
                                       ),
                             ),
                           ),
@@ -349,7 +361,32 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
               ? table.activeOrders.last.generatedOrderNo
               : null);
 
-      final storedBillId = tableProvider.getBillId(table.id);
+      // "Billed" does not mean "fully billed". SP_CreateBill flags the whole
+      // OrderHead as billed even for a split that covered only some lines, so
+      // jumping straight to payment here left the remaining items unbillable —
+      // there was no way back into the order. Ask the server what is actually
+      // still unbilled and, if anything is, open the order instead so the rest
+      // can be billed.
+      if (targetOrderId != null) {
+        final unbilledCount = await ApiService.countUnbilledOrderLines(
+          orderId: targetOrderId,
+        );
+        if (!mounted) return;
+        if (unbilledCount != null && unbilledCount > 0) {
+          if (kDebugMode) {
+            debugPrint(
+              '[Dashboard] Table ${table.name} is flagged billed but has '
+              '$unbilledCount unbilled line(s) - opening the order',
+            );
+          }
+          await _openOrderForTable(table, tableProvider);
+          return;
+        }
+      }
+
+      final storedBillId =
+          targetOrderId != null ? tableProvider.getBillId(targetOrderId) : null;
+      if (!mounted) return;
       final navProvider = context.read<NavigationProvider>();
 
       Navigator.push(
@@ -379,30 +416,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
 
     // 3. Single active order (unbilled) -> Load cart state from API so KOTs display in cart
     if (table.hasActiveOrders) {
-      final animatedCart = context.read<AnimatedCartProvider>();
-      final orderId = table.activeOrders.last.orderId;
-
-      _setTableNavigationLoading(table.name);
-      try {
-        final items = await tableProvider.loadCartStateForOrder(orderId);
-        if (!mounted) return;
-        tableProvider.setCurrentOrder(orderId);
-
-        animatedCart.importFromOrderCart(
-          items,
-          tableId: table.id,
-          tableName: table.name,
-          clearExisting: true,
-        );
-
-        context.read<NavigationProvider>().selectTable(
-          table.id,
-          table.name,
-          dashboardProvider.selectedLocation,
-        );
-      } finally {
-        _clearTableNavigationLoading();
-      }
+      await _openOrderForTable(table, tableProvider);
       return;
     }
 
@@ -435,6 +449,104 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
             onReserve: () => _showReservationPage(table, tableProvider),
           ),
     );
+  }
+
+  /// Seats another group at a table that already has orders.
+  ///
+  /// Without this the only route to a second order was a long press, which is
+  /// undiscoverable — and the grid only allows long press on Reserved or
+  /// Occupied tables, so a billed table had no route at all. Tapping a table
+  /// that already holds an order opens that order, so a second group's items
+  /// would otherwise land on the first group's bill.
+  Future<void> _handleAddParty(
+    RestaurantTable table,
+    TableProvider tableProvider,
+  ) async {
+    if (_isTableNavigationInProgress) return;
+
+    await HapticHelper.triggerFeedback();
+    if (!mounted) return;
+
+    final party = await AddPartyDialog.show(
+      context,
+      tableName: table.name,
+      existingPartyCount: table.orderCount,
+      capacity: table.capacity,
+    );
+    if (party == null || !mounted) return;
+
+    _setTableNavigationLoading(table.name);
+    bool created = false;
+    try {
+      created = await tableProvider.createOrderForTable(
+        table.id,
+        table.name,
+        adults: party.adults,
+        children: party.children,
+        customerName: party.customerName,
+      );
+    } finally {
+      _clearTableNavigationLoading();
+    }
+
+    if (!mounted) return;
+    if (!created) {
+      _showSnackBar('Failed to add party to ${table.name}', Colors.red);
+      return;
+    }
+
+    // Drop straight into the new party's order so the waiter can start taking
+    // it — createOrderForTable has already made it the current order.
+    final newOrderId = tableProvider.currentOrderId;
+    final refreshed = tableProvider.tables.firstWhere(
+      (t) => t.id == table.id,
+      orElse: () => table,
+    );
+    if (newOrderId != null && newOrderId.isNotEmpty) {
+      await _openOrderForTable(refreshed, tableProvider, orderId: newOrderId);
+    }
+  }
+
+  /// Opens the table's current order in the cart, loading its lines from the
+  /// server first so previously KOT'd and billed items are shown.
+  Future<void> _openOrderForTable(
+    RestaurantTable table,
+    TableProvider tableProvider, {
+    /// Which order to open. Defaults to the table's most recent one; pass it
+    /// explicitly when a specific party was just chosen or created.
+    String? orderId,
+  }) async {
+    if (orderId == null && !table.hasActiveOrders) return;
+
+    final animatedCart = context.read<AnimatedCartProvider>();
+    final dashboardProvider = context.read<DashboardProvider>();
+    final resolvedOrderId =
+        (orderId != null && orderId.isNotEmpty)
+            ? orderId
+            : table.activeOrders.last.orderId;
+
+    _setTableNavigationLoading(table.name);
+    try {
+      final items = await tableProvider.loadCartStateForOrder(resolvedOrderId);
+      if (!mounted) return;
+      tableProvider.setCurrentOrder(resolvedOrderId);
+
+      animatedCart.importFromOrderCart(
+        items,
+        orderId: resolvedOrderId,
+        tableId: table.id,
+        tableName: table.name,
+        clearExisting: true,
+      );
+
+      context.read<NavigationProvider>().selectTable(
+        table.id,
+        table.name,
+        dashboardProvider.selectedLocation,
+      );
+    } finally {
+      _clearTableNavigationLoading();
+    }
   }
 
   /// Complete table long press handler

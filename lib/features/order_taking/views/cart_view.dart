@@ -10,6 +10,7 @@ import 'package:restaurant_pos_system/features/menu/providers/menu_provider.dart
 import 'package:restaurant_pos_system/features/dashboard/providers/navigation_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
 import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
+import 'package:restaurant_pos_system/data/remote/api_service.dart';
 
 import 'package:restaurant_pos_system/shared/services/pdf_service.dart';
 import 'package:restaurant_pos_system/features/billing/widgets/generate_bill_summary_dialog.dart';
@@ -50,6 +51,11 @@ class _CartViewState extends State<CartView> {
   final Set<String> _kotNumbers =
       {}; // Track all KOT numbers generated for this table
   bool _isFooterVisible = true;
+
+  /// Guards against a second KOT submission while one is still running — a
+  /// double tap would otherwise send the same items to the kitchen twice.
+  bool _kotInFlight = false;
+
   Timer? _scrollEndTimer;
 
   @override
@@ -117,7 +123,10 @@ class _CartViewState extends State<CartView> {
       );
       debugPrint('[CartView] Switching to table ${widget.tableId}');
 
-      cartProvider.switchToTable(widget.tableId!);
+      cartProvider.switchToOrder(
+        context.read<TableProvider>().currentOrderId,
+        tableId: widget.tableId!,
+      );
 
       debugPrint('[CartView] Cart switched to table ${widget.tableId}');
     }
@@ -647,7 +656,23 @@ class _CartViewState extends State<CartView> {
   }
 
   // KOT Generation for new items only
-  Future<void> _generateKOT(AnimatedCartProvider cartProvider) async {
+  /// Sends the cart's new items to the kitchen.
+  ///
+  /// [isRetry] marks a second attempt after a failure. That matters because
+  /// CreateKotWithOrderDetails saves the order lines and creates the KOT as
+  /// two separate steps server-side with no shared transaction: a failure may
+  /// leave the items already persisted. Blindly resending would insert them
+  /// again, so a retry first asks the server what actually landed and, when
+  /// the lines are already there, only fires the KOT.
+  Future<void> _generateKOT(
+    AnimatedCartProvider cartProvider, {
+    bool isRetry = false,
+  }) async {
+    if (_kotInFlight) {
+      debugPrint('[cart] KOT submission already in flight - ignoring');
+      return;
+    }
+    _kotInFlight = true;
     try {
       final newItems = cartProvider.newItems.values.toList();
 
@@ -743,16 +768,41 @@ class _CartViewState extends State<CartView> {
         debugPrint('KOT Payload: $kotPayload');
       }
 
+      // On a retry, find out whether the previous attempt already saved these
+      // lines. If the server is holding at least as many un-KOT'd lines as we
+      // are about to send, they landed — fire the KOT alone rather than
+      // inserting duplicates.
+      bool itemsAlreadyOnServer = false;
+      if (isRetry) {
+        final unKotdCount = await ApiService.countUnKotdOrderLines(
+          orderId: backendOrderId,
+        );
+        itemsAlreadyOnServer =
+            unKotdCount != null && unKotdCount >= newItemsData.length;
+        debugPrint(
+          '[cart] KOT retry - un-KOT\'d lines on server: $unKotdCount, '
+          'sending ${newItemsData.length} -> '
+          '${itemsAlreadyOnServer ? "KOT only" : "full resend"}',
+        );
+      }
+
       // Use the existing order ID from backend (table selection)
-      final kotResponse = await orderProvider.createKotWithOrderDetails(
-        userId: HiveService.getUserId() ?? "",
-        outletId:
-            HiveService.getOutletId() ??
-            0, // No fallback - validation will catch this
-        orderId: backendOrderId,
-        kotNote: "",
-        cartItems: newItemsData,
-      );
+      final kotResponse =
+          itemsAlreadyOnServer
+              ? await ApiService.createKotWithoutBatch(
+                outletId: HiveService.getOutletId() ?? 0,
+                orderId: backendOrderId,
+                kotNote: "",
+              )
+              : await orderProvider.createKotWithOrderDetails(
+                userId: HiveService.getUserId() ?? "",
+                outletId:
+                    HiveService.getOutletId() ??
+                    0, // No fallback - validation will catch this
+                orderId: backendOrderId,
+                kotNote: "",
+                cartItems: newItemsData,
+              );
 
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -781,7 +831,10 @@ class _CartViewState extends State<CartView> {
         }
 
         if (widget.tableId != null) {
-          cartProvider.switchToTable(widget.tableId!);
+          cartProvider.switchToOrder(
+            backendOrderId,
+            tableId: widget.tableId!,
+          );
         }
 
         setState(() {
@@ -908,8 +961,9 @@ class _CartViewState extends State<CartView> {
                   ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      // Retry KOT generation
-                      _generateKOT(cartProvider);
+                      // Retry, reconciling against whatever the failed attempt
+                      // already persisted so items are not duplicated.
+                      _generateKOT(cartProvider, isRetry: true);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange,
@@ -937,6 +991,8 @@ class _CartViewState extends State<CartView> {
           duration: const Duration(seconds: 4),
         );
       }
+    } finally {
+      _kotInFlight = false;
     }
   }
 

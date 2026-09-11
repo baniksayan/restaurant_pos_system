@@ -174,7 +174,11 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
     menuProvider.switchToTable(_selectedTableId!);
 
     // Switch cart provider
-    animatedCartProvider.switchToTable(_selectedTableId!);
+    animatedCartProvider.switchToOrder(
+      tableProvider.currentOrderId,
+      tableId: _selectedTableId!,
+      tableName: navProvider.selectedTableName ?? '',
+    );
 
     // Load existing cart data for this order so KOT items display
     if (tableProvider.currentOrderId != null) {
@@ -183,6 +187,7 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
       );
       animatedCartProvider.importFromOrderCart(
         items,
+        orderId: tableProvider.currentOrderId!,
         tableId: _selectedTableId!,
         tableName: navProvider.selectedTableName ?? '',
         clearExisting: true,

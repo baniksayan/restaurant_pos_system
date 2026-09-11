@@ -5,17 +5,25 @@ import 'package:restaurant_pos_system/data/models/order_detail_api_response_mode
 
 class AnimatedCartProvider extends ChangeNotifier {
   final Map<String, CartItem> _cartItems = {};
-  final Map<String, Map<String, CartItem>> _tableWiseCarts =
-      {}; // Store cart per table
-  final Map<String, List<OrderDetailList>> _tableWiseServerKotItems =
-      {}; // Store server KOT items per table
+  // Carts are scoped per ORDER, not per table. A table can seat several
+  // groups at once, each running its own order and its own bill, so a
+  // table-scoped cart merged their items together.
+  final Map<String, Map<String, CartItem>> _orderWiseCarts = {};
+  final Map<String, List<OrderDetailList>> _orderWiseServerKotItems = {};
   int _totalItems = 0;
+  String? _currentOrderId;
   String? _currentTableId;
   List<OrderDetailList> _serverKotItems =
-      []; // Current table's server KOT items
+      []; // Current order's server KOT items
 
   Map<String, CartItem> get cartItems => _cartItems;
   int get totalItems => _totalItems;
+
+  /// Order whose cart is currently loaded.
+  String? get currentOrderId => _currentOrderId;
+
+  /// Table the current order is seated at - display only; never used to scope
+  /// cart storage.
   String? get currentTableId => _currentTableId;
   List<OrderDetailList> get serverKotItems => _serverKotItems;
 
@@ -74,42 +82,58 @@ class AnimatedCartProvider extends ChangeNotifier {
     return qty;
   }
 
-  // Switch to a different table's cart and sync with server state
-  void switchToTable(String? newTableId) {
-    if (newTableId == null || _currentTableId == newTableId) return;
+  /// Which key this cart action belongs under: the explicit order, else the
+  /// order already open, else the table as a last resort.
+  String _resolveScope(String? orderId, String tableId) {
+    if (orderId != null && orderId.isNotEmpty) return orderId;
+    final current = _currentOrderId;
+    if (current != null && current.isNotEmpty) return current;
+    return tableId;
+  }
+
+  /// Loads [newOrderId]'s cart, saving whatever order was open before.
+  ///
+  /// [tableId]/[tableName] are carried for display and for the KOT/bill
+  /// headers only - two orders on the same table stay completely separate.
+  void switchToOrder(
+    String? newOrderId, {
+    String? tableId,
+    String? tableName,
+  }) {
+    if (newOrderId == null || newOrderId.isEmpty) return;
+    if (tableId != null && tableId.isNotEmpty) _currentTableId = tableId;
+    if (_currentOrderId == newOrderId) return;
 
     // Save current cart state to persistent storage
-    if (_currentTableId != null) {
-      _saveCartToPersistentStorage(_currentTableId!);
+    if (_currentOrderId != null) {
+      _saveCartToPersistentStorage(_currentOrderId!);
     }
 
     debugPrint(
-      '[AnimatedCart] Switching from table $_currentTableId to $newTableId',
+      '[AnimatedCart] Switching from order $_currentOrderId to $newOrderId',
     );
 
-    // Switch to new table
-    _currentTableId = newTableId;
+    _currentOrderId = newOrderId;
 
     // Load cart from memory first, then from persistent storage if needed
     _cartItems.clear();
-    final existingCart = _tableWiseCarts[newTableId];
+    final existingCart = _orderWiseCarts[newOrderId];
     if (existingCart != null && existingCart.isNotEmpty) {
       _cartItems.addAll(existingCart);
     } else {
       // If no cart in memory, try loading from persistent storage
-      _loadCartFromPersistentStorage(newTableId);
-      final loadedCart = _tableWiseCarts[newTableId];
+      _loadCartFromPersistentStorage(newOrderId);
+      final loadedCart = _orderWiseCarts[newOrderId];
       if (loadedCart != null) {
         _cartItems.addAll(loadedCart);
       }
     }
 
-    // Also load server KOT items for this table
-    _serverKotItems = _tableWiseServerKotItems[newTableId] ?? [];
+    _serverKotItems = _orderWiseServerKotItems[newOrderId] ?? [];
 
     _updateTotalItems();
     debugPrint(
-      '[AnimatedCart] Switched to table $newTableId with ${_cartItems.length} items',
+      '[AnimatedCart] Switched to order $newOrderId with ${_cartItems.length} items',
     );
     notifyListeners();
   }
@@ -120,6 +144,12 @@ class AnimatedCartProvider extends ChangeNotifier {
     double price,
     String tableId,
     String tableName, {
+    /// Order this item belongs to. Defaults to the order already open, which
+    /// is what every in-cart action wants; falls back to the table only when
+    /// no order has been established yet (e.g. a menu browsed before the
+    /// order exists), preserving the old behaviour rather than dropping the
+    /// item.
+    String? orderId,
     String? imageUrl,
     String? specialNotes,
     String? categoryId,
@@ -127,9 +157,10 @@ class AnimatedCartProvider extends ChangeNotifier {
     String? uom,
     double? discountPercentage,
   }) {
-    // Ensure we're working with the correct table
-    if (_currentTableId != tableId) {
-      switchToTable(tableId);
+    // Ensure we're working with the correct order
+    final scopeId = _resolveScope(orderId, tableId);
+    if (_currentOrderId != scopeId) {
+      switchToOrder(scopeId, tableId: tableId, tableName: tableName);
     }
 
     // Check if there is an editable item in the cart for this food
@@ -240,15 +271,18 @@ class AnimatedCartProvider extends ChangeNotifier {
     double price,
     String tableId,
     String tableName, {
+    /// See [addItem] - defaults to the order already open.
+    String? orderId,
     String? imageUrl,
     String? categoryId,
     String? categoryName,
     String? uom,
     double? discountPercentage,
   }) {
-    // Ensure we're working with the correct table
-    if (_currentTableId != tableId) {
-      switchToTable(tableId);
+    // Ensure we're working with the correct order
+    final scopeId = _resolveScope(orderId, tableId);
+    if (_currentOrderId != scopeId) {
+      switchToOrder(scopeId, tableId: tableId, tableName: tableName);
     }
 
     // Find the editable item for this itemId
@@ -416,13 +450,14 @@ class AnimatedCartProvider extends ChangeNotifier {
     _cartItems.clear();
 
     // Clear table-wise carts to prevent cross-contamination
-    _tableWiseCarts.clear();
+    _orderWiseCarts.clear();
 
     // Clear server KOT items
     _serverKotItems.clear();
-    _tableWiseServerKotItems.clear();
+    _orderWiseServerKotItems.clear();
 
     // Reset current table ID
+    _currentOrderId = null;
     _currentTableId = null;
 
     // Reset total items
@@ -433,24 +468,23 @@ class AnimatedCartProvider extends ChangeNotifier {
   }
 
   // Clear specific table's data after bill settlement
-  void clearTableData(String tableId) {
-    debugPrint('[AnimatedCart] Clearing data for table: $tableId');
+  /// Drops one order's cart. Other orders on the same table are untouched.
+  void clearOrderData(String orderId) {
+    if (orderId.isEmpty) return;
+    debugPrint('[AnimatedCart] Clearing data for order: $orderId');
 
-    // Remove from table-wise carts
-    _tableWiseCarts.remove(tableId);
+    _orderWiseCarts.remove(orderId);
+    _orderWiseServerKotItems.remove(orderId);
+    HiveService.clearOrderCart(orderId);
 
-    // Remove from server KOT items
-    _tableWiseServerKotItems.remove(tableId);
-
-    // Clear current cart if it's the same table
-    if (_currentTableId == tableId) {
+    if (_currentOrderId == orderId) {
       _cartItems.clear();
       _serverKotItems.clear();
-      _currentTableId = null;
+      _currentOrderId = null;
       _totalItems = 0;
     }
 
-    debugPrint('[AnimatedCart] Data cleared for table: $tableId');
+    debugPrint('[AnimatedCart] Data cleared for order: $orderId');
     notifyListeners();
   }
 
@@ -504,6 +538,7 @@ class AnimatedCartProvider extends ChangeNotifier {
   // --- Import from order cart state with KOT status support ---
   void importFromOrderCart(
     List<Map<String, dynamic>> items, {
+    required String orderId,
     String tableId = '',
     String tableName = '',
     bool clearExisting = true,
@@ -599,9 +634,12 @@ class AnimatedCartProvider extends ChangeNotifier {
       );
     }
 
-    // Set current table
     if (tableId.isNotEmpty) {
       _currentTableId = tableId;
+    }
+    if (orderId.isNotEmpty) {
+      _currentOrderId = orderId;
+      _orderWiseCarts[orderId] = Map<String, CartItem>.from(_cartItems);
     }
 
     _updateTotalItems();
@@ -609,9 +647,9 @@ class AnimatedCartProvider extends ChangeNotifier {
   }
 
   // Persistent storage methods for cart data
-  void _saveCartToPersistentStorage(String tableId) {
+  void _saveCartToPersistentStorage(String orderId) {
     try {
-      final cartData = _tableWiseCarts[tableId];
+      final cartData = _orderWiseCarts[orderId];
       if (cartData != null && cartData.isNotEmpty) {
         final cartJson = cartData.map(
           (key, item) => MapEntry(key, {
@@ -632,9 +670,9 @@ class AnimatedCartProvider extends ChangeNotifier {
             'kotGeneratedAt': item.kotGeneratedAt?.toIso8601String(),
           }),
         );
-        HiveService.saveTableCart(tableId, cartJson);
+        HiveService.saveOrderCart(orderId, cartJson);
         debugPrint(
-          '[AnimatedCart] Saved cart for table $tableId to persistent storage',
+          '[AnimatedCart] Saved cart for order $orderId to persistent storage',
         );
       }
     } catch (e) {
@@ -642,9 +680,9 @@ class AnimatedCartProvider extends ChangeNotifier {
     }
   }
 
-  void _loadCartFromPersistentStorage(String tableId) {
+  void _loadCartFromPersistentStorage(String orderId) {
     try {
-      final cartData = HiveService.getTableCart(tableId);
+      final cartData = HiveService.getOrderCart(orderId);
       if (cartData != null && cartData.isNotEmpty) {
         final Map<String, CartItem> loadedCart = {};
 
@@ -660,7 +698,7 @@ class AnimatedCartProvider extends ChangeNotifier {
             name: itemData['name'] ?? '',
             price: (itemData['price'] ?? 0.0).toDouble(),
             quantity: itemData['quantity'] ?? 1,
-            tableId: itemData['tableId'] ?? tableId,
+            tableId: itemData['tableId'] ?? _currentTableId ?? '',
             tableName: itemData['tableName'] ?? '',
             imageUrl: itemData['imageUrl'],
             specialNotes: itemData['specialNotes'],
@@ -675,9 +713,9 @@ class AnimatedCartProvider extends ChangeNotifier {
           );
         }
 
-        _tableWiseCarts[tableId] = loadedCart;
+        _orderWiseCarts[orderId] = loadedCart;
         debugPrint(
-          '[AnimatedCart] Loaded ${loadedCart.length} items for table $tableId from persistent storage',
+          '[AnimatedCart] Loaded ${loadedCart.length} items for order $orderId from persistent storage',
         );
       }
     } catch (e) {

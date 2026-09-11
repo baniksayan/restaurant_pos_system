@@ -7,13 +7,17 @@ import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import '../providers/billing_provider.dart';
+import '../providers/tax_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/navigation_provider.dart';
 import 'bill_pdf_viewer_dialog.dart';
 import 'bill_success_dialog.dart';
+import 'split_bill_picker.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/skeleton_loader.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 import 'package:restaurant_pos_system/shared/widgets/forms/custom_text_field.dart';
+import 'package:restaurant_pos_system/data/remote/api_service.dart';
+import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
 
 class GenerateBillSummaryDialog extends StatefulWidget {
   final String orderNumber;
@@ -77,6 +81,15 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
 
+  // Split-bill state. Only usable when widget.orderId is a real, saved
+  // order — the item-level ids it needs only exist on the server.
+  bool _splitMode = false;
+  bool _loadingSplitItems = false;
+  List<OrderDetailList> _unbilledItems = [];
+  Set<String> _selectedIds = {};
+
+  bool get _canSplit => widget.orderId != null && widget.orderId!.isNotEmpty;
+
   @override
   void initState() {
     super.initState();
@@ -98,15 +111,98 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
     super.dispose();
   }
 
+  Future<void> _toggleSplitMode(bool value) async {
+    setState(() => _splitMode = value);
+    if (value && _unbilledItems.isEmpty && !_loadingSplitItems) {
+      await _loadUnbilledItems();
+    }
+  }
+
+  Future<void> _loadUnbilledItems() async {
+    if (!_canSplit) return;
+    setState(() => _loadingSplitItems = true);
+    try {
+      final response = await ApiService.getOrderDetailById(
+        orderId: widget.orderId!,
+      );
+      final order =
+          (response?.isSuccess == true && (response?.data?.isNotEmpty ?? false))
+              ? response!.data!.first
+              : null;
+      final unbilled =
+          (order?.orderDetailList ?? [])
+              .where((i) => (i.generatedBillNo ?? '').isEmpty)
+              .toList();
+      if (mounted) {
+        setState(() {
+          _unbilledItems = unbilled;
+          // Default to everything selected — a cashier who never touches
+          // the picker gets the same result as billing the whole order.
+          _selectedIds = unbilled.map((i) => i.orderDetailId ?? '').toSet();
+        });
+      }
+    } catch (e) {
+      debugPrint('GenerateBillSummaryDialog - Error loading split items: $e');
+    } finally {
+      if (mounted) setState(() => _loadingSplitItems = false);
+    }
+  }
+
+  void _toggleItem(String orderDetailId) {
+    setState(() {
+      if (_selectedIds.contains(orderDetailId)) {
+        _selectedIds.remove(orderDetailId);
+      } else {
+        _selectedIds.add(orderDetailId);
+      }
+    });
+  }
+
+  /// The items this specific bill actually covers — the full local cart
+  /// normally, or just the cashier's split selection when `_splitMode` is
+  /// on. Everything downstream (totals, the printed preview, the PDF, and
+  /// the `createBill` call) is driven from this single list so they can
+  /// never disagree with each other.
+  List<CartItem> _effectiveCartItems(BuildContext context) {
+    if (!_splitMode) return widget.cartItems;
+
+    final navProvider = context.read<NavigationProvider>();
+    final tableName =
+        widget.tableId != null
+            ? (navProvider.selectedTableName ?? 'Table ${widget.tableId}')
+            : (navProvider.selectedOrderType ?? 'Takeaway / Phone');
+
+    return _unbilledItems
+        .where((i) => _selectedIds.contains(i.orderDetailId))
+        .map(
+          (i) => CartItem(
+            id: i.productId ?? i.orderDetailId ?? '',
+            name: i.productName ?? 'Item',
+            price: (i.itemPrice ?? 0).toDouble(),
+            quantity: i.productQty ?? 1,
+            tableId: widget.tableId ?? '',
+            tableName: tableName,
+            specialNotes: i.instruction,
+          ),
+        )
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final isTablet = size.width >= 600;
 
-    return Consumer<BillingProvider>(
-      builder: (context, billingProvider, child) {
-        final subtotal = billingProvider.calculateSubtotal(widget.cartItems);
-        final gstAmount = billingProvider.calculateGST(subtotal);
+    return Consumer2<BillingProvider, TaxProvider>(
+      builder: (context, billingProvider, taxProvider, child) {
+        final effectiveCartItems = _effectiveCartItems(context);
+        final subtotal = billingProvider.calculateSubtotal(
+          effectiveCartItems,
+        );
+        // Live CGST+SGST rate, same source the cart footer uses. Must not be
+        // hardcoded — see BillingProvider.calculateGST.
+        final gstPercentage = taxProvider.totalGstPercentage;
+        final gstAmount = billingProvider.calculateGST(subtotal, gstPercentage);
         final total = billingProvider.calculateTotal(subtotal, gstAmount);
 
         return Material(
@@ -176,17 +272,56 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         // Short Order Summary (No repeated Order Number!)
-                                        _buildShortOrderSummary(context),
+                                        _buildShortOrderSummary(
+                                          context,
+                                          effectiveCartItems,
+                                        ),
                                         const SizedBox(height: 12),
 
+                                        // Split Bill toggle — only offered
+                                        // once the order is actually saved
+                                        // server-side (real OrderDetailIds
+                                        // to split are needed).
+                                        if (_canSplit) ...[
+                                          _buildSplitToggle(),
+                                          const SizedBox(height: 12),
+                                        ],
+                                        if (_splitMode) ...[
+                                          SplitBillPicker(
+                                            loading: _loadingSplitItems,
+                                            items: _unbilledItems,
+                                            selectedIds: _selectedIds,
+                                            onToggle: _toggleItem,
+                                            onSelectAll:
+                                                () => setState(() {
+                                                  _selectedIds =
+                                                      _unbilledItems
+                                                          .map(
+                                                            (i) =>
+                                                                i.orderDetailId ??
+                                                                '',
+                                                          )
+                                                          .toSet();
+                                                }),
+                                            onSelectNone:
+                                                () => setState(() {
+                                                  _selectedIds = {};
+                                                }),
+                                          ),
+                                          const SizedBox(height: 12),
+                                        ],
+
                                         // Order Items List
-                                        _buildOrderItemsSection(context),
+                                        _buildOrderItemsSection(
+                                          effectiveCartItems,
+                                        ),
                                         const SizedBox(height: 12),
 
                                         // Bill Amount & Breakdown
                                         _buildBillBreakdownSection(
                                           subtotal: subtotal,
                                           gstAmount: gstAmount,
+                                          gstPercentage: gstPercentage,
                                           total: total,
                                         ),
                                         const SizedBox(height: 12),
@@ -338,14 +473,17 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
     );
   }
 
-  Widget _buildShortOrderSummary(BuildContext context) {
+  Widget _buildShortOrderSummary(
+    BuildContext context,
+    List<CartItem> cartItems,
+  ) {
     final navProvider = context.read<NavigationProvider>();
     final tableName =
         widget.tableId != null
             ? (navProvider.selectedTableName ?? 'Table ${widget.tableId}')
             : (navProvider.selectedOrderType ?? 'Takeaway / Phone');
 
-    final itemCount = widget.cartItems.fold<int>(
+    final itemCount = cartItems.fold<int>(
       0,
       (sum, item) => sum + item.quantity,
     );
@@ -404,7 +542,46 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
     );
   }
 
-  Widget _buildOrderItemsSection(BuildContext context) {
+  Widget _buildSplitToggle() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.70),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.90),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.call_split_rounded, size: 18, color: AppColors.primary),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Split Bill',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          Switch(
+            value: _splitMode,
+            activeColor: AppColors.primary,
+            onChanged: (value) async {
+              await HapticHelper.triggerFeedback();
+              await _toggleSplitMode(value);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderItemsSection(List<CartItem> cartItems) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -487,7 +664,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: widget.cartItems.length,
+            itemCount: cartItems.length,
             separatorBuilder:
                 (context, index) => const Divider(
                   height: 10,
@@ -495,7 +672,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                   color: Color(0xFFE2E8F0),
                 ),
             itemBuilder: (context, index) {
-              return _OrderItemRowTile(item: widget.cartItems[index]);
+              return _OrderItemRowTile(item: cartItems[index]);
             },
           ),
         ],
@@ -506,6 +683,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
   Widget _buildBillBreakdownSection({
     required double subtotal,
     required double gstAmount,
+    required double gstPercentage,
     required double total,
   }) {
     return Container(
@@ -534,7 +712,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
           _buildBreakdownRow(label: AppStrings.subtotal, amount: subtotal),
           const SizedBox(height: 4),
           _buildBreakdownRow(
-            label: AppStrings.billing.gstFivePercent,
+            label: AppStrings.billing.gstWithRate(gstPercentage),
             amount: gstAmount,
           ),
           const Padding(
@@ -812,7 +990,9 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
         width: double.infinity,
         child: ElevatedButton.icon(
           onPressed:
-              billingProvider.isGenerating
+              (billingProvider.isGenerating ||
+                      _loadingSplitItems ||
+                      (_splitMode && _selectedIds.isEmpty))
                   ? null
                   : () async {
                     await _handleConfirmAndPrintBill(
@@ -847,7 +1027,9 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
           label: Text(
             billingProvider.isGenerating
                 ? 'Generating Bill...'
-                : 'Confirm & Print Bill',
+                : (_splitMode
+                    ? 'Confirm & Print Split Bill'
+                    : 'Confirm & Print Bill'),
             style: const TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.bold,
@@ -868,16 +1050,32 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
   ) async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_splitMode && _selectedIds.isEmpty) {
+      AppSnackBar.showWarning(
+        context,
+        'Select at least one item to bill.',
+      );
+      return;
+    }
+
     await HapticHelper.triggerFeedback();
+    if (!mounted) return;
+
+    // How many items this split leaves behind — 0 for a normal, full-order
+    // bill. Computed up front since we already know exactly which items
+    // this request covers; no need to re-query the server after payment.
+    final remainingUnbilledCount =
+        _splitMode ? (_unbilledItems.length - _selectedIds.length) : 0;
 
     try {
       final billBytes = await billingProvider.generateBill(
-        cartItems: widget.cartItems,
+        cartItems: _effectiveCartItems(context),
         orderNumber: widget.orderNumber,
         subtotal: subtotal,
         gstAmount: gstAmount,
         total: total,
         orderId: widget.orderId,
+        selectedOrderDetailIds: _splitMode ? _selectedIds.toList() : null,
       );
 
       if (context.mounted) {
@@ -911,6 +1109,8 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                   billBytes: billBytes,
                   onBillGenerated: widget.onBillGenerated,
                   tableId: widget.tableId,
+                  orderId: widget.orderId,
+                  remainingUnbilledCount: remainingUnbilledCount,
                 ),
           );
         }
