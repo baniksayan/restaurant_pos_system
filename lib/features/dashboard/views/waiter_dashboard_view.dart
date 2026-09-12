@@ -428,23 +428,46 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
       builder:
           (BuildContext context) => TableActionDialog(
             table: table,
-            onOccupy: () {
-              context.read<NavigationProvider>().selectTable(
+            onOccupy: () async {
+              // Resolved before any await: this closure runs on the dialog's
+              // context, which is torn down as soon as the dialog closes, and
+              // this State's `mounted` says nothing about it.
+              final navProvider = context.read<NavigationProvider>();
+              final selectedLocation = dashboardProvider.selectedLocation;
+
+              // Ask how many people are sitting down. The first group is a
+              // party like any other — it used to skip this prompt entirely
+              // and every table was recorded as a single adult.
+              final party = await AddPartyDialog.show(
+                context,
+                tableName: table.name,
+                capacity: table.capacity,
+                seatedGuests: table.seatedGuests ?? 0,
+              );
+              if (party == null) return;
+
+              // Create the order BEFORE navigating. The menu and cart scope
+              // themselves by TableProvider.currentOrderId, which only exists
+              // once saveOrderHead has returned — navigating first meant items
+              // were added under a fallback scope and the cart, opening later
+              // against the real order, looked empty.
+              final success = await tableProvider.createOrderForTable(
                 table.id,
                 table.name,
-                dashboardProvider.selectedLocation,
+                adults: party.adults,
+                children: party.children,
+                customerName: party.customerName,
               );
+              if (!mounted) return;
+              if (!success) {
+                _showSnackBar(
+                  'Failed to occupy ${table.name} on server',
+                  Colors.red,
+                );
+                return;
+              }
 
-              tableProvider.createOrderForTable(table.id, table.name).then((
-                success,
-              ) {
-                if (!success) {
-                  _showSnackBar(
-                    'Failed to occupy ${table.name} on server',
-                    Colors.red,
-                  );
-                }
-              });
+              navProvider.selectTable(table.id, table.name, selectedLocation);
             },
             onReserve: () => _showReservationPage(table, tableProvider),
           ),
@@ -470,8 +493,8 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     final party = await AddPartyDialog.show(
       context,
       tableName: table.name,
-      existingPartyCount: table.orderCount,
       capacity: table.capacity,
+      seatedGuests: table.seatedGuests ?? 0,
     );
     if (party == null || !mounted) return;
 

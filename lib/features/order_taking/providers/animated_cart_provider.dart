@@ -104,6 +104,32 @@ class AnimatedCartProvider extends ChangeNotifier {
     if (tableId != null && tableId.isNotEmpty) _currentTableId = tableId;
     if (_currentOrderId == newOrderId) return;
 
+    // Items can be added before the order id is known — addItem falls back to
+    // scoping by table when no order is open yet. Carry that basket onto the
+    // real order instead of stranding it under the table key, which is what
+    // made a freshly filled cart open empty.
+    final fallbackScope = _currentOrderId ?? tableId ?? _currentTableId;
+    final adoptingFallback =
+        _currentOrderId == null &&
+        fallbackScope != null &&
+        _cartItems.isNotEmpty &&
+        (_orderWiseCarts[newOrderId]?.isEmpty ?? true);
+
+    if (adoptingFallback) {
+      debugPrint(
+        '[AnimatedCart] Adopting ${_cartItems.length} item(s) held under '
+        '"$fallbackScope" into order $newOrderId',
+      );
+      _orderWiseCarts[newOrderId] = Map<String, CartItem>.from(_cartItems);
+      _orderWiseCarts.remove(fallbackScope);
+      HiveService.clearOrderCart(fallbackScope);
+      _currentOrderId = newOrderId;
+      _saveCartToPersistentStorage(newOrderId);
+      _updateTotalItems();
+      notifyListeners();
+      return;
+    }
+
     // Save current cart state to persistent storage
     if (_currentOrderId != null) {
       _saveCartToPersistentStorage(_currentOrderId!);

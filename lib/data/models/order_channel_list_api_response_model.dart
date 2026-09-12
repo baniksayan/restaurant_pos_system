@@ -82,11 +82,10 @@ class OrderList {
   String? orderStatus;
   String? generatedOrderNo;
 
-  // Party details, so several groups sharing one table can be told apart.
-  // All three are null until Sp_GetOrderChannelListByType is updated to
-  // select them (they already exist on OrderHead) - the UI falls back to the
-  // order number until then, so this is safe to ship ahead of the SQL change.
-  String? orderIdentifier;
+  // Guest counts, so several groups sharing one table can be told apart and
+  // the table card can show how full it is. Null until
+  // Sp_GetOrderChannelListByType is updated to select them (they already exist
+  // on OrderHead), so this is safe to ship ahead of the SQL change.
   int? totalAdult;
   int? totalChild;
 
@@ -95,7 +94,6 @@ class OrderList {
     this.isBilled,
     this.orderStatus,
     this.generatedOrderNo,
-    this.orderIdentifier,
     this.totalAdult,
     this.totalChild,
   });
@@ -105,7 +103,6 @@ class OrderList {
     isBilled = json['isBilled'];
     orderStatus = json['orderStatus'];
     generatedOrderNo = json['generatedOrderNo'];
-    orderIdentifier = json['orderIdentifier'];
     totalAdult = json['totalAdult'];
     totalChild = json['totChild'] ?? json['totalChild'];
   }
@@ -116,7 +113,6 @@ class OrderList {
     data['isBilled'] = isBilled;
     data['orderStatus'] = orderStatus;
     data['generatedOrderNo'] = generatedOrderNo;
-    data['orderIdentifier'] = orderIdentifier;
     data['totalAdult'] = totalAdult;
     data['totChild'] = totalChild;
     return data;

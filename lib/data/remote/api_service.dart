@@ -250,10 +250,6 @@ class ApiService {
     int totalAdult = 1,
     int totalChild = 0,
     String custEmailId = "",
-    /// Human-readable label for this party, e.g. "Table 10 P2". Several
-    /// parties can share a table, and the order number alone does not say
-    /// which group a card belongs to.
-    String orderIdentifier = "",
   }) async {
     final isConnected = await checkInternetAndGoForward();
     if (!isConnected) return null;
@@ -274,7 +270,6 @@ class ApiService {
         totalAdult: totalAdult,
         totalChild: totalChild,
         custEmailId: custEmailId,
-        orderIdentifier: orderIdentifier,
       );
       debugPrint('[API Call] Request Body: ${requestModel.toJson()}');
       if (kDebugMode) {
@@ -939,7 +934,11 @@ class ApiService {
         outletId: outletId,
         userId: HiveService.getUserId() ?? "",
         custPhoneNo: custPhoneNo ?? "",
-        totalAdult: totalAdult ?? 0,
+        // At least one guest: an order exists because somebody placed it.
+        // This defaulted to 0 while the sibling saveOrderHead defaulted to 1,
+        // so the recorded party size depended on which method happened to be
+        // used — that is why some tables report 0 guests and others 1.
+        totalAdult: (totalAdult == null || totalAdult <= 0) ? 1 : totalAdult,
         totalChild: totalChild ?? 0,
         custEmailId: custEmailId ?? "",
       );

@@ -5,9 +5,8 @@ import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 /// What a new party on a table is opened with.
 ///
 /// A table seats several groups at once, each running its own order and its
-/// own bill. Without a size and a label they all come back looking identical
-/// in the order list, distinguishable only by order number — so the waiter
-/// cannot tell which card belongs to which group.
+/// own bill. The guest count is what tells them apart in the order list, and
+/// what makes "3 of 8 seated" possible on the table card.
 class PartyDetails {
   final int adults;
   final int children;
@@ -26,10 +25,6 @@ class PartyDetails {
 class AddPartyDialog extends StatefulWidget {
   final String tableName;
 
-  /// Parties already seated at this table — used only to suggest the next
-  /// label, e.g. "Table 10 P2".
-  final int existingPartyCount;
-
   /// Seats the table has, when known, so the sheet can warn about overbooking
   /// rather than block it. Zero means "unknown", and no warning is shown.
   final int capacity;
@@ -40,7 +35,6 @@ class AddPartyDialog extends StatefulWidget {
   const AddPartyDialog({
     super.key,
     required this.tableName,
-    this.existingPartyCount = 0,
     this.capacity = 0,
     this.seatedGuests = 0,
   });
@@ -48,7 +42,6 @@ class AddPartyDialog extends StatefulWidget {
   static Future<PartyDetails?> show(
     BuildContext context, {
     required String tableName,
-    int existingPartyCount = 0,
     int capacity = 0,
     int seatedGuests = 0,
   }) {
@@ -58,7 +51,6 @@ class AddPartyDialog extends StatefulWidget {
       builder:
           (_) => AddPartyDialog(
             tableName: tableName,
-            existingPartyCount: existingPartyCount,
             capacity: capacity,
             seatedGuests: seatedGuests,
           ),
@@ -73,9 +65,6 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
   int _adults = 1;
   int _children = 0;
   final TextEditingController _nameController = TextEditingController();
-
-  String get _suggestedLabel =>
-      '${widget.tableName} P${widget.existingPartyCount + 1}';
 
   /// Seats left once this party is added, or null when capacity is unknown.
   int? get _remainingSeats {
@@ -122,7 +111,7 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                 ),
                 Text(
-                  _suggestedLabel,
+                  widget.tableName,
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -178,8 +167,13 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
                 Expanded(
                   child: Text(
                     overCapacity
-                        ? 'Over capacity by ${-remaining} '
-                            '${-remaining == 1 ? 'seat' : 'seats'}'
+                        ? '${widget.seatedGuests + _adults + _children} on a '
+                            '${widget.capacity}-seat table — over by '
+                            '${-remaining}'
+                        : widget.seatedGuests > 0
+                        ? '${widget.seatedGuests} already seated · '
+                            '$remaining ${remaining == 1 ? 'seat' : 'seats'} '
+                            'left after this party'
                         : '$remaining ${remaining == 1 ? 'seat' : 'seats'} '
                             'left after this party',
                     style: TextStyle(

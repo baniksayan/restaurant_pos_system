@@ -235,12 +235,21 @@ class EnhancedTableCard extends StatelessWidget {
                             color: Colors.grey[600],
                           ),
                           const SizedBox(width: 3),
+                          // Once guest counts are known, show how full the
+                          // table actually is rather than only its size — a
+                          // waiter deciding where to seat four people needs
+                          // seats left, not total seats.
                           Text(
-                            'Capacity: ${table.capacity}',
+                            table.seatedGuests == null
+                                ? 'Capacity: ${table.capacity}'
+                                : '${table.seatedGuests} of ${table.capacity} seated',
                             style: TextStyle(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w500,
-                              color: Colors.grey[600],
+                              color:
+                                  (table.freeSeats ?? 1) < 0
+                                      ? const Color(0xFFB45309)
+                                      : Colors.grey[600],
                             ),
                           ),
                         ],

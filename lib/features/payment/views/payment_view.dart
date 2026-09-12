@@ -121,14 +121,15 @@ class _PaymentPageState extends State<PaymentPage>
             orderDetails.data!.isNotEmpty) {
           final data = orderDetails.data!.first;
           _fetchedOrderNumber = data.orderNo;
-          // getOrderDetailById cannot actually supply a bill id -
-          // Sp_GetOrderViewNew never selects one, so this always arrives as
-          // the all-zero placeholder. Accepting it here used to overwrite the
-          // real bill id handed in by the caller, and the payment was then
-          // saved against a bill that does not exist.
+          // The order's BillId is per order-DETAIL: unbilled lines carry the
+          // all-zero placeholder, and the header value is whichever line the
+          // API picked. Treat it as a hint only — never as an override.
           if (GuidHelper.isValid(data.billId)) {
             _fetchedBillId = data.billId;
-            effectiveBillId = data.billId;
+            // Only adopt it when the caller did not name a bill — see
+            // effectiveBillId for why the order's own answer is unreliable
+            // once an order has been split across several bills.
+            effectiveBillId ??= data.billId;
           } else if (data.billId != null) {
             debugPrint(
               '[PaymentPage] Ignoring placeholder billId from order details: '
@@ -242,10 +243,17 @@ class _PaymentPageState extends State<PaymentPage>
   /// placeholder is rejected at every source so it can never shadow the id the
   /// caller passed in.
   String? get effectiveBillId {
-    if (GuidHelper.isValid(_fetchedBillId)) {
-      return _fetchedBillId;
-    }
-    return GuidHelper.orNull(widget.billId);
+    // The caller's bill id wins. An order can carry several bills — that is
+    // what splitting one produces — and getOrderDetailById reports only a
+    // single header-level BillId, taken from the first line that happens to
+    // carry one. On a split order that is the EARLIEST bill, which is usually
+    // already paid, so preferring it meant opening a settled bill and showing
+    // nothing left to pay while the bill actually being settled was ignored.
+    final explicit = GuidHelper.orNull(widget.billId);
+    if (explicit != null) return explicit;
+
+    // Only when no bill was named: fall back to whatever the order reports.
+    return GuidHelper.orNull(_fetchedBillId);
   }
 
   @override

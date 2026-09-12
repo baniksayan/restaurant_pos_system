@@ -2,7 +2,7 @@ class ApiConstants {
   ApiConstants._();
 
   // Base URL
-  static String baseUrl = "https://posapi.uvanij.com/api/";
+  static String baseUrl = "https://PosproAPI.gobiens.com/dev/api/";
 
   // Auth endpoints
   static const String auth = "User/authenticate";

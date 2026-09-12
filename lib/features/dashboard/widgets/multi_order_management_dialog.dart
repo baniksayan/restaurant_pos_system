@@ -355,7 +355,7 @@ class _MultiOrderManagementDialogState
                     children: [
                       Expanded(
                         child: Text(
-                          order.displayLabel,
+                          order.generatedOrderNo,
                           style: TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w800,
@@ -407,16 +407,10 @@ class _MultiOrderManagementDialogState
                     ],
                   ),
                   const SizedBox(height: 2),
-                  if (order.guestCount != null ||
-                      order.displayLabel != order.generatedOrderNo)
+                  if (order.guestCount != null)
                     Text(
-                      [
-                        if (order.displayLabel != order.generatedOrderNo)
-                          order.generatedOrderNo,
-                        if (order.guestCount != null)
-                          '${order.guestCount} '
-                              '${order.guestCount == 1 ? 'guest' : 'guests'}',
-                      ].join('  ·  '),
+                      '${order.guestCount} '
+                      '${order.guestCount == 1 ? 'guest' : 'guests'}',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
@@ -594,8 +588,8 @@ class _MultiOrderManagementDialogState
     final party = await AddPartyDialog.show(
       context,
       tableName: table.name,
-      existingPartyCount: table.orderCount,
       capacity: table.capacity,
+      seatedGuests: table.seatedGuests ?? 0,
     );
     if (party == null) return; // cancelled
     if (!context.mounted) return;

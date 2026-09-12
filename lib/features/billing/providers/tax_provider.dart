@@ -58,24 +58,22 @@ class TaxProvider with ChangeNotifier {
         '📡 Need to fetch from API - Reasons: taxData=${_taxData == null}, expired=$isExpired, empty=${(_taxData?.data?.isEmpty ?? true)}',
       );
 
-      // Get outlet ID for API call
-      final outletId = HiveService.getOutletId();
-      debugPrint('Outlet ID for API call: $outletId');
+      // Fetch unconditionally. Order/getTaxDt resolves the company from the
+      // auth token and ignores whatever id is sent in the body, so gating the
+      // call on having an outlet id achieved nothing except skipping it
+      // silently when one was missing — leaving the bill screen showing 0%
+      // tax while the server went on charging the real rate.
+      final outletId =
+          HiveService.getOutletId() ??
+          HiveService.getAuthData()?.data?.location?.locationId ??
+          0;
 
-      if (outletId != null && outletId > 0) {
-        await fetchTaxes(outletId);
-      } else {
-        debugPrint('❌ No outlet ID available for tax data fetch');
-        // If no outlet ID, try to get it from auth data
-        final authData = HiveService.getAuthData();
-        final fallbackOutletId = authData?.data?.location?.locationId;
-        debugPrint('Trying fallback outlet ID from auth: $fallbackOutletId');
-
-        if (fallbackOutletId != null && fallbackOutletId > 0) {
-          HiveService.setOutletId(fallbackOutletId);
-          await fetchTaxes(fallbackOutletId);
-        }
+      if (outletId > 0 && HiveService.getOutletId() == null) {
+        HiveService.setOutletId(outletId);
       }
+
+      debugPrint('Outlet ID for tax call (informational only): $outletId');
+      await fetchTaxes(outletId);
     } else {
       debugPrint('✅ Using valid tax data from Hive - no API call needed');
     }
@@ -85,12 +83,12 @@ class TaxProvider with ChangeNotifier {
     );
   }
 
-  // Manual method to force refresh tax data from API
+  /// Force a refresh from the API — backs the Retry action on the bill
+  /// screen. Like [initializeTaxData] it does not require an outlet id: the
+  /// endpoint resolves the company from the token, so refusing to call
+  /// without one only ever left the rate stuck at 0%.
   Future<void> refreshTaxData() async {
-    final outletId = HiveService.getOutletId();
-    if (outletId != null && outletId > 0) {
-      await fetchTaxes(outletId);
-    }
+    await fetchTaxes(HiveService.getOutletId() ?? 0);
   }
 
   // Debug method to check what's in Hive

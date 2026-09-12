@@ -88,6 +88,17 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
   List<OrderDetailList> _unbilledItems = [];
   Set<String> _selectedIds = {};
 
+  /// Whether the unbilled-item list has actually come back from the server.
+  /// Distinguishes "nothing left to bill" from "not asked yet" — without it
+  /// an empty list looks the same as a pending load.
+  bool _unbilledLoaded = false;
+
+  /// Every item on this order is already billed, so there is nothing to bill
+  /// again. Reached by reopening the bill screen after a split has covered
+  /// everything.
+  bool get _nothingLeftToBill =>
+      _canSplit && _unbilledLoaded && _unbilledItems.isEmpty;
+
   bool get _canSplit => widget.orderId != null && widget.orderId!.isNotEmpty;
 
   @override
@@ -96,6 +107,23 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final billingProvider = context.read<BillingProvider>();
       billingProvider.loadPaymentModes();
+
+      // Tax rates are normally fetched at login, but that can fail or expire.
+      // Without them TaxProvider reports 0%, and the bill would preview an
+      // untaxed total while the server charges a taxed one — the customer
+      // sees one figure and is asked for another at payment.
+      final taxProvider = context.read<TaxProvider>();
+      if (!taxProvider.hasTaxData) {
+        taxProvider.initializeTaxData();
+      }
+
+      // Load what is actually still unbilled straight away, not only when the
+      // split toggle is flipped. The local cart still holds items from earlier
+      // bills on this order, so basing the total on it would show — and print —
+      // an amount that does not match what createBill will charge.
+      if (_canSplit) {
+        _loadUnbilledItems();
+      }
 
       final navProvider = context.read<NavigationProvider>();
       if (navProvider.customerPhone?.isNotEmpty == true) {
@@ -113,7 +141,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
 
   Future<void> _toggleSplitMode(bool value) async {
     setState(() => _splitMode = value);
-    if (value && _unbilledItems.isEmpty && !_loadingSplitItems) {
+    if (value && !_unbilledLoaded && !_loadingSplitItems) {
       await _loadUnbilledItems();
     }
   }
@@ -135,6 +163,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
               .toList();
       if (mounted) {
         setState(() {
+          _unbilledLoaded = true;
           _unbilledItems = unbilled;
           // Default to everything selected — a cashier who never touches
           // the picker gets the same result as billing the whole order.
@@ -158,13 +187,23 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
     });
   }
 
-  /// The items this specific bill actually covers — the full local cart
-  /// normally, or just the cashier's split selection when `_splitMode` is
-  /// on. Everything downstream (totals, the printed preview, the PDF, and
-  /// the `createBill` call) is driven from this single list so they can
-  /// never disagree with each other.
+  /// The items this specific bill actually covers.
+  ///
+  /// Always the order's *unbilled* items once the server has told us what
+  /// those are — narrowed to the cashier's selection when `_splitMode` is on.
+  /// It deliberately does not use the local cart when a saved order exists:
+  /// the cart still contains items covered by earlier bills on the same
+  /// order, and createBill only ever bills what is still unbilled, so showing
+  /// the cart would price the bill differently from what is charged.
+  ///
+  /// Everything downstream — totals, the printed preview, the PDF and the
+  /// createBill call — is driven from this one list so they cannot disagree.
   List<CartItem> _effectiveCartItems(BuildContext context) {
-    if (!_splitMode) return widget.cartItems;
+    // No saved order (or the list has not arrived yet): the local cart is all
+    // we have, and for a brand-new order it is also correct.
+    if (!_canSplit || !_unbilledLoaded) {
+      return widget.cartItems;
+    }
 
     final navProvider = context.read<NavigationProvider>();
     final tableName =
@@ -172,8 +211,15 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
             ? (navProvider.selectedTableName ?? 'Table ${widget.tableId}')
             : (navProvider.selectedOrderType ?? 'Takeaway / Phone');
 
-    return _unbilledItems
-        .where((i) => _selectedIds.contains(i.orderDetailId))
+    // Split mode bills the ticked subset; otherwise everything unbilled.
+    final source =
+        _splitMode
+            ? _unbilledItems.where(
+              (i) => _selectedIds.contains(i.orderDetailId),
+            )
+            : _unbilledItems;
+
+    return source
         .map(
           (i) => CartItem(
             id: i.productId ?? i.orderDetailId ?? '',
@@ -199,9 +245,15 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
         final subtotal = billingProvider.calculateSubtotal(
           effectiveCartItems,
         );
-        // Live CGST+SGST rate, same source the cart footer uses. Must not be
-        // hardcoded — see BillingProvider.calculateGST.
+        // Live rate, same source the cart footer uses. Must not be hardcoded
+        // — see BillingProvider.calculateGST.
         final gstPercentage = taxProvider.totalGstPercentage;
+
+        // No rates loaded means we cannot price this bill. Showing the
+        // subtotal as the total would quote the customer an untaxed figure
+        // and then charge them the taxed one — the server applies the rate
+        // regardless of what this screen managed to fetch.
+        final taxUnavailable = !taxProvider.hasTaxData;
         final gstAmount = billingProvider.calculateGST(subtotal, gstPercentage);
         final total = billingProvider.calculateTotal(subtotal, gstAmount);
 
@@ -323,6 +375,10 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                                           gstAmount: gstAmount,
                                           gstPercentage: gstPercentage,
                                           total: total,
+                                          taxUnavailable: taxUnavailable,
+                                          onRetryTax:
+                                              () =>
+                                                  taxProvider.refreshTaxData(),
                                         ),
                                         const SizedBox(height: 12),
 
@@ -348,6 +404,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                                   subtotal,
                                   gstAmount,
                                   total,
+                                  taxUnavailable: taxUnavailable,
                                 ),
                               ],
                             ),
@@ -685,6 +742,8 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
     required double gstAmount,
     required double gstPercentage,
     required double total,
+    bool taxUnavailable = false,
+    VoidCallback? onRetryTax,
   }) {
     return Container(
       width: double.infinity,
@@ -711,10 +770,41 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
           const SizedBox(height: 8),
           _buildBreakdownRow(label: AppStrings.subtotal, amount: subtotal),
           const SizedBox(height: 4),
-          _buildBreakdownRow(
-            label: AppStrings.billing.gstWithRate(gstPercentage),
-            amount: gstAmount,
-          ),
+          if (taxUnavailable)
+            Row(
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  size: 14,
+                  color: Color(0xFFB45309),
+                ),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text(
+                    'Tax rates unavailable — total cannot be calculated',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFB45309),
+                    ),
+                  ),
+                ),
+                if (onRetryTax != null)
+                  TextButton(
+                    onPressed: onRetryTax,
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    child: const Text('Retry', style: TextStyle(fontSize: 12)),
+                  ),
+              ],
+            )
+          else
+            _buildBreakdownRow(
+              label: AppStrings.billing.gstWithRate(gstPercentage),
+              amount: gstAmount,
+            ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 6),
             child: Divider(height: 1, thickness: 0.8, color: Color(0xFFCBD5E1)),
@@ -973,8 +1063,12 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
     BillingProvider billingProvider,
     double subtotal,
     double gstAmount,
-    double total,
-  ) {
+    double total, {
+    /// Blocks billing when no tax rates could be loaded — see the breakdown
+    /// section: quoting an untaxed total the server will not honour is worse
+    /// than refusing to quote one.
+    bool taxUnavailable = false,
+  }) {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
       decoration: BoxDecoration(
@@ -992,6 +1086,8 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
           onPressed:
               (billingProvider.isGenerating ||
                       _loadingSplitItems ||
+                      _nothingLeftToBill ||
+                      taxUnavailable ||
                       (_splitMode && _selectedIds.isEmpty))
                   ? null
                   : () async {

@@ -227,7 +227,11 @@ class OrderProvider with ChangeNotifier {
         outletId: outletId,
         userId: userId,
         custPhoneNo: customerPhone,
-        totalAdult: 0,
+        // Phone/takeaway still has a customer. Sending 0 recorded these
+        // orders as having nobody on them, which made the seated-guest
+        // figures meaningless. There is no party-size prompt on this path
+        // yet, so assume one.
+        totalAdult: 1,
         totalChild: 0,
       );
 

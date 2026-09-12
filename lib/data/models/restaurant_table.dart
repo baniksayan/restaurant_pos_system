@@ -35,6 +35,33 @@ class RestaurantTable {
   // NEW: Get order count
   int get orderCount => activeOrders.length;
 
+  /// Guests currently seated, summed across every party on the table.
+  ///
+  /// Null when the server has not reported guest counts for any order — the
+  /// channel list only carries them once the accompanying
+  /// Sp_GetOrderChannelListByType migration is applied. Null means "unknown",
+  /// which is different from zero, so callers can hide the figure rather than
+  /// claim an empty table.
+  int? get seatedGuests {
+    var total = 0;
+    var known = false;
+    for (final order in activeOrders) {
+      final guests = order.guestCount;
+      if (guests != null) {
+        total += guests;
+        known = true;
+      }
+    }
+    return known ? total : null;
+  }
+
+  /// Seats still free, or null when the guest count or capacity is unknown.
+  int? get freeSeats {
+    final seated = seatedGuests;
+    if (seated == null || capacity <= 0) return null;
+    return capacity - seated;
+  }
+
   RestaurantTable copyWith({
     String? id,
     String? name,
@@ -116,10 +143,7 @@ class ActiveOrder {
   /// (getOrderDetailById returns none), so this is the only record of it.
   final String? billId;
 
-  /// Party label for this order, e.g. "Table 10 P2" - the billing counter's
-  /// convention for telling groups on a shared table apart. Null until the
-  /// channel-list proc returns it.
-  final String? orderIdentifier;
+  /// Guests on this order. Null until the channel-list proc returns them.
   final int? totalAdult;
   final int? totalChild;
 
@@ -129,7 +153,6 @@ class ActiveOrder {
     required this.orderStatus,
     required this.isBilled,
     this.billId,
-    this.orderIdentifier,
     this.totalAdult,
     this.totalChild,
   });
@@ -140,13 +163,6 @@ class ActiveOrder {
     return (totalAdult ?? 0) + (totalChild ?? 0);
   }
 
-  /// What to show on the order card: the party label when known, else the
-  /// generated order number.
-  String get displayLabel =>
-      (orderIdentifier != null && orderIdentifier!.trim().isNotEmpty)
-          ? orderIdentifier!.trim()
-          : generatedOrderNo;
-
   ActiveOrder copyWith({
     String? orderId,
     String? generatedOrderNo,
@@ -154,7 +170,6 @@ class ActiveOrder {
     bool? isBilled,
     String? billId,
     bool clearBillId = false,
-    String? orderIdentifier,
     int? totalAdult,
     int? totalChild,
   }) {
@@ -164,7 +179,6 @@ class ActiveOrder {
       orderStatus: orderStatus ?? this.orderStatus,
       isBilled: isBilled ?? this.isBilled,
       billId: clearBillId ? null : (billId ?? this.billId),
-      orderIdentifier: orderIdentifier ?? this.orderIdentifier,
       totalAdult: totalAdult ?? this.totalAdult,
       totalChild: totalChild ?? this.totalChild,
     );
@@ -177,7 +191,6 @@ class ActiveOrder {
       generatedOrderNo: orderList.generatedOrderNo ?? '',
       orderStatus: orderList.orderStatus ?? '',
       isBilled: orderList.isBilled ?? false,
-      orderIdentifier: orderList.orderIdentifier,
       totalAdult: orderList.totalAdult,
       totalChild: orderList.totalChild,
     );

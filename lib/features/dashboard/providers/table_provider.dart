@@ -307,9 +307,8 @@ class TableProvider extends ChangeNotifier {
   /// Called for the first group at a table and for every additional party
   /// after it — each call creates a separate OrderHead against the same
   /// channel (empty OrderIdUI means "new order" server-side). [adults],
-  /// [children] and [customerName] describe this party; the label follows the
-  /// billing counter's convention, "<table> P<n>", so the order list can tell
-  /// the groups apart.
+  /// [children] and [customerName] describe this party; the guest counts are
+  /// what tell groups on a shared table apart in the order list.
   Future<bool> createOrderForTable(
     String tableId,
     String tableName, {
@@ -330,25 +329,6 @@ class TableProvider extends ChangeNotifier {
       debugPrint('[Table Manager] Table $tableName tapped - Status: available');
       debugPrint('[Popup] Options shown: Occupy & Order, Reserve');
 
-      // Next party number for this table, so labels read P1, P2, P3...
-      final existingParties =
-          _tables
-              .firstWhere(
-                (t) => t.id == tableId,
-                orElse:
-                    () => const RestaurantTable(
-                      id: '',
-                      name: '',
-                      capacity: 0,
-                      location: '',
-                      status: TableStatus.available,
-                      kotGenerated: false,
-                      billGenerated: false,
-                    ),
-              )
-              .activeOrders
-              .length;
-
       // Step 1: Create new order using saveOrderHead API
       final orderResponse = await ApiService.saveOrderHead(
         token: token,
@@ -362,7 +342,6 @@ class TableProvider extends ChangeNotifier {
         userId: userId,
         totalAdult: adults,
         totalChild: children,
-        orderIdentifier: '$tableName P${existingParties + 1}',
       );
 
       if (orderResponse != null && orderResponse.isSuccess == true) {
