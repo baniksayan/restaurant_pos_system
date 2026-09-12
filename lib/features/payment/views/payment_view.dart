@@ -11,10 +11,10 @@ import 'package:restaurant_pos_system/features/billing/providers/billing_provide
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/data/models/bill_generation_models.dart';
 import '../widgets/amount_card.dart';
-import '../widgets/payment_methods.dart';
-import '../widgets/qr_section.dart';
-import '../widgets/cash_tender_card.dart';
 import '../widgets/confirm_button.dart';
+import '../models/tender_line.dart';
+import '../widgets/add_tender_sheet.dart';
+import '../widgets/tender_list_card.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
@@ -53,9 +53,13 @@ class PaymentPage extends StatefulWidget {
 
 class _PaymentPageState extends State<PaymentPage>
     with TickerProviderStateMixin {
-  String _selectedPaymentMethod = 'cash';
+  /// Tenders staged for this bill. A bill can be settled across several
+  /// modes — cash plus UPI, say — and SavePayment takes them all in one call,
+  /// writing a Payment row per entry. Collecting them here rather than paying
+  /// one mode at a time keeps it to a single transaction and a single receipt.
+  final List<TenderLine> _tenders = [];
+
   bool _processing = false;
-  bool _showQR = false;
 
   String? _fetchedOrderNumber;
   String? _fetchedBillId;
@@ -75,6 +79,12 @@ class _PaymentPageState extends State<PaymentPage>
   /// Change actually handed back on the payment that just succeeded, shown
   /// in the success dialog.
   double _lastReturnAmt = 0;
+
+  /// What was taken on the payment that just succeeded. Captured before the
+  /// staged tenders are cleared, so the receipt can still describe a bill
+  /// settled across several modes — "Cash + UPI" rather than one of them.
+  double _paidNowTotal = 0;
+  String _tenderSummary = '';
 
   late final AnimationController _fadeController;
   late final Animation<double> _fadeIn;
@@ -195,26 +205,9 @@ class _PaymentPageState extends State<PaymentPage>
       if (mounted) {
         setState(() {
           _loadingDetails = false;
-          _prefillCashReceivedIfNeeded();
         });
       }
     }
-  }
-
-  /// Defaults the cash-received field to the exact bill amount so the
-  /// cashier only has to edit it when the customer actually overpays.
-  void _prefillCashReceivedIfNeeded() {
-    if (_selectedPaymentMethod == 'cash' &&
-        _cashReceivedController.text.trim().isEmpty &&
-        currentAmount > 0) {
-      _cashReceivedController.text = currentAmount.toStringAsFixed(2);
-    }
-  }
-
-  double? get _cashReceivedAmount {
-    final text = _cashReceivedController.text.trim();
-    if (text.isEmpty) return null;
-    return double.tryParse(text);
   }
 
   String get currentOrderNumber {
@@ -232,12 +225,30 @@ class _PaymentPageState extends State<PaymentPage>
     return widget.totalAmount ?? 0.0;
   }
 
-  /// What the customer still owes: bill total minus payments already taken.
+  /// What the customer still owes, before anything staged on this screen.
   /// Never negative — an overpaid bill owes nothing further.
   double get currentAmount {
     final due = billTotalAmount - _alreadyPaidAmount;
     return due > 0 ? due : 0.0;
   }
+
+  /// Sum of the tenders staged but not yet saved.
+  double get _stagedTotal =>
+      _tenders.fold(0.0, (sum, t) => sum + t.amount);
+
+  /// Still outstanding once the staged tenders are counted.
+  double get _remainingAfterStaged {
+    final left = currentAmount - _stagedTotal;
+    return left > 0 ? left : 0.0;
+  }
+
+  /// Whether the staged tenders clear the bill. Tolerates float dust, since
+  /// money here is 2dp and the server compares with >=.
+  bool get _fullySettled => _remainingAfterStaged <= 0.004;
+
+  /// Change owed across the staged cash tenders.
+  double get _stagedChange =>
+      _tenders.fold(0.0, (sum, t) => sum + t.returnAmount);
 
   /// The bill this payment settles. Only ever a real id — the all-zero
   /// placeholder is rejected at every source so it can never shadow the id the
@@ -317,40 +328,44 @@ class _PaymentPageState extends State<PaymentPage>
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             children: [
-              AmountCard(amount: currentAmount, isLoading: _loadingDetails),
-              const SizedBox(height: 16),
-              PaymentMethods(
-                selected: _selectedPaymentMethod,
+              // The bill's own total, not the balance. It is labelled "Total
+              // Amount", and the Payments card below already reports paid and
+              // remaining — showing the balance here too gave two figures for
+              // the same thing, one of them under the wrong label.
+              AmountCard(
+                amount: billTotalAmount,
                 isLoading: _loadingDetails,
-                onChanged: (value) {
-                  _triggerHapticLight();
-                  setState(() {
-                    _selectedPaymentMethod = value;
-                    _showQR = (value == 'upi');
-                    _prefillCashReceivedIfNeeded();
-                  });
-                },
+              ),
+              const SizedBox(height: 16),
+
+              TenderListCard(
+                tenders: _tenders,
+                billTotal: billTotalAmount,
+                previouslyPaid: _alreadyPaidAmount,
+                onRemove: _removeTender,
               ),
               const SizedBox(height: 12),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                switchInCurve: Curves.easeIn,
-                switchOutCurve: Curves.easeOut,
-                child: switch (_selectedPaymentMethod) {
-                  'cash' => CashTenderCard(
-                    key: const ValueKey('cash-tender'),
-                    dueAmount: currentAmount,
-                    controller: _cashReceivedController,
-                    onChanged: () => setState(() {}),
+
+              // Nothing left to collect once the tenders cover the bill, so
+              // the action disappears rather than inviting an overpayment.
+              if (!_fullySettled)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _loadingDetails ? null : _addTender,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: Text(
+                      _tenders.isEmpty ? 'Add payment' : 'Add another payment',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
-                  'upi' when _showQR => QRSection(
-                    key: const ValueKey('qr-section'),
-                    amount: currentAmount,
-                    orderNumber: currentOrderNumber,
-                  ),
-                  _ => const SizedBox.shrink(key: ValueKey('empty')),
-                },
-              ),
+                ),
+
               const SizedBox(height: 16),
             ],
           ),
@@ -375,11 +390,33 @@ class _PaymentPageState extends State<PaymentPage>
           child: ConfirmButton(
             processing: _processing,
             isLoading: _loadingDetails,
-            onPressed: _processing ? null : _processPayment,
+            // Nothing staged means nothing to save. A part-payment is allowed
+            // — the bill simply stays open and the balance is collected later,
+            // which the server already supports via BillHead.IsPaid = 1.
+            onPressed:
+                (_processing || _tenders.isEmpty) ? null : _processPayment,
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _addTender() async {
+    await _triggerHapticLight();
+    if (!mounted) return;
+
+    final tender = await AddTenderSheet.show(
+      context,
+      _remainingAfterStaged,
+      orderNumber: currentOrderNumber,
+    );
+    if (tender == null || !mounted) return;
+
+    setState(() => _tenders.add(tender));
+  }
+
+  void _removeTender(int index) {
+    setState(() => _tenders.removeAt(index));
   }
 
   Future<void> _processPayment() async {
@@ -395,9 +432,6 @@ class _PaymentPageState extends State<PaymentPage>
         'Payment Page - Total Amount: ${CurrencyConstants.symbol}$currentAmount',
       );
       debugPrint('Payment Page - Table ID: ${widget.tableId}');
-      debugPrint(
-        'Payment Page - Selected Payment Method: $_selectedPaymentMethod',
-      );
 
       String? billId = effectiveBillId;
 
@@ -417,47 +451,30 @@ class _PaymentPageState extends State<PaymentPage>
         }
       }
 
-      int paymentModeId = 1;
-      if (_selectedPaymentMethod == 'card') {
-        paymentModeId = 2;
-      } else if (_selectedPaymentMethod == 'upi') {
-        paymentModeId = 3;
-      }
-
-      // Cash is the only method where the customer can hand over more than
-      // the bill and expect change back — every other mode settles exact.
-      double returnAmt = 0;
-      if (_selectedPaymentMethod == 'cash') {
-        final received = _cashReceivedAmount;
-        if (received == null || received < currentAmount) {
-          final shortfall = currentAmount - (received ?? 0);
-          throw Exception(
-            'Cash received is short by '
-            '${CurrencyConstants.symbol}${shortfall.toStringAsFixed(2)}.',
-          );
-        }
-        returnAmt = received - currentAmount;
-      }
-      _lastReturnAmt = returnAmt;
+      // Change comes only from cash overpayment, and each tender carries its
+      // own so the Payment rows stay individually correct.
+      _lastReturnAmt = _stagedChange;
+      _paidNowTotal = _stagedTotal;
+      _tenderSummary = _tenders
+          .map((t) => t.label)
+          .toSet()
+          .join(' + ')
+          .toUpperCase();
 
       debugPrint(
-        'Payment Page - Cash received: ${_cashReceivedController.text}, '
-        'Return amount: $returnAmt',
+        'Payment Page - ${_tenders.length} tender(s), '
+        'staged ${_stagedTotal.toStringAsFixed(2)}, '
+        'change ${_stagedChange.toStringAsFixed(2)}',
       );
 
       final savePaymentRequest = SavePaymentRequest(
         // Non-null by this point: the guard above throws when no real bill id
         // could be resolved.
         billId: billId!,
-        paymentDetails: [
-          PaymentDetail(
-            paymentAmount: currentAmount,
-            modeId: paymentModeId,
-            refId: "",
-            cardNo: "",
-            returnAmt: returnAmt,
-          ),
-        ],
+        // One Payment row per tender. SP_SavePayment walks the list and
+        // SP_UpdPaymentStatusBill sums them, so a bill split across cash and
+        // UPI settles in a single call.
+        paymentDetails: _tenders.map((t) => t.toPaymentDetail()).toList(),
       );
 
       final response = await ApiService.savePayment(
@@ -626,7 +643,8 @@ class _PaymentPageState extends State<PaymentPage>
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '${CurrencyConstants.symbol}${currentAmount.toStringAsFixed(2)} • ${_selectedPaymentMethod.toUpperCase()}',
+                      '${CurrencyConstants.symbol}${_paidNowTotal.toStringAsFixed(2)}'
+                      ' • $_tenderSummary',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
@@ -647,15 +665,11 @@ class _PaymentPageState extends State<PaymentPage>
                           const SizedBox(height: 6),
                           _kv(
                             'Amount',
-                            '${CurrencyConstants.symbol}${currentAmount.toStringAsFixed(2)}',
+                            '${CurrencyConstants.symbol}${_paidNowTotal.toStringAsFixed(2)}',
                             context,
                           ),
                           const SizedBox(height: 6),
-                          _kv(
-                            'Method',
-                            _selectedPaymentMethod.toUpperCase(),
-                            context,
-                          ),
+                          _kv('Method', _tenderSummary, context),
                           if (_lastReturnAmt > 0) ...[
                             const SizedBox(height: 6),
                             _kv(
