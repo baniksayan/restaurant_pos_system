@@ -35,6 +35,28 @@ class RestaurantTable {
   // NEW: Get order count
   int get orderCount => activeOrders.length;
 
+  /// Adults seated, summed across every party on the table. Null when the
+  /// server has not reported counts for any order.
+  int? get seatedAdults => _sumGuests((o) => o.totalAdult);
+
+  /// Children seated, summed across every party on the table.
+  int? get seatedChildren => _sumGuests((o) => o.totalChild);
+
+  /// Sums one guest field across the table's orders, returning null when no
+  /// order reported it — "unknown" and "nobody" are different answers.
+  int? _sumGuests(int? Function(ActiveOrder order) field) {
+    var total = 0;
+    var known = false;
+    for (final order in activeOrders) {
+      final value = field(order);
+      if (value != null) {
+        total += value;
+        known = true;
+      }
+    }
+    return known ? total : null;
+  }
+
   /// Guests currently seated, summed across every party on the table.
   ///
   /// Null when the server has not reported guest counts for any order — the

@@ -110,6 +110,13 @@ class TableRepository {
                       generatedOrderNo: order.generatedOrderNo ?? 'Unknown',
                       orderStatus: order.orderStatus ?? 'Active',
                       isBilled: order.isBilled ?? false,
+                      // Guest counts were being parsed from the response and
+                      // then dropped here, so the table card could never show
+                      // who was seated. Built by hand rather than via
+                      // ActiveOrder.fromNewApiOrderList, which is why adding
+                      // fields to that factory had no effect.
+                      totalAdult: order.totalAdult,
+                      totalChild: order.totalChild,
                     );
                   })
                   .toList() ??
