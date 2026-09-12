@@ -7,6 +7,7 @@ import 'package:restaurant_pos_system/core/constants/app_assets.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/app_gradients.dart';
 import 'package:restaurant_pos_system/features/orders/views/orders_management_view.dart';
+import 'package:restaurant_pos_system/features/payment/views/pending_payments_view.dart';
 import 'package:restaurant_pos_system/features/profile/views/profile_view.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
 import '../providers/dashboard_provider.dart';
@@ -86,6 +87,26 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                           ),
                           const SizedBox(height: 6),
                           _buildOrdersManagementTile(),
+                          const SizedBox(height: 6),
+                          // Bills can be raised and settled later, and a split
+                          // bill leaves several open on one order — without a
+                          // list of their own the only way back to an unpaid
+                          // bill is the table that produced it, which fails
+                          // once that table has been reused.
+                          _buildCleanNavTile(
+                            title: 'Pending Payments',
+                            subtitle: 'Collect on unpaid bills',
+                            icon: Icons.account_balance_wallet_outlined,
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const PendingPaymentsView(),
+                                ),
+                              );
+                            },
+                          ),
                           const SizedBox(height: 16),
 
                           // Section 3: Clean Account List (Profile)

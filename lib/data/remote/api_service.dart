@@ -12,6 +12,7 @@ import 'package:restaurant_pos_system/data/models/bill_generation_models.dart';
 import 'package:restaurant_pos_system/data/models/bill_details_response.dart';
 import 'package:restaurant_pos_system/data/models/order_channel_list_api_response_model.dart';
 import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
+import 'package:restaurant_pos_system/data/models/pending_bill.dart';
 import '../../core/constants/api_constants.dart';
 
 class ApiService {
@@ -1314,6 +1315,49 @@ class ApiService {
     } catch (e, stackTrace) {
       if (kDebugMode) {
         debugPrint('Error in getPaidAmountForBill: $e');
+        debugPrint('StackTrace: $stackTrace');
+      }
+      return null;
+    }
+  }
+
+  /// Bills raised in a date range, with their payment state
+  /// (Order/GetBillForReprint).
+  ///
+  /// Dates are sent as yyyy-MM-dd: the procedure takes `date` parameters and
+  /// a string is converted by SQL Server using the session's DATEFORMAT, so
+  /// an unambiguous ISO date is the only safe form to send.
+  static Future<List<PendingBill>?> getBillsForReprint({
+    required int outletId,
+    required DateTime from,
+    required DateTime to,
+    String searchString = '',
+  }) async {
+    String iso(DateTime d) =>
+        '${d.year.toString().padLeft(4, '0')}-'
+        '${d.month.toString().padLeft(2, '0')}-'
+        '${d.day.toString().padLeft(2, '0')}';
+
+    try {
+      final response = await apiRequestHttpRawBody('Order/GetBillForReprint', {
+        "outletId": outletId,
+        "fromDate": iso(from),
+        "toDate": iso(to),
+        "searchString": searchString,
+      });
+
+      if (response == null) return null;
+
+      final data = response['data'];
+      if (data is! List) return <PendingBill>[];
+
+      return data
+          .whereType<Map>()
+          .map((row) => PendingBill.fromJson(Map<String, dynamic>.from(row)))
+          .toList();
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Error in getBillsForReprint: $e');
         debugPrint('StackTrace: $stackTrace');
       }
       return null;
