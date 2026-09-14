@@ -172,7 +172,29 @@ class AuthProvider with ChangeNotifier {
 
         _isAuthenticated = true;
         _currentUser = username;
-        _userRole = 'Manager'; // Set based on your API response
+        // Determine user role from API response. If any roleName contains "chef",
+        // enable Chef session and set role to Chef; otherwise treat as Waiter/first role.
+        String resolvedRole = 'Waiter';
+        bool isChef = false;
+        final roles = model.data?.roles;
+        if (roles != null && roles.isNotEmpty) {
+          for (final r in roles) {
+            final rn = r.roleName ?? '';
+            if (rn.toLowerCase().contains('chef')) {
+              isChef = true;
+              resolvedRole = r.roleName ?? 'Chef';
+              break;
+            }
+          }
+          if (!isChef) {
+            resolvedRole = roles.first.roleName ?? 'Waiter';
+          }
+        }
+
+        _userRole = resolvedRole;
+
+        // Persist chef session flag in Hive
+        await HiveService.setChefSession(isChef);
         _rememberMe = rememberMe;
 
         // Check if companySiteUrl is "Menu" for direct menu navigation
@@ -465,6 +487,8 @@ class AuthProvider with ChangeNotifier {
       try {
         await HiveService.clearAuthToken();
         await HiveService.clearAuthData();
+        // Also clear chef session flag if present
+        await HiveService.clearChefSession();
       } catch (hiveError) {
         if (kDebugMode) {
           debugPrint('Error clearing Hive data: $hiveError');

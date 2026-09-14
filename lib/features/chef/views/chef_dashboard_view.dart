@@ -180,7 +180,7 @@ class _ChefDashboardViewState extends State<ChefDashboardView> {
 
     return PremiumRefreshIndicator(
       onRefresh: () async {
-        await Future.delayed(const Duration(milliseconds: 500));
+        await chefProvider.fetchOrders();
       },
       child:
           orders.isEmpty

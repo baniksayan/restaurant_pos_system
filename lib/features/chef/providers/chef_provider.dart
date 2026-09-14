@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
+import 'package:restaurant_pos_system/features/chef/data/chef_api.dart';
 import '../models/chef_order_model.dart';
 
 class ChefProvider extends ChangeNotifier {
   List<ChefOrder> _orders = [];
   final List<ChefMenuItem> _menuItems = [];
+  bool _isLoading = false;
+  String? _errorMessage;
   String _selectedStatusFilter = 'All Statuses';
   String _selectedLocation = 'Main Kitchen';
   String _historyFilter = 'all';
@@ -25,6 +28,8 @@ class ChefProvider extends ChangeNotifier {
   List<ChefOrder> get orders => _orders;
   List<ChefMenuItem> get menuItems => _menuItems;
   List<ChefMenuItem> get filteredMenuItems => _menuItems;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
   String get selectedStatusFilter => _selectedStatusFilter;
   String get selectedLocation => _selectedLocation;
   String get historyFilter => _historyFilter;
@@ -40,168 +45,31 @@ class ChefProvider extends ChangeNotifier {
   int get currentTabIndex => _currentTabIndex;
 
   ChefProvider() {
-    _initMockData();
+    // Load live KOT data from backend
+    fetchOrders();
   }
 
-  void _initMockData() {
-    final now = DateTime.now();
+  /// Fetch latest orders from backend and replace local orders when available
+  Future<void> fetchOrders() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
-    _orders = [
-      // 1. Queue Stage (Pending Orders)
-      ChefOrder(
-        id: 'ord_1048',
-        orderNumber: '1048',
-        tableNumber: 'Table 12',
-        orderTime: now.subtract(const Duration(minutes: 2)),
-        status: ChefOrderStatus.pending,
-        items: [
-          ChefOrderItem(
-            id: 'item_1',
-            name: 'Chicken Biryani',
-            quantity: 2,
-            price: 280.0,
-            specialInstructions: 'Extra spicy',
-            imageUrl:
-                'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=300&q=80',
-          ),
-          ChefOrderItem(
-            id: 'item_2',
-            name: 'Butter Chicken',
-            quantity: 1,
-            price: 320.0,
-            specialInstructions: 'No onion',
-            imageUrl:
-                'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=300&q=80',
-          ),
-          ChefOrderItem(
-            id: 'item_3',
-            name: 'Garlic Naan',
-            quantity: 2,
-            price: 60.0,
-            imageUrl:
-                'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&q=80',
-          ),
-        ],
-      ),
-      ChefOrder(
-        id: 'ord_1049',
-        orderNumber: '1049',
-        tableNumber: 'Table 05',
-        orderTime: now.subtract(const Duration(minutes: 4)),
-        status: ChefOrderStatus.pending,
-        items: [
-          ChefOrderItem(
-            id: 'item_4',
-            name: 'Paneer Tikka',
-            quantity: 1,
-            price: 240.0,
-            specialInstructions: 'Less spicy',
-            imageUrl:
-                'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=300&q=80',
-          ),
-          ChefOrderItem(
-            id: 'item_5',
-            name: 'Masala Dosa',
-            quantity: 2,
-            price: 140.0,
-            imageUrl:
-                'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=300&q=80',
-          ),
-        ],
-      ),
-
-      // 2. Preparing Stage (In Kitchen Cooking)
-      ChefOrder(
-        id: 'ord_1050',
-        orderNumber: '1050',
-        tableNumber: 'Table 03',
-        orderTime: now.subtract(const Duration(minutes: 9)),
-        startedPreparingTime: now.subtract(const Duration(minutes: 7)),
-        status: ChefOrderStatus.preparing,
-        items: [
-          ChefOrderItem(
-            id: 'item_6',
-            name: 'Chicken Fried Rice',
-            quantity: 2,
-            price: 220.0,
-            imageUrl:
-                'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=300&q=80',
-          ),
-          ChefOrderItem(
-            id: 'item_7',
-            name: 'Chilli Chicken',
-            quantity: 1,
-            price: 260.0,
-            specialInstructions: 'Extra gravy',
-            imageUrl:
-                'https://images.unsplash.com/photo-1525755662778-989d0524087e?w=300&q=80',
-          ),
-        ],
-      ),
-      ChefOrder(
-        id: 'ord_1051',
-        orderNumber: '1051',
-        tableNumber: 'Table 11',
-        orderTime: now.subtract(const Duration(minutes: 12)),
-        startedPreparingTime: now.subtract(const Duration(minutes: 10)),
-        status: ChefOrderStatus.preparing,
-        items: [
-          ChefOrderItem(
-            id: 'item_1',
-            name: 'Chicken Biryani',
-            quantity: 3,
-            price: 280.0,
-            specialInstructions: 'Medium spicy',
-            imageUrl:
-                'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=300&q=80',
-          ),
-        ],
-      ),
-
-      // 3. Serve Stage (Ready to Serve)
-      ChefOrder(
-        id: 'ord_1052',
-        orderNumber: '1052',
-        tableNumber: 'Takeaway',
-        orderTime: now.subtract(const Duration(minutes: 16)),
-        status: ChefOrderStatus.ready,
-        items: [
-          ChefOrderItem(
-            id: 'item_4',
-            name: 'Paneer Tikka',
-            quantity: 2,
-            price: 240.0,
-            imageUrl:
-                'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=300&q=80',
-          ),
-          ChefOrderItem(
-            id: 'item_3',
-            name: 'Garlic Naan',
-            quantity: 3,
-            price: 60.0,
-            imageUrl:
-                'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&q=80',
-          ),
-        ],
-      ),
-      ChefOrder(
-        id: 'ord_1053',
-        orderNumber: '1053',
-        tableNumber: 'Table 07',
-        orderTime: now.subtract(const Duration(minutes: 20)),
-        status: ChefOrderStatus.ready,
-        items: [
-          ChefOrderItem(
-            id: 'item_5',
-            name: 'Masala Dosa',
-            quantity: 1,
-            price: 140.0,
-            imageUrl:
-                'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=300&q=80',
-          ),
-        ],
-      ),
-    ];
+    try {
+      final fetched = await ChefApi.fetchChefOrders();
+      if (fetched.isNotEmpty) {
+        _orders = fetched;
+      }
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('ChefProvider.fetchOrders error: $e');
+        debugPrint('$st');
+      }
+      _errorMessage = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // Filtered orders for currently active tab + status dropdown filter
@@ -320,40 +188,115 @@ class ChefProvider extends ChangeNotifier {
   // Order state workflow:
   // Step 1: In Queue -> Chef approves order, moving it to Preparing
   void approveOrder(String orderId) {
-    final index = _orders.indexWhere((o) => o.id == orderId);
-    if (index != -1) {
-      _orders[index].status = ChefOrderStatus.preparing;
-      _orders[index].startedPreparingTime = DateTime.now();
-      notifyListeners();
-    }
+    _updateOrderStatusOptimistic(
+      orderId,
+      ChefOrderStatus.preparing,
+      apiStatus: 'preparing',
+      setStartedPreparing: true,
+    );
   }
 
   // Step 1: In Queue -> Chef rejects order
   void rejectOrder(String orderId, String reason) {
-    final index = _orders.indexWhere((o) => o.id == orderId);
-    if (index != -1) {
-      _orders[index].status = ChefOrderStatus.rejected;
-      _orders[index].rejectionReason = reason;
-      _orders[index].completedTime = DateTime.now();
-      notifyListeners();
-    }
+    _updateOrderStatusOptimistic(
+      orderId,
+      ChefOrderStatus.rejected,
+      apiStatus: 'rejected',
+      setRejectionReason: reason,
+      setCompletedTime: true,
+    );
   }
 
   // Step 2: In Preparing -> Chef marks Ready to Serve, moving it to Serve
   void markReadyToServe(String orderId) {
-    final index = _orders.indexWhere((o) => o.id == orderId);
-    if (index != -1) {
-      _orders[index].status = ChefOrderStatus.ready;
-      notifyListeners();
-    }
+    _updateOrderStatusOptimistic(
+      orderId,
+      ChefOrderStatus.ready,
+      apiStatus: 'ready',
+    );
   }
 
   // Step 3: In Serve -> Chef clicks Ready to Serve (Handed over), marking it Served
   void giveOrder(String orderId) {
+    _updateOrderStatusOptimistic(
+      orderId,
+      ChefOrderStatus.served,
+      apiStatus: 'served',
+      setCompletedTime: true,
+    );
+  }
+
+  /// Internal helper: optimistic update + backend sync via UpdateOrderHeadStatus
+  Future<void> _updateOrderStatusOptimistic(
+    String orderId,
+    ChefOrderStatus targetStatus, {
+    required String apiStatus,
+    bool setStartedPreparing = false,
+    bool setCompletedTime = false,
+    String? setRejectionReason,
+  }) async {
     final index = _orders.indexWhere((o) => o.id == orderId);
-    if (index != -1) {
-      _orders[index].status = ChefOrderStatus.served;
-      _orders[index].completedTime = DateTime.now();
+    if (index == -1) return;
+
+    final previous = _orders[index].copyWith();
+
+    // Apply optimistic changes locally
+    _orders[index].status = targetStatus;
+    if (setStartedPreparing)
+      _orders[index].startedPreparingTime = DateTime.now();
+    if (setCompletedTime) _orders[index].completedTime = DateTime.now();
+    if (setRejectionReason != null)
+      _orders[index].rejectionReason = setRejectionReason;
+    notifyListeners();
+
+    try {
+      // Map local chef status to KOT status id
+      int kotStatusId;
+      switch (targetStatus) {
+        case ChefOrderStatus.pending:
+          kotStatusId = 1;
+          break;
+        case ChefOrderStatus.preparing:
+          kotStatusId = 2;
+          break;
+        case ChefOrderStatus.ready:
+        case ChefOrderStatus.served:
+          kotStatusId = 3;
+          break;
+        case ChefOrderStatus.rejected:
+          kotStatusId = 4;
+          break;
+      }
+
+      final kotIds =
+          _orders[index].items
+              .map((i) => i.id)
+              .where((id) => id.isNotEmpty)
+              .toList();
+
+      if (kotIds.isEmpty) {
+        // Nothing to update on backend for this order - refresh from server
+        await fetchOrders();
+        return;
+      }
+
+      final results = await Future.wait(
+        kotIds.map(
+          (k) => ChefApi.updateKotStatus(kotId: k, statusId: kotStatusId),
+        ),
+      );
+
+      if (results.any((r) => r != true)) {
+        // Revert optimistic changes if any update failed
+        _orders[index] = previous;
+        notifyListeners();
+      } else {
+        // On success, refresh to pick up any backend-side changes
+        await fetchOrders();
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('ChefProvider._updateOrderStatus error: $e');
+      _orders[index] = previous;
       notifyListeners();
     }
   }

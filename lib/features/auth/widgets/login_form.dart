@@ -97,6 +97,13 @@ class _LoginFormState extends State<LoginForm> {
       );
 
       if (success && mounted) {
+        // If authenticated user is a Chef, navigate to Chef KDS
+        if (HiveService.isChefLoggedIn()) {
+          if (mounted) {
+            Navigator.of(context).pushReplacementNamed('/chef');
+          }
+          return;
+        }
         // Check if we need direct menu navigation
         if (authProvider.shouldNavigateDirectlyToMenu) {
           // Navigate directly to standalone menu view
