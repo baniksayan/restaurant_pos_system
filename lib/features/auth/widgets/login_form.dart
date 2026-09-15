@@ -96,6 +96,14 @@ class _LoginFormState extends State<LoginForm> {
         _passwordController.text,
       );
 
+      if (!mounted) return;
+
+      // Show blocking dialog if the access-denied flag was set by the provider.
+      if (authProvider.accessDenied) {
+        await _showAccessDeniedDialog(authProvider);
+        return;
+      }
+
       if (success && mounted) {
         // If authenticated user is a Chef, navigate to Chef KDS
         if (HiveService.isChefLoggedIn()) {
@@ -122,6 +130,87 @@ class _LoginFormState extends State<LoginForm> {
         }
       }
     }
+  }
+
+  /// Shows a modal dialog explaining that this account does not have access
+  /// to WhizEats Pro.  The flag is cleared once the user taps OK.
+  Future<void> _showAccessDeniedDialog(AuthProvider authProvider) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Lock icon
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.lock_person_rounded,
+                color: AppColors.error,
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Access Denied',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Your account does not have permission to access WhizEats Pro.\n\n'
+              'Only Operator and Chef accounts are allowed to sign in. '
+              'Please contact your administrator to get the correct access.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13.5,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.error,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 13),
+              ),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                authProvider.clearAccessDenied();
+              },
+              child: const Text(
+                'OK, Got It',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

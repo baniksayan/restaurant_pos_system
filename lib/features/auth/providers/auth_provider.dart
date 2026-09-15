@@ -21,7 +21,12 @@ class AuthProvider with ChangeNotifier {
   String? _autoSelectedTableId;
   String? _autoSelectedTableName;
 
-  // Existing getters
+  /// Set to true when the API login succeeds but the returned role list does
+  /// not contain either "operator" or "chef".  The login view watches this to
+  /// show a blocking access-denied dialog instead of a banner.
+  bool _accessDenied = false;
+
+  // ─── Getters ──────────────────────────────────────────────────────────────
   bool get isAuthenticated => _isAuthenticated;
   String? get currentUser => _currentUser;
   String? get userRole => _userRole;
@@ -31,12 +36,15 @@ class AuthProvider with ChangeNotifier {
   bool get rememberMe => _rememberMe;
   String? get errorMessage => _errorMessage;
 
+  /// True when the logged-in user's roles don't include operator or chef.
+  bool get accessDenied => _accessDenied;
+
   // New getters for direct menu navigation
   bool get shouldNavigateDirectlyToMenu => _shouldNavigateDirectlyToMenu;
   String? get autoSelectedTableId => _autoSelectedTableId;
   String? get autoSelectedTableName => _autoSelectedTableName;
 
-  // New methods for login form
+  // ─── Mutators ─────────────────────────────────────────────────────────────
   void setRememberMe(bool value) {
     _rememberMe = value;
     notifyListeners();
@@ -44,6 +52,12 @@ class AuthProvider with ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Called by the view after the access-denied dialog has been dismissed.
+  void clearAccessDenied() {
+    _accessDenied = false;
     notifyListeners();
   }
 
@@ -176,20 +190,44 @@ class AuthProvider with ChangeNotifier {
         // enable Chef session and set role to Chef; otherwise treat as Waiter/first role.
         String resolvedRole = 'Waiter';
         bool isChef = false;
+        bool isOperator = false;
         final roles = model.data?.roles;
         if (roles != null && roles.isNotEmpty) {
           for (final r in roles) {
-            final rn = r.roleName ?? '';
-            if (rn.toLowerCase().contains('chef')) {
+            final rn = (r.roleName ?? '').toLowerCase();
+            if (rn.contains('chef')) {
               isChef = true;
               resolvedRole = r.roleName ?? 'Chef';
               break;
             }
+            if (rn.contains('operator')) {
+              isOperator = true;
+              resolvedRole = r.roleName ?? 'Operator';
+            }
           }
-          if (!isChef) {
+          if (!isChef && !isOperator) {
             resolvedRole = roles.first.roleName ?? 'Waiter';
           }
         }
+
+        // ── Role guard ───────────────────────────────────────────────────────
+        // Only "Operator" and "Chef" roles may access this application.
+        // If the user's role list contains neither, block the login entirely.
+        final hasAccess = isChef || isOperator;
+        if (!hasAccess) {
+          if (kDebugMode) {
+            debugPrint(
+              '[AuthProvider] Access denied — roles returned: '
+              '${roles?.map((r) => r.roleName).toList()}',
+            );
+          }
+          _isAuthenticated = false;
+          _accessDenied = true;
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
+        // ────────────────────────────────────────────────────────────────────
 
         _userRole = resolvedRole;
 
