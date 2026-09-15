@@ -242,11 +242,15 @@ class ChefProvider extends ChangeNotifier {
 
     // Apply optimistic changes locally
     _orders[index].status = targetStatus;
-    if (setStartedPreparing)
+    if (setStartedPreparing) {
       _orders[index].startedPreparingTime = DateTime.now();
-    if (setCompletedTime) _orders[index].completedTime = DateTime.now();
-    if (setRejectionReason != null)
+    }
+    if (setCompletedTime) {
+      _orders[index].completedTime = DateTime.now();
+    }
+    if (setRejectionReason != null) {
       _orders[index].rejectionReason = setRejectionReason;
+    }
     notifyListeners();
 
     try {
@@ -272,16 +276,13 @@ class ChefProvider extends ChangeNotifier {
           _orders[index].items
               .map((i) => i.id)
               .where((id) => id.isNotEmpty)
+              .toSet()
               .toList();
 
-      if (kotIds.isEmpty) {
-        // Nothing to update on backend for this order - refresh from server
-        await fetchOrders();
-        return;
-      }
+      final targetIds = kotIds.isNotEmpty ? kotIds : [orderId];
 
       final results = await Future.wait(
-        kotIds.map(
+        targetIds.map(
           (k) => ChefApi.updateKotStatus(kotId: k, statusId: kotStatusId),
         ),
       );

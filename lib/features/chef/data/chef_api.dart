@@ -44,30 +44,30 @@ class ChefApi {
       final data = response['data'];
       if (data == null || data is! List) return [];
 
-      // Group rows by kotHeadId
+      // Group rows by kotId (kotId-wise grouping)
       final Map<String, List<dynamic>> groups = {};
       for (final row in data) {
         if (row is! Map) continue;
-        final headId =
-            (row['kotHeadId'] ?? row['orderIdentifier'] ?? row['kotNo'])
-                .toString();
-        groups.putIfAbsent(headId, () => []).add(row);
+        final kotId = (row['kotId'] ?? '').toString();
+        if (kotId.isEmpty) continue;
+        groups.putIfAbsent(kotId, () => []).add(row);
       }
 
       final List<ChefOrder> orders = [];
 
       for (final entry in groups.entries) {
-        final headId = entry.key;
+        final kotId = entry.key;
         final rows = entry.value;
 
         DateTime? orderTime;
-        String tableName = 'Unknown';
-        String orderNumber = headId;
+        String kotNo = '';
+        String? kotHeadId;
+        String? orderIdentifier;
+        String? channelName;
+        String? generatedOrderNo;
+        int? waitingMinutes;
         final List<ChefOrderItem> items = [];
 
-        // Determine aggregate status priority: if any rejected -> rejected,
-        // else if any completed -> ready, else if any in-progress -> preparing,
-        // else pending.
         bool hasRejected = false;
         bool hasCompleted = false;
         bool hasInProgress = false;
@@ -75,14 +75,27 @@ class ChefApi {
         for (final r in rows) {
           if (r is! Map) continue;
 
-          final kotId = r['kotId']?.toString() ?? '';
+          kotNo = r['kotNo']?.toString() ?? kotNo;
+          kotHeadId = r['kotHeadId']?.toString() ?? kotHeadId;
+          orderIdentifier = r['orderIdentifier']?.toString() ?? orderIdentifier;
+          channelName = r['channelName']?.toString() ?? channelName;
+          generatedOrderNo =
+              r['generatedOrderNo']?.toString() ?? generatedOrderNo;
+
+          final wmRaw = r['waitingMinutes'];
+          if (wmRaw is num) {
+            waitingMinutes = wmRaw.toInt();
+          } else if (wmRaw is String) {
+            waitingMinutes = int.tryParse(wmRaw);
+          }
+
           final productName = r['productName']?.toString() ?? 'Item';
           final qtyRaw = r['productQty'];
           int qty = 0;
           if (qtyRaw is num) {
             qty = qtyRaw.toInt();
           } else if (qtyRaw is String) {
-            qty = int.tryParse(qtyRaw) ?? 0;
+            qty = double.tryParse(qtyRaw)?.toInt() ?? int.tryParse(qtyRaw) ?? 0;
           }
 
           final created = _parseDateTime(r['createdOn']);
@@ -92,15 +105,6 @@ class ChefApi {
                     ? created
                     : (created.isBefore(orderTime) ? created : orderTime);
           }
-
-          tableName =
-              r['channelName']?.toString() ??
-              r['orderIdentifier']?.toString() ??
-              tableName;
-          orderNumber =
-              r['generatedOrderNo']?.toString() ??
-              r['kotNo']?.toString() ??
-              orderNumber;
 
           final statusId =
               (r['kotStatusId'] is num)
@@ -113,7 +117,7 @@ class ChefApi {
 
           items.add(
             ChefOrderItem(
-              id: kotId.isNotEmpty ? kotId : '${headId}_${items.length}',
+              id: kotId,
               name: productName,
               quantity: qty > 0 ? qty : 1,
               price: 0.0,
@@ -134,11 +138,24 @@ class ChefApi {
           status = ChefOrderStatus.pending;
         }
 
+        final displayTable =
+            (orderIdentifier != null && orderIdentifier.trim().isNotEmpty)
+                ? orderIdentifier.trim()
+                : (channelName != null && channelName.trim().isNotEmpty
+                    ? channelName.trim()
+                    : 'Table');
+
         orders.add(
           ChefOrder(
-            id: headId,
-            orderNumber: orderNumber,
-            tableNumber: tableName,
+            id: kotId, // Unique KOT ID (UUID)
+            kotNo: kotNo.isNotEmpty ? kotNo : 'KOT',
+            kotHeadId: kotHeadId,
+            orderIdentifier: orderIdentifier,
+            channelName: channelName,
+            generatedOrderNo: generatedOrderNo,
+            waitingMinutes: waitingMinutes,
+            orderNumber: kotNo.isNotEmpty ? kotNo : (generatedOrderNo ?? 'KOT'), // In UI show kotNo
+            tableNumber: displayTable,
             orderTime: orderTime ?? DateTime.now(),
             items: items,
             status: status,

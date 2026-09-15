@@ -166,9 +166,15 @@ class _ChefOrderCardState extends State<ChefOrderCard>
                     Row(
                       children: [
                         Text(
-                          '#${order.orderNumber}',
+                          order.kotNo.isNotEmpty
+                              ? (order.kotNo.startsWith('KOT')
+                                  ? order.kotNo
+                                  : '#${order.kotNo}')
+                              : (order.orderNumber.isNotEmpty
+                                  ? '#${order.orderNumber}'
+                                  : '#KOT'),
                           style: const TextStyle(
-                            fontSize: 17,
+                            fontSize: 16,
                             fontWeight: FontWeight.w900,
                             color: AppColors.textPrimary,
                             letterSpacing: -0.3,

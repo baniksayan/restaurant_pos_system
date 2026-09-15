@@ -47,9 +47,15 @@ class ChefOrderItem {
 }
 
 class ChefOrder {
-  final String id;
-  final String orderNumber;
-  final String tableNumber; // e.g. "Table 12" or "Takeaway"
+  final String id; // Unique KOT ID (UUID)
+  final String kotNo; // Human readable KOT number, e.g. "KOT/110926/0007"
+  final String? kotHeadId;
+  final String? orderIdentifier;
+  final String? channelName;
+  final String? generatedOrderNo;
+  final int? waitingMinutes;
+  final String orderNumber; // Display KOT No / Order identifier in UI
+  final String tableNumber; // e.g. "Table 10 P2" or "Table 12"
   final DateTime orderTime;
   final List<ChefOrderItem> items;
   ChefOrderStatus status;
@@ -59,6 +65,12 @@ class ChefOrder {
 
   ChefOrder({
     required this.id,
+    required this.kotNo,
+    this.kotHeadId,
+    this.orderIdentifier,
+    this.channelName,
+    this.generatedOrderNo,
+    this.waitingMinutes,
     required this.orderNumber,
     required this.tableNumber,
     required this.orderTime,
@@ -75,6 +87,9 @@ class ChefOrder {
       items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
 
   String get timeAgo {
+    if (waitingMinutes != null) {
+      return '$waitingMinutes min';
+    }
     final diff = DateTime.now().difference(orderTime);
     if (diff.inMinutes < 1) {
       return 'Just now';
@@ -88,6 +103,12 @@ class ChefOrder {
 
   ChefOrder copyWith({
     String? id,
+    String? kotNo,
+    String? kotHeadId,
+    String? orderIdentifier,
+    String? channelName,
+    String? generatedOrderNo,
+    int? waitingMinutes,
     String? orderNumber,
     String? tableNumber,
     DateTime? orderTime,
@@ -99,6 +120,12 @@ class ChefOrder {
   }) {
     return ChefOrder(
       id: id ?? this.id,
+      kotNo: kotNo ?? this.kotNo,
+      kotHeadId: kotHeadId ?? this.kotHeadId,
+      orderIdentifier: orderIdentifier ?? this.orderIdentifier,
+      channelName: channelName ?? this.channelName,
+      generatedOrderNo: generatedOrderNo ?? this.generatedOrderNo,
+      waitingMinutes: waitingMinutes ?? this.waitingMinutes,
       orderNumber: orderNumber ?? this.orderNumber,
       tableNumber: tableNumber ?? this.tableNumber,
       orderTime: orderTime ?? this.orderTime,
