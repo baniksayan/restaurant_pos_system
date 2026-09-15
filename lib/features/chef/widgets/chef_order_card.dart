@@ -163,48 +163,63 @@ class _ChefOrderCardState extends State<ChefOrderCard>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // Order Number & Table Name
-                    Row(
-                      children: [
-                        Text(
-                          order.kotNo.isNotEmpty
-                              ? (order.kotNo.startsWith('KOT')
-                                  ? order.kotNo
-                                  : '#${order.kotNo}')
-                              : (order.orderNumber.isNotEmpty
-                                  ? '#${order.orderNumber}'
-                                  : '#KOT'),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 2.5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            order.tableNumber.toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primaryDark,
-                              letterSpacing: 0.3,
+                    Expanded(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              order.kotNo.isNotEmpty
+                                  ? (order.kotNo.startsWith('KOT') ||
+                                          order.kotNo.startsWith('#')
+                                      ? order.kotNo
+                                      : '#${order.kotNo}')
+                                  : (order.orderNumber.isNotEmpty
+                                      ? '#${order.orderNumber}'
+                                      : '#KOT'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.3,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          Flexible(
+                            flex: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 2.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                order.tableNumber.toUpperCase(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primaryDark,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
 
                     // Time ago & Status Badge
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           order.timeAgo,
