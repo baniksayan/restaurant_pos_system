@@ -7,6 +7,8 @@ import 'package:restaurant_pos_system/core/constants/app_assets.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/app_gradients.dart';
 import 'package:restaurant_pos_system/features/orders/views/orders_management_view.dart';
+import 'package:restaurant_pos_system/features/orders/providers/ready_to_collect_provider.dart';
+import 'package:restaurant_pos_system/features/orders/views/ready_to_collect_orders_view.dart';
 import 'package:restaurant_pos_system/features/payment/views/pending_payments_view.dart';
 import 'package:restaurant_pos_system/features/profile/views/profile_view.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
@@ -107,6 +109,10 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                               );
                             },
                           ),
+                          const SizedBox(height: 6),
+                          // Orders prepared by kitchen and waiting to be
+                          // collected from the kitchen pass by the waiter.
+                          _buildReadyToCollectTile(),
                           const SizedBox(height: 16),
 
                           // Section 3: Clean Account List (Profile)
@@ -404,6 +410,130 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Tile that shows how many kitchen orders are ready to be collected.
+  /// Consumers a [ReadyToCollectProvider] watch so the badge count is live.
+  Widget _buildReadyToCollectTile() {
+    return Consumer<ReadyToCollectProvider>(
+      builder: (ctx, provider, _) {
+        final count = provider.readyCount;
+        final hasReady = count > 0;
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              Navigator.pop(context);
+              // Also trigger a fresh fetch when the waiter opens the screen.
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ReadyToCollectOrdersView(),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                // Green-tinted background when there are ready orders.
+                color: hasReady
+                    ? AppColors.success.withValues(alpha: 0.06)
+                    : Colors.white.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: hasReady
+                      ? AppColors.success.withValues(alpha: 0.35)
+                      : Colors.white.withValues(alpha: 0.6),
+                  width: hasReady ? 1.2 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: hasReady
+                          ? AppColors.success.withValues(alpha: 0.12)
+                          : AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.room_service_rounded,
+                      color: hasReady ? AppColors.success : AppColors.primary,
+                      size: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ready to Collect',
+                          style: TextStyle(
+                            color: hasReady
+                                ? AppColors.success
+                                : AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13.5,
+                          ),
+                        ),
+                        Text(
+                          hasReady
+                              ? 'Kitchen has $count order${count == 1 ? '' : 's'} ready'
+                              : 'Collect prepared orders from kitchen',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Live count badge
+                  if (hasReady) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.success,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.success.withValues(alpha: 0.3),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '$count',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                  ] else ...[
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

@@ -22,6 +22,7 @@ import 'features/network/providers/network_provider.dart';
 import 'features/order_taking/providers/animated_cart_provider.dart';
 import 'features/order_taking/providers/order_provider.dart';
 import 'features/orders/providers/orders_management_provider.dart';
+import 'features/orders/providers/ready_to_collect_provider.dart';
 import 'features/profile/providers/profile_provider.dart';
 import 'features/reservations/providers/reservation_provider.dart';
 import 'features/splash/views/splash_view.dart';
@@ -63,6 +64,8 @@ class RestaurantPOSApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ChefProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => OrdersManagementProvider()),
+        ChangeNotifierProvider(
+            create: (_) => ReadyToCollectProvider()..init()),
         ChangeNotifierProvider(create: (_) => MenuProvider()),
         ChangeNotifierProvider(create: (_) => TableProvider()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
