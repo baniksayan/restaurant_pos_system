@@ -690,7 +690,13 @@ class _CartViewState extends State<CartView> {
         );
       },
     );
-    controller.dispose();
+    // Don't dispose immediately: the dialog's closing transition can still
+    // be rebuilding the TextField for a frame or two after showDialog's
+    // Future resolves, and disposing here races that, throwing "used after
+    // being disposed" (and, as a knock-on effect, corrupting the element
+    // tree enough to also surface as "Duplicate GlobalKeys"). Let the
+    // transition finish first.
+    Future.delayed(const Duration(milliseconds: 300), controller.dispose);
     return note ?? '';
   }
 

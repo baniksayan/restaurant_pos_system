@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
@@ -623,7 +622,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
           ),
           Switch(
             value: _splitMode,
-            activeColor: AppColors.primary,
+            activeThumbColor: AppColors.primary,
             onChanged: (value) async {
               await HapticHelper.triggerFeedback();
               await _toggleSplitMode(value);
@@ -958,6 +957,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
 
     // Step 2: who is this bill for? Optional — Skip leaves every field
     // blank, matching the original "phone optional" behaviour.
+    if (!context.mounted) return;
     final customerInfo = await Navigator.of(context).push<CustomerInfoResult>(
       MaterialPageRoute(
         builder:
@@ -979,6 +979,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
     );
     if (!mounted || tenders == null) return; // back-swiped, not Bill Later
 
+    if (!context.mounted) return;
     try {
       final billBytes = await billingProvider.generateBill(
         cartItems: _effectiveCartItems(context),

@@ -39,6 +39,7 @@ class _ReadyToCollectOrdersViewState extends State<ReadyToCollectOrdersView> {
     setState(() => _confirming.add(order.id));
 
     await HapticHelper.triggerFeedback();
+    if (!ctx.mounted) return;
 
     final confirmed = await showDialog<bool>(
       context: ctx,
@@ -257,12 +258,10 @@ class _OrderCard extends StatelessWidget {
             Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16)),
-                border: const Border(
-                    bottom: BorderSide(color: Color(0xFFF1F5F9))),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
               ),
               child: Row(
                 children: [

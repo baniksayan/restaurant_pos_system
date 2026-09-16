@@ -389,12 +389,14 @@ class BillSuccessDialog extends StatelessWidget {
 
         if (orderId != null && orderId!.isNotEmpty) {
           await tableProvider.clearBillId(orderId!);
-          try {
-            Provider.of<AnimatedCartProvider>(
-              context,
-              listen: false,
-            ).clearOrderData(orderId!);
-          } catch (_) {}
+          if (context.mounted) {
+            try {
+              Provider.of<AnimatedCartProvider>(
+                context,
+                listen: false,
+              ).clearOrderData(orderId!);
+            } catch (_) {}
+          }
         }
 
         await tableProvider.refreshTables();

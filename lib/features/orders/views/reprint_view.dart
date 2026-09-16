@@ -362,7 +362,7 @@ class _PastBillsTabState extends State<_PastBillsTab>
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   else
-                    Row(
+                    const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
@@ -370,7 +370,7 @@ class _PastBillsTabState extends State<_PastBillsTab>
                           size: 14,
                           color: AppColors.primary,
                         ),
-                        const SizedBox(width: 2),
+                        SizedBox(width: 2),
                         Icon(
                           Icons.chevron_right_rounded,
                           size: 16,
@@ -459,7 +459,7 @@ class _PastKotsTabState extends State<_PastKotsTab>
       final kots = await ChefApi.fetchChefOrders(
         statusIds: const [1, 2, 3, 4], // every status — this is history, not
         // a live queue, so a rejected/served KOT should still be reprintable.
-        fromDate: now.subtract(Duration(days: _windowDays)),
+        fromDate: now.subtract(const Duration(days: _windowDays)),
         toDate: now,
       );
       if (!mounted) return;
@@ -683,7 +683,7 @@ class _PastKotsTabState extends State<_PastKotsTab>
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               else
-                Row(
+                const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
