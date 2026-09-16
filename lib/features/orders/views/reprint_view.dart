@@ -66,7 +66,7 @@ class _PastBillsTab extends StatefulWidget {
 
 class _PastBillsTabState extends State<_PastBillsTab>
     with AutomaticKeepAliveClientMixin {
-  static const _windowDays = 30;
+  DateTime _selectedDate = DateTime.now();
 
   List<PendingBill> _bills = [];
   bool _loading = true;
@@ -79,6 +79,20 @@ class _PastBillsTabState extends State<_PastBillsTab>
   @override
   void initState() {
     super.initState();
+    _load();
+  }
+
+  Future<void> _pickDate() async {
+    await HapticHelper.triggerFeedback();
+    if (!mounted) return;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _selectedDate = picked);
     _load();
   }
 
@@ -98,11 +112,27 @@ class _PastBillsTabState extends State<_PastBillsTab>
       return;
     }
 
-    final now = DateTime.now();
+    // Whole selected day, local time — defaults to today.
+    final from = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
+    final to = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      23,
+      59,
+      59,
+    );
+    // GetBillForReprint has no pageNumber/pageSize on its request DTO
+    // (ReqGetBillForReprint) — the server returns the whole day's bills in
+    // one shot, so there is no pagination to wire up here.
     final bills = await ApiService.getBillsForReprint(
       outletId: outletId,
-      from: now.subtract(const Duration(days: _windowDays)),
-      to: now,
+      from: from,
+      to: to,
     );
 
     if (!mounted) return;
@@ -220,7 +250,14 @@ class _PastBillsTabState extends State<_PastBillsTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return RefreshIndicator(onRefresh: _load, child: _buildBody());
+    return Column(
+      children: [
+        _DateFilterBar(date: _selectedDate, onTap: _pickDate),
+        Expanded(
+          child: RefreshIndicator(onRefresh: _load, child: _buildBody()),
+        ),
+      ],
+    );
   }
 
   Widget _buildBody() {
@@ -251,8 +288,8 @@ class _PastBillsTabState extends State<_PastBillsTab>
     if (_bills.isEmpty) {
       return _message(
         icon: Icons.receipt_long_outlined,
-        title: 'No bills yet',
-        detail: 'Bills from the last $_windowDays days will show up here.',
+        title: 'No bills',
+        detail: 'No bills were raised on ${_formatDate(_selectedDate)}.',
       );
     }
 
@@ -431,8 +468,7 @@ class _PastKotsTab extends StatefulWidget {
 
 class _PastKotsTabState extends State<_PastKotsTab>
     with AutomaticKeepAliveClientMixin {
-  static const _windowDays = 7; // KOTs are a kitchen-floor concept — a
-  // shorter window than bills is plenty for "what did we just send".
+  DateTime _selectedDate = DateTime.now();
 
   List<ChefOrder> _kots = [];
   bool _loading = true;
@@ -448,19 +484,48 @@ class _PastKotsTabState extends State<_PastKotsTab>
     _load();
   }
 
+  Future<void> _pickDate() async {
+    await HapticHelper.triggerFeedback();
+    if (!mounted) return;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _selectedDate = picked);
+    _load();
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
       _error = null;
     });
 
-    final now = DateTime.now();
+    final from = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
+    final to = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      23,
+      59,
+      59,
+    );
     try {
+      // fetchKotDetails (RequestFetchKot) has no pageNumber/pageSize either
+      // — same as GetBillForReprint, the server returns the full day in one
+      // response, so there's no pagination to add here.
       final kots = await ChefApi.fetchChefOrders(
         statusIds: const [1, 2, 3, 4], // every status — this is history, not
         // a live queue, so a rejected/served KOT should still be reprintable.
-        fromDate: now.subtract(const Duration(days: _windowDays)),
-        toDate: now,
+        fromDate: from,
+        toDate: to,
       );
       if (!mounted) return;
       kots.sort((a, b) => b.orderTime.compareTo(a.orderTime));
@@ -556,7 +621,14 @@ class _PastKotsTabState extends State<_PastKotsTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return RefreshIndicator(onRefresh: _load, child: _buildBody());
+    return Column(
+      children: [
+        _DateFilterBar(date: _selectedDate, onTap: _pickDate),
+        Expanded(
+          child: RefreshIndicator(onRefresh: _load, child: _buildBody()),
+        ),
+      ],
+    );
   }
 
   Widget _buildBody() {
@@ -587,8 +659,8 @@ class _PastKotsTabState extends State<_PastKotsTab>
     if (_kots.isEmpty) {
       return _message(
         icon: Icons.soup_kitchen_outlined,
-        title: 'No KOTs yet',
-        detail: 'KOTs from the last $_windowDays days will show up here.',
+        title: 'No KOTs',
+        detail: 'No KOTs were sent on ${_formatDate(_selectedDate)}.',
       );
     }
 
@@ -735,6 +807,75 @@ class _PastKotsTabState extends State<_PastKotsTab>
           ),
         ),
       ],
+    );
+  }
+}
+
+String _formatDate(DateTime d) {
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', // ignore: prefer_const_declarations
+  ];
+  final today = DateTime.now();
+  if (d.year == today.year && d.month == today.month && d.day == today.day) {
+    return 'Today';
+  }
+  return '${d.day} ${months[d.month - 1]} ${d.year}';
+}
+
+/// A single date picker shared by both tabs — each tab queries its own
+/// server endpoint for just that one day (both GetBillForReprint and
+/// fetchKotDetails take fromDate/toDate, no rolling window), defaulting to
+/// today on first load.
+class _DateFilterBar extends StatelessWidget {
+  final DateTime date;
+  final VoidCallback onTap;
+
+  const _DateFilterBar({required this.date, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.calendar_today_rounded,
+                  size: 15,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  _formatDate(date),
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(
+                  Icons.expand_more_rounded,
+                  size: 18,
+                  color: AppColors.textHint,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

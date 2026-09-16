@@ -6,8 +6,6 @@ import 'package:restaurant_pos_system/features/dashboard/providers/navigation_pr
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 import '../widgets/profile_header.dart';
-import '../widgets/quick_stats_card.dart';
-import '../widgets/edit_profile_dialog.dart';
 import '../widgets/printer_settings_dialog.dart';
 import '../widgets/cash_management_dialog.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
@@ -36,9 +34,7 @@ class _ProfileViewState extends State<ProfileView> {
             children: [
               _buildHeader(),
               const SizedBox(height: 20),
-              ProfileHeader(onEditPressed: _showEditProfileDialog),
-              const SizedBox(height: 20),
-              const QuickStatsCard(),
+              const ProfileHeader(),
               const SizedBox(height: 24),
               _buildMenuSections(),
               const SizedBox(height: 20),
@@ -457,15 +453,6 @@ class _ProfileViewState extends State<ProfileView> {
     if (!mounted) return;
     final navProvider = context.read<NavigationProvider>();
     navProvider.navigateToIndex(4);
-  }
-
-  void _showEditProfileDialog() async {
-    await _triggerHapticFeedback();
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (context) => const EditProfileDialog(),
-    );
   }
 
   void _showPrinterSettingsDialog() async {

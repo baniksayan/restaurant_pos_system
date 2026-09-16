@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
+import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/order_provider.dart';
 import '../../providers/navigation_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
@@ -29,12 +31,61 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   bool _isLoading = false;
+  bool _looking = false;
+  String? _customerId;
 
   @override
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
     super.dispose();
+  }
+
+  /// Looking up a different number after a match invalidates it — keep the
+  /// typed name, but stop attributing it to the previous customerId.
+  void _forgetMatchedCustomer() {
+    if (_customerId != null) {
+      setState(() => _customerId = null);
+    }
+  }
+
+  Future<void> _lookupCustomer() async {
+    final phone = _phoneController.text.trim();
+    if (phone.length < 7) {
+      AppSnackBar.showWarning(context, 'Enter a valid phone number to look up.');
+      return;
+    }
+    await HapticHelper.triggerFeedback();
+    setState(() => _looking = true);
+    try {
+      final response = await ApiService.getCustomerByMobileNo(contactNo: phone);
+      final data = response?.data;
+      if (!mounted) return;
+      if (response?.isSuccess == true &&
+          data != null &&
+          data.customerId.isNotEmpty) {
+        setState(() {
+          _nameController.text =
+              '${data.customerFirstName} ${data.customerLastName}'.trim();
+          _customerId = data.customerId;
+        });
+        AppSnackBar.showSuccess(
+          context,
+          data.customerFirstName.isNotEmpty
+              ? 'Welcome back, ${data.customerFirstName}!'
+              : 'Existing customer found.',
+        );
+      } else {
+        setState(() => _customerId = null);
+        AppSnackBar.showSuccess(context, 'New customer — enter their name below.');
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'Could not look up that number: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _looking = false);
+    }
   }
 
   Future<void> _handleConfirm() async {
@@ -152,6 +203,70 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
             ),
             const SizedBox(height: 20),
 
+            // Customer Phone Field — looked up first so an existing
+            // customer's name auto-fills instead of being retyped.
+            CustomTextField(
+              controller: _phoneController,
+              labelText: AppStrings.dashboard.phoneNumberLabel,
+              hintText: AppStrings.dashboard.enterPhoneNumber,
+              prefixIcon: Icons.phone_outlined,
+              fillColor: Colors.white.withValues(alpha: 0.48),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              keyboardType: TextInputType.phone,
+              onChanged: (_) => _forgetMatchedCustomer(),
+              suffixIcon: Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Center(
+                  widthFactor: 1,
+                  child:
+                      _looking
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : TextButton(
+                            onPressed: _lookupCustomer,
+                            child: const Text('Look Up'),
+                          ),
+                ),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Phone number is required';
+                }
+                if (value.trim().length < 10) {
+                  return 'Enter valid phone number';
+                }
+                return null;
+              },
+            ),
+            if (_customerId != null) ...[
+              const SizedBox(height: 8),
+              const Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 16,
+                    color: AppColors.success,
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    'Existing customer',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.success,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 14),
+
             // Customer Name Field
             CustomTextField(
               controller: _nameController,
@@ -173,30 +288,6 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                 return null;
               },
               textCapitalization: TextCapitalization.words,
-            ),
-            const SizedBox(height: 14),
-
-            // Customer Phone Field
-            CustomTextField(
-              controller: _phoneController,
-              labelText: AppStrings.dashboard.phoneNumberLabel,
-              hintText: AppStrings.dashboard.enterPhoneNumber,
-              prefixIcon: Icons.phone_outlined,
-              fillColor: Colors.white.withValues(alpha: 0.48),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-              keyboardType: TextInputType.phone,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Phone number is required';
-                }
-                if (value.trim().length < 10) {
-                  return 'Enter valid phone number';
-                }
-                return null;
-              },
             ),
             const SizedBox(height: 20),
 

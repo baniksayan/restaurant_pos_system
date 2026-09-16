@@ -2,19 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/navigation_provider.dart';
-import '../widgets/edit_profile_dialog.dart';
 import '../widgets/printer_settings_dialog.dart';
 import '../widgets/cash_management_dialog.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class ProfileDialogService {
-  static void showEditProfileDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => const EditProfileDialog(),
-    );
-  }
-
   static void showPrinterSettingsDialog(BuildContext context) {
     showDialog(
       context: context,

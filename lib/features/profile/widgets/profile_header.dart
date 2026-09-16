@@ -1,21 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
-import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
+/// Read-only — nothing here is editable. The app has no "update profile"
+/// endpoint, so an edit control would only ever change what's shown
+/// locally without saving anywhere, which is worse than no edit at all.
 class ProfileHeader extends StatelessWidget {
-  final VoidCallback? onEditPressed;
-
-  const ProfileHeader({super.key, this.onEditPressed});
+  const ProfileHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        // Extract name from email or use fallback
+        // The login response (User/authenticate) already carries the real
+        // profile — first/last name, phone, email — cached in Hive. Prefer
+        // that over guessing a name from the login email's local part.
+        final userDetails = HiveService.getAuthData()?.data?.userDetails;
+        final realName =
+            [
+              userDetails?.firstName,
+              userDetails?.lastName,
+            ].whereType<String>().where((s) => s.trim().isNotEmpty).join(' ');
+
         String displayName = 'Manager';
-        if (authProvider.currentUser != null) {
+        if (realName.isNotEmpty) {
+          displayName = realName;
+        } else if (authProvider.currentUser != null) {
           final email = authProvider.currentUser!;
           if (email.contains('@')) {
             // Extract name part before @ and capitalize
@@ -33,6 +45,9 @@ class ProfileHeader extends StatelessWidget {
             displayName = authProvider.currentUser!;
           }
         }
+
+        final email = userDetails?.email ?? authProvider.currentUser ?? '';
+        final phone = userDetails?.phone ?? '';
 
         return Container(
           padding: const EdgeInsets.all(20),
@@ -102,43 +117,46 @@ class ProfileHeader extends StatelessWidget {
                         color: Colors.white70,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'Online',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
+                    if (email.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _DetailLine(icon: Icons.mail_outline_rounded, text: email),
+                    ],
+                    if (phone.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      _DetailLine(icon: Icons.phone_outlined, text: phone),
+                    ],
                   ],
-                ),
-              ),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: IconButton(
-                  onPressed: onEditPressed,
-                  icon: const Icon(Icons.edit, color: Colors.white, size: 20),
-                  tooltip: AppStrings.profile.editProfile,
                 ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _DetailLine extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _DetailLine({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 13, color: Colors.white70),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 12.5, color: Colors.white70),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }

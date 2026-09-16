@@ -955,15 +955,34 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
     final remainingUnbilledCount =
         _splitMode ? (_unbilledItems.length - _selectedIds.length) : 0;
 
-    // Step 2: who is this bill for? Optional — Skip leaves every field
-    // blank, matching the original "phone optional" behaviour.
+    // Step 2: who is this bill for? Phone/Takeaway orders already collected
+    // this at order creation (CustomerInfoDialog → NavigationProvider) —
+    // asking again here would just re-prompt for what the cashier already
+    // typed, and risks the two answers disagreeing. Only Dine-in (which
+    // never asks up front) needs this step.
     if (!context.mounted) return;
-    final customerInfo = await Navigator.of(context).push<CustomerInfoResult>(
-      MaterialPageRoute(
-        builder:
-            (context) => CustomerInfoStep(orderNumber: widget.orderNumber),
-      ),
-    );
+    final navProvider = context.read<NavigationProvider>();
+    final knownName = navProvider.customerName?.trim() ?? '';
+    final knownPhone = navProvider.customerPhone?.trim() ?? '';
+    CustomerInfoResult? customerInfo;
+    if (knownPhone.isNotEmpty || knownName.isNotEmpty) {
+      final nameParts = knownName.split(RegExp(r'\s+'));
+      customerInfo = CustomerInfoResult(
+        phone: knownPhone,
+        firstName: nameParts.isNotEmpty ? nameParts.first : '',
+        lastName: nameParts.length > 1 ? nameParts.skip(1).join(' ') : '',
+      );
+    } else {
+      // Dine-in / walk-in: optional — Skip leaves every field blank,
+      // matching the original "phone optional" behaviour.
+      if (!context.mounted) return;
+      customerInfo = await Navigator.of(context).push<CustomerInfoResult>(
+        MaterialPageRoute(
+          builder:
+              (context) => CustomerInfoStep(orderNumber: widget.orderNumber),
+        ),
+      );
+    }
     if (!mounted || customerInfo == null) return; // back-swiped, not Skip
 
     // Step 3: take payment now, or bill later. Nothing is charged yet —

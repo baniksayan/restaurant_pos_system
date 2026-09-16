@@ -60,7 +60,11 @@ class DashboardHeader extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: IconButton(
-                icon: const Icon(Icons.add, size: 22, color: Colors.white),
+                icon: const Icon(
+                  Icons.add_shopping_cart_rounded,
+                  size: 20,
+                  color: Colors.white,
+                ),
                 onPressed: onAddOrderPressed,
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                 padding: const EdgeInsets.all(6),

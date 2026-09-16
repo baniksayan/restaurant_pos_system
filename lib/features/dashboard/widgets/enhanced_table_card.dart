@@ -58,6 +58,46 @@ class EnhancedTableCard extends StatelessWidget {
                 ),
               ),
 
+              // Add-order button — the only other way onto a table that
+              // already has an order was a long press, which opened a
+              // management dialog with no visual hint it could start a
+              // second party. Occupied tables get an explicit button
+              // instead; empty tables still start their first order by a
+              // plain tap.
+              if (onAddParty != null && table.hasActiveOrders)
+                Positioned(
+                  top: 7,
+                  left: 7,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onAddParty,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: statusConfig.color,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: statusConfig.color.withValues(
+                                alpha: 0.35,
+                              ),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1.5),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.person_add_alt_1_rounded,
+                          size: 13,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
               // Shared Table Badge (Only shown if table has 2 or more active orders)
               if (table.orderCount >= 2)
                 Positioned(
