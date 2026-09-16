@@ -283,17 +283,40 @@ class BillOrderDetails {
   }
 }
 
+/// One payment row against this bill — SP_GetBillDetailByBillId's own
+/// `paymentDetail` resultset (mode name + amount + change), not to be
+/// confused with `bill_generation_models.dart`'s PaymentDetail, which is
+/// the *request* shape SavePayment/createBill take.
 class PaymentDetail {
-  // Add properties as needed based on future requirements
-  // Currently empty as per the API response
+  final String paymentMode;
+  final double paymentAmount;
+  final double returnAmt;
 
-  PaymentDetail();
+  PaymentDetail({
+    this.paymentMode = '',
+    this.paymentAmount = 0,
+    this.returnAmt = 0,
+  });
 
   factory PaymentDetail.fromJson(Map<String, dynamic> json) {
-    return PaymentDetail();
+    double toDouble(dynamic v) {
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v) ?? 0;
+      return 0;
+    }
+
+    return PaymentDetail(
+      paymentMode: (json['paymentMode'] ?? '').toString(),
+      paymentAmount: toDouble(json['paymentAmount']),
+      returnAmt: toDouble(json['returnAmt']),
+    );
   }
 
   Map<String, dynamic> toJson() {
-    return {};
+    return {
+      'paymentMode': paymentMode,
+      'paymentAmount': paymentAmount,
+      'returnAmt': returnAmt,
+    };
   }
 }

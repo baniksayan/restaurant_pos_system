@@ -655,6 +655,45 @@ class _CartViewState extends State<CartView> {
     }
   }
 
+  /// A note for the whole ticket, separate from any item's own note — "no
+  /// onions across the table", "serve together", "birthday, add candle".
+  /// Stored server-side on KOTHead.KOTNote. Returns '' (not null) on Skip so
+  /// callers can use it directly without a null check.
+  Future<String> _askKotNote() async {
+    final controller = TextEditingController();
+    final note = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Note for Kitchen'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLines: 3,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              hintText: 'e.g. serve together, no onions across the table',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(''),
+              child: const Text('Skip'),
+            ),
+            FilledButton(
+              onPressed:
+                  () => Navigator.of(dialogContext).pop(controller.text.trim()),
+              child: const Text('Add & Send'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    return note ?? '';
+  }
+
   // KOT Generation for new items only
   /// Sends the cart's new items to the kitchen.
   ///
@@ -683,6 +722,12 @@ class _CartViewState extends State<CartView> {
         );
         return;
       }
+
+      // A note for the whole ticket — "no onions across the table",
+      // "serve together" — distinct from each item's own note. Optional:
+      // Skip sends immediately with none, same as before this existed.
+      final kotNote = await _askKotNote();
+      if (!mounted) return;
 
       showDialog(
         context: context,
@@ -761,7 +806,7 @@ class _CartViewState extends State<CartView> {
       // Use the proper order map format from AnimatedCartProvider
       final kotPayload = cartProvider.buildNewItemsOrderMap(
         orderId: backendOrderId,
-        kotNote: "",
+        kotNote: kotNote,
       );
 
       if (kDebugMode) {
@@ -792,7 +837,7 @@ class _CartViewState extends State<CartView> {
               ? await ApiService.createKotWithoutBatch(
                 outletId: HiveService.getOutletId() ?? 0,
                 orderId: backendOrderId,
-                kotNote: "",
+                kotNote: kotNote,
               )
               : await orderProvider.createKotWithOrderDetails(
                 userId: HiveService.getUserId() ?? "",
@@ -800,7 +845,7 @@ class _CartViewState extends State<CartView> {
                     HiveService.getOutletId() ??
                     0, // No fallback - validation will catch this
                 orderId: backendOrderId,
-                kotNote: "",
+                kotNote: kotNote,
                 cartItems: newItemsData,
               );
 
@@ -850,6 +895,10 @@ class _CartViewState extends State<CartView> {
           orderTime: DateTime.now(),
           kotNo: kotDetail?.kotNo ?? orderNumber,
           waiterName: kotDetail?.waiterName ?? 'Unknown',
+          // The whole-ticket note collected above — it was already being
+          // saved to KOTHead.KOTNote via kotNote: on the create call, but
+          // never made it into this preview PDF.
+          specialNotes: kotNote,
         );
 
         // Show KOT PDF viewer dialog (undismissible)

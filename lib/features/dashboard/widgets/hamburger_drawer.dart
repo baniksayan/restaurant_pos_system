@@ -10,6 +10,7 @@ import 'package:restaurant_pos_system/features/orders/views/orders_management_vi
 import 'package:restaurant_pos_system/features/orders/providers/ready_to_collect_provider.dart';
 import 'package:restaurant_pos_system/features/orders/views/ready_to_collect_orders_view.dart';
 import 'package:restaurant_pos_system/features/payment/views/pending_payments_view.dart';
+import 'package:restaurant_pos_system/features/orders/views/reprint_view.dart';
 import 'package:restaurant_pos_system/features/profile/views/profile_view.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
 import '../providers/dashboard_provider.dart';
@@ -105,6 +106,25 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => const PendingPaymentsView(),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 6),
+                          // Look back at any past bill or KOT and
+                          // reprint/view it — one entry, two tabs, rather
+                          // than splitting bills and KOTs across separate
+                          // drawer rows.
+                          _buildCleanNavTile(
+                            title: 'Reprint',
+                            subtitle: 'Past bills and KOTs',
+                            icon: Icons.print_outlined,
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ReprintView(),
                                 ),
                               );
                             },

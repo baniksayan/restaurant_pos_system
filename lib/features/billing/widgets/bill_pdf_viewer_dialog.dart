@@ -363,10 +363,13 @@ class _BillPDFViewerDialogState extends State<BillPDFViewerDialog> {
     await HapticHelper.triggerFeedback();
     setState(() => _isPrinting = true);
     try {
+      // The bill itself is now generated at thermal (80mm) width — see
+      // PDFService.generateThermalBill — so the print format needs to match,
+      // the same way KOTPDFViewerDialog already does for KOTs.
       await Printing.layoutPdf(
         onLayout: (format) async => widget.pdfBytes,
         name: widget.fileName,
-        format: PdfPageFormat.a4,
+        format: PdfPageFormat.roll80,
       );
     } catch (e) {
       if (mounted) {

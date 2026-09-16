@@ -192,7 +192,17 @@ class HiveService {
   }
 
   static Map<String, dynamic>? getTaxData() {
-    return posBox.get(StorageKeys.taxData);
+    // Hive hands back a raw Map<dynamic, dynamic> on read, not the
+    // Map<String, dynamic> that was actually put() in — an unguarded return
+    // here throws "type '_Map<dynamic, dynamic>' is not a subtype of type
+    // 'Map<String, dynamic>?'" the moment cached data exists (i.e. every
+    // time but the very first, data-free call), unhandled, from inside
+    // TaxProvider.initializeTaxData's synchronous debug call. That silently
+    // aborted the whole tax fetch on the bill screen until the user hit
+    // Retry, which is why tax sometimes only ever loaded after a manual tap.
+    final raw = posBox.get(StorageKeys.taxData);
+    if (raw == null) return null;
+    return Map<String, dynamic>.from(raw as Map);
   }
 
   static DateTime? getTaxDataTimestamp() {
@@ -205,6 +215,19 @@ class HiveService {
   static void clearTaxData() {
     posBox.delete(StorageKeys.taxData);
     posBox.delete(StorageKeys.taxDataTimestamp);
+  }
+
+  // Company Info (name, address, GST number, currency) — fetched once after
+  // login via Setting/GetCompanyInfo and cached so it survives without a
+  // fresh call on every app start.
+  static void saveCompanyInfo(Map<String, dynamic> companyInfo) {
+    posBox.put(StorageKeys.companyInfo, companyInfo);
+  }
+
+  static Map<String, dynamic>? getCompanyInfo() {
+    final raw = posBox.get(StorageKeys.companyInfo);
+    if (raw == null) return null;
+    return Map<String, dynamic>.from(raw as Map);
   }
 
   static bool isTaxDataExpired({int maxAgeHours = 24}) {

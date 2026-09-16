@@ -13,6 +13,7 @@ import 'package:restaurant_pos_system/data/models/bill_details_response.dart';
 import 'package:restaurant_pos_system/data/models/order_channel_list_api_response_model.dart';
 import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
 import 'package:restaurant_pos_system/data/models/pending_bill.dart';
+import 'package:restaurant_pos_system/data/models/company_info_model.dart';
 import '../../core/constants/api_constants.dart';
 
 class ApiService {
@@ -875,6 +876,44 @@ class ApiService {
     }
   }
 
+  /// The tenant's own company profile — name, address, GST number, and real
+  /// currency (code + symbol). Called once after login; see
+  /// HiveService.saveCompanyInfo for where the result gets cached.
+  static Future<CompanyInfoResponse?> getCompanyInfo() async {
+    final isConnected = await checkInternetAndGoForward();
+    if (!isConnected) return null;
+
+    try {
+      const endpoint = 'Setting/GetCompanyInfo';
+      final body = <String, dynamic>{}; // Empty body as per API requirement
+
+      if (kDebugMode) {
+        debugPrint('Calling getCompanyInfo API: $endpoint');
+      }
+
+      final response = await apiRequestHttpRawBody(
+        endpoint,
+        body,
+        method: 'POST',
+      );
+
+      if (response != null) {
+        if (kDebugMode) {
+          debugPrint('getCompanyInfo API Response: $response');
+        }
+        return CompanyInfoResponse.fromJson(response);
+      }
+
+      return null;
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Error in getCompanyInfo: $e');
+        debugPrint('StackTrace: $stackTrace');
+      }
+      return null;
+    }
+  }
+
   /// Get all payment modes
   static Future<PaymentModeApiResModel?> getAllPaymentModes() async {
     final isConnected = await checkInternetAndGoForward();
@@ -1315,6 +1354,55 @@ class ApiService {
     } catch (e, stackTrace) {
       if (kDebugMode) {
         debugPrint('Error in getPaidAmountForBill: $e');
+        debugPrint('StackTrace: $stackTrace');
+      }
+      return null;
+    }
+  }
+
+  /// Every order for an outlet in a date range (Order/getOrderHeadList).
+  ///
+  /// One call covering all channel types, with the date window and search
+  /// applied server-side. Returns the raw rows so the caller can bucket them
+  /// by `channelType` — each row already carries channel, status, waiter and
+  /// customer.
+  ///
+  /// Dates go as dd/MM/yyyy: Sp_GetOrderHeadList takes them as nvarchar and
+  /// converts with style 103, so any other format either fails to convert or
+  /// silently reads as a different day.
+  static Future<List<Map<String, dynamic>>?> getOrderHeadList({
+    required int outletId,
+    required DateTime from,
+    required DateTime to,
+    String searchString = '',
+    String? waiterId,
+  }) async {
+    String ddMMyyyy(DateTime d) =>
+        '${d.day.toString().padLeft(2, '0')}/'
+        '${d.month.toString().padLeft(2, '0')}/'
+        '${d.year.toString().padLeft(4, '0')}';
+
+    try {
+      final response = await apiRequestHttpRawBody('Order/getOrderHeadList', {
+        "waiterId": waiterId ?? '00000000-0000-0000-0000-000000000000',
+        "fromDate": ddMMyyyy(from),
+        "toDate": ddMMyyyy(to),
+        "searchString": searchString,
+        "outletId": outletId,
+      });
+
+      if (response == null) return null;
+
+      final data = response['data'];
+      if (data is! List) return <Map<String, dynamic>>[];
+
+      return data
+          .whereType<Map>()
+          .map((row) => Map<String, dynamic>.from(row))
+          .toList();
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Error in getOrderHeadList: $e');
         debugPrint('StackTrace: $stackTrace');
       }
       return null;

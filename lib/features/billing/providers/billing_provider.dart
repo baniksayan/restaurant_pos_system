@@ -3,6 +3,12 @@ import 'package:restaurant_pos_system/shared/services/pdf_service.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/data/models/payment_mode_api_res_model.dart';
 import 'package:restaurant_pos_system/data/models/bill_generation_models.dart';
+// Prefixed: bill_details_response.dart's own PaymentDetail (a *response*
+// row: mode/amount/change from getBillDetailByBillId) would otherwise
+// collide with bill_generation_models.dart's PaymentDetail (the *request*
+// shape SavePayment/createBill take) — both used, unprefixed, in this file.
+import 'package:restaurant_pos_system/data/models/bill_details_response.dart'
+    as receipt;
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 
@@ -117,8 +123,17 @@ class BillingProvider extends ChangeNotifier {
     return subtotal * (gstPercentage / 100);
   }
 
+  /// The server always rounds the final payable amount UP to a whole
+  /// currency unit — SP_CreateBill computes
+  /// `BillAmountInclTax = CEILING(AmountAfterDiscHd + TaxAmt)`, not a plain
+  /// sum. Without matching that here, this screen would show/collect e.g.
+  /// ₹47.75 while the bill it creates is actually ₹48 — the bill records
+  /// ₹47.75 as paid, ₹0.25 short, and sits at "Partially Paid" until that
+  /// last quarter-rupee is collected separately. Ceiling here keeps what
+  /// the cashier is shown and asked to collect equal to what the bill
+  /// will actually require to read as fully settled.
   double calculateTotal(double subtotal, double gst) {
-    return subtotal + gst;
+    return (subtotal + gst).ceilToDouble();
   }
 
   // Enhanced: Implement 3-step API flow for bill generation
@@ -135,6 +150,20 @@ class BillingProvider extends ChangeNotifier {
     // unaffected. See SP_CreateBill's @ItemList — it already accepts a
     // subset, this just stops the app from always sending the full set.
     List<String>? selectedOrderDetailIds,
+    // Customer info collected up front by the checkout flow (phone number,
+    // then name — auto-filled if the phone matched an existing customer).
+    // When supplied these win outright and Step 2's own phone-based lookup
+    // is skipped; existing callers that don't pass them keep the original
+    // behaviour untouched.
+    String? customerPhoneOverride,
+    String? customerFirstNameOverride,
+    String? customerLastNameOverride,
+    String? customerIdOverride,
+    // Tenders taken before the bill exists — SP_CreateBill accepts payment
+    // details inline and settles the bill in the same call SP_SavePayment
+    // would otherwise need a second round-trip for. Empty means "bill now,
+    // collect payment later" (unchanged pay-later behaviour).
+    List<PaymentDetail> paymentDetails = const [],
   }) async {
     _isGenerating = true;
     _errorMessage = null;
@@ -193,8 +222,21 @@ class BillingProvider extends ChangeNotifier {
 
       // Step 2: Get Customer by Mobile Number (if customer phone is provided and order detail has phone)
       String customerId =
+          customerIdOverride ??
           "00000000-0000-0000-0000-000000000000"; // Default customer ID
-      if (orderDetail != null && orderDetail.customerPhoneNo.isNotEmpty) {
+      String? resolvedFirstName = customerFirstNameOverride;
+      String? resolvedLastName = customerLastNameOverride;
+      final effectivePhone =
+          (customerPhoneOverride != null && customerPhoneOverride.isNotEmpty)
+              ? customerPhoneOverride
+              : (orderDetail?.customerPhoneNo ?? _customerPhone ?? '');
+
+      if (customerIdOverride != null) {
+        debugPrint(
+          'BillingProvider - Customer already resolved by caller: '
+          '$customerIdOverride ($resolvedFirstName $resolvedLastName)',
+        );
+      } else if (orderDetail != null && orderDetail.customerPhoneNo.isNotEmpty) {
         debugPrint('=== STEP 2: GET CUSTOMER BY MOBILE ===');
         debugPrint(
           'BillingProvider - Calling getCustomerByMobileNo API with: ${orderDetail.customerPhoneNo}',
@@ -212,6 +254,8 @@ class BillingProvider extends ChangeNotifier {
         if (customerResponse?.isSuccess == true &&
             customerResponse?.data != null) {
           customerId = customerResponse!.data!.customerId;
+          resolvedFirstName = customerResponse.data!.customerFirstName;
+          resolvedLastName = customerResponse.data!.customerLastName;
           debugPrint('BillingProvider - Customer Details Retrieved:');
           debugPrint('Customer ID: $customerId');
           debugPrint('Customer Name: ${customerResponse.data!.customerName}');
@@ -237,6 +281,21 @@ class BillingProvider extends ChangeNotifier {
       debugPrint('BillingProvider - OrderId check: $orderId');
       debugPrint('BillingProvider - OrderDetail check: ${orderDetail != null}');
 
+      // What was actually tendered, and in what mode — @PaidAmount and
+      // @PaymentModeId on SP_CreateBill, and the per-tender rows it forwards
+      // straight into SP_SavePayment. Empty means pay-later: the bill is
+      // created with nothing paid, same as every existing caller today.
+      final paidAmountTotal = paymentDetails.fold<double>(
+        0,
+        (sum, p) => sum + p.paymentAmount,
+      );
+      final paymentDetailsJson =
+          paymentDetails.map((p) => p.toJson()).toList();
+      final effectivePaymentModeId =
+          paymentDetails.isNotEmpty
+              ? paymentDetails.first.modeId
+              : (_selectedPaymentMode?.paymentModeId ?? 1);
+
       if (orderId != null && orderId.isNotEmpty && orderDetail != null) {
         // Full order flow - use orderDetail data
         debugPrint('BillingProvider - Using full order flow with orderDetail');
@@ -257,11 +316,11 @@ class BillingProvider extends ChangeNotifier {
         );
 
         final createBillRequest = CreateBillRequest(
-          customerFirstName: "",
-          customerLastName: "",
-          contactNo: orderDetail.customerPhoneNo,
-          paidAmount: "0.00",
-          paymentModeId: _selectedPaymentMode?.paymentModeId ?? 1,
+          customerFirstName: resolvedFirstName ?? "",
+          customerLastName: resolvedLastName ?? "",
+          contactNo: effectivePhone,
+          paidAmount: paidAmountTotal.toStringAsFixed(2),
+          paymentModeId: effectivePaymentModeId,
           discountPercBillHd: 0,
           customerIdUI: customerId,
           itemList: itemList,
@@ -271,7 +330,7 @@ class BillingProvider extends ChangeNotifier {
               HiveService.getOutletId() ??
               0, // No fallback - validation will catch this
           billPrefix: "BL",
-          paymentDetails: [],
+          paymentDetails: paymentDetailsJson,
         );
 
         debugPrint(
@@ -314,11 +373,11 @@ class BillingProvider extends ChangeNotifier {
 
         // Create a simplified bill request
         final createBillRequest = CreateBillRequest(
-          customerFirstName: "",
-          customerLastName: "",
-          contactNo: _customerPhone ?? "",
-          paidAmount: "0.00",
-          paymentModeId: _selectedPaymentMode?.paymentModeId ?? 1,
+          customerFirstName: resolvedFirstName ?? "",
+          customerLastName: resolvedLastName ?? "",
+          contactNo: effectivePhone,
+          paidAmount: paidAmountTotal.toStringAsFixed(2),
+          paymentModeId: effectivePaymentModeId,
           discountPercBillHd: 0,
           customerIdUI: customerId,
           itemList:
@@ -329,7 +388,7 @@ class BillingProvider extends ChangeNotifier {
               HiveService.getOutletId() ??
               0, // No fallback - validation will catch this
           billPrefix: "BL",
-          paymentDetails: [],
+          paymentDetails: paymentDetailsJson,
         );
 
         debugPrint('BillingProvider - CreateBill Request Body (fallback):');
@@ -363,19 +422,92 @@ class BillingProvider extends ChangeNotifier {
         }
       }
 
-      // Step 4: Generate PDF (existing logic)
+      // Step 3.5: Fetch the bill exactly as the server recorded it — real
+      // company details (name/address/GST number) and the real tax it
+      // computed — so the printed PDF matches what was actually charged
+      // instead of a client-side approximation. Falls back to the
+      // already-computed subtotal/gstAmount/total (and PDFService's own
+      // placeholder company info) if this call fails; billing must never
+      // be blocked by a PDF-cosmetics fetch.
+      String? realCompanyName;
+      String? realCompanyAddress;
+      String? realCompanyPhone;
+      String? realCompanyGstNo;
+      double pdfSubtotal = subtotal;
+      double pdfGstAmount = gstAmount;
+      double pdfTotal = total;
+      String pdfGstLabel = 'GST';
+      String? realBillNo;
+      String? realCustomerName;
+      String? realCustomerPhone;
+      double realDiscountAmount = 0;
+      List<receipt.PaymentDetail>? realPayments;
+
+      if (_billId != null && _billId!.isNotEmpty) {
+        try {
+          final billDetailsResponse = await ApiService.getBillDetailByBillId(
+            billId: _billId!,
+          );
+          final billData = billDetailsResponse?.data;
+          if (billDetailsResponse?.isSuccess == true && billData != null) {
+            realCompanyName = billData.companyDt.companyName;
+            realCompanyAddress = billData.companyDt.companyAddress;
+            realCompanyPhone = billData.companyDt.contactNo;
+            realCompanyGstNo = billData.companyDt.gstNo;
+
+            pdfSubtotal = billData.billHeadDt.amountAfterDisc;
+            pdfTotal = billData.billHeadDt.billAmountInclTax;
+            final realGst = pdfTotal - pdfSubtotal;
+            pdfGstAmount = realGst > 0 ? realGst : 0;
+
+            if (billData.taxInf.isNotEmpty) {
+              final totalPct = billData.taxInf.fold<double>(
+                0,
+                (sum, t) => sum + t.taxPercentage,
+              );
+              pdfGstLabel =
+                  'GST (${totalPct % 1 == 0 ? totalPct.toStringAsFixed(0) : totalPct.toStringAsFixed(1)}%)';
+            }
+
+            realBillNo = billData.billHeadDt.billNo;
+            realCustomerName = billData.billHeadDt.customerName;
+            realCustomerPhone = billData.billHeadDt.custMobNo;
+            realDiscountAmount =
+                billData.billHeadDt.discountAmnt + billData.billHeadDt.specDisAmt;
+            realPayments = billData.paymentDetail;
+          }
+        } catch (e) {
+          debugPrint(
+            'BillingProvider - Could not fetch real bill details for PDF, '
+            'falling back to computed totals: $e',
+          );
+        }
+      }
+
+      // Step 4: Generate PDF — 80mm thermal receipt, the format this
+      // industry actually prints on, not an A4 invoice.
       debugPrint('=== STEP 4: GENERATE PDF ===');
       debugPrint('BillingProvider - Generating PDF for bill...');
 
-      final billBytes = await PDFService.generateCustomerBill(
+      final billBytes = await PDFService.generateThermalBill(
         items: cartItems, // Let PDFService handle the type conversion
         tableId: cartItems.first.tableId,
         tableName: cartItems.first.tableName,
         orderNumber: orderNumber,
         orderTime: DateTime.now(),
-        subtotal: subtotal,
-        gstAmount: gstAmount,
-        total: total,
+        subtotal: pdfSubtotal,
+        gstAmount: pdfGstAmount,
+        total: pdfTotal,
+        companyName: realCompanyName,
+        companyAddress: realCompanyAddress,
+        companyPhone: realCompanyPhone,
+        companyGstNo: realCompanyGstNo,
+        gstLabel: pdfGstLabel,
+        billNo: realBillNo,
+        customerName: realCustomerName,
+        customerPhone: realCustomerPhone,
+        discountAmount: realDiscountAmount,
+        payments: realPayments,
       );
 
       debugPrint('BillingProvider - PDF generated successfully');

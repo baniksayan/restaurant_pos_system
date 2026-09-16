@@ -6,6 +6,7 @@ import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import '../providers/billing_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
+import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/features/payment/views/payment_view.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
@@ -28,6 +29,14 @@ class BillSuccessDialog extends StatelessWidget {
   /// clearing the table, so the cashier can split the rest.
   final int remainingUnbilledCount;
 
+  /// True when the checkout flow already collected payment before this bill
+  /// existed (createBill ran with paymentDetails attached) — the new
+  /// Customer Info -> Payment -> Bill sequence. There is nothing left to
+  /// pay, so the action bar shows "Done" instead of "Proceed to Pay" and
+  /// skips PaymentPage entirely; false preserves the original "bill first,
+  /// pay after" flow unchanged.
+  final bool paidAtCheckout;
+
   const BillSuccessDialog({
     super.key,
     required this.orderNumber,
@@ -38,6 +47,7 @@ class BillSuccessDialog extends StatelessWidget {
     this.tableId,
     this.orderId,
     this.remainingUnbilledCount = 0,
+    this.paidAtCheckout = false,
   });
 
   @override
@@ -324,7 +334,10 @@ class BillSuccessDialog extends StatelessWidget {
         child: ElevatedButton.icon(
           onPressed: () async {
             await HapticHelper.triggerFeedback();
-            if (context.mounted) {
+            if (!context.mounted) return;
+            if (paidAtCheckout) {
+              await _finishAlreadyPaid(context);
+            } else {
               Navigator.of(context).pop();
               _navigateToPayment(context);
             }
@@ -338,10 +351,13 @@ class BillSuccessDialog extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
             ),
           ),
-          icon: const Icon(Icons.payment_rounded, size: 18),
-          label: const Text(
-            'Proceed to Pay',
-            style: TextStyle(
+          icon: Icon(
+            paidAtCheckout ? Icons.check_rounded : Icons.payment_rounded,
+            size: 18,
+          ),
+          label: Text(
+            paidAtCheckout ? 'Done' : 'Proceed to Pay',
+            style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.2,
@@ -350,6 +366,55 @@ class BillSuccessDialog extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Mirrors PaymentPage's own post-payment steps (table release + final
+  /// navigation) for the case where payment already happened during
+  /// checkout, before this dialog ever showed — there is no PaymentPage
+  /// involved here to do it for us. The server frees the table on its own
+  /// once the order is fully paid (SP_UpdPaymentStatusOrder sets
+  /// OrderHead.IsPaid, and the channel list only reports still-unpaid
+  /// orders) — refreshTables() below already picks that up. What it can't
+  /// do is clear this device's cached bill id and cart, which is what
+  /// clearBillId/clearOrderData are for.
+  Future<void> _finishAlreadyPaid(BuildContext context) async {
+    final isFinalSettlement = remainingUnbilledCount == 0;
+
+    if (tableId != null && isFinalSettlement) {
+      try {
+        final tableProvider = Provider.of<TableProvider>(
+          context,
+          listen: false,
+        );
+
+        if (orderId != null && orderId!.isNotEmpty) {
+          await tableProvider.clearBillId(orderId!);
+          try {
+            Provider.of<AnimatedCartProvider>(
+              context,
+              listen: false,
+            ).clearOrderData(orderId!);
+          } catch (_) {}
+        }
+
+        await tableProvider.refreshTables();
+      } catch (e) {
+        debugPrint('BillSuccessDialog - Error releasing table: $e');
+      }
+    }
+
+    if (!context.mounted) return;
+    Navigator.of(context).pop();
+
+    if (isFinalSettlement) {
+      onBillGenerated();
+    } else {
+      AppSnackBar.showSuccess(
+        context,
+        'Bill settled. $remainingUnbilledCount item'
+        '${remainingUnbilledCount == 1 ? '' : 's'} still unbilled on this order.',
+      );
+    }
   }
 
   void _navigateToPayment(BuildContext context) {

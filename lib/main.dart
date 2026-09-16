@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import 'core/constants/currency_constants.dart';
 import 'core/services/app_version_service.dart';
 import 'core/theme/app_theme.dart';
 import 'data/local/hive_service.dart';
@@ -43,6 +44,11 @@ void main() async {
 
   // Initialize Hive for offline storage
   await HiveService.init();
+
+  // Restore whatever currency symbol was cached from the last successful
+  // login, so a warm start (already logged in, no fresh Setting/GetCompanyInfo
+  // call) shows the right currency immediately instead of the '$' fallback.
+  CurrencyConstants.loadFromCache();
 
   // Initialize App Version from pubspec package info
   await AppVersionService.init();

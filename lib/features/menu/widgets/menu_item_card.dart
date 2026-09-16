@@ -548,7 +548,7 @@ class _MenuItemCardState extends State<MenuItemCard>
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
-                            Icons.more_horiz_rounded,
+                            Icons.delete_outline_rounded,
                             color: Colors.white,
                             size: 18,
                           ),

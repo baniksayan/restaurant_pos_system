@@ -18,6 +18,7 @@ class StorageKeys {
   static const String isChefLoggedIn = 'is_chef_logged_in';
   static const String taxData = 'taxData';
   static const String taxDataTimestamp = 'taxDataTimestamp';
+  static const String companyInfo = 'companyInfo';
   static const String hasCheckedInitialPermissions =
       'has_checked_initial_permissions';
 }

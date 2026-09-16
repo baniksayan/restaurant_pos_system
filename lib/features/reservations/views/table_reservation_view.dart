@@ -843,13 +843,13 @@ class _TableReservationViewState extends State<TableReservationView> {
           ),
           if (_decoration) ...[
             const SizedBox(height: 4),
-            const Row(
+            Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Decoration:', style: TextStyle(fontSize: 14)),
+                const Text('Decoration:', style: TextStyle(fontSize: 14)),
                 Text(
                   '${CurrencyConstants.symbol}500',
-                  style: TextStyle(fontSize: 14),
+                  style: const TextStyle(fontSize: 14),
                 ),
               ],
             ),

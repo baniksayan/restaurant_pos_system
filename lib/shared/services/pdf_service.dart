@@ -9,18 +9,24 @@ import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
+import 'package:restaurant_pos_system/data/models/bill_details_response.dart'
+    show PaymentDetail;
 import '../../core/constants/currency_constants.dart';
 
 class PDFService {
+  /// Fallbacks only — used if a real bill's company details couldn't be
+  /// fetched (e.g. the network call in generateCustomerBill's caller
+  /// failed). Every normal bill/invoice must pass the tenant's real
+  /// companyName/companyAddress/companyGstNo/companyPhone from
+  /// Order/getBillDetailByBillId's companyDt instead of relying on these.
   static const String restaurantName = "WhizEats Pro";
   static const String restaurantAddress =
       "123 Food Street, Gourmet City, State 12345";
   static const String restaurantPhone = "+91 98765 43210";
-  static const String restaurantEmail = "orders@whizeats.com";
-  static const String gstNumber = "22AAAAA0000A1Z5";
+  static const String gstNumber = "Not available";
 
   // Use centralized currency symbol
-  static const String rupeeSymbol =
+  static String get rupeeSymbol =>
       CurrencyConstants.symbol; // kept name for backward-compat in-file
 
   static const double _kotPageWidth = 226.77; // hardcoded for KOT width  (80mm)
@@ -149,6 +155,13 @@ class PDFService {
   }
 
   // Generate Customer Bill with GST and Special Notes
+  //
+  // [companyName]/[companyAddress]/[companyPhone]/[companyGstNo] should be
+  // the real tenant details from Order/getBillDetailByBillId's `companyDt`
+  // — every caller that has a billId should fetch that first and pass the
+  // real values through. They're optional (falling back to the constants
+  // above) only so a bill can still print if that fetch fails; a live
+  // invoice should never be missing them.
   static Future<Uint8List> generateCustomerBill({
     required List<dynamic> items,
     required String tableId,
@@ -159,7 +172,29 @@ class PDFService {
     required double gstAmount,
     required double total,
     String? specialNotes, // |  ADD this parameter
+    String? companyName,
+    String? companyAddress,
+    String? companyPhone,
+    String? companyGstNo,
+    String gstLabel = 'GST',
   }) async {
+    final resolvedName =
+        (companyName != null && companyName.trim().isNotEmpty)
+            ? companyName.trim()
+            : restaurantName;
+    final resolvedAddress =
+        (companyAddress != null && companyAddress.trim().isNotEmpty)
+            ? companyAddress.trim()
+            : restaurantAddress;
+    final resolvedPhone =
+        (companyPhone != null && companyPhone.trim().isNotEmpty)
+            ? companyPhone.trim()
+            : restaurantPhone;
+    final resolvedGstNo =
+        (companyGstNo != null && companyGstNo.trim().isNotEmpty)
+            ? companyGstNo.trim()
+            : gstNumber;
+
     final pdf = pw.Document();
 
     pdf.addPage(
@@ -180,7 +215,7 @@ class PDFService {
                 child: pw.Column(
                   children: [
                     pw.Text(
-                      restaurantName,
+                      resolvedName,
                       style: pw.TextStyle(
                         fontSize: 28,
                         fontWeight: pw.FontWeight.bold,
@@ -189,21 +224,15 @@ class PDFService {
                     ),
                     pw.SizedBox(height: 10),
                     pw.Text(
-                      restaurantAddress,
+                      resolvedAddress,
                       style: const pw.TextStyle(fontSize: 14),
                       textAlign: pw.TextAlign.center,
                     ),
                     pw.SizedBox(height: 5),
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.center,
-                      children: [
-                        pw.Text("Phone: $restaurantPhone  |  "),
-                        pw.Text("Email: $restaurantEmail"),
-                      ],
-                    ),
+                    pw.Text("Phone: $resolvedPhone"),
                     pw.SizedBox(height: 5),
                     pw.Text(
-                      "GST No: $gstNumber",
+                      "GST No: $resolvedGstNo",
                       style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                     ),
                   ],
@@ -471,7 +500,7 @@ class PDFService {
                     ),
                     pw.SizedBox(height: 8),
                     _buildTotalRow(
-                      "GST (18%):",
+                      "$gstLabel:",
                       "${CurrencyConstants.symbol}${gstAmount.toStringAsFixed(2)}",
                     ),
                     pw.SizedBox(height: 8),
@@ -548,11 +577,248 @@ class PDFService {
                     ),
                     pw.SizedBox(height: 5),
                     pw.Text(
-                      "For any queries, please contact: $restaurantPhone",
+                      "For any queries, please contact: $resolvedPhone",
                       style: const pw.TextStyle(fontSize: 10),
                       textAlign: pw.TextAlign.center,
                     ),
                   ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  // Generate a customer bill formatted for an 80mm (3") thermal POS
+  // printer — the format this industry actually prints on, not an A4
+  // invoice. Mirrors generateKOT's page setup (same _kotPageWidth/_kotMargin,
+  // same dashed-line/letter-spacing helpers) and takes the exact same
+  // parameters as generateCustomerBill, so every existing caller can switch
+  // to this by changing only the method name.
+  //
+  // Strictly monochrome (PdfColors.black/grey only) — a thermal head has no
+  // color to print in the first place.
+  static Future<Uint8List> generateThermalBill({
+    required List<dynamic> items,
+    required String tableId,
+    required String tableName,
+    required String orderNumber,
+    required DateTime orderTime,
+    required double subtotal,
+    required double gstAmount,
+    required double total,
+    String? specialNotes,
+    String? companyName,
+    String? companyAddress,
+    String? companyPhone,
+    String? companyGstNo,
+    String gstLabel = 'GST',
+    // Extra detail a real receipt carries that generateCustomerBill's
+    // callers never had a slot for — the bill's own number (distinct from
+    // the order number), who it's for, and what discount was applied.
+    String? billNo,
+    String? customerName,
+    String? customerPhone,
+    double discountAmount = 0,
+    // One row per tender — mode, amount, and change on that tender. Comes
+    // straight from Order/getBillDetailByBillId's own paymentDetail
+    // resultset when the caller has it; omitted entirely (not padded with
+    // zeros) when it doesn't, e.g. printing immediately after createBill
+    // before that fetch has happened.
+    List<PaymentDetail>? payments,
+  }) async {
+    final resolvedName =
+        (companyName != null && companyName.trim().isNotEmpty)
+            ? companyName.trim()
+            : restaurantName;
+    final resolvedAddress =
+        (companyAddress != null && companyAddress.trim().isNotEmpty)
+            ? companyAddress.trim()
+            : restaurantAddress;
+    final resolvedPhone =
+        (companyPhone != null && companyPhone.trim().isNotEmpty)
+            ? companyPhone.trim()
+            : restaurantPhone;
+    final resolvedGstNo =
+        (companyGstNo != null && companyGstNo.trim().isNotEmpty)
+            ? companyGstNo.trim()
+            : gstNumber;
+
+    final dateStr = _formatDate(orderTime);
+    final timeStr = _formatTime(orderTime);
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: const PdfPageFormat(
+          _kotPageWidth,
+          double.infinity,
+          marginAll: _kotMargin,
+        ),
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+            children: [
+              pw.Center(
+                child: pw.Text(
+                  resolvedName,
+                  textAlign: pw.TextAlign.center,
+                  style: pw.TextStyle(
+                    fontSize: 13,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ),
+              pw.SizedBox(height: 3),
+              pw.Center(
+                child: pw.Text(
+                  resolvedAddress,
+                  textAlign: pw.TextAlign.center,
+                  style: const pw.TextStyle(fontSize: 8),
+                ),
+              ),
+              pw.SizedBox(height: 3),
+              pw.Center(
+                child: pw.Text(
+                  'Ph: $resolvedPhone   GSTIN: $resolvedGstNo',
+                  textAlign: pw.TextAlign.center,
+                  style: const pw.TextStyle(fontSize: 7.5),
+                ),
+              ),
+              pw.SizedBox(height: 8),
+              _kotDashedLine(),
+              pw.SizedBox(height: 5),
+              pw.Center(
+                child: pw.Text(
+                  _kotLetterSpace('TAX INVOICE'),
+                  style: pw.TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ),
+              pw.SizedBox(height: 5),
+              _kotDashedLine(),
+              pw.SizedBox(height: 8),
+
+              _thermalRow('Bill No', billNo?.isNotEmpty == true ? billNo! : orderNumber),
+              _thermalRow('Order No', orderNumber),
+              _thermalRow('Date', '$dateStr  $timeStr'),
+              _thermalRow('Table', tableName.isNotEmpty ? tableName : tableId),
+              if (customerName != null && customerName.trim().isNotEmpty)
+                _thermalRow('Customer', customerName.trim()),
+              if (customerPhone != null && customerPhone.trim().isNotEmpty)
+                _thermalRow('Phone', customerPhone.trim()),
+
+              pw.SizedBox(height: 8),
+              _kotDashedLine(),
+              pw.SizedBox(height: 4),
+              pw.Row(
+                children: [
+                  pw.Expanded(
+                    flex: 5,
+                    child: pw.Text(
+                      'ITEM',
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  pw.SizedBox(
+                    width: 22,
+                    child: pw.Text(
+                      'QTY',
+                      textAlign: pw.TextAlign.center,
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  pw.SizedBox(
+                    width: 42,
+                    child: pw.Text(
+                      'RATE',
+                      textAlign: pw.TextAlign.right,
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  pw.SizedBox(
+                    width: 46,
+                    child: pw.Text(
+                      'AMOUNT',
+                      textAlign: pw.TextAlign.right,
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 4),
+              _kotDashedLine(),
+              for (final item in items) _thermalItemRow(item),
+              _kotDashedLine(),
+              pw.SizedBox(height: 6),
+
+              if (specialNotes != null && specialNotes.trim().isNotEmpty) ...[
+                pw.Text(
+                  'Note: ${specialNotes.trim()}',
+                  style: const pw.TextStyle(fontSize: 8),
+                ),
+                pw.SizedBox(height: 6),
+              ],
+
+              _thermalTotalRow('Subtotal', subtotal),
+              if (discountAmount > 0)
+                _thermalTotalRow('Discount', -discountAmount),
+              _thermalTotalRow(gstLabel, gstAmount),
+              pw.SizedBox(height: 4),
+              _kotDashedLine(),
+              pw.SizedBox(height: 4),
+              _thermalTotalRow('TOTAL', total, emphasize: true),
+
+              if (payments != null && payments.isNotEmpty) ...[
+                pw.SizedBox(height: 8),
+                _kotDashedLine(),
+                pw.SizedBox(height: 4),
+                for (final p in payments) ...[
+                  _thermalRow(
+                    p.paymentMode.isNotEmpty ? p.paymentMode : 'Paid',
+                    CurrencyConstants.format(p.paymentAmount),
+                  ),
+                  if (p.returnAmt > 0)
+                    _thermalRow('Change', CurrencyConstants.format(p.returnAmt)),
+                ],
+              ],
+
+              pw.SizedBox(height: 10),
+              _kotDashedLine(),
+              pw.SizedBox(height: 6),
+              pw.Center(
+                child: pw.Text(
+                  'THANK YOU, VISIT AGAIN!',
+                  style: pw.TextStyle(
+                    fontSize: 9,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ),
+              pw.SizedBox(height: 3),
+              pw.Center(
+                child: pw.Text(
+                  'Computer generated invoice — no signature required',
+                  textAlign: pw.TextAlign.center,
+                  style: const pw.TextStyle(fontSize: 6.5, color: PdfColors.grey700),
                 ),
               ),
             ],
@@ -969,6 +1235,121 @@ class PDFService {
         pw.SizedBox(width: 10),
         pw.Expanded(child: pw.Container(height: 1, color: PdfColors.grey700)),
       ],
+    );
+  }
+
+  // ── Thermal-bill-only helpers (generateThermalBill) ──────────────────
+
+  static pw.Widget _thermalRow(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 2),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(label, style: const pw.TextStyle(fontSize: 8.5)),
+          pw.Flexible(
+            child: pw.Text(
+              value,
+              textAlign: pw.TextAlign.right,
+              style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _thermalTotalRow(
+    String label,
+    double amount, {
+    bool emphasize = false,
+  }) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 3),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(
+            label,
+            style: pw.TextStyle(
+              fontSize: emphasize ? 10.5 : 9,
+              fontWeight: emphasize ? pw.FontWeight.bold : pw.FontWeight.normal,
+            ),
+          ),
+          pw.Text(
+            CurrencyConstants.format(amount),
+            style: pw.TextStyle(
+              fontSize: emphasize ? 11 : 9,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// One item line — duck-typed like generateCustomerBill's own item loop
+  /// (works on CartItem or anything else exposing name/quantity/price).
+  static pw.Widget _thermalItemRow(dynamic item) {
+    final double price = item.price;
+    final int quantity = item.quantity;
+    final double amount = price * quantity;
+
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 3),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                flex: 5,
+                child: pw.Text(
+                  (item.name as String),
+                  style: const pw.TextStyle(fontSize: 8.5),
+                ),
+              ),
+              pw.SizedBox(
+                width: 22,
+                child: pw.Text(
+                  '$quantity',
+                  textAlign: pw.TextAlign.center,
+                  style: const pw.TextStyle(fontSize: 8.5),
+                ),
+              ),
+              pw.SizedBox(
+                width: 42,
+                child: pw.Text(
+                  price.toStringAsFixed(2),
+                  textAlign: pw.TextAlign.right,
+                  style: const pw.TextStyle(fontSize: 8.5),
+                ),
+              ),
+              pw.SizedBox(
+                width: 46,
+                child: pw.Text(
+                  amount.toStringAsFixed(2),
+                  textAlign: pw.TextAlign.right,
+                  style: pw.TextStyle(
+                    fontSize: 8.5,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (item.specialNotes != null &&
+              (item.specialNotes as String).trim().isNotEmpty)
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(top: 1),
+              child: pw.Text(
+                'Note: ${(item.specialNotes as String).trim()}',
+                style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700),
+              ),
+            ),
+        ],
+      ),
     );
   }
 

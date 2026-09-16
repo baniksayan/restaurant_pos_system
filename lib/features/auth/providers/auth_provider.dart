@@ -9,6 +9,7 @@ import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/billing/providers/tax_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 
 class AuthProvider with ChangeNotifier {
   bool _isAuthenticated = false;
@@ -457,6 +458,27 @@ class AuthProvider with ChangeNotifier {
           debugPrint('Second attempt to load tax data failed: $error');
           return;
         });
+      }
+
+      // Company profile (name/address/GST/currency) — fetched once here and
+      // cached; every screen reads CurrencyConstants.symbol rather than
+      // re-fetching. Failure just leaves the fallback '$' in place, same as
+      // tax data above — a cosmetics fetch must never block login.
+      try {
+        final companyInfoResponse = await ApiService.getCompanyInfo();
+        final companyInfo = companyInfoResponse?.data;
+        if (companyInfoResponse?.isSuccess == true && companyInfo != null) {
+          HiveService.saveCompanyInfo(companyInfo.toJson());
+          CurrencyConstants.setSymbol(companyInfo.currencySymbol);
+          if (kDebugMode) {
+            debugPrint(
+              'Company info loaded: ${companyInfo.companyName}, '
+              'currency: ${companyInfo.currencySymbol.isNotEmpty ? companyInfo.currencySymbol : "(none returned)"}',
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('Failed to load company info: $e');
       }
 
       if (kDebugMode) {

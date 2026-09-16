@@ -11,6 +11,8 @@ import 'package:restaurant_pos_system/shared/services/pdf_service.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
+import 'package:restaurant_pos_system/data/models/bill_details_response.dart';
+import 'package:restaurant_pos_system/features/billing/widgets/bill_pdf_viewer_dialog.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
@@ -36,8 +38,19 @@ class _OrderDetailViewState extends State<OrderDetailView> {
   // Track if cart has been loaded to prevent duplicates
   bool _cartLoaded = false;
 
+  // The real bill — company details, exact tax, exact discount — fetched
+  // from Order/getBillDetailByBillId once we know this order has a billId.
+  // getOrderDetailById (which _detailModel comes from) has no tax data at
+  // all: tax is computed once, at billing time, and stored per-bill, not
+  // per-order. This is the only accurate source for it.
+  BillDetailsData? _billDetails;
+  bool _loadingBillDetails = false;
+
   // Derived values computed from API response (fallback to widget.order where appropriate)
   double get _subtotal {
+    if (_billDetails != null) {
+      return _billDetails!.billHeadDt.amountAfterDisc;
+    }
     if (_detailModel?.data != null &&
         _detailModel!.data!.isNotEmpty &&
         _detailModel!.data!.first.orderDetailList != null) {
@@ -51,11 +64,44 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     return widget.order.totalAmount;
   }
 
-  double get _gstAmount =>
-      0.0; // backend not providing GST field in this endpoint
+  /// Real tax amount once the bill is loaded; `0` beforehand — there is
+  /// genuinely no tax figure to show until a bill exists (see [_billDetails]).
+  double get _gstAmount {
+    if (_billDetails == null) return 0.0;
+    final gst =
+        _billDetails!.billHeadDt.billAmountInclTax -
+        _billDetails!.billHeadDt.amountAfterDisc;
+    return gst > 0 ? gst : 0.0;
+  }
+
+  /// e.g. "GST (5%)" once the real tax components are known, else a plain
+  /// "GST" label so we're never showing a guessed percentage.
+  String get _gstLabel {
+    if (_billDetails == null || _billDetails!.taxInf.isEmpty) return 'GST';
+    final totalPct = _billDetails!.taxInf.fold<double>(
+      0,
+      (sum, t) => sum + t.taxPercentage,
+    );
+    final pctStr =
+        totalPct % 1 == 0
+            ? totalPct.toStringAsFixed(0)
+            : totalPct.toStringAsFixed(1);
+    return 'GST ($pctStr%)';
+  }
+
   double get _serviceCharge => 0.0; // backend not providing
-  double get _discount => 0.0;
-  double get _grandTotal => _subtotal + _gstAmount + _serviceCharge - _discount;
+  double get _discount {
+    if (_billDetails != null) {
+      return _billDetails!.billHeadDt.discountAmnt +
+          _billDetails!.billHeadDt.specDisAmt;
+    }
+    return 0.0;
+  }
+
+  double get _grandTotal {
+    if (_billDetails != null) return _billDetails!.billHeadDt.billAmountInclTax;
+    return _subtotal + _gstAmount + _serviceCharge - _discount;
+  }
 
   String get _createdOnString {
     if (_detailModel?.data != null &&
@@ -196,6 +242,10 @@ class _OrderDetailViewState extends State<OrderDetailView> {
           _detailModel = resp;
           _loading = false;
         });
+        // Now that we know whether this order is billed and (if so) its
+        // billId, fetch the real bill for the tax/company data that
+        // getOrderDetailById simply doesn't have.
+        unawaited(_loadBillDetailsIfNeeded());
       } else {
         setState(() {
           _error = resp?.message ?? 'No details found';
@@ -207,6 +257,32 @@ class _OrderDetailViewState extends State<OrderDetailView> {
         _error = 'Failed to load order details: $e';
         _loading = false;
       });
+    }
+  }
+
+  /// Fetches the real bill (company details, exact tax, exact discount)
+  /// once we know this order has one. Safe to call repeatedly — no-ops if
+  /// there's no billId, one is already loading, or one's already loaded.
+  Future<void> _loadBillDetailsIfNeeded() async {
+    final billId = _billId;
+    if (!_isActuallyBilled ||
+        billId == null ||
+        billId.isEmpty ||
+        _loadingBillDetails ||
+        _billDetails != null) {
+      return;
+    }
+
+    setState(() => _loadingBillDetails = true);
+    try {
+      final response = await ApiService.getBillDetailByBillId(billId: billId);
+      if (mounted && response?.isSuccess == true && response?.data != null) {
+        setState(() => _billDetails = response!.data);
+      }
+    } catch (e) {
+      debugPrint('[OrderDetailView] Error loading bill details: $e');
+    } finally {
+      if (mounted) setState(() => _loadingBillDetails = false);
     }
   }
 
@@ -289,10 +365,10 @@ class _OrderDetailViewState extends State<OrderDetailView> {
       buttonColor = AppColors.success;
       onPressed = _navigateToPaymentWithBillId;
     } else {
-      // Paid - show regenerate bill option
-      buttonText = 'Regenerate Bill';
+      // Paid - view/download the real bill that was already created
+      buttonText = 'Download Bill';
       buttonColor = AppColors.info;
-      onPressed = _regenerateBill;
+      onPressed = _viewOrDownloadBill;
     }
 
     return Container(
@@ -646,7 +722,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             const SizedBox(height: 20),
 
             _buildPriceRow('Item Price', _subtotal),
-            _buildPriceRow('GST (5%)', _gstAmount),
+            _buildPriceRow(_gstLabel, _gstAmount),
             _buildPriceRow('Service Charge', _serviceCharge),
 
             // Only show discount if it exists
@@ -1120,10 +1196,35 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     );
   }
 
-  void _regenerateBill() async {
+  /// Shows the real bill as a PDF the user can view, print, or save —
+  /// covers "I forgot to download it at the counter". Built from the
+  /// actual bill (Order/getBillDetailByBillId), never a reconstruction
+  /// from local order data, so the company header, tax and totals always
+  /// match exactly what was charged. Doesn't touch CartView or any
+  /// KOT-related check — this order is already billed, there is nothing
+  /// left to gate on.
+  Future<void> _viewOrDownloadBill() async {
+    if (_billId == null || _billId!.isEmpty) {
+      AppSnackBar.showError(context, AppStrings.orders.billIdNotAvailable);
+      return;
+    }
+
+    if (_billDetails == null) {
+      await _loadBillDetailsIfNeeded();
+    }
+    if (!mounted) return;
+
+    final billData = _billDetails;
+    if (billData == null) {
+      AppSnackBar.showError(
+        context,
+        'Could not load this bill right now. Please try again.',
+      );
+      return;
+    }
+
     try {
-      // Generate bill using PDFService
-      await PDFService.generateCustomerBill(
+      final billBytes = await PDFService.generateThermalBill(
         items: widget.order.items,
         tableId: widget.order.tableNumber ?? '1',
         tableName:
@@ -1136,16 +1237,32 @@ class _OrderDetailViewState extends State<OrderDetailView> {
         gstAmount: _gstAmount,
         total: _grandTotal,
         specialNotes: _instructions,
+        companyName: billData.companyDt.companyName,
+        companyAddress: billData.companyDt.companyAddress,
+        companyPhone: billData.companyDt.contactNo,
+        companyGstNo: billData.companyDt.gstNo,
+        gstLabel: _gstLabel,
+        billNo: _billNo,
+        customerName: billData.billHeadDt.customerName,
+        customerPhone: billData.billHeadDt.custMobNo,
+        discountAmount: _discount,
+        payments: billData.paymentDetail,
       );
 
       if (!mounted) return;
-      AppSnackBar.showSuccess(
-        context,
-        AppStrings.orders.billRegeneratedSuccessfully,
+      await showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder:
+            (context) => BillPDFViewerDialog(
+              pdfBytes: billBytes,
+              orderNumber: _billNo ?? widget.order.orderId.toString(),
+              fileName: 'Bill_${_billNo ?? widget.order.orderId}.pdf',
+            ),
       );
     } catch (e) {
       if (mounted) {
-        AppSnackBar.showError(context, 'Error regenerating bill: $e');
+        AppSnackBar.showError(context, 'Error opening bill: $e');
       }
     }
   }

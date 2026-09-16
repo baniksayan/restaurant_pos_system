@@ -12,10 +12,11 @@ import 'package:restaurant_pos_system/features/dashboard/providers/navigation_pr
 import 'bill_pdf_viewer_dialog.dart';
 import 'bill_success_dialog.dart';
 import 'split_bill_picker.dart';
-import 'package:restaurant_pos_system/shared/widgets/layout/skeleton_loader.dart';
+import 'customer_info_step.dart';
+import 'take_payment_step.dart';
+import 'package:restaurant_pos_system/features/payment/models/tender_line.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
-import 'package:restaurant_pos_system/shared/widgets/forms/custom_text_field.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
 
@@ -382,16 +383,11 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                                         ),
                                         const SizedBox(height: 12),
 
-                                        // Payment Method Selector (Full Width Container!)
-                                        _buildPaymentMethodSection(
-                                          billingProvider,
-                                        ),
-                                        const SizedBox(height: 12),
-
-                                        // Customer Details & 10-Digit Phone Number Field with Visible Border
-                                        _buildCustomerDetailsSection(
-                                          billingProvider,
-                                        ),
+                                        // Customer details and payment are
+                                        // now taken on the next two screens
+                                        // (Customer Info, then Payment) —
+                                        // see _handleConfirmAndPrintBill —
+                                        // not on this items-only step.
                                       ],
                                     ),
                                   ),
@@ -855,209 +851,6 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
     );
   }
 
-  Widget _buildPaymentMethodSection(BillingProvider billingProvider) {
-    if (billingProvider.isLoadingPaymentModes) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.70),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.90),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Payment Method',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: List.generate(
-                3,
-                (index) => Expanded(
-                  child: Container(
-                    margin: EdgeInsets.only(right: index < 2 ? 8 : 0),
-                    child: SkeletonLoader.rectangular(
-                      height: 38,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (billingProvider.paymentModes.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.70),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.90),
-          width: 1,
-        ),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Payment Method',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.start,
-              children:
-                  billingProvider.paymentModes.map((mode) {
-                    final isSelected =
-                        billingProvider.selectedPaymentMode?.paymentModeId ==
-                        mode.paymentModeId;
-
-                    return GestureDetector(
-                      onTap: () {
-                        billingProvider.setSelectedPaymentMode(mode);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 9,
-                        ),
-                        decoration: BoxDecoration(
-                          color:
-                              isSelected
-                                  ? AppColors.primary
-                                  : Colors.white.withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color:
-                                isSelected
-                                    ? AppColors.primary
-                                    : const Color(0xFFCBD5E1),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _getPaymentMaterialIcon(mode.modeName),
-                              size: 15,
-                              color:
-                                  isSelected ? Colors.white : AppColors.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              mode.modeName ?? 'Unknown',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color:
-                                    isSelected
-                                        ? Colors.white
-                                        : AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  IconData _getPaymentMaterialIcon(String? modeName) {
-    switch (modeName?.toLowerCase()) {
-      case 'cash':
-        return Icons.payments_outlined;
-      case 'upi':
-      case 'qr':
-      case 'online':
-        return Icons.qr_code_scanner_rounded;
-      case 'card':
-      case 'credit':
-      case 'debit':
-        return Icons.credit_card_rounded;
-      default:
-        return Icons.account_balance_wallet_outlined;
-    }
-  }
-
-  Widget _buildCustomerDetailsSection(BillingProvider billingProvider) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.70),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.90),
-          width: 1,
-        ),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CustomTextField(
-            label: 'Customer Phone Number (Optional)',
-            controller: _phoneController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(10),
-            ],
-            maxLength: 10,
-            counterText: '',
-            onChanged: (val) => billingProvider.setCustomerPhone(val),
-            hintText: AppStrings.dashboard.enterTenDigitMobile,
-            prefixIcon: Icons.phone_rounded,
-            fillColor: Colors.white.withValues(alpha: 0.85),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 10,
-            ),
-            validator: (value) {
-              if (value != null && value.isNotEmpty) {
-                if (value.length < 10) {
-                  return 'Please enter 10 digits';
-                }
-              }
-              return null;
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildActionBar(
     BuildContext context,
     BillingProvider billingProvider,
@@ -1163,6 +956,29 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
     final remainingUnbilledCount =
         _splitMode ? (_unbilledItems.length - _selectedIds.length) : 0;
 
+    // Step 2: who is this bill for? Optional — Skip leaves every field
+    // blank, matching the original "phone optional" behaviour.
+    final customerInfo = await Navigator.of(context).push<CustomerInfoResult>(
+      MaterialPageRoute(
+        builder:
+            (context) => CustomerInfoStep(orderNumber: widget.orderNumber),
+      ),
+    );
+    if (!mounted || customerInfo == null) return; // back-swiped, not Skip
+
+    // Step 3: take payment now, or bill later. Nothing is charged yet —
+    // these tenders only become real Payment rows once createBill runs
+    // below with them attached.
+    if (!context.mounted) return;
+    final tenders = await Navigator.of(context).push<List<TenderLine>>(
+      MaterialPageRoute(
+        builder:
+            (context) =>
+                TakePaymentStep(orderNumber: widget.orderNumber, total: total),
+      ),
+    );
+    if (!mounted || tenders == null) return; // back-swiped, not Bill Later
+
     try {
       final billBytes = await billingProvider.generateBill(
         cartItems: _effectiveCartItems(context),
@@ -1172,6 +988,11 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
         total: total,
         orderId: widget.orderId,
         selectedOrderDetailIds: _splitMode ? _selectedIds.toList() : null,
+        customerPhoneOverride: customerInfo.phone,
+        customerFirstNameOverride: customerInfo.firstName,
+        customerLastNameOverride: customerInfo.lastName,
+        customerIdOverride: customerInfo.customerId,
+        paymentDetails: tenders.map((t) => t.toPaymentDetail()).toList(),
       );
 
       if (context.mounted) {
@@ -1192,7 +1013,10 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
           Navigator.of(context).pop();
         }
 
-        // 3. Show BillSuccessDialog ("Bill Generated" popup with "Proceed to Pay" - barrierDismissible: false)
+        // 3. Show the final "Bill Generated" screen. When payment was
+        // already taken above (tenders non-empty), its action bar reads
+        // "Done" and skips PaymentPage entirely — there is nothing left to
+        // pay. Bill Later keeps the original "Proceed to Pay" flow.
         if (context.mounted) {
           await showDialog(
             context: context,
@@ -1207,6 +1031,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                   tableId: widget.tableId,
                   orderId: widget.orderId,
                   remainingUnbilledCount: remainingUnbilledCount,
+                  paidAtCheckout: tenders.isNotEmpty,
                 ),
           );
         }
