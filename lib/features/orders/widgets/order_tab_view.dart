@@ -19,19 +19,23 @@ class OrderTabView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isChannelPartner = orderType == 'Channel Partner';
+
     if (orders.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.inbox_outlined,
+            Icon(
+              isChannelPartner
+                  ? Icons.link_off_rounded
+                  : Icons.inbox_outlined,
               size: 64,
               color: AppColors.textHint,
             ),
             const SizedBox(height: 16),
             Text(
-              'No $orderType',
+              isChannelPartner ? 'Not connected' : 'No $orderType',
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 18,
@@ -39,9 +43,11 @@ class OrderTabView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Orders will appear here when placed',
-              style: TextStyle(color: AppColors.textHint, fontSize: 14),
+            Text(
+              isChannelPartner
+                  ? 'Zomato/Swiggy-style integration isn\'t set up yet'
+                  : 'Orders will appear here when placed',
+              style: const TextStyle(color: AppColors.textHint, fontSize: 14),
             ),
           ],
         ),

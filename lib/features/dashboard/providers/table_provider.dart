@@ -551,6 +551,19 @@ class TableProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Clears the table order left active from a previous dine-in session.
+  ///
+  /// Nothing used to reset this when leaving a table for a Phone/Takeaway
+  /// order — currentOrderId stayed pointed at the last table's order for the
+  /// rest of the app session. CartView's KOT/bill generation both read this
+  /// field, so a stale value here silently attached a new Phone/Takeaway
+  /// order's KOT and bill to the previous table's order instead. Call this
+  /// whenever starting an order that is not table-based.
+  void clearCurrentOrder() {
+    _currentOrderId = null;
+    notifyListeners();
+  }
+
   /// Get cart items for current order - NEWLY ADDED METHOD
   List<Map<String, dynamic>> getCurrentOrderCartItems() {
     if (_currentOrderId == null) return [];

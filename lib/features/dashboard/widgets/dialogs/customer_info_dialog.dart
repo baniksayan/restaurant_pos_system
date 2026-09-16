@@ -5,6 +5,7 @@ import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/order_provider.dart';
 import '../../providers/navigation_provider.dart';
+import '../../providers/table_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 import 'package:restaurant_pos_system/shared/widgets/dialogs/app_glass_dialog.dart';
@@ -103,6 +104,13 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
         context,
         listen: false,
       );
+
+      // A dine-in table opened earlier this session left its orderId
+      // sitting in TableProvider with nothing to clear it. CartView falls
+      // back to that field for Phone/Takeaway orders too, so a stale value
+      // here would attach this new order's KOT/bill to the old table's
+      // order instead.
+      Provider.of<TableProvider>(context, listen: false).clearCurrentOrder();
 
       // Create order for Phone/Takeaway
       final success = await orderProvider.createPhoneTakeawayOrder(

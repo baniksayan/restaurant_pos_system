@@ -12,6 +12,7 @@ import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
 import 'package:restaurant_pos_system/data/models/bill_details_response.dart';
+import 'package:restaurant_pos_system/data/models/pending_bill.dart';
 import 'package:restaurant_pos_system/features/billing/widgets/bill_pdf_viewer_dialog.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
@@ -45,6 +46,15 @@ class _OrderDetailViewState extends State<OrderDetailView> {
   // per-order. This is the only accurate source for it.
   BillDetailsData? _billDetails;
   bool _loadingBillDetails = false;
+
+  // Every bill raised against this order — a split bill produces more than
+  // one, and getOrderDetailById only ever reports a single billId/billNo
+  // (whichever OrderDetails row happens to be first), so that alone can't
+  // list them all. Fetched via the same GetBillForReprint the Reprint
+  // screen uses, then narrowed to this order's GeneratedOrderNo.
+  List<PendingBill> _bills = [];
+  bool _loadingBills = false;
+  String? _printingBillId;
 
   // Derived values computed from API response (fallback to widget.order where appropriate)
   double get _subtotal {
@@ -246,6 +256,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
         // billId, fetch the real bill for the tax/company data that
         // getOrderDetailById simply doesn't have.
         unawaited(_loadBillDetailsIfNeeded());
+        unawaited(_loadAllBills());
       } else {
         setState(() {
           _error = resp?.message ?? 'No details found';
@@ -283,6 +294,128 @@ class _OrderDetailViewState extends State<OrderDetailView> {
       debugPrint('[OrderDetailView] Error loading bill details: $e');
     } finally {
       if (mounted) setState(() => _loadingBillDetails = false);
+    }
+  }
+
+  /// Every bill raised against this order, e.g. two or more from a split
+  /// bill. GetBillForReprint isn't order-scoped — it returns a day's bills
+  /// for the outlet — so results are narrowed to this order's
+  /// GeneratedOrderNo client-side, same as the Reprint screen's own window.
+  Future<void> _loadAllBills() async {
+    final orderNo = _orderNo;
+    if (orderNo == null || orderNo.isEmpty || _loadingBills) return;
+
+    final outletId = HiveService.getOutletId();
+    if (outletId == null || outletId <= 0) return;
+
+    setState(() => _loadingBills = true);
+    try {
+      final day = widget.order.orderTime;
+      final from = DateTime(day.year, day.month, day.day);
+      final to = DateTime(day.year, day.month, day.day, 23, 59, 59);
+      final bills = await ApiService.getBillsForReprint(
+        outletId: outletId,
+        from: from,
+        to: to,
+      );
+      if (!mounted || bills == null) return;
+      final matched = bills.where((b) => b.orderNo == orderNo).toList()
+        ..sort((a, b) => (b.billDate ?? DateTime(0)).compareTo(a.billDate ?? DateTime(0)));
+      setState(() => _bills = matched);
+    } catch (e) {
+      debugPrint('[OrderDetailView] Error loading bills: $e');
+    } finally {
+      if (mounted) setState(() => _loadingBills = false);
+    }
+  }
+
+  /// Prints/previews one specific bill from [_bills] — always the real bill
+  /// (Order/getBillDetailByBillId), never a reconstruction, same as
+  /// [_viewOrDownloadBill] and the Reprint screen's own bill printing.
+  Future<void> _printBill(PendingBill bill) async {
+    setState(() => _printingBillId = bill.billId);
+    try {
+      final response = await ApiService.getBillDetailByBillId(
+        billId: bill.billId,
+      );
+      final billData = response?.data;
+      if (!mounted) return;
+      if (response?.isSuccess != true || billData == null) {
+        AppSnackBar.showError(context, 'Could not load this bill right now.');
+        return;
+      }
+
+      String gstLabel = 'GST';
+      if (billData.taxInf.isNotEmpty) {
+        final totalPct = billData.taxInf.fold<double>(
+          0,
+          (sum, t) => sum + t.taxPercentage,
+        );
+        gstLabel =
+            'GST (${totalPct % 1 == 0 ? totalPct.toStringAsFixed(0) : totalPct.toStringAsFixed(1)}%)';
+      }
+      final gstAmount =
+          billData.billHeadDt.billAmountInclTax -
+          billData.billHeadDt.amountAfterDisc;
+
+      final items =
+          billData.billOrderDt
+              .map(
+                (o) => CartItem(
+                  id: o.orderId,
+                  name: o.itemName,
+                  price: o.itemPrice,
+                  quantity: o.orderQty.round(),
+                  tableId: '',
+                  tableName: '',
+                ),
+              )
+              .toList();
+
+      final discountAmount =
+          billData.billHeadDt.discountAmnt + billData.billHeadDt.specDisAmt;
+
+      final billBytes = await PDFService.generateThermalBill(
+        items: items,
+        tableId: bill.orderNo,
+        tableName:
+            billData.orderChanelDt.isNotEmpty
+                ? billData.orderChanelDt.first.channelName
+                : bill.orderNo,
+        orderNumber: bill.orderNo,
+        orderTime: bill.billDate ?? DateTime.now(),
+        subtotal: billData.billHeadDt.amountAfterDisc,
+        gstAmount: gstAmount > 0 ? gstAmount : 0,
+        total: billData.billHeadDt.billAmountInclTax,
+        companyName: billData.companyDt.companyName,
+        companyAddress: billData.companyDt.companyAddress,
+        companyPhone: billData.companyDt.contactNo,
+        companyGstNo: billData.companyDt.gstNo,
+        gstLabel: gstLabel,
+        billNo: billData.billHeadDt.billNo,
+        customerName: billData.billHeadDt.customerName,
+        customerPhone: billData.billHeadDt.custMobNo,
+        discountAmount: discountAmount,
+        payments: billData.paymentDetail,
+      );
+
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder:
+            (context) => BillPDFViewerDialog(
+              pdfBytes: billBytes,
+              orderNumber: bill.billNo.isNotEmpty ? bill.billNo : bill.orderNo,
+              fileName: 'Bill_${bill.billNo.isNotEmpty ? bill.billNo : bill.billId}.pdf',
+            ),
+      );
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'Error opening bill: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _printingBillId = null);
     }
   }
 
@@ -330,6 +463,8 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                 _buildOrderHeader(),
                 const SizedBox(height: 20),
                 _buildBillingSection(),
+                const SizedBox(height: 20),
+                _buildBillsSection(),
                 const SizedBox(height: 20),
                 _buildPriceBreakdown(),
                 const SizedBox(height: 20),
@@ -674,6 +809,166 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                 fontWeight: FontWeight.w600,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Lists every bill raised against this order (more than one when it was
+  /// split), each with its own print/view action. Hidden while there is
+  /// nothing to show — most orders have zero or one bill, and an empty
+  /// "Bills" card before the first bill exists would just be noise.
+  Widget _buildBillsSection() {
+    if (!_loadingBills && _bills.isEmpty) return const SizedBox.shrink();
+
+    return Card(
+      color: AppColors.cardBackground,
+      elevation: 4,
+      shadowColor: AppColors.cardShadow,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.receipt_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  _bills.length > 1 ? 'Bills (${_bills.length})' : 'Bill',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (_loadingBills)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            else
+              ..._bills.map(_buildBillRow),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBillRow(PendingBill bill) {
+    final printing = _printingBillId == bill.billId;
+    final tone =
+        bill.isPaid == 2
+            ? AppColors.success
+            : bill.isPaid == 1
+            ? AppColors.warning
+            : AppColors.error;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.textHint.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  bill.billNo.isNotEmpty ? bill.billNo : bill.billId,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: tone.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        bill.paymentStatus.isNotEmpty
+                            ? bill.paymentStatus
+                            : (bill.isPaid == 2 ? 'Paid' : 'Not Paid'),
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: tone,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${CurrencyConstants.symbol}${bill.amount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 34,
+            child:
+                printing
+                    ? const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                    : OutlinedButton.icon(
+                      onPressed: () => _printBill(bill),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      icon: const Icon(Icons.print_outlined, size: 16),
+                      label: const Text(
+                        'Print',
+                        style: TextStyle(fontSize: 12.5),
+                      ),
+                    ),
           ),
         ],
       ),

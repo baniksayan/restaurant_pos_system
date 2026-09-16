@@ -58,6 +58,14 @@ class _CartViewState extends State<CartView> {
 
   Timer? _scrollEndTimer;
 
+  /// True only for a real seated table — Phone/Takeaway carts pass their
+  /// order type ('PhoneOrder' / 'Takeaway') through the same `tableId` slot
+  /// as a sentinel, so `widget.tableId != null` alone can't tell them apart
+  /// from a table order (see main_navigation.dart's CartView construction).
+  bool get _isTableOrder =>
+      widget.tableId != null &&
+      !['PhoneOrder', 'Takeaway'].contains(widget.tableId);
+
   @override
   void dispose() {
     _scrollEndTimer?.cancel();
@@ -750,10 +758,14 @@ class _CartViewState extends State<CartView> {
       // Use the actual orderId from backend
       // For table orders: get from TableProvider (created during table selection)
       // For Phone/Takeaway orders: get from OrderProvider (created during phone/takeaway order)
-      String? backendOrderId = tableProvider.currentOrderId;
-
-      // If no table order ID, check for Phone/Takeaway order ID
-      backendOrderId ??= orderProvider.createdOrderId;
+      //
+      // Must branch on _isTableOrder rather than fall back on null — a
+      // dine-in table opened earlier in the session leaves
+      // tableProvider.currentOrderId set indefinitely (nothing clears it),
+      // so a null-based fallback would silently attach a Phone/Takeaway
+      // order's KOT to that stale table order instead of this one.
+      final String? backendOrderId =
+          _isTableOrder ? tableProvider.currentOrderId : orderProvider.createdOrderId;
 
       if (backendOrderId == null) {
         Navigator.of(context).pop();
@@ -1123,9 +1135,12 @@ class _CartViewState extends State<CartView> {
     // Use the first KOT number for billing reference
     final orderNumber = _kotNumbers.isNotEmpty ? _kotNumbers.first : 'Unknown';
 
-    // Get orderId from table provider or order provider based on context
+    // Get orderId from table provider or order provider based on context.
+    // widget.tableId is non-null for Phone/Takeaway too (it carries the
+    // 'PhoneOrder'/'Takeaway' sentinel there) — checking _isTableOrder
+    // instead of `widget.tableId != null` is what actually tells them apart.
     String? orderId;
-    if (widget.tableId != null) {
+    if (_isTableOrder) {
       // For table orders, get from TableProvider
       final tableProvider = Provider.of<TableProvider>(context, listen: false);
       orderId = tableProvider.currentOrderId;

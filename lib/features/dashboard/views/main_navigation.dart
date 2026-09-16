@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/navigation_provider.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
+import 'package:restaurant_pos_system/features/order_taking/providers/order_provider.dart';
 import '../providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/menu/providers/menu_provider.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
@@ -160,10 +161,23 @@ class _MainNavigationState extends State<MainNavigation> {
         menuProvider.switchToTable(tableId);
       }
 
-      // Switch cart provider to current context if not already
+      // Switch cart provider to current context if not already.
+      //
+      // Phone/Takeaway orders pass their order type through `tableId` as a
+      // sentinel ('PhoneOrder'/'Takeaway') — a real table was never
+      // selected, so TableProvider.currentOrderId here is only ever a
+      // leftover from an earlier dine-in table (nothing clears it when
+      // leaving one). Blindly reading it made the cart jump onto that old
+      // table's order instead of this new Phone/Takeaway one, pulling its
+      // items along and later attaching the KOT/bill to the wrong order.
       if (animatedCartProvider.currentTableId != tableId) {
+        final isRealTable = navProvider.selectedTableId != null;
+        final newOrderId =
+            isRealTable
+                ? context.read<TableProvider>().currentOrderId
+                : context.read<OrderProvider>().createdOrderId;
         animatedCartProvider.switchToOrder(
-          context.read<TableProvider>().currentOrderId,
+          newOrderId,
           tableId: tableId,
           tableName: tableName,
         );

@@ -22,8 +22,10 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
   List<OrderItem> allOrders = [];
   // local loading handled by provider
 
-  // Variables for blinking functionality
-  bool _hasNewChannelPartnerOrders = true; // Set based on your logic
+  // Blinking dot on the Channel Partner tab — there is no backend endpoint
+  // for that channel yet (see OrdersManagementProvider), so this only ever
+  // reflects whether the (currently always-empty) list is non-empty rather
+  // than a hardcoded "always new".
   int _currentTabIndex = 0;
 
   // Search functionality
@@ -68,6 +70,9 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
 
   @override
   Widget build(BuildContext context) {
+    final hasNewChannelPartnerOrders =
+        context.watch<OrdersManagementProvider>().channelPartnerOrders.isNotEmpty;
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -98,14 +103,7 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
         bottom: TabBar(
           controller: _tabController,
           onTap: (index) {
-            setState(() {
-              _currentTabIndex = index;
-              if (index == 3) {
-                // Channel Partner tab index
-                _hasNewChannelPartnerOrders =
-                    false; // Stop blinking when viewed
-              }
-            });
+            setState(() => _currentTabIndex = index);
           },
           indicatorColor: AppColors.accent,
           indicatorWeight: 3,
@@ -127,12 +125,12 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
             Tab(
               child: BlinkingWidget(
                 shouldBlink:
-                    _hasNewChannelPartnerOrders && _currentTabIndex != 3,
+                    hasNewChannelPartnerOrders && _currentTabIndex != 3,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(AppStrings.orders.channelTab),
-                    if (_hasNewChannelPartnerOrders && _currentTabIndex != 3)
+                    if (hasNewChannelPartnerOrders && _currentTabIndex != 3)
                       Container(
                         margin: const EdgeInsets.only(left: 4),
                         width: 8,
