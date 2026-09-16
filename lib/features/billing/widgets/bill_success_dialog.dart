@@ -52,7 +52,8 @@ class BillSuccessDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (tableId != null) {
+    if (tableId != null &&
+        !['PhoneOrder', 'Takeaway', 'Phone'].contains(tableId)) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final tableProvider = Provider.of<TableProvider>(
           context,
@@ -380,7 +381,15 @@ class BillSuccessDialog extends StatelessWidget {
   Future<void> _finishAlreadyPaid(BuildContext context) async {
     final isFinalSettlement = remainingUnbilledCount == 0;
 
-    if (tableId != null && isFinalSettlement) {
+    // Sentinel values used for Phone/Takeaway orders — not real table IDs.
+    // Table-specific cleanup (clearBillId, refreshTables) only applies to
+    // actual dine-in tables; running it for sentinels throws or silently
+    // no-ops and can swallow the onBillGenerated() call that navigates home.
+    final isRealTable =
+        tableId != null &&
+        !['PhoneOrder', 'Takeaway', 'Phone'].contains(tableId);
+
+    if (isRealTable && isFinalSettlement) {
       try {
         final tableProvider = Provider.of<TableProvider>(
           context,
@@ -406,7 +415,11 @@ class BillSuccessDialog extends StatelessWidget {
     }
 
     if (!context.mounted) return;
-    Navigator.of(context).pop();
+    // Pop everything back to MainNavigation — CustomerInfoStep and
+    // TakePaymentStep were pushed as full routes and are still on the
+    // stack when this dialog is shown. A single pop() only closes this
+    // dialog and leaves the user stranded on TakePaymentStep.
+    Navigator.of(context).popUntil((route) => route.isFirst);
 
     if (isFinalSettlement) {
       onBillGenerated();

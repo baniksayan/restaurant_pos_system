@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
@@ -1158,7 +1158,6 @@ class _CartViewState extends State<CartView> {
       tableId: widget.tableId,
       orderId: orderId,
       onBillGenerated: () {
-        // This will be called after payment is completed
         cartProvider.clearCart();
         setState(() {
           _kotNumbers.clear();

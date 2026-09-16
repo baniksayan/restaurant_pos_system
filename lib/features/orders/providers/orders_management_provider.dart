@@ -42,7 +42,19 @@ class OrdersManagementProvider extends ChangeNotifier {
           ? List.unmodifiable(_channelPartnerOrders)
           : List.unmodifiable(_filteredChannelPartnerOrders);
 
+  // Date range — defaults to today
+  DateTime _fromDate = DateTime.now();
+  DateTime _toDate = DateTime.now();
+  DateTime get fromDate => _fromDate;
+  DateTime get toDate => _toDate;
+
   OrdersManagementProvider();
+
+  Future<void> fetchOrdersForRange(DateTime from, DateTime to) async {
+    _fromDate = from;
+    _toDate = to;
+    await fetchAllOrders();
+  }
 
   Future<void> fetchAllOrders() async {
     _isLoading = true;
@@ -169,14 +181,12 @@ class OrdersManagementProvider extends ChangeNotifier {
     return false;
   }
 
-  /// Loads today's orders in one request and buckets them by channel type.
+  /// Loads orders for the selected date range and buckets them by channel type.
   Future<void> _fetchOrders(int outletId) async {
-    final today = DateTime.now();
-
     final rows = await ApiService.getOrderHeadList(
       outletId: outletId,
-      from: today,
-      to: today,
+      from: _fromDate,
+      to: _toDate,
     );
 
     if (rows == null) {

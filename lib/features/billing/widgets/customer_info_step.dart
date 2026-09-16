@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
@@ -46,20 +47,22 @@ class _CustomerInfoStepState extends State<CustomerInfoStep> {
   String _countryCode = '+91';
   String? _customerId;
   bool _looking = false;
+  Timer? _debounce;
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _phoneController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
     super.dispose();
   }
 
-  /// Looking up a different number after a match invalidates it — keep the
-  /// typed name, but stop attributing it to the previous customerId.
-  void _forgetMatchedCustomer() {
-    if (_customerId != null) {
-      setState(() => _customerId = null);
+  void _onPhoneChanged(String digits) {
+    if (_customerId != null) setState(() => _customerId = null);
+    _debounce?.cancel();
+    if (digits.length >= 10) {
+      _debounce = Timer(const Duration(milliseconds: 600), _lookup);
     }
   }
 
@@ -96,7 +99,6 @@ class _CustomerInfoStepState extends State<CustomerInfoStep> {
         );
       } else {
         setState(() => _customerId = null);
-        AppSnackBar.showSuccess(context, 'New customer — enter their name below.');
       }
     } catch (e) {
       if (mounted) {
@@ -200,7 +202,7 @@ class _CustomerInfoStepState extends State<CustomerInfoStep> {
                     showDropdownIcon: true,
                     onChanged: (phone) {
                       _countryCode = phone.countryCode;
-                      _forgetMatchedCustomer();
+                      _onPhoneChanged(phone.number);
                     },
                   ),
                 ),

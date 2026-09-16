@@ -93,6 +93,10 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
         centerTitle: true,
         actions: [
           IconButton(
+            icon: const Icon(Icons.date_range, color: AppColors.textOnDark),
+            onPressed: _showDateRangeFilter,
+          ),
+          IconButton(
             icon: Icon(
               _isSearchVisible ? Icons.close : Icons.search,
               color: AppColors.textOnDark,
@@ -244,6 +248,28 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
         },
       ),
     );
+  }
+
+  void _showDateRangeFilter() async {
+    final provider = Provider.of<OrdersManagementProvider>(context, listen: false);
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: DateTimeRange(
+        start: provider.fromDate,
+        end: provider.toDate,
+      ),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      provider.fetchOrdersForRange(picked.start, picked.end);
+    }
   }
 
   void _showOrderDetail(OrderItem order) {

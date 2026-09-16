@@ -169,37 +169,27 @@ class OrderProvider with ChangeNotifier {
     required String customerName,
     required String customerPhone,
   }) async {
-    _isLoading = true;
     _error = null;
-    notifyListeners();
+    // Do NOT set _isLoading here — createOrderHead manages it and will
+    // set it true then false itself. Setting it true here and relying on
+    // createOrderHead to clear it means any early-return path above that
+    // call leaves _isLoading stuck true, blocking the KOT button.
 
     try {
-      // Get required data from Hive
       final userId = HiveService.getUserId();
       final waiterId = HiveService.getWaiterId();
       final outletId = HiveService.getOutletId();
-
-      if (userId == null || waiterId == null || outletId == null) {
-        _error = 'Missing user authentication data';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-
-      // Step 1: Get order channels by type
       final token = HiveService.getAuthToken();
-      if (token.isEmpty) {
-        _error = 'Authentication token not found';
-        _isLoading = false;
+
+      if (userId == null || waiterId == null || outletId == null || token.isEmpty) {
+        _error = 'Missing user authentication data';
         notifyListeners();
         return false;
       }
 
-      // Map orderChannelType to API expected format
-      String apiChannelType = orderChannelType;
-      if (orderChannelType == 'PhoneOrder') {
-        apiChannelType = 'Phone';
-      }
+      // 'Phone' and 'PhoneOrder' are both used as sentinels in different
+      // places — normalise to what the channel-list endpoint expects.
+      final apiChannelType = (orderChannelType == 'PhoneOrder') ? 'Phone' : orderChannelType;
 
       final channelsResponse = await ApiService.getOrderChannelListByType(
         token: token,
@@ -211,36 +201,30 @@ class OrderProvider with ChangeNotifier {
           channelsResponse.data == null ||
           channelsResponse.data!.isEmpty) {
         _error = 'No $orderChannelType channels available';
-        _isLoading = false;
         notifyListeners();
         return false;
       }
 
-      // Use the first available channel
       final orderChannel = channelsResponse.data!.first;
 
-      // Step 2: Create order head
-      final success = await createOrderHead(
+      return await createOrderHead(
         orderChannelId: orderChannel.orderChannelId!,
         waiterId: waiterId,
         customerName: customerName,
         outletId: outletId,
         userId: userId,
         custPhoneNo: customerPhone,
-        // Phone/takeaway still has a customer. Sending 0 recorded these
-        // orders as having nobody on them, which made the seated-guest
-        // figures meaningless. There is no party-size prompt on this path
-        // yet, so assume one.
         totalAdult: 1,
         totalChild: 0,
       );
-
-      return success;
     } catch (e) {
       _error = 'Error creating $orderChannelType order: $e';
-      _isLoading = false;
       notifyListeners();
       return false;
+    } finally {
+      // Ensure loading is always cleared regardless of which path was taken.
+      _isLoading = false;
+      notifyListeners();
     }
   }
 }

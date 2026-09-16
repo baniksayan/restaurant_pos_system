@@ -1377,6 +1377,12 @@ class ApiService {
     String searchString = '',
     String? waiterId,
   }) async {
+    // Convert local day boundaries to UTC so the server (which stores in UTC)
+    // returns the correct orders for the user's local date selection.
+    // e.g. IST 00:00–23:59 → UTC 18:30 (prev day) – 18:29 (same day).
+    final fromUtc = DateTime(from.year, from.month, from.day).toUtc();
+    final toUtc = DateTime(to.year, to.month, to.day, 23, 59, 59).toUtc();
+
     String ddMMyyyy(DateTime d) =>
         '${d.day.toString().padLeft(2, '0')}/'
         '${d.month.toString().padLeft(2, '0')}/'
@@ -1385,8 +1391,8 @@ class ApiService {
     try {
       final response = await apiRequestHttpRawBody('Order/getOrderHeadList', {
         "waiterId": waiterId ?? '00000000-0000-0000-0000-000000000000',
-        "fromDate": ddMMyyyy(from),
-        "toDate": ddMMyyyy(to),
+        "fromDate": ddMMyyyy(fromUtc),
+        "toDate": ddMMyyyy(toUtc),
         "searchString": searchString,
         "outletId": outletId,
       });
@@ -1421,6 +1427,10 @@ class ApiService {
     required DateTime to,
     String searchString = '',
   }) async {
+    // Same UTC conversion — bills are also stored with UTC timestamps.
+    final fromUtc = DateTime(from.year, from.month, from.day).toUtc();
+    final toUtc = DateTime(to.year, to.month, to.day, 23, 59, 59).toUtc();
+
     String iso(DateTime d) =>
         '${d.year.toString().padLeft(4, '0')}-'
         '${d.month.toString().padLeft(2, '0')}-'
@@ -1429,8 +1439,8 @@ class ApiService {
     try {
       final response = await apiRequestHttpRawBody('Order/GetBillForReprint', {
         "outletId": outletId,
-        "fromDate": iso(from),
-        "toDate": iso(to),
+        "fromDate": iso(fromUtc),
+        "toDate": iso(toUtc),
         "searchString": searchString,
       });
 

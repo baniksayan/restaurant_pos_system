@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
@@ -34,19 +35,25 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
   bool _isLoading = false;
   bool _looking = false;
   String? _customerId;
+  Timer? _debounce;
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _nameController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
 
-  /// Looking up a different number after a match invalidates it — keep the
-  /// typed name, but stop attributing it to the previous customerId.
-  void _forgetMatchedCustomer() {
-    if (_customerId != null) {
-      setState(() => _customerId = null);
+  /// Called on every keystroke. Clears any prior match immediately, then
+  /// schedules an auto-lookup once the number reaches 10 digits and the
+  /// user pauses for 600 ms — fast enough to feel instant, slow enough to
+  /// avoid a request on every digit.
+  void _onPhoneChanged(String value) {
+    if (_customerId != null) setState(() => _customerId = null);
+    _debounce?.cancel();
+    if (value.trim().length >= 10) {
+      _debounce = Timer(const Duration(milliseconds: 600), _lookupCustomer);
     }
   }
 
@@ -78,7 +85,6 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
         );
       } else {
         setState(() => _customerId = null);
-        AppSnackBar.showSuccess(context, 'New customer — enter their name below.');
       }
     } catch (e) {
       if (mounted) {
@@ -224,7 +230,7 @@ class _CustomerInfoDialogState extends State<CustomerInfoDialog> {
                 vertical: 14,
               ),
               keyboardType: TextInputType.phone,
-              onChanged: (_) => _forgetMatchedCustomer(),
+              onChanged: _onPhoneChanged,
               suffixIcon: Padding(
                 padding: const EdgeInsets.only(right: 4),
                 child: Center(
