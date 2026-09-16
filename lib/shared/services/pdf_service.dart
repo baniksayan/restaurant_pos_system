@@ -26,8 +26,15 @@ class PDFService {
   static const String gstNumber = "Not available";
 
   // Use centralized currency symbol
-  static String get rupeeSymbol =>
-      CurrencyConstants.symbol; // kept name for backward-compat in-file
+    static String get rupeeSymbol {
+    final sym = CurrencyConstants.symbol;
+    if (sym == '₹') return 'Rs. ';
+    return sym;
+  }
+
+  static String _formatCurrency(num amount) {
+    return '${rupeeSymbol}${amount.toStringAsFixed(2)}';
+  }
 
   static const double _kotPageWidth = 226.77; // hardcoded for KOT width  (80mm)
   static const double _kotMargin = 8;
@@ -439,14 +446,14 @@ class PDFService {
                       pw.Expanded(
                         flex: 2,
                         child: pw.Text(
-                          "${CurrencyConstants.symbol}${item.price.toStringAsFixed(2)}",
+                          "${rupeeSymbol}${item.price.toStringAsFixed(2)}",
                           textAlign: pw.TextAlign.center,
                         ),
                       ),
                       pw.Expanded(
                         flex: 2,
                         child: pw.Text(
-                          "${CurrencyConstants.symbol}${itemTotal.toStringAsFixed(2)}",
+                          "${rupeeSymbol}${itemTotal.toStringAsFixed(2)}",
                           textAlign: pw.TextAlign.right,
                           style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                         ),
@@ -496,19 +503,19 @@ class PDFService {
                   children: [
                     _buildTotalRow(
                       "Subtotal:",
-                      "${CurrencyConstants.symbol}${subtotal.toStringAsFixed(2)}",
+                      "${rupeeSymbol}${subtotal.toStringAsFixed(2)}",
                     ),
                     pw.SizedBox(height: 8),
                     _buildTotalRow(
                       "$gstLabel:",
-                      "${CurrencyConstants.symbol}${gstAmount.toStringAsFixed(2)}",
+                      "${rupeeSymbol}${gstAmount.toStringAsFixed(2)}",
                     ),
                     pw.SizedBox(height: 8),
                     pw.Divider(thickness: 2),
                     pw.SizedBox(height: 8),
                     _buildTotalRow(
                       "TOTAL AMOUNT:",
-                      "${CurrencyConstants.symbol}${total.toStringAsFixed(2)}",
+                      "${rupeeSymbol}${total.toStringAsFixed(2)}",
                       isTotal: true,
                     ),
                   ],
@@ -794,10 +801,10 @@ class PDFService {
                 for (final p in payments) ...[
                   _thermalRow(
                     p.paymentMode.isNotEmpty ? p.paymentMode : 'Paid',
-                    CurrencyConstants.format(p.paymentAmount),
+                    _formatCurrency(p.paymentAmount),
                   ),
                   if (p.returnAmt > 0)
-                    _thermalRow('Change', CurrencyConstants.format(p.returnAmt)),
+                    _thermalRow('Change', _formatCurrency(p.returnAmt)),
                 ],
               ],
 
@@ -1277,7 +1284,7 @@ class PDFService {
             ),
           ),
           pw.Text(
-            CurrencyConstants.format(amount),
+            _formatCurrency(amount),
             style: pw.TextStyle(
               fontSize: emphasize ? 11 : 9,
               fontWeight: pw.FontWeight.bold,
