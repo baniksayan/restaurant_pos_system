@@ -808,7 +808,18 @@ class TableProvider extends ChangeNotifier {
 
   void clearError() {
     _error = null;
-    notifyListeners(); // Notify error state change
+    notifyListeners();
+  }
+
+  /// Wipes all company-specific in-memory state on logout.
+  void reset() {
+    _tables = [];
+    _orderCartStates.clear();
+    _currentOrderId = null;
+    _outletId = null;
+    _orderChannels = [];
+    _error = null;
+    notifyListeners();
   }
 
   Future<void> refreshTables() async {

@@ -118,6 +118,21 @@ class OrdersManagementProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Wipes all in-memory order data on logout.
+  void reset() {
+    _tableOrders = [];
+    _phoneOrders = [];
+    _takeawayOrders = [];
+    _searchQuery = '';
+    _filteredTableOrders.clear();
+    _filteredPhoneOrders.clear();
+    _filteredTakeawayOrders.clear();
+    _filteredChannelPartnerOrders.clear();
+    _fromDate = DateTime.now();
+    _toDate = DateTime.now();
+    notifyListeners();
+  }
+
   void _performSearch() {
     if (_searchQuery.isEmpty) {
       _filteredTableOrders.clear();

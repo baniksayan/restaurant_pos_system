@@ -157,6 +157,9 @@ class OrderProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Wipes all in-memory state on logout.
+  void reset() => clearOrderHead();
+
   // Clear error
   void clearError() {
     _error = null;

@@ -471,26 +471,24 @@ class AnimatedCartProvider extends ChangeNotifier {
   // Clear all session data when starting a new order type (table -> takeaway/phone)
   void clearAllSessionData() {
     debugPrint('[AnimatedCart] Clearing all session data for new order type');
-
-    // Clear current cart items
     _cartItems.clear();
-
-    // Clear table-wise carts to prevent cross-contamination
     _orderWiseCarts.clear();
-
-    // Clear server KOT items
     _serverKotItems.clear();
     _orderWiseServerKotItems.clear();
-
-    // Reset current table ID
     _currentOrderId = null;
     _currentTableId = null;
-
-    // Reset total items
     _totalItems = 0;
-
     debugPrint('[AnimatedCart] All session data cleared');
     notifyListeners();
+  }
+
+  /// Wipes all in-memory state on logout — same as clearAllSessionData
+  /// but also clears any Hive-persisted carts for the current order.
+  void reset() {
+    if (_currentOrderId != null) {
+      HiveService.clearOrderCart(_currentOrderId!);
+    }
+    clearAllSessionData();
   }
 
   // Clear specific table's data after bill settlement

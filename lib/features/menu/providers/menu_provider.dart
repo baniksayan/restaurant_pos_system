@@ -328,4 +328,20 @@ class MenuProvider with ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
   }
+
+  /// Wipes all in-memory menu and category data. Called on logout so a
+  /// subsequent login with different company credentials starts fresh.
+  void clearMenuData() {
+    _apiMenuItems = [];
+    _categories = [];
+    _searchQuery = '';
+    _selectedCategory = 'All';
+    _selectedDietaryFilter = 'All';
+    _tableWiseSearchQuery.clear();
+    _tableWiseCategory.clear();
+    _tableWiseDietaryFilter.clear();
+    _currentTableId = null;
+    _errorMessage = null;
+    notifyListeners();
+  }
 }

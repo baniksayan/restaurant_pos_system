@@ -65,6 +65,16 @@ class BillingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Wipes all in-memory state on logout.
+  void reset() {
+    _billId = null;
+    _customerPhone = null;
+    _selectedPaymentMode = null;
+    _paymentModes = [];
+    _errorMessage = null;
+    notifyListeners();
+  }
+
   // Load payment modes from API
   Future<void> loadPaymentModes() async {
     _isLoadingPaymentModes = true;

@@ -8,6 +8,11 @@ import 'package:restaurant_pos_system/data/models/auth_api_res_model.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/billing/providers/tax_provider.dart';
+import 'package:restaurant_pos_system/features/billing/providers/billing_provider.dart';
+import 'package:restaurant_pos_system/features/menu/providers/menu_provider.dart';
+import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
+import 'package:restaurant_pos_system/features/order_taking/providers/order_provider.dart';
+import 'package:restaurant_pos_system/features/orders/providers/orders_management_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 
@@ -21,6 +26,12 @@ class AuthProvider with ChangeNotifier {
   bool _shouldNavigateDirectlyToMenu = false;
   String? _autoSelectedTableId;
   String? _autoSelectedTableName;
+  MenuProvider? _menuProvider;
+  TableProvider? _tableProvider;
+  AnimatedCartProvider? _animatedCartProvider;
+  OrderProvider? _orderProvider;
+  BillingProvider? _billingProvider;
+  OrdersManagementProvider? _ordersManagementProvider;
 
   /// Set to true when the API login succeeds but the returned role list does
   /// not contain either "operator" or "chef".  The login view watches this to
@@ -435,11 +446,17 @@ class AuthProvider with ChangeNotifier {
       // Get providers from context
       final tableProvider = Provider.of<TableProvider>(context, listen: false);
       final taxProvider = Provider.of<TaxProvider>(context, listen: false);
+      _menuProvider = Provider.of<MenuProvider>(context, listen: false);
+      _tableProvider = Provider.of<TableProvider>(context, listen: false);
+      _animatedCartProvider = Provider.of<AnimatedCartProvider>(context, listen: false);
+      _orderProvider = Provider.of<OrderProvider>(context, listen: false);
+      _billingProvider = Provider.of<BillingProvider>(context, listen: false);
+      _ordersManagementProvider = Provider.of<OrdersManagementProvider>(context, listen: false);
+      final outletId = HiveService.getOutletId() ?? 0;
 
       // Initialize TableProvider
       await tableProvider.fetchTables().catchError((error) {
         debugPrint('Failed to load tables: $error');
-        return; // Continue even if tables fail
       });
 
       // Initialize TaxProvider - load from Hive or fetch from API
@@ -481,6 +498,14 @@ class AuthProvider with ChangeNotifier {
         debugPrint('Failed to load company info: $e');
       }
 
+      // Load menu for the newly logged-in company. clearMenuData() was already
+      // called on logout, so this always starts from a clean slate.
+      if (outletId > 0) {
+        await _menuProvider!.loadMenuData(outletId: outletId).catchError((e) {
+          debugPrint('Failed to load menu data: $e');
+        });
+      }
+
       if (kDebugMode) {
         debugPrint('Post-login data loaded successfully');
         debugPrint(
@@ -511,6 +536,10 @@ class AuthProvider with ChangeNotifier {
 
       // Clear user cache and data
       await _clearUserCache();
+
+      // Clear in-memory provider state so a new login with different
+      // credentials doesn't see the previous company's data.
+      _clearProviderState();
 
       // Reset user state
       _isAuthenticated = false;
@@ -568,18 +597,25 @@ class AuthProvider with ChangeNotifier {
   // Private method to clear user cache and temporary data
   Future<void> _clearUserCache() async {
     try {
-      // Reset any other user-related state that should not persist after logout
-      // This is where you would clear any other cached data specific to your app
-      // Example: Clear any temporary files, cached images, etc.
-      // You can add specific cache clearing logic here based on your app's needs
-
       if (kDebugMode) {
         debugPrint('User cache cleared successfully');
       }
     } catch (e) {
       debugPrint('Error clearing user cache: $e');
-      // Don't throw error for cache clearing, it's not critical
     }
+  }
+
+  /// Resets all provider in-memory state that is company-specific.
+  /// Must be called without a BuildContext (logout may happen after the
+  /// widget tree is gone), so providers are accessed via their own reset
+  /// methods rather than Provider.of.
+  void _clearProviderState() {
+    _menuProvider?.clearMenuData();
+    _tableProvider?.reset();
+    _animatedCartProvider?.reset();
+    _orderProvider?.reset();
+    _billingProvider?.reset();
+    _ordersManagementProvider?.reset();
   }
 
   // Method to check if logout is in progress
