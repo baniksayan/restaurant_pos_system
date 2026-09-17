@@ -498,11 +498,13 @@ class AuthProvider with ChangeNotifier {
         debugPrint('Failed to load company info: $e');
       }
 
-      // Load menu for the newly logged-in company. clearMenuData() was already
-      // called on logout, so this always starts from a clean slate.
+      // Load menu for the newly logged-in company in the background.
+      // Not awaited — menu loads while the user is already on the dashboard.
+      // MenuView skips its own load when items are already present.
       if (outletId > 0) {
-        await _menuProvider!.loadMenuData(outletId: outletId).catchError((e) {
+        _menuProvider!.loadMenuData(outletId: outletId).catchError((e) {
           debugPrint('Failed to load menu data: $e');
+          return;
         });
       }
 

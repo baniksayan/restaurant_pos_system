@@ -62,7 +62,11 @@ class _MenuViewState extends State<MenuView> {
 
         if (outletId != null && outletId > 0) {
           debugPrint('[MenuView] ✅ Using outlet ID: $outletId');
-          menuProvider.loadMenuData(outletId: outletId);
+          // Only load if menu is empty — avoids redundant API call when
+          // data was already fetched by AuthProvider on login.
+          if (menuProvider.apiMenuItems.isEmpty) {
+            menuProvider.loadMenuData(outletId: outletId);
+          }
         } else {
           debugPrint(
             '[MenuView] ❌ No valid outlet ID available - skipping menu load',
