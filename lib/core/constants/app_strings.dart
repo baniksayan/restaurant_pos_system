@@ -242,8 +242,6 @@ class _ChefStrings {
   final String filterByStatus = 'Filter by Status';
 
   // Drawer
-  final String orderHistory = 'Order History (All)';
-  final String orderHistorySubtitle = 'View past completed orders';
   final String chefProfile = 'Chef Profile';
   final String chefProfileSubtitle = 'Kitchen account details';
 

@@ -69,18 +69,27 @@ class ChefApi {
         final List<ChefOrderItem> items = [];
 
         bool hasRejected = false;
-        bool hasCompleted = false;
+        bool hasServed = false;
+        bool hasReady = false;
         bool hasInProgress = false;
 
         for (final r in rows) {
           if (r is! Map) continue;
 
-          kotNo = r['kotNo']?.toString() ?? kotNo;
-          kotHeadId = r['kotHeadId']?.toString() ?? kotHeadId;
-          orderIdentifier = r['orderIdentifier']?.toString() ?? orderIdentifier;
-          channelName = r['channelName']?.toString() ?? channelName;
-          generatedOrderNo =
-              r['generatedOrderNo']?.toString() ?? generatedOrderNo;
+          final rKotNo = r['kotNo']?.toString();
+          if (rKotNo != null && rKotNo.trim().isNotEmpty) kotNo = rKotNo.trim();
+
+          final rKotHeadId = r['kotHeadId']?.toString();
+          if (rKotHeadId != null && rKotHeadId.trim().isNotEmpty) kotHeadId = rKotHeadId.trim();
+
+          final rOrderIdentifier = r['orderIdentifier']?.toString();
+          if (rOrderIdentifier != null && rOrderIdentifier.trim().isNotEmpty) orderIdentifier = rOrderIdentifier.trim();
+
+          final rChannelName = r['channelName']?.toString();
+          if (rChannelName != null && rChannelName.trim().isNotEmpty) channelName = rChannelName.trim();
+
+          final rGeneratedOrderNo = r['generatedOrderNo']?.toString();
+          if (rGeneratedOrderNo != null && rGeneratedOrderNo.trim().isNotEmpty) generatedOrderNo = rGeneratedOrderNo.trim();
 
           final wmRaw = r['waitingMinutes'];
           if (wmRaw is num) {
@@ -112,7 +121,8 @@ class ChefApi {
                   : int.tryParse(r['kotStatusId']?.toString() ?? '') ?? 1;
 
           if (statusId == 4) hasRejected = true;
-          if (statusId == 3) hasCompleted = true;
+          if (statusId == 5) hasServed = true;
+          if (statusId == 3) hasReady = true;
           if (statusId == 2) hasInProgress = true;
 
           items.add(
@@ -128,12 +138,14 @@ class ChefApi {
         }
 
         ChefOrderStatus status;
-        if (hasRejected) {
-          status = ChefOrderStatus.rejected;
-        } else if (hasCompleted) {
+        if (hasReady) {
           status = ChefOrderStatus.ready;
         } else if (hasInProgress) {
           status = ChefOrderStatus.preparing;
+        } else if (hasServed) {
+          status = ChefOrderStatus.served;
+        } else if (hasRejected) {
+          status = ChefOrderStatus.rejected;
         } else {
           status = ChefOrderStatus.pending;
         }
@@ -145,16 +157,25 @@ class ChefApi {
                     ? channelName.trim()
                     : 'Table');
 
+        final displayKotNo = kotNo.trim().isNotEmpty ? kotNo.trim() : 'KOT';
+        final resolvedOrderNo =
+            (generatedOrderNo != null && generatedOrderNo.trim().isNotEmpty)
+                ? generatedOrderNo.trim()
+                : displayKotNo;
+
         orders.add(
           ChefOrder(
             id: kotId, // Unique KOT ID (UUID)
-            kotNo: kotNo.isNotEmpty ? kotNo : 'KOT',
+            kotNo: displayKotNo,
             kotHeadId: kotHeadId,
             orderIdentifier: orderIdentifier,
             channelName: channelName,
-            generatedOrderNo: generatedOrderNo,
+            generatedOrderNo:
+                (generatedOrderNo != null && generatedOrderNo.trim().isNotEmpty)
+                    ? generatedOrderNo.trim()
+                    : null,
             waitingMinutes: waitingMinutes,
-            orderNumber: kotNo.isNotEmpty ? kotNo : (generatedOrderNo ?? 'KOT'), // In UI show kotNo
+            orderNumber: resolvedOrderNo,
             tableNumber: displayTable,
             orderTime: orderTime ?? DateTime.now(),
             items: items,

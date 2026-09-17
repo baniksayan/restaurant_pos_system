@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:restaurant_pos_system/features/chef/data/chef_api.dart';
 import '../models/chef_order_model.dart';
@@ -9,8 +10,8 @@ class ChefProvider extends ChangeNotifier {
   String? _errorMessage;
   String _selectedStatusFilter = 'All Statuses';
   String _selectedLocation = 'Main Kitchen';
-  String _historyFilter = 'all';
   int _currentTabIndex = 0; // 0 = All, 1 = Queue, 2 = Preparing, 3 = Serve
+  Timer? _pollingTimer;
 
   final List<String> _locations = [
     'Main Kitchen',
@@ -32,7 +33,6 @@ class ChefProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String get selectedStatusFilter => _selectedStatusFilter;
   String get selectedLocation => _selectedLocation;
-  String get historyFilter => _historyFilter;
   List<String> get locations => _locations;
   List<String> get statusFilters => _statusFilters;
   List<String> get availableCategories => [
@@ -47,13 +47,29 @@ class ChefProvider extends ChangeNotifier {
   ChefProvider() {
     // Load live KOT data from backend
     fetchOrders();
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      fetchOrders(silent: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
   }
 
   /// Fetch latest orders from backend and replace local orders when available
-  Future<void> fetchOrders() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  Future<void> fetchOrders({bool silent = false}) async {
+    if (!silent) {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+    }
 
     try {
       final fetched = await ChefApi.fetchChefOrders();
@@ -65,9 +81,13 @@ class ChefProvider extends ChangeNotifier {
         debugPrint('ChefProvider.fetchOrders error: $e');
         debugPrint('$st');
       }
-      _errorMessage = e.toString();
+      if (!silent) {
+        _errorMessage = e.toString();
+      }
     } finally {
-      _isLoading = false;
+      if (!silent) {
+        _isLoading = false;
+      }
       notifyListeners();
     }
   }
@@ -147,21 +167,6 @@ class ChefProvider extends ChangeNotifier {
       _orders.where((o) => o.status == ChefOrderStatus.ready).length;
   int get totalOrdersCount => _orders.length;
 
-  // History orders compatibility
-  List<ChefOrder> get historyOrders =>
-      _orders
-          .where(
-            (o) =>
-                o.status == ChefOrderStatus.served ||
-                o.status == ChefOrderStatus.rejected,
-          )
-          .toList();
-
-  void setHistoryFilter(String filter) {
-    _historyFilter = filter;
-    notifyListeners();
-  }
-
   // Item availability compatibility
   void setMenuSearchQuery(String query) {}
   void setSelectedMenuCategory(String category) {}
@@ -216,17 +221,18 @@ class ChefProvider extends ChangeNotifier {
     );
   }
 
-  // Step 3: In Serve -> Chef clicks Ready to Serve (Handed over), marking it Served
-  void giveOrder(String orderId) {
-    _updateOrderStatusOptimistic(
-      orderId,
-      ChefOrderStatus.served,
-      apiStatus: 'served',
-      setCompletedTime: true,
-    );
+  // Step 3: Visual handover confirmation at the kitchen pass
+  // Chef confirms food is placed on pass for Operator/Waiter collection.
+  // Note: Backend status remains STATUS 3. STATUS 5 is completed by Operator/Waiter.
+  void confirmPassHandover(String orderId) {
+    // Local visual confirmation only - does NOT call backend status 5
+    notifyListeners();
   }
 
-  /// Internal helper: optimistic update + backend sync via UpdateOrderHeadStatus
+  // Alias for backward compatibility
+  void giveOrder(String orderId) => confirmPassHandover(orderId);
+
+  /// Internal helper: optimistic update + backend sync via updateKotDetails
   Future<void> _updateOrderStatusOptimistic(
     String orderId,
     ChefOrderStatus targetStatus, {
@@ -235,6 +241,16 @@ class ChefProvider extends ChangeNotifier {
     bool setCompletedTime = false,
     String? setRejectionReason,
   }) async {
+    // Negative test guard: Chef cannot mark STATUS 5 (Served)
+    if (targetStatus == ChefOrderStatus.served) {
+      if (kDebugMode) {
+        debugPrint(
+          '[ChefProvider] Chef cannot set STATUS 5 (Served). Operator/Waiter owns this transition.',
+        );
+      }
+      return;
+    }
+
     final index = _orders.indexWhere((o) => o.id == orderId);
     if (index == -1) return;
 
@@ -264,12 +280,13 @@ class ChefProvider extends ChangeNotifier {
           kotStatusId = 2;
           break;
         case ChefOrderStatus.ready:
-        case ChefOrderStatus.served:
           kotStatusId = 3;
           break;
         case ChefOrderStatus.rejected:
           kotStatusId = 4;
           break;
+        case ChefOrderStatus.served:
+          return; // Strictly forbidden for Chef
       }
 
       final kotIds =

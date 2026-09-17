@@ -1,12 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_assets.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/app_gradients.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
+import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
 import 'package:restaurant_pos_system/features/profile/views/profile_view.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
-import 'chef_order_history_dialog.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/shared/widgets/feedback/app_version_label.dart';
 
@@ -55,19 +56,7 @@ class ChefDrawer extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
 
-                          // Option 1: Order History (All)
-                          _buildCleanNavTile(
-                            title: AppStrings.chef.orderHistory,
-                            subtitle: AppStrings.chef.orderHistorySubtitle,
-                            icon: Icons.history_rounded,
-                            onTap: () {
-                              Navigator.pop(context);
-                              showChefOrderHistoryDialog(context);
-                            },
-                          ),
-                          const SizedBox(height: 8),
-
-                          // Option 2: Chef Profile (as it is)
+                          // Option: Chef Profile
                           _buildCleanNavTile(
                             title: AppStrings.chef.chefProfile,
                             subtitle: AppStrings.chef.chefProfileSubtitle,
@@ -445,43 +434,9 @@ class ChefDrawer extends StatelessWidget {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: ElevatedButton(
-                                        onPressed: () async {
+                                        onPressed: () {
                                           Navigator.pop(dialogContext);
-                                          Navigator.pop(
-                                            context,
-                                          ); // Close drawer
-
-                                          showDialog(
-                                            context: context,
-                                            barrierDismissible: false,
-                                            barrierColor: Colors.transparent,
-                                            builder:
-                                                (
-                                                  ctx,
-                                                ) => const HourglassLoadingOverlay(
-                                                  message:
-                                                      'Signing out of KDS...',
-                                                ),
-                                          );
-
-                                          await HiveService.clearChefSession();
-                                          await Future.delayed(
-                                            const Duration(milliseconds: 400),
-                                          );
-
-                                          if (context.mounted) {
-                                            Navigator.of(
-                                              context,
-                                              rootNavigator: true,
-                                            ).pop();
-                                            Navigator.of(
-                                              context,
-                                              rootNavigator: true,
-                                            ).pushNamedAndRemoveUntil(
-                                              '/',
-                                              (Route<dynamic> route) => false,
-                                            );
-                                          }
+                                          _performLogout(context);
                                         },
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.redAccent,
@@ -522,4 +477,36 @@ class ChefDrawer extends StatelessWidget {
       },
     );
   }
+
+  Future<void> _performLogout(BuildContext context) async {
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.transparent,
+      useRootNavigator: true,
+      builder: (ctx) => const HourglassLoadingOverlay(
+        message: 'Signing out of KDS...',
+      ),
+    );
+
+    try {
+      await authProvider.logout();
+      await HiveService.clearChefSession();
+      await Future.delayed(const Duration(milliseconds: 300));
+    } catch (e) {
+      debugPrint('Logout error in chef drawer: $e');
+    } finally {
+      if (rootNavigator.canPop()) {
+        rootNavigator.pop();
+      }
+      rootNavigator.pushNamedAndRemoveUntil(
+        '/login',
+        (Route<dynamic> route) => false,
+      );
+    }
+  }
 }
+

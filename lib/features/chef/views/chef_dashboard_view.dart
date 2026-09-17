@@ -9,6 +9,7 @@ import '../widgets/chef_drawer.dart';
 import '../widgets/chef_empty_state.dart';
 import '../widgets/chef_header.dart';
 import '../widgets/chef_order_card.dart';
+import '../widgets/chef_order_skeleton.dart';
 import '../widgets/chef_status_filter_dialog.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
@@ -84,7 +85,7 @@ class _ChefDashboardViewState extends State<ChefDashboardView> {
                 .where((o) => o.status == ChefOrderStatus.preparing)
                 .toList();
         break;
-      case 3: // Serve: Ready to Serve (Give Order)
+      case 3: // Serve: Ready to Serve (Handover on pass)
       default:
         tabOrders =
             chefProvider.orders
@@ -176,6 +177,15 @@ class _ChefDashboardViewState extends State<ChefDashboardView> {
     ChefProvider chefProvider,
     int tabIndex,
   ) {
+    if (chefProvider.isLoading && chefProvider.orders.isEmpty) {
+      return PremiumRefreshIndicator(
+        onRefresh: () async {
+          await chefProvider.fetchOrders();
+        },
+        child: const ChefOrderSkeletonView(),
+      );
+    }
+
     final orders = _getOrdersForTab(chefProvider, tabIndex);
 
     return PremiumRefreshIndicator(

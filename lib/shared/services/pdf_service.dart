@@ -1088,6 +1088,14 @@ class PDFService {
     String timeStr,
     String tableName,
   ) {
+    final cleanKotNo = kotNo.trim().isNotEmpty ? kotNo.trim() : 'KOT';
+    final cleanOrderNo =
+        orderNo.trim().isNotEmpty ? orderNo.trim() : cleanKotNo;
+    final cleanTableName =
+        tableName.trim().isNotEmpty ? tableName.trim() : 'Table';
+    final cleanDateStr = dateStr.trim().isNotEmpty ? dateStr.trim() : '-';
+    final cleanTimeStr = timeStr.trim().isNotEmpty ? timeStr.trim() : '-';
+
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.black, width: 1),
       columnWidths: {
@@ -1117,7 +1125,7 @@ class PDFService {
                   pw.FittedBox(
                     fit: pw.BoxFit.scaleDown,
                     child: pw.Text(
-                      kotNo,
+                      cleanKotNo,
                       style: pw.TextStyle(
                         fontSize: 11,
                         fontWeight: pw.FontWeight.bold,
@@ -1145,7 +1153,7 @@ class PDFService {
                           _kotTableIcon(size: 11),
                           pw.SizedBox(width: 4),
                           pw.Text(
-                            tableName,
+                            cleanTableName,
                             style: pw.TextStyle(
                               fontSize: 9.5,
                               fontWeight: pw.FontWeight.bold,
@@ -1179,7 +1187,7 @@ class PDFService {
                   pw.FittedBox(
                     fit: pw.BoxFit.scaleDown,
                     child: pw.Text(
-                      orderNo,
+                      cleanOrderNo,
                       style: pw.TextStyle(
                         fontSize: 10,
                         fontWeight: pw.FontWeight.bold,
@@ -1202,7 +1210,7 @@ class PDFService {
                       mainAxisAlignment: pw.MainAxisAlignment.center,
                       children: [
                         pw.Text(
-                          dateStr,
+                          cleanDateStr,
                           style: const pw.TextStyle(fontSize: 9.5),
                         ),
                         pw.Padding(
@@ -1213,7 +1221,7 @@ class PDFService {
                           ),
                         ),
                         pw.Text(
-                          timeStr,
+                          cleanTimeStr,
                           style: const pw.TextStyle(fontSize: 9.5),
                         ),
                       ],
@@ -1377,6 +1385,9 @@ class PDFService {
       }
     }
 
+    final itemName =
+        item.name.trim().isNotEmpty ? item.name.trim().toUpperCase() : 'ITEM';
+
     return pw.Column(
       children: [
         pw.Padding(
@@ -1414,7 +1425,7 @@ class PDFService {
               pw.Expanded(
                 flex: 4,
                 child: pw.Text(
-                  item.name.toUpperCase(),
+                  itemName,
                   style: pw.TextStyle(
                     fontSize: 10,
                     fontWeight: pw.FontWeight.bold,
@@ -1425,7 +1436,7 @@ class PDFService {
               pw.Expanded(
                 flex: 3,
                 child: pw.Text(
-                  noteText,
+                  noteText.trim().isNotEmpty ? noteText : '-',
                   style: const pw.TextStyle(fontSize: 10),
                 ),
               ),

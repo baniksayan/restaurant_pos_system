@@ -1,21 +1,24 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:restaurant_pos_system/features/payment/views/payment_view.dart';
-import 'package:restaurant_pos_system/features/order_taking/views/cart_view.dart';
-import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
-import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
-import '../models/order_management_model.dart';
-import 'package:restaurant_pos_system/shared/services/pdf_service.dart';
-import 'package:restaurant_pos_system/data/remote/api_service.dart';
-import 'package:restaurant_pos_system/data/local/hive_service.dart';
-import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
-import 'package:restaurant_pos_system/data/models/bill_details_response.dart';
-import 'package:restaurant_pos_system/data/models/pending_bill.dart';
-import 'package:restaurant_pos_system/features/billing/widgets/bill_pdf_viewer_dialog.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
+import 'package:restaurant_pos_system/core/utils/date_time_formatter.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
+import 'package:restaurant_pos_system/data/models/bill_details_response.dart';
+import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
+import 'package:restaurant_pos_system/data/models/pending_bill.dart';
+import 'package:restaurant_pos_system/data/remote/api_service.dart';
+import 'package:restaurant_pos_system/features/billing/widgets/bill_pdf_viewer_dialog.dart';
+import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
+import 'package:restaurant_pos_system/features/order_taking/views/cart_view.dart';
+import 'package:restaurant_pos_system/features/payment/views/payment_view.dart';
+import 'package:restaurant_pos_system/shared/services/pdf_service.dart';
+import 'package:restaurant_pos_system/shared/widgets/layout/premium_refresh_indicator.dart';
+import '../models/order_management_model.dart';
 
 class OrderDetailView extends StatefulWidget {
   final OrderItem order;
@@ -26,7 +29,8 @@ class OrderDetailView extends StatefulWidget {
   State<OrderDetailView> createState() => _OrderDetailViewState();
 }
 
-class _OrderDetailViewState extends State<OrderDetailView> {
+class _OrderDetailViewState extends State<OrderDetailView>
+    with SingleTickerProviderStateMixin {
   // API-backed state
   bool _loading = true;
   String? _error;
@@ -39,24 +43,20 @@ class _OrderDetailViewState extends State<OrderDetailView> {
   // Track if cart has been loaded to prevent duplicates
   bool _cartLoaded = false;
 
-  // The real bill — company details, exact tax, exact discount — fetched
-  // from Order/getBillDetailByBillId once we know this order has a billId.
-  // getOrderDetailById (which _detailModel comes from) has no tax data at
-  // all: tax is computed once, at billing time, and stored per-bill, not
-  // per-order. This is the only accurate source for it.
+  // Real bill data for accurate tax, discount, company header
   BillDetailsData? _billDetails;
   bool _loadingBillDetails = false;
 
-  // Every bill raised against this order — a split bill produces more than
-  // one, and getOrderDetailById only ever reports a single billId/billNo
-  // (whichever OrderDetails row happens to be first), so that alone can't
-  // list them all. Fetched via the same GetBillForReprint the Reprint
-  // screen uses, then narrowed to this order's GeneratedOrderNo.
+  // Associated bills (for split bills)
   List<PendingBill> _bills = [];
   bool _loadingBills = false;
   String? _printingBillId;
 
-  // Derived values computed from API response (fallback to widget.order where appropriate)
+  // Shimmer skeleton animation
+  late AnimationController _shimmerController;
+  late Animation<double> _shimmerAnimation;
+
+  // Derived financial values
   double get _subtotal {
     if (_billDetails != null) {
       return _billDetails!.billHeadDt.amountAfterDisc;
@@ -74,8 +74,6 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     return widget.order.totalAmount;
   }
 
-  /// Real tax amount once the bill is loaded; `0` beforehand — there is
-  /// genuinely no tax figure to show until a bill exists (see [_billDetails]).
   double get _gstAmount {
     if (_billDetails == null) return 0.0;
     final gst =
@@ -84,8 +82,6 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     return gst > 0 ? gst : 0.0;
   }
 
-  /// e.g. "GST (5%)" once the real tax components are known, else a plain
-  /// "GST" label so we're never showing a guessed percentage.
   String get _gstLabel {
     if (_billDetails == null || _billDetails!.taxInf.isEmpty) return 'GST';
     final totalPct = _billDetails!.taxInf.fold<double>(
@@ -99,7 +95,8 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     return 'GST ($pctStr%)';
   }
 
-  double get _serviceCharge => 0.0; // backend not providing
+  double get _serviceCharge => 0.0;
+
   double get _discount {
     if (_billDetails != null) {
       return _billDetails!.billHeadDt.discountAmnt +
@@ -121,7 +118,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
       final d = _detailModel!.data!.first.orderDetailList!.first.createdOn;
       if (d != null && d.isNotEmpty) return d;
     }
-    return widget.order.orderTime.toString();
+    return DateTimeFormatter.formatDateTime(widget.order.orderTime);
   }
 
   String? get _kotNo {
@@ -206,17 +203,26 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     _isBilled =
         widget.order.status == OrderStatusType.completed ||
         widget.order.status == OrderStatusType.delivered;
-    // Set KOT status based on order status
     _isKOTGenerated =
         widget.order.status.index >= OrderStatusType.accepted.index;
 
-    // Load order detail from API
+    // Multi-stop shimmer skeleton animation
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+
+    _shimmerAnimation = Tween<double>(begin: -1.0, end: 2.0).animate(
+      CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOutSine),
+    );
+
+    // Initial load
     _loadOrderDetail();
   }
 
   @override
   void dispose() {
-    // Reset cart loaded state when leaving order details
+    _shimmerController.dispose();
     _cartLoaded = false;
     super.dispose();
   }
@@ -252,9 +258,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
           _detailModel = resp;
           _loading = false;
         });
-        // Now that we know whether this order is billed and (if so) its
-        // billId, fetch the real bill for the tax/company data that
-        // getOrderDetailById simply doesn't have.
+
         unawaited(_loadBillDetailsIfNeeded());
         unawaited(_loadAllBills());
       } else {
@@ -271,9 +275,6 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     }
   }
 
-  /// Fetches the real bill (company details, exact tax, exact discount)
-  /// once we know this order has one. Safe to call repeatedly — no-ops if
-  /// there's no billId, one is already loading, or one's already loaded.
   Future<void> _loadBillDetailsIfNeeded() async {
     final billId = _billId;
     if (!_isActuallyBilled ||
@@ -297,10 +298,6 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     }
   }
 
-  /// Every bill raised against this order, e.g. two or more from a split
-  /// bill. GetBillForReprint isn't order-scoped — it returns a day's bills
-  /// for the outlet — so results are narrowed to this order's
-  /// GeneratedOrderNo client-side, same as the Reprint screen's own window.
   Future<void> _loadAllBills() async {
     final orderNo = _orderNo;
     if (orderNo == null || orderNo.isEmpty || _loadingBills) return;
@@ -319,8 +316,13 @@ class _OrderDetailViewState extends State<OrderDetailView> {
         to: to,
       );
       if (!mounted || bills == null) return;
-      final matched = bills.where((b) => b.orderNo == orderNo).toList()
-        ..sort((a, b) => (b.billDate ?? DateTime(0)).compareTo(a.billDate ?? DateTime(0)));
+      final matched =
+          bills.where((b) => b.orderNo == orderNo).toList()
+            ..sort(
+              (a, b) => (b.billDate ?? DateTime(0)).compareTo(
+                a.billDate ?? DateTime(0),
+              ),
+            );
       setState(() => _bills = matched);
     } catch (e) {
       debugPrint('[OrderDetailView] Error loading bills: $e');
@@ -329,9 +331,6 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     }
   }
 
-  /// Prints/previews one specific bill from [_bills] — always the real bill
-  /// (Order/getBillDetailByBillId), never a reconstruction, same as
-  /// [_viewOrDownloadBill] and the Reprint screen's own bill printing.
   Future<void> _printBill(PendingBill bill) async {
     setState(() => _printingBillId = bill.billId);
     try {
@@ -407,7 +406,8 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             (context) => BillPDFViewerDialog(
               pdfBytes: billBytes,
               orderNumber: bill.billNo.isNotEmpty ? bill.billNo : bill.orderNo,
-              fileName: 'Bill_${bill.billNo.isNotEmpty ? bill.billNo : bill.billId}.pdf',
+              fileName:
+                  'Bill_${bill.billNo.isNotEmpty ? bill.billNo : bill.billId}.pdf',
             ),
       );
     } catch (e) {
@@ -419,231 +419,200 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     }
   }
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // Build Method
+  // ────────────────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textOnDark),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Order Details',
-          style: TextStyle(
-            color: AppColors.textOnDark,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await _loadOrderDetail();
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_loading)
-                const Center(child: CircularProgressIndicator())
-              else if (_error != null)
-                Center(
-                  child: Text(
-                    _error!,
-                    style: const TextStyle(color: AppColors.error),
-                  ),
-                )
-              else ...[
-                _buildOrderHeader(),
-                const SizedBox(height: 20),
-                _buildBillingSection(),
-                const SizedBox(height: 20),
-                _buildBillsSection(),
-                const SizedBox(height: 20),
-                _buildPriceBreakdown(),
-                const SizedBox(height: 20),
-                _buildOrderItems(),
-                const SizedBox(height: 20),
-                _buildCustomerInfo(),
-              ],
-            ],
-          ),
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
+        body: Column(
+          children: [
+            // Top App Bar
+            _buildTopHeader(context),
+
+            // Content Area with Pull-to-Refresh
+            Expanded(
+              child: PremiumRefreshIndicator(
+                onRefresh: _loadOrderDetail,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  child:
+                      _loading
+                          ? _buildSkeletonLoading()
+                          : _error != null
+                          ? _buildErrorState()
+                          : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Hero Overview Card
+                              _buildHeroOverviewCard(),
+                              const SizedBox(height: 14),
+
+                              // Billing Status Card
+                              _buildBillingStatusCard(),
+                              const SizedBox(height: 14),
+
+                              // Split / Multiple Bills Card (if available)
+                              if (_bills.isNotEmpty || _loadingBills) ...[
+                                _buildBillsCard(),
+                                const SizedBox(height: 14),
+                              ],
+
+                              // Order Items List Card
+                              _buildOrderItemsCard(),
+                              const SizedBox(height: 14),
+
+                              // Price Breakdown Card
+                              _buildPriceBreakdownCard(),
+
+                              // Special Kitchen Instructions (if present)
+                              if (_instructions != null &&
+                                  _instructions!.trim().isNotEmpty) ...[
+                                const SizedBox(height: 14),
+                                _buildInstructionsCard(),
+                              ],
+                            ],
+                          ),
+                ),
+              ),
+            ),
+          ],
         ),
+        bottomNavigationBar: _buildBottomActionBar(),
       ),
-      bottomNavigationBar: _buildBottomActionBar(),
     );
   }
 
-  Widget _buildBottomActionBar() {
-    if (_loading || _error != null) {
-      return const SizedBox.shrink();
-    }
+  // ────────────────────────────────────────────────────────────────────────────
+  // Top App Bar (WhizEats Pro Unified Design)
+  // ────────────────────────────────────────────────────────────────────────────
 
-    String buttonText;
-    Color buttonColor;
-    VoidCallback? onPressed;
+  Widget _buildTopHeader(BuildContext context) {
+    final String channelLabel =
+        widget.order.orderType == 'Table Orders'
+            ? (widget.order.tableNumber != null &&
+                    widget.order.tableNumber!.isNotEmpty
+                ? 'Table ${widget.order.tableNumber}'
+                : 'Dine-In')
+            : (widget.order.orderType == 'Phone Orders'
+                ? 'Phone Order'
+                : 'Takeaway');
 
-    if (!_isActuallyBilled) {
-      // Not billed - go to cart to add items and generate bill
-      buttonText = 'Go to Cart';
-      buttonColor = AppColors.primary;
-      onPressed = _navigateToCart;
-    } else if (_isActuallyBilled && !_isActuallyPaid) {
-      // Billed but not paid - go to payment
-      buttonText = 'Go to Payment';
-      buttonColor = AppColors.success;
-      onPressed = _navigateToPaymentWithBillId;
-    } else {
-      // Paid - view/download the real bill that was already created
-      buttonText = 'Download Bill';
-      buttonColor = AppColors.info;
-      onPressed = _viewOrDownloadBill;
-    }
+    final IconData channelIcon =
+        widget.order.orderType == 'Table Orders'
+            ? Icons.table_restaurant_rounded
+            : (widget.order.orderType == 'Phone Orders'
+                ? Icons.phone_in_talk_rounded
+                : Icons.shopping_bag_rounded);
+
+    final String displayOrderNum =
+        _orderNo ?? widget.order.orderId;
 
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+      padding: const EdgeInsets.fromLTRB(16, 40, 16, 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(color: AppColors.cardShadow, width: 0.5),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
+            color: Colors.black12,
+            blurRadius: 3,
+            offset: Offset(0, 1),
           ),
         ],
       ),
       child: SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: ElevatedButton(
-            onPressed: onPressed,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: buttonColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 2,
-            ),
-            child: Text(
-              buttonText,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOrderHeader() {
-    return Card(
-      color: AppColors.cardBackground,
-      elevation: 4,
-      shadowColor: AppColors.cardShadow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        bottom: false,
+        child: Row(
           children: [
-            // Customer Name and Status
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.order.customerName,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor().withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _getStatusColor().withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: Text(
-                    // prefer API value if available
-                    _fullOrderStatus ?? '',
-                    style: TextStyle(
-                      color: _getStatusColor(),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Order Information - Top section instead of sidebar
+            // Back Button
             Container(
-              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
               ),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
+                onPressed: () => Navigator.pop(context),
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                padding: const EdgeInsets.all(6),
+                tooltip: 'Back',
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Title & Context Subtitle Area
+            Expanded(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildHeaderInfo('Order ID', _orderNo ?? ''),
-                      ),
-                      Expanded(
-                        child: _buildHeaderInfo(
-                          'KOT Status',
-                          _isKOTGenerated ? 'Generated' : 'Pending',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildHeaderInfo(
-                          'Billing Status',
-                          _isActuallyBilled
-                              ? (_isActuallyPaid ? 'Paid' : 'Billed (Unpaid)')
-                              : 'Not Billed',
-                        ),
-                      ),
-                      if (widget.order.orderType == 'Table Orders')
-                        Expanded(
-                          child: _buildHeaderInfo('Table', _channelName ?? ''),
-                        ),
-                    ],
-                  ),
-                  if (widget.order.orderType == 'Table Orders') ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildHeaderInfo('Waiter', _waiterName ?? ''),
-                        ),
-                        Expanded(
-                          child: _buildHeaderInfo('KOT No', _kotNo ?? ''),
-                        ),
-                      ],
+                  const Text(
+                    'Order Details',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.2,
                     ),
-                  ],
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    'Order #$displayOrderNum · $channelLabel',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 8),
+
+            // Channel Pill Badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(channelIcon, size: 13, color: AppColors.primaryDark),
+                  const SizedBox(width: 4),
+                  Text(
+                    channelLabel,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -653,242 +622,428 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     );
   }
 
-  Widget _buildHeaderInfo(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
+  // ────────────────────────────────────────────────────────────────────────────
+  // Card 1: Hero Overview Card
+  // ────────────────────────────────────────────────────────────────────────────
+
+  Widget _buildHeroOverviewCard() {
+    final statusColor = _getStatusColor();
+    final statusText = _fullOrderStatus ?? _formatStatus(widget.order.status);
+    final String customerName =
+        widget.order.customerName.trim().isNotEmpty
+            ? widget.order.customerName.trim()
+            : 'Guest Customer';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBillingSection() {
-    return Card(
-      color: AppColors.cardBackground,
-      elevation: 4,
-      shadowColor: AppColors.cardShadow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.receipt_long,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Billing Information',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-
-                // Status indicator based on API data
-                if (!_isKOTGenerated)
-                  const Text(
-                    'KOT Required First',
-                    style: TextStyle(
-                      color: AppColors.warning,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  )
-                else if (_isActuallyBilled && _isActuallyPaid)
-                  const Text(
-                    'Payment Complete',
-                    style: TextStyle(
-                      color: AppColors.success,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  )
-                else if (_isActuallyBilled && !_isActuallyPaid)
-                  const Text(
-                    'Awaiting Payment',
-                    style: TextStyle(
-                      color: AppColors.warning,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  )
-                else
-                  const Text(
-                    'Ready for Billing',
-                    style: TextStyle(
-                      color: AppColors.info,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Billing details in a more organized way
-            Column(
-              children: [
-                _buildInfoRow(
-                  'Bill Number',
-                  _isActuallyBilled
-                      ? (_billNo ?? 'Generated')
-                      : 'Not Generated',
-                ),
-                _buildInfoRow(
-                  'Payment Status',
-                  _isActuallyBilled
-                      ? (_isActuallyPaid ? 'Paid' : 'Unpaid')
-                      : 'Not Billed',
-                ),
-                if (_isActuallyBilled && _isActuallyPaid)
-                  _buildInfoRow('Payment Mode', _paymentMode),
-                _buildInfoRow('Created On', _createdOnString),
-              ],
-            ),
-          ],
-        ),
+        ],
       ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+          // Tier 1: Customer Header & Semantic Status Pill
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.person_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      customerName,
+                      style: const TextStyle(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (widget.order.phoneNumber != null &&
+                        widget.order.phoneNumber!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.phone_outlined,
+                              size: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              widget.order.phoneNumber!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Status Pill with Glowing Dot
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: statusColor.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: statusColor.withValues(alpha: 0.4),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      statusText.toUpperCase(),
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 14),
+            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+          ),
+
+          // Tier 2: 2-Column Metadata Badges Grid
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetaBadge(
+                  icon: Icons.receipt_outlined,
+                  label: 'ORDER NO',
+                  value: _orderNo ?? widget.order.orderId,
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildMetaBadge(
+                  icon: Icons.soup_kitchen_outlined,
+                  label: 'KOT NO',
+                  value: _kotNo ?? (_isKOTGenerated ? 'Generated' : 'Pending'),
+                  highlight: _kotNo != null,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetaBadge(
+                  icon: Icons.schedule_rounded,
+                  label: 'PLACED AT',
+                  value: DateTimeFormatter.formatDateTime(
+                    widget.order.orderTime,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildMetaBadge(
+                  icon: Icons.badge_outlined,
+                  label: 'WAITER / STAFF',
+                  value: _waiterName ?? 'Counter Staff',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetaBadge(
+                  icon: Icons.table_bar_outlined,
+                  label: 'CHANNEL / TABLE',
+                  value: _channelName ??
+                      (widget.order.tableNumber != null &&
+                              widget.order.tableNumber!.isNotEmpty
+                          ? 'Table ${widget.order.tableNumber}'
+                          : widget.order.orderType),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  /// Lists every bill raised against this order (more than one when it was
-  /// split), each with its own print/view action. Hidden while there is
-  /// nothing to show — most orders have zero or one bill, and an empty
-  /// "Bills" card before the first bill exists would just be noise.
-  Widget _buildBillsSection() {
-    if (!_loadingBills && _bills.isEmpty) return const SizedBox.shrink();
-
-    return Card(
-      color: AppColors.cardBackground,
-      elevation: 4,
-      shadowColor: AppColors.cardShadow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.receipt_rounded,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
+  Widget _buildMetaBadge({
+    required IconData icon,
+    required String label,
+    required String value,
+    bool highlight = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 12, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 0.4,
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  _bills.length > 1 ? 'Bills (${_bills.length})' : 'Bill',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: highlight ? AppColors.primary : AppColors.textPrimary,
             ),
-            const SizedBox(height: 16),
-            if (_loadingBills)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              )
-            else
-              ..._bills.map(_buildBillRow),
-          ],
-        ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildBillRow(PendingBill bill) {
-    final printing = _printingBillId == bill.billId;
+  // ────────────────────────────────────────────────────────────────────────────
+  // Card 2: Billing & Settlement Status Card
+  // ────────────────────────────────────────────────────────────────────────────
+
+  Widget _buildBillingStatusCard() {
+    final bool isPaid = _isActuallyBilled && _isActuallyPaid;
+    final bool isUnpaidBill = _isActuallyBilled && !_isActuallyPaid;
+
+    final Color statusTone =
+        isPaid
+            ? const Color(0xFF10B981)
+            : isUnpaidBill
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFF6B7280);
+
+    final String statusBadgeText =
+        isPaid
+            ? 'PAID · TRANSACTION SETTLED'
+            : isUnpaidBill
+            ? 'BILLED · PAYMENT PENDING'
+            : 'NOT BILLED · BILL GENERATION PENDING';
+
+    final IconData statusIcon =
+        isPaid
+            ? Icons.check_circle_outline_rounded
+            : isUnpaidBill
+            ? Icons.pending_actions_rounded
+            : Icons.receipt_long_outlined;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Title
+          _buildCardHeader(
+            icon: Icons.receipt_long_rounded,
+            title: 'Billing & Payment',
+          ),
+          const SizedBox(height: 14),
+
+          // Status Banner Pill
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: statusTone.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: statusTone.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              children: [
+                Icon(statusIcon, size: 16, color: statusTone),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    statusBadgeText,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: statusTone,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Key Value List
+          _buildInfoRow(
+            'Bill Number',
+            _isActuallyBilled
+                ? (_billNo ?? 'Generated')
+                : 'Not Generated Yet',
+            isHighlighted: _isActuallyBilled,
+          ),
+          _buildInfoRow(
+            'Payment Mode',
+            isPaid ? _paymentMode : (isUnpaidBill ? 'Pending' : 'N/A'),
+          ),
+          _buildInfoRow('Billing Date', _createdOnString),
+        ],
+      ),
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Card 3: Associated / Split Bills Section
+  // ────────────────────────────────────────────────────────────────────────────
+
+  Widget _buildBillsCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCardHeader(
+            icon: Icons.folder_copy_rounded,
+            title:
+                _bills.length > 1
+                    ? 'Generated Bills (${_bills.length})'
+                    : 'Generated Bill',
+          ),
+          const SizedBox(height: 14),
+
+          if (_loadingBills)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            )
+          else
+            ..._bills.map(_buildSplitBillRow),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSplitBillRow(PendingBill bill) {
+    final isPrinting = _printingBillId == bill.billId;
     final tone =
         bill.isPaid == 2
-            ? AppColors.success
+            ? const Color(0xFF10B981)
             : bill.isPaid == 1
-            ? AppColors.warning
-            : AppColors.error;
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFFEF4444);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.textHint.withValues(alpha: 0.2)),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Row(
         children: [
@@ -900,11 +1055,11 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                   bill.billNo.isNotEmpty ? bill.billNo : bill.billId,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 14.5,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     Container(
@@ -914,14 +1069,14 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                       ),
                       decoration: BoxDecoration(
                         color: tone.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         bill.paymentStatus.isNotEmpty
-                            ? bill.paymentStatus
-                            : (bill.isPaid == 2 ? 'Paid' : 'Not Paid'),
+                            ? bill.paymentStatus.toUpperCase()
+                            : (bill.isPaid == 2 ? 'PAID' : 'UNPAID'),
                         style: TextStyle(
-                          fontSize: 10.5,
+                          fontSize: 9.5,
                           fontWeight: FontWeight.w800,
                           color: tone,
                         ),
@@ -932,7 +1087,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                       '${CurrencyConstants.symbol}${bill.amount.toStringAsFixed(2)}',
                       style: const TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -942,15 +1097,18 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             ),
           ),
           SizedBox(
-            height: 34,
+            height: 32,
             child:
-                printing
+                isPrinting
                     ? const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 12),
                       child: SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
                       ),
                     )
                     : OutlinedButton.icon(
@@ -960,13 +1118,16 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                         side: const BorderSide(color: AppColors.primary),
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      icon: const Icon(Icons.print_outlined, size: 16),
+                      icon: const Icon(Icons.print_outlined, size: 14),
                       label: const Text(
                         'Print',
-                        style: TextStyle(fontSize: 12.5),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
           ),
@@ -975,63 +1136,270 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     );
   }
 
-  Widget _buildPriceBreakdown() {
-    double discount = _discount;
-    bool hasDiscount = discount > 0;
+  // ────────────────────────────────────────────────────────────────────────────
+  // Card 4: Order Items List Card
+  // ────────────────────────────────────────────────────────────────────────────
 
-    return Card(
-      color: AppColors.cardBackground,
-      elevation: 4,
-      shadowColor: AppColors.cardShadow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.calculate,
+  Widget _buildOrderItemsCard() {
+    final List<Widget> itemWidgets = [];
+
+    if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
+      final list = _detailModel!.data!.first.orderDetailList;
+      if (list != null && list.isNotEmpty) {
+        for (final d in list) {
+          final qty = d.productQty ?? 0;
+          final price = (d.itemPrice ?? 0).toDouble();
+          final total = (d.totPrice ?? 0).toDouble();
+          itemWidgets.add(
+            _buildItemRow(
+              name: d.productName ?? 'Item',
+              quantity: qty.toInt(),
+              price: price,
+              total: total,
+              instruction: d.instruction,
+            ),
+          );
+        }
+      }
+    }
+
+    if (itemWidgets.isEmpty) {
+      for (final item in widget.order.items) {
+        itemWidgets.add(
+          _buildItemRow(
+            name: item.productName,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.quantity * item.price,
+          ),
+        );
+      }
+    }
+
+    final itemCount =
+        _detailModel?.data?.first.orderDetailList?.length ??
+        widget.order.items.length;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildCardHeader(
+                icon: Icons.restaurant_menu_rounded,
+                title: 'Order Items',
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$itemCount ${itemCount == 1 ? 'item' : 'items'}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.primary,
-                    size: 20,
                   ),
                 ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Price Breakdown',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Items List
+          ...itemWidgets,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItemRow({
+    required String name,
+    required int quantity,
+    required double price,
+    required double total,
+    String? instruction,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Qty Badge
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 7,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${quantity}x',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
                   ),
                 ),
-              ],
+              ),
+              const SizedBox(width: 10),
+
+              // Product Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${CurrencyConstants.symbol}${price.toStringAsFixed(2)} each',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
+              // Total Price
+              Text(
+                '${CurrencyConstants.symbol}${total.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+
+          // Optional Note / Instruction
+          if (instruction != null && instruction.trim().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.edit_note_rounded,
+                    size: 13,
+                    color: Color(0xFFB45309),
+                  ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      instruction.trim(),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF92400E),
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
-
-            _buildPriceRow('Item Price', _subtotal),
-            _buildPriceRow(_gstLabel, _gstAmount),
-            _buildPriceRow('Service Charge', _serviceCharge),
-
-            // Only show discount if it exists
-            if (hasDiscount)
-              _buildPriceRow('Discount', discount, isDiscount: true),
-
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Divider(),
-            ),
-
-            _buildPriceRow('Grand Total', _grandTotal, isFinal: true),
           ],
-        ),
+        ],
+      ),
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Card 5: Price Breakdown Card
+  // ────────────────────────────────────────────────────────────────────────────
+
+  Widget _buildPriceBreakdownCard() {
+    final double discount = _discount;
+    final bool hasDiscount = discount > 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCardHeader(
+            icon: Icons.calculate_rounded,
+            title: 'Price Breakdown',
+          ),
+          const SizedBox(height: 14),
+
+          _buildPriceRow('Item Subtotal', _subtotal),
+          _buildPriceRow(_gstLabel, _gstAmount),
+          if (_serviceCharge > 0)
+            _buildPriceRow('Service Charge', _serviceCharge),
+          if (hasDiscount)
+            _buildPriceRow('Discount Applied', discount, isDiscount: true),
+
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+          ),
+
+          _buildPriceRow('Grand Total', _grandTotal, isFinal: true),
+        ],
       ),
     );
   }
@@ -1043,18 +1411,17 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     bool isFinal = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color:
-                    isFinal ? AppColors.textPrimary : AppColors.textSecondary,
-                fontSize: isFinal ? 18 : 16,
-                fontWeight: isFinal ? FontWeight.bold : FontWeight.normal,
-              ),
+          Text(
+            label,
+            style: TextStyle(
+              color:
+                  isFinal ? AppColors.textPrimary : AppColors.textSecondary,
+              fontSize: isFinal ? 15 : 13.5,
+              fontWeight: isFinal ? FontWeight.w800 : FontWeight.w500,
             ),
           ),
           Text(
@@ -1062,12 +1429,12 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             style: TextStyle(
               color:
                   isDiscount
-                      ? AppColors.success
+                      ? const Color(0xFF10B981)
                       : isFinal
                       ? AppColors.primary
                       : AppColors.textPrimary,
-              fontSize: isFinal ? 18 : 16,
-              fontWeight: isFinal ? FontWeight.bold : FontWeight.w600,
+              fontSize: isFinal ? 17.5 : 13.5,
+              fontWeight: isFinal ? FontWeight.w900 : FontWeight.w700,
             ),
           ),
         ],
@@ -1075,202 +1442,475 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     );
   }
 
-  Widget _buildOrderItems() {
-    return Card(
-      color: AppColors.cardBackground,
-      elevation: 4,
-      shadowColor: AppColors.cardShadow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.restaurant_menu,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Order Items',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
+  // ────────────────────────────────────────────────────────────────────────────
+  // Card 6: Kitchen Instructions Card (if present)
+  // ────────────────────────────────────────────────────────────────────────────
 
-            // Render items from API detail if available, otherwise fall back to existing items
-            if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty)
-              ...?_detailModel!.data!.first.orderDetailList?.map((d) {
-                final qty = d.productQty ?? 0;
-                final price = (d.itemPrice ?? 0).toDouble();
-                final total = (d.totPrice ?? 0).toDouble();
-                return _buildItemRow(d.productName ?? '', qty, price, total);
-              })
-            else
-              ...widget.order.items.map(
-                (item) => _buildItemRow(
-                  item.productName,
-                  item.quantity,
-                  item.price,
-                  item.quantity * item.price,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildItemRow(String name, int quantity, double price, double total) {
+  Widget _buildInstructionsCard() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.textHint.withValues(alpha: 0.2)),
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFDE68A)),
       ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              flex: 3,
-              child: Text(
-                name,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.speaker_notes_outlined,
+                size: 18,
+                color: Color(0xFFD97706),
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Kitchen Remarks & Instructions',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF92400E),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _instructions!.trim(),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF78350F),
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Sticky Bottom Action Bar
+  // ────────────────────────────────────────────────────────────────────────────
+
+  Widget _buildBottomActionBar() {
+    if (_loading || _error != null) {
+      return const SizedBox.shrink();
+    }
+
+    String buttonText;
+    IconData buttonIcon;
+    Color buttonColor;
+    VoidCallback? onPressed;
+
+    if (!_isActuallyBilled) {
+      buttonText = 'Go to Cart & Bill';
+      buttonIcon = Icons.shopping_cart_checkout_rounded;
+      buttonColor = AppColors.primary;
+      onPressed = _navigateToCart;
+    } else if (_isActuallyBilled && !_isActuallyPaid) {
+      buttonText =
+          'Proceed to Payment · ${CurrencyConstants.symbol}${_grandTotal.toStringAsFixed(2)}';
+      buttonIcon = Icons.payments_rounded;
+      buttonColor = const Color(0xFF10B981);
+      onPressed = _navigateToPaymentWithBillId;
+    } else {
+      buttonText = 'View / Print Bill';
+      buttonIcon = Icons.receipt_long_rounded;
+      buttonColor = AppColors.primary;
+      onPressed = _viewOrDownloadBill;
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: AppColors.cardShadow, width: 0.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0F000000),
+            blurRadius: 10,
+            offset: Offset(0, -3),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            onPressed: onPressed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: buttonColor,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: Text(
-                '$quantity × ${CurrencyConstants.symbol}${price.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            icon: Icon(buttonIcon, size: 18),
+            label: Text(
+              buttonText,
+              style: const TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
               ),
             ),
-            const SizedBox(width: 12),
-            // Use a fixed width for price to avoid wrapping
-            SizedBox(
-              width: 80,
-              child: Text(
-                '${CurrencyConstants.symbol}${total.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.right,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildCustomerInfo() {
-    return Card(
-      color: AppColors.cardBackground,
-      elevation: 4,
-      shadowColor: AppColors.cardShadow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+  // ────────────────────────────────────────────────────────────────────────────
+  // Skeleton Loader & Helper Widgets
+  // ────────────────────────────────────────────────────────────────────────────
+
+  Widget _buildSkeletonLoading() {
+    return Column(
+      children: [
+        _buildHeroSkeletonCard(),
+        const SizedBox(height: 14),
+        _buildBillingSkeletonCard(),
+        const SizedBox(height: 14),
+        _buildItemsSkeletonCard(),
+        const SizedBox(height: 14),
+        _buildSummarySkeletonCard(),
+      ],
+    );
+  }
+
+  Widget _buildHeroSkeletonCard() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _buildShimmerBone(width: 44, height: 44, radius: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildShimmerBone(width: 120, height: 16),
+                    const SizedBox(height: 6),
+                    _buildShimmerBone(width: 80, height: 12),
+                  ],
+                ),
+              ),
+              _buildShimmerBone(width: 90, height: 26, radius: 20),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildShimmerBone(width: 60, height: 10),
+                    const SizedBox(height: 6),
+                    _buildShimmerBone(width: 100, height: 14),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildShimmerBone(width: 60, height: 10),
+                    const SizedBox(height: 6),
+                    _buildShimmerBone(width: 80, height: 14),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBillingSkeletonCard() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildShimmerBone(width: double.infinity, height: 38, radius: 10),
+          const SizedBox(height: 12),
+          _buildShimmerBone(width: 150, height: 14),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItemsSkeletonCard() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildShimmerBone(width: 100, height: 16),
+              _buildShimmerBone(width: 50, height: 14),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 12),
+          for (int i = 0; i < 3; i++) ...[
+            if (i > 0) const SizedBox(height: 12),
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.person,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Customer Information',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                _buildShimmerBone(width: 24, height: 24, radius: 6),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildShimmerBone(width: 140, height: 14),
+                      const SizedBox(height: 4),
+                      _buildShimmerBone(width: 70, height: 11),
+                    ],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Different info based on order type
-            Column(
-              children: [
-                _buildInfoRow('Customer Name', widget.order.customerName),
-
-                // Phone number for all types
-                if (widget.order.phoneNumber != null)
-                  _buildInfoRow('Phone Number', widget.order.phoneNumber!),
-
-                // Order type info
-                _buildInfoRow('Order Type', widget.order.orderType),
-
-                // Platform name for channel partners
-                if (widget.order.platformName != null)
-                  _buildInfoRow('Platform', widget.order.platformName!),
-
-                // Instructions if any
-                if (_detailModel?.data != null &&
-                    _detailModel!.data!.isNotEmpty &&
-                    _detailModel!.data!.first.orderDetailList != null &&
-                    _detailModel!.data!.first.orderDetailList!.isNotEmpty)
-                  _buildInfoRow(
-                    'Instructions',
-                    _detailModel!
-                            .data!
-                            .first
-                            .orderDetailList!
-                            .first
-                            .instruction ??
-                        '',
-                  ),
+                _buildShimmerBone(width: 50, height: 14),
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummarySkeletonCard() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildShimmerBone(width: 120, height: 16),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildShimmerBone(width: 80, height: 13),
+              _buildShimmerBone(width: 60, height: 13),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildShimmerBone(width: 70, height: 13),
+              _buildShimmerBone(width: 50, height: 13),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildShimmerBone(width: 90, height: 18),
+              _buildShimmerBone(width: 80, height: 18),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerBone({
+    required double width,
+    required double height,
+    double radius = 6,
+  }) {
+    return AnimatedBuilder(
+      animation: _shimmerAnimation,
+      builder: (context, child) {
+        return Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(radius),
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: const [
+                Color(0xFFE2E8F0),
+                Color(0xFFF8FAFC),
+                Color(0xFFE2E8F0),
+              ],
+              stops: [
+                (_shimmerAnimation.value - 0.3).clamp(0.0, 1.0),
+                _shimmerAnimation.value.clamp(0.0, 1.0),
+                (_shimmerAnimation.value + 0.3).clamp(0.0, 1.0),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFEE2E2)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFEF2F2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.error_outline_rounded,
+              color: Color(0xFFEF4444),
+              size: 36,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Unable to Load Order Details',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _error ?? 'An unexpected error occurred.',
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 18),
+          ElevatedButton.icon(
+            onPressed: _loadOrderDetail,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 10,
+              ),
+            ),
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text(
+              'Retry',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCardHeader({required IconData icon, required String title}) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: AppColors.primary, size: 16),
         ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 15.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.2,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(
+    String label,
+    String value, {
+    bool isHighlighted = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color:
+                  isHighlighted ? AppColors.primary : AppColors.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1278,21 +1918,44 @@ class _OrderDetailViewState extends State<OrderDetailView> {
   Color _getStatusColor() {
     switch (widget.order.status) {
       case OrderStatusType.pending:
-        return AppColors.warning;
+        return const Color(0xFFF59E0B);
       case OrderStatusType.accepted:
-        return AppColors.info;
+        return const Color(0xFF3B82F6);
       case OrderStatusType.preparing:
-        return AppColors.tableCleaning;
+        return const Color(0xFF8B5CF6);
       case OrderStatusType.ready:
-        return AppColors.success;
+        return const Color(0xFF10B981);
       case OrderStatusType.delivered:
-        return AppColors.tableAvailable;
+        return const Color(0xFF059669);
       case OrderStatusType.cancelled:
-        return AppColors.error;
+        return const Color(0xFFEF4444);
       case OrderStatusType.completed:
-        return AppColors.success;
+        return const Color(0xFF10B981);
     }
   }
+
+  String _formatStatus(OrderStatusType status) {
+    switch (status) {
+      case OrderStatusType.pending:
+        return 'Pending';
+      case OrderStatusType.accepted:
+        return 'Accepted';
+      case OrderStatusType.preparing:
+        return 'Preparing';
+      case OrderStatusType.ready:
+        return 'Ready';
+      case OrderStatusType.delivered:
+        return 'Delivered';
+      case OrderStatusType.cancelled:
+        return 'Cancelled';
+      case OrderStatusType.completed:
+        return 'Completed';
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Navigation & Business Logic
+  // ────────────────────────────────────────────────────────────────────────────
 
   void _navigateToPaymentWithBillId() {
     if (_billId == null) {
@@ -1316,7 +1979,6 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                       ? 'PhoneOrder'
                       : 'Takeaway',
               onPaymentCompleted: () {
-                // Refresh the order details to get updated payment status
                 _loadOrderDetail();
               },
             ),
@@ -1325,11 +1987,9 @@ class _OrderDetailViewState extends State<OrderDetailView> {
   }
 
   void _navigateToCart() async {
-    // Load order items into cart first
     await _loadOrderItemsIntoCart();
     if (!mounted) return;
 
-    // Then navigate to cart with appropriate context
     if (widget.order.orderType == 'Table Orders') {
       Navigator.push(
         context,
@@ -1343,24 +2003,21 @@ class _OrderDetailViewState extends State<OrderDetailView> {
         ),
       );
     } else {
-      // For phone/takeaway orders
       _navigateToPhoneTakeawayCart();
     }
   }
 
   Future<void> _loadOrderItemsIntoCart() async {
     try {
-      // Prevent duplicate loading - only load once per order detail view session
       if (_cartLoaded) {
         debugPrint(
-          '[OrderDetailView] Cart already loaded, skipping to prevent duplicates',
+          '[OrderDetailView] Cart already loaded, skipping duplicate load',
         );
         return;
       }
 
       final cartProvider = context.read<AnimatedCartProvider>();
 
-      // Determine the cart context
       String tableId;
       String tableName;
 
@@ -1375,28 +2032,19 @@ class _OrderDetailViewState extends State<OrderDetailView> {
         tableName = 'Takeaway - ${widget.order.customerName}';
       }
 
-      debugPrint(
-        '[OrderDetailView] Loading cart for ${widget.order.orderType}: $tableName',
-      );
-
-      // CRITICAL FIX: Clear existing cart data first to prevent duplicates
       cartProvider.clearAllSessionData();
 
-      // Switch to the appropriate cart context
       cartProvider.switchToOrder(
         widget.order.orderId.toString(),
         tableId: tableId,
         tableName: tableName,
       );
 
-      // Prepare items for import using the proper importFromOrderCart method
       List<Map<String, dynamic>> cartItems = [];
 
-      // Load items from API data if available, otherwise use widget data
       if (_detailModel?.data != null &&
           _detailModel!.data!.isNotEmpty &&
           _detailModel!.data!.first.orderDetailList != null) {
-        // Convert API response to cart format
         for (final orderDetail in _detailModel!.data!.first.orderDetailList!) {
           final productName = orderDetail.productName ?? 'Unknown Item';
           final price = (orderDetail.itemPrice ?? 0).toDouble();
@@ -1407,7 +2055,6 @@ class _OrderDetailViewState extends State<OrderDetailView> {
           final instruction = orderDetail.instruction;
           final kotNo = orderDetail.kotNo;
 
-          // Create cart item data
           final cartItem = {
             'productId': productId,
             'productName': productName,
@@ -1425,10 +2072,9 @@ class _OrderDetailViewState extends State<OrderDetailView> {
           cartItems.add(cartItem);
         }
       } else {
-        // Fallback to widget order items if API data not available
         for (final item in widget.order.items) {
           final cartItem = {
-            'productId': item.productName, // Use productName as ID for now
+            'productId': item.productName,
             'productName': item.productName,
             'price': item.price,
             'quantity': item.quantity,
@@ -1438,22 +2084,16 @@ class _OrderDetailViewState extends State<OrderDetailView> {
         }
       }
 
-      // Use importFromOrderCart to properly load items (this clears existing and replaces)
       cartProvider.importFromOrderCart(
         cartItems,
         orderId: widget.order.orderId.toString(),
         tableId: tableId,
         tableName: tableName,
-        clearExisting: true, // This ensures no duplicates
+        clearExisting: true,
       );
 
-      // Mark cart as loaded to prevent duplicate loading
       _cartLoaded = true;
-      debugPrint(
-        '[OrderDetailView] Cart loaded with ${cartItems.length} items',
-      );
 
-      // Show success message
       if (mounted) {
         AppSnackBar.showSuccess(
           context,
@@ -1470,7 +2110,6 @@ class _OrderDetailViewState extends State<OrderDetailView> {
   }
 
   void _navigateToPhoneTakeawayCart() {
-    // Navigate to cart with the order type context
     String tableId =
         widget.order.orderType == 'Phone Orders' ? 'PhoneOrder' : 'Takeaway';
     String tableName =
@@ -1491,13 +2130,6 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     );
   }
 
-  /// Shows the real bill as a PDF the user can view, print, or save —
-  /// covers "I forgot to download it at the counter". Built from the
-  /// actual bill (Order/getBillDetailByBillId), never a reconstruction
-  /// from local order data, so the company header, tax and totals always
-  /// match exactly what was charged. Doesn't touch CartView or any
-  /// KOT-related check — this order is already billed, there is nothing
-  /// left to gate on.
   Future<void> _viewOrDownloadBill() async {
     if (_billId == null || _billId!.isEmpty) {
       AppSnackBar.showError(context, AppStrings.orders.billIdNotAvailable);

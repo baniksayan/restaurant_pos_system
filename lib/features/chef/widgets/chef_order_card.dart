@@ -6,7 +6,7 @@ import '../models/chef_order_model.dart';
 import '../providers/chef_provider.dart';
 import 'chef_order_item.dart';
 import 'chef_status_badge.dart';
-import 'reject_order_dialog.dart';
+// import 'reject_order_dialog.dart'; // Preserved for future reject restoration
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class ChefOrderCard extends StatefulWidget {
@@ -20,8 +20,8 @@ class ChefOrderCard extends StatefulWidget {
 
 class _ChefOrderCardState extends State<ChefOrderCard>
     with SingleTickerProviderStateMixin {
-  bool _isHandedOver = false;
-  int _remainingSeconds = 5;
+  final bool _isHandedOver = false;
+  final int _remainingSeconds = 5;
   Timer? _countdownTimer;
   late AnimationController _vanishController;
   late Animation<double> _fadeAnimation;
@@ -57,6 +57,8 @@ class _ChefOrderCardState extends State<ChefOrderCard>
     super.dispose();
   }
 
+  /*
+  // Preserved: Countdown handover animation previously used before direct banner display
   void _startGiveOrderCountdown() {
     if (_isHandedOver) return;
 
@@ -86,10 +88,13 @@ class _ChefOrderCardState extends State<ChefOrderCard>
     if (!mounted) return;
     await _vanishController.forward();
     if (mounted) {
-      context.read<ChefProvider>().giveOrder(widget.order.id);
+      context.read<ChefProvider>().confirmPassHandover(widget.order.id);
     }
   }
+  */
 
+  /*
+  // Preserved for future rejection flow restoration
   void _showRejectDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -106,6 +111,7 @@ class _ChefOrderCardState extends State<ChefOrderCard>
           ),
     );
   }
+  */
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +154,7 @@ class _ChefOrderCardState extends State<ChefOrderCard>
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header Row: Order Number, Table Name, Time Ago & Status Badge
+              // Header: 2-Tier responsive layout to guarantee full kotNo display
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
@@ -159,82 +165,110 @@ class _ChefOrderCardState extends State<ChefOrderCard>
                   borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
                   border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Order Number & Table Name
-                    Expanded(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              order.kotNo.isNotEmpty
-                                  ? (order.kotNo.startsWith('KOT') ||
-                                          order.kotNo.startsWith('#')
-                                      ? order.kotNo
-                                      : '#${order.kotNo}')
-                                  : (order.orderNumber.isNotEmpty
-                                      ? '#${order.orderNumber}'
-                                      : '#KOT'),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.textPrimary,
-                                letterSpacing: -0.3,
-                              ),
+                    // Tier 1: Table Badge on Left, Time Ago & Status Badge on Right
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.2),
+                              width: 0.8,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            flex: 0,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 2.5,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.table_restaurant_rounded,
+                                size: 12,
+                                color: AppColors.primaryDark,
                               ),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
+                              const SizedBox(width: 4),
+                              Text(
                                 order.tableNumber.toUpperCase(),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                  fontSize: 10.5,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.primaryDark,
                                   letterSpacing: 0.3,
                                 ),
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-
-                    // Time ago & Status Badge
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          order.timeAgo,
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
+                            ],
                           ),
                         ),
                         const SizedBox(width: 8),
-                        ChefStatusBadge(
-                          status:
-                              _isHandedOver
-                                  ? ChefOrderStatus.served
-                                  : order.status,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.schedule_rounded,
+                              size: 13,
+                              color: order.effectiveWaitingMinutes >= 30
+                                  ? const Color(0xFFEA580C)
+                                  : AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 3.5),
+                            Text(
+                              order.timeAgo,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: order.effectiveWaitingMinutes >= 30
+                                    ? const Color(0xFFEA580C)
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ChefStatusBadge(
+                              status:
+                                  _isHandedOver
+                                      ? ChefOrderStatus.served
+                                      : order.status,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 7),
+                    // Tier 2: Full KOT Ticket Number (softWrap, no ellipsis)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.receipt_long_rounded,
+                          size: 14,
+                          color: AppColors.textSecondary.withValues(alpha: 0.8),
+                        ),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            order.kotNo.isNotEmpty
+                                ? (order.kotNo.startsWith('KOT') ||
+                                        order.kotNo.startsWith('#')
+                                    ? order.kotNo
+                                    : '#${order.kotNo}')
+                                : (order.orderNumber.isNotEmpty
+                                    ? '#${order.orderNumber}'
+                                    : '#KOT'),
+                            softWrap: true,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -275,7 +309,9 @@ class _ChefOrderCardState extends State<ChefOrderCard>
 
     switch (order.status) {
       case ChefOrderStatus.pending:
-        // Step 1 (Queue Tab): Approve / Reject
+        // Step 1 (Queue Tab): Single primary action -> ACCEPT ORDER
+        // NOTE: The Reject action is commented out per requirement.
+        /*
         return Row(
           children: [
             Expanded(
@@ -329,22 +365,20 @@ class _ChefOrderCardState extends State<ChefOrderCard>
             ),
           ],
         );
-
-      case ChefOrderStatus.preparing:
-        // Step 2 (Preparing Tab): Preparation Started -> Move to Serve Tab
+        */
         return SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFF59E0B), // Amber/Orange
+              backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
-            icon: const Icon(Icons.soup_kitchen_rounded, size: 18),
+            icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
             label: const Text(
-              'PREPARATION STARTED',
+              'ACCEPT ORDER',
               style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 13,
@@ -352,29 +386,23 @@ class _ChefOrderCardState extends State<ChefOrderCard>
               ),
             ),
             onPressed: () {
-              provider.markReadyToServe(order.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Order #${order.orderNumber} Moved to Serve'),
-                  backgroundColor: const Color(0xFFF59E0B),
-                  behavior: SnackBarBehavior.floating,
-                  duration: const Duration(seconds: 1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+              provider.approveOrder(order.id);
+              AppSnackBar.showSuccess(
+                context,
+                'Order #${order.orderNumber} Accepted -> Moved to Preparing',
+                duration: const Duration(seconds: 1),
               );
             },
           ),
         );
 
-      case ChefOrderStatus.ready:
-        // Step 3 (Serve Tab): Ready to Serve -> Triggers 5s countdown and smooth vanish animation
+      case ChefOrderStatus.preparing:
+        // Step 2 (Preparing Tab): Chef marks order Ready to Serve -> moves to Waiter / Ready to Collect
         return SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.success,
+              backgroundColor: const Color(0xFFF59E0B), // Amber/Orange
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -389,11 +417,21 @@ class _ChefOrderCardState extends State<ChefOrderCard>
                 letterSpacing: 0.4,
               ),
             ),
-            onPressed: _startGiveOrderCountdown,
+            onPressed: () {
+              provider.markReadyToServe(order.id);
+              AppSnackBar.showSuccess(
+                context,
+                'Order #${order.orderNumber} Prepared -> Ready for Waiter Pickup',
+                duration: const Duration(seconds: 1),
+              );
+            },
           ),
         );
 
+      case ChefOrderStatus.ready:
       case ChefOrderStatus.served:
+        // Status 3 (Serve Tab): Food is placed on the pass.
+        // No 'Confirm on Pass' button; directly shows the confirmation message banner.
         return _buildHandedOverBanner(remainingSeconds: null);
 
       case ChefOrderStatus.rejected:
@@ -504,7 +542,7 @@ class _ChefOrderCardState extends State<ChefOrderCard>
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'Handed Over to Waiter',
+                  'Placed on Kitchen Pass',
                   style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w800,
@@ -515,8 +553,8 @@ class _ChefOrderCardState extends State<ChefOrderCard>
                 const SizedBox(height: 1),
                 Text(
                   remainingSeconds != null
-                      ? 'Removing from serve queue in ${remainingSeconds}s...'
-                      : 'Order completed & handed over',
+                      ? 'Awaiting waiter pickup (${remainingSeconds}s)...'
+                      : 'Ready for Operator/Waiter collection',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,

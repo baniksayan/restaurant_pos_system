@@ -1,9 +1,9 @@
 enum ChefOrderStatus {
-  pending, // New order received, needs Approve / Reject
-  preparing, // Chef approved, currently cooking
-  ready, // Food ready to serve, awaiting Give Order
-  served, // Handed over / completed
-  rejected, // Rejected by chef
+  pending, // STATUS 1: New order in queue, awaiting Chef Approve (-> 2) or Reject (-> 4)
+  preparing, // STATUS 2: Chef approved, currently cooking in kitchen (-> 3)
+  ready, // STATUS 3: Preparation completed, ready for handover on pass (Chef -> Operator handover point)
+  served, // STATUS 5: Operator/Waiter collected & served to table (final state, Operator-owned)
+  rejected, // STATUS 4: Rejected by chef
 }
 
 class ChefOrderItem {
@@ -48,7 +48,7 @@ class ChefOrderItem {
 
 class ChefOrder {
   final String id; // Unique KOT ID (UUID)
-  final String kotNo; // Human readable KOT number, e.g. "KOT/110926/0007"
+  final String kotNo; // Human readable KOT number
   final String? kotHeadId;
   final String? orderIdentifier;
   final String? channelName;
@@ -87,19 +87,26 @@ class ChefOrder {
       items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
 
   String get timeAgo {
-    if (waitingMinutes != null) {
-      return '$waitingMinutes min';
-    }
-    final diff = DateTime.now().difference(orderTime);
-    if (diff.inMinutes < 1) {
+    final int minutes =
+        waitingMinutes ?? DateTime.now().difference(orderTime).inMinutes;
+    if (minutes <= 0) {
       return 'Just now';
-    } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes} min ago';
+    }
+    final int hours = minutes ~/ 60;
+    final int remainingMins = minutes % 60;
+
+    if (hours == 0) {
+      return '$remainingMins min';
+    } else if (remainingMins == 0) {
+      return '${hours}h';
     } else {
-      final hours = diff.inHours;
-      return '$hours hr${hours > 1 ? 's' : ''} ago';
+      return '${hours}h ${remainingMins}m';
     }
   }
+
+  /// Total waiting time in minutes for warning thresholds and status calculations
+  int get effectiveWaitingMinutes =>
+      waitingMinutes ?? DateTime.now().difference(orderTime).inMinutes;
 
   ChefOrder copyWith({
     String? id,
