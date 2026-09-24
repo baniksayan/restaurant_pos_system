@@ -625,7 +625,7 @@ class _MenuItemCardState extends State<MenuItemCard>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '${CurrencyConstants.symbol}${widget.price.toInt()}',
+                        widget.price.toCurrencyInt(),
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,

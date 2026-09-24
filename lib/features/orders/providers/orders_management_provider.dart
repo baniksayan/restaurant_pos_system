@@ -167,6 +167,9 @@ class OrdersManagementProvider extends ChangeNotifier {
     // Search in order ID
     if (order.orderId.toLowerCase().contains(query)) return true;
 
+    // Search in order No
+    if (order.orderNo?.toLowerCase().contains(query) ?? false) return true;
+
     // Search in customer name
     if (order.customerName.toLowerCase().contains(query)) return true;
 
@@ -307,9 +310,18 @@ class OrdersManagementProvider extends ChangeNotifier {
       final orderTime = _parseCreatedOn(item['createdOn']);
       final tableName = channelNameStr;
       final waiterName = (item['waiterName'] ?? '').toString();
+      final orderNoRaw = item['orderNo'] ??
+          item['generatedOrderNo'] ??
+          item['orderNumber'] ??
+          item['orderNum'];
+      final orderNo =
+          orderNoRaw != null && orderNoRaw.toString().trim().isNotEmpty
+              ? orderNoRaw.toString().trim()
+              : null;
 
       return OrderItem(
         orderId: orderId,
+        orderNo: orderNo,
         customerName: displayName.isNotEmpty ? displayName : 'Guest',
         phoneNumber: phone.isNotEmpty ? phone : null,
         orderType: switch (channelType.toLowerCase()) {

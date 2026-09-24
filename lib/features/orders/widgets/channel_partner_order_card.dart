@@ -53,11 +53,15 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
         _currentOrder.platformName ?? _currentOrder.orderType;
     final platformColor = _getPlatformColor(platformName);
 
-    final displayOrderId = _currentOrder.orderId.isNotEmpty
-        ? (_currentOrder.orderId.startsWith('OD') ||
-                _currentOrder.orderId.startsWith('#')
-            ? _currentOrder.orderId
-            : '#${_currentOrder.orderId}')
+    final resolvedOrderNo = (_currentOrder.orderNo != null &&
+            _currentOrder.orderNo!.trim().isNotEmpty)
+        ? _currentOrder.orderNo!.trim()
+        : _currentOrder.orderId;
+
+    final displayOrderNo = resolvedOrderNo.isNotEmpty
+        ? (resolvedOrderNo.startsWith('#')
+            ? resolvedOrderNo
+            : '#$resolvedOrderNo')
         : '#ORDER';
 
     return Container(
@@ -269,7 +273,7 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                displayOrderId,
+                                displayOrderNo,
                                 style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
@@ -347,7 +351,7 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
                                 ),
                               ),
                               Text(
-                                '${CurrencyConstants.symbol}${_currentOrder.totalAmount.toStringAsFixed(2)}',
+                                _currentOrder.totalAmount.toCurrency(),
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w900,

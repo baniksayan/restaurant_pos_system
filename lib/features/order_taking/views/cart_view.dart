@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
@@ -23,6 +23,7 @@ import '../widgets/clear_cart_dialog.dart';
 import '../widgets/gst_info_dialog.dart';
 import '../widgets/kot_pdf_viewer_dialog.dart';
 import '../widgets/kot_section_widget.dart';
+import '../widgets/kitchen_note_dialog.dart';
 import 'package:restaurant_pos_system/shared/widgets/images/network_image_widget.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/pdf_share_bottom_sheet.dart';
 import '../providers/order_provider.dart';
@@ -476,8 +477,7 @@ class _CartViewState extends State<CartView> {
                         children: [
                           Expanded(
                             child: _buildValueColumn(
-                              value:
-                                  '${CurrencyConstants.symbol}${unitPrice.toStringAsFixed(2)}',
+                              value: unitPrice.toCurrency(),
                               label: AppStrings.unitPrice,
                               valueColor: const Color(0xFF1E293B),
                             ),
@@ -501,8 +501,7 @@ class _CartViewState extends State<CartView> {
                           ),
                           Expanded(
                             child: _buildValueColumn(
-                              value:
-                                  '${CurrencyConstants.symbol}${totalPrice.toStringAsFixed(2)}',
+                              value: totalPrice.toCurrency(),
                               label: AppStrings.total,
                               valueColor: const Color(0xFF6D28D9),
                             ),
@@ -668,43 +667,7 @@ class _CartViewState extends State<CartView> {
   /// Stored server-side on KOTHead.KOTNote. Returns '' (not null) on Skip so
   /// callers can use it directly without a null check.
   Future<String> _askKotNote() async {
-    final controller = TextEditingController();
-    final note = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Note for Kitchen'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            maxLines: 3,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              hintText: 'e.g. serve together, no onions across the table',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(''),
-              child: const Text('Skip'),
-            ),
-            FilledButton(
-              onPressed:
-                  () => Navigator.of(dialogContext).pop(controller.text.trim()),
-              child: const Text('Add & Send'),
-            ),
-          ],
-        );
-      },
-    );
-    // Don't dispose immediately: the dialog's closing transition can still
-    // be rebuilding the TextField for a frame or two after showDialog's
-    // Future resolves, and disposing here races that, throwing "used after
-    // being disposed" (and, as a knock-on effect, corrupting the element
-    // tree enough to also surface as "Duplicate GlobalKeys"). Let the
-    // transition finish first.
-    Future.delayed(const Duration(milliseconds: 300), controller.dispose);
+    final note = await KitchenNoteDialog.show(context);
     return note ?? '';
   }
 

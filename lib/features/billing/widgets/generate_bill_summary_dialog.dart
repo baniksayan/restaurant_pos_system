@@ -816,7 +816,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                 ),
               ),
               Text(
-                '${CurrencyConstants.symbol}${total.toStringAsFixed(2)}',
+                total.toCurrency(),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
@@ -839,7 +839,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
         Text(
-          '${CurrencyConstants.symbol}${amount.toStringAsFixed(2)}',
+          amount.toCurrency(),
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -1180,9 +1180,9 @@ class _OrderItemRowTileState extends State<_OrderItemRowTile> {
 
             // Amount Column (Fixed 95px width, right aligned for max 5-digit values e.g. $12345.00)
             SizedBox(
-              width: 95,
+              width: 110,
               child: Text(
-                '${CurrencyConstants.symbol}${itemTotal.toStringAsFixed(2)}',
+                itemTotal.toCurrency(),
                 textAlign: TextAlign.right,
                 style: const TextStyle(
                   fontSize: 12.5,

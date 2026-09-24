@@ -222,7 +222,7 @@ class BillSuccessDialog extends StatelessWidget {
                                       ),
                                       const SizedBox(height: 6),
                                       Text(
-                                        '${CurrencyConstants.symbol}${total.toStringAsFixed(2)}',
+                                        total.toCurrency(),
                                         style: const TextStyle(
                                           fontSize: 28,
                                           fontWeight: FontWeight.w800,

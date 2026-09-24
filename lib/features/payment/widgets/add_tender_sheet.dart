@@ -100,8 +100,7 @@ class _AddTenderSheetState extends State<AddTenderSheet> {
       setState(
         () =>
             _error =
-                'Cannot exceed ${CurrencyConstants.symbol}'
-                '${widget.remaining.toStringAsFixed(2)} on ${_method.toUpperCase()}',
+                'Cannot exceed ${widget.remaining.toCurrency()} on ${_method.toUpperCase()}',
       );
       return;
     }
@@ -158,7 +157,7 @@ class _AddTenderSheetState extends State<AddTenderSheet> {
                 ),
                 const Spacer(),
                 Text(
-                  '${CurrencyConstants.symbol}${widget.remaining.toStringAsFixed(2)} due',
+                  '${widget.remaining.toCurrency()} due',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -238,8 +237,7 @@ class _AddTenderSheetState extends State<AddTenderSheet> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'Change to return '
-                    '${CurrencyConstants.symbol}${_change.toStringAsFixed(2)}',
+                    'Change to return ${_change.toCurrency()}',
                     style: const TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,

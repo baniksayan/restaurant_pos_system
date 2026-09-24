@@ -954,66 +954,66 @@ class _ReportsViewState extends State<ReportsView>
     switch (_selectedTimeFrame) {
       case 'Today':
         return {
-          'revenue': '${CurrencyConstants.symbol}3,245',
+          'revenue': 3245.toCurrencyInt(),
           'revenueChange': '+5%',
           'orders': '47',
           'ordersChange': '+12%',
-          'avgOrder': '69.04',
+          'avgOrder': 69.04.toCurrencyWithoutSymbol(),
           'avgOrderChange': '+3%',
           'turnover': '1.8x',
           'turnoverChange': '+8%',
         };
       case 'Last 7 Days':
         return {
-          'revenue': '${CurrencyConstants.symbol}12,450',
+          'revenue': 12450.toCurrencyInt(),
           'revenueChange': '+12%',
           'orders': '320',
           'ordersChange': '-5%',
-          'avgOrder': '38.91',
+          'avgOrder': 38.91.toCurrencyWithoutSymbol(),
           'avgOrderChange': '+8%',
           'turnover': '2.1x',
           'turnoverChange': '+15%',
         };
       case 'Last 30 Days':
         return {
-          'revenue': '${CurrencyConstants.symbol}54,780',
+          'revenue': 54780.toCurrencyInt(),
           'revenueChange': '+18%',
           'orders': '1,245',
           'ordersChange': '+22%',
-          'avgOrder': '44.02',
+          'avgOrder': 44.02.toCurrencyWithoutSymbol(),
           'avgOrderChange': '+15%',
           'turnover': '2.4x',
           'turnoverChange': '+25%',
         };
       case 'This Month':
         return {
-          'revenue': '${CurrencyConstants.symbol}48,920',
+          'revenue': 48920.toCurrencyInt(),
           'revenueChange': '+14%',
           'orders': '1,089',
           'ordersChange': '+8%',
-          'avgOrder': '44.93',
+          'avgOrder': 44.93.toCurrencyWithoutSymbol(),
           'avgOrderChange': '+12%',
           'turnover': '2.3x',
           'turnoverChange': '+18%',
         };
       case 'Last 3 Months':
         return {
-          'revenue': '${CurrencyConstants.symbol}1,84,350',
+          'revenue': 184350.toCurrencyInt(),
           'revenueChange': '+28%',
           'orders': '4,567',
           'ordersChange': '+35%',
-          'avgOrder': '40.38',
+          'avgOrder': 40.38.toCurrencyWithoutSymbol(),
           'avgOrderChange': '+18%',
           'turnover': '2.6x',
           'turnoverChange': '+32%',
         };
       default:
         return {
-          'revenue': '${CurrencyConstants.symbol}12,450',
+          'revenue': 12450.toCurrencyInt(),
           'revenueChange': '+12%',
           'orders': '320',
           'ordersChange': '-5%',
-          'avgOrder': '38.91',
+          'avgOrder': 38.91.toCurrencyWithoutSymbol(),
           'avgOrderChange': '+8%',
           'turnover': '2.1x',
           'turnoverChange': '+15%',
@@ -1025,32 +1025,32 @@ class _ReportsViewState extends State<ReportsView>
     switch (_selectedTimeFrame) {
       case 'Today':
         return {
-          'totalRevenue': '${CurrencyConstants.symbol}3,245',
+          'totalRevenue': 3245.toCurrencyInt(),
           'change': '+5%',
         };
       case 'Last 7 Days':
         return {
-          'totalRevenue': '${CurrencyConstants.symbol}12,450',
+          'totalRevenue': 12450.toCurrencyInt(),
           'change': '+12%',
         };
       case 'Last 30 Days':
         return {
-          'totalRevenue': '${CurrencyConstants.symbol}54,780',
+          'totalRevenue': 54780.toCurrencyInt(),
           'change': '+18%',
         };
       case 'This Month':
         return {
-          'totalRevenue': '${CurrencyConstants.symbol}48,920',
+          'totalRevenue': 48920.toCurrencyInt(),
           'change': '+14%',
         };
       case 'Last 3 Months':
         return {
-          'totalRevenue': '${CurrencyConstants.symbol}1,84,350',
+          'totalRevenue': 184350.toCurrencyInt(),
           'change': '+28%',
         };
       default:
         return {
-          'totalRevenue': '${CurrencyConstants.symbol}12,450',
+          'totalRevenue': 12450.toCurrencyInt(),
           'change': '+12%',
         };
     }

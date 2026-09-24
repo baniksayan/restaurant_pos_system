@@ -51,6 +51,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
   List<PendingBill> _bills = [];
   bool _loadingBills = false;
   String? _printingBillId;
+  bool _loadingPdf = false;
 
   // Shimmer skeleton animation
   late AnimationController _shimmerController;
@@ -133,9 +134,10 @@ class _OrderDetailViewState extends State<OrderDetailView>
 
   String? get _orderNo {
     if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
-      return _detailModel!.data!.first.orderNo;
+      final no = _detailModel!.data!.first.orderNo;
+      if (no != null && no.isNotEmpty) return no;
     }
-    return null;
+    return widget.order.orderNo;
   }
 
   String? get _billNo {
@@ -1084,7 +1086,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${CurrencyConstants.symbol}${bill.amount.toStringAsFixed(2)}',
+                      bill.amount.toCurrency(),
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
@@ -1098,38 +1100,59 @@ class _OrderDetailViewState extends State<OrderDetailView>
           ),
           SizedBox(
             height: 32,
-            child:
-                isPrinting
-                    ? const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    )
-                    : OutlinedButton.icon(
-                      onPressed: () => _printBill(bill),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.primary),
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      icon: const Icon(Icons.print_outlined, size: 14),
-                      label: const Text(
-                        'Print',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
+            child: isPrinting
+                ? Container(
+                    height: 32,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.3),
                       ),
                     ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 13,
+                          height: 13,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Printing...',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : OutlinedButton.icon(
+                    onPressed: () => _printBill(bill),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    icon: const Icon(Icons.print_outlined, size: 14),
+                    label: const Text(
+                      'Print',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -1290,7 +1313,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${CurrencyConstants.symbol}${price.toStringAsFixed(2)} each',
+                      '${price.toCurrency()} each',
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 11.5,
@@ -1305,7 +1328,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
 
               // Total Price
               Text(
-                '${CurrencyConstants.symbol}${total.toStringAsFixed(2)}',
+                total.toCurrency(),
                 style: const TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 14.5,
@@ -1425,7 +1448,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
             ),
           ),
           Text(
-            '${isDiscount ? '-' : ''}${CurrencyConstants.symbol}${amount.abs().toStringAsFixed(2)}',
+            '${isDiscount ? '-' : ''}${amount.abs().toCurrency()}',
             style: TextStyle(
               color:
                   isDiscount
@@ -1512,7 +1535,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
       onPressed = _navigateToCart;
     } else if (_isActuallyBilled && !_isActuallyPaid) {
       buttonText =
-          'Proceed to Payment · ${CurrencyConstants.symbol}${_grandTotal.toStringAsFixed(2)}';
+          'Proceed to Payment · ${_grandTotal.toCurrency()}';
       buttonIcon = Icons.payments_rounded;
       buttonColor = const Color(0xFF10B981);
       onPressed = _navigateToPaymentWithBillId;
@@ -1520,7 +1543,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
       buttonText = 'View / Print Bill';
       buttonIcon = Icons.receipt_long_rounded;
       buttonColor = AppColors.primary;
-      onPressed = _viewOrDownloadBill;
+      onPressed = _loadingPdf ? null : _viewOrDownloadBill;
     }
 
     return Container(
@@ -1553,13 +1576,22 @@ class _OrderDetailViewState extends State<OrderDetailView>
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            icon: Icon(buttonIcon, size: 18),
+            icon: _loadingPdf
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Icon(buttonIcon, size: 18),
             label: Text(
-              buttonText,
+              _loadingPdf ? 'Opening Bill...' : buttonText,
               style: const TextStyle(
-                fontSize: 14.5,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
+                letterSpacing: 0.3,
               ),
             ),
           ),
@@ -2136,21 +2168,22 @@ class _OrderDetailViewState extends State<OrderDetailView>
       return;
     }
 
-    if (_billDetails == null) {
-      await _loadBillDetailsIfNeeded();
-    }
-    if (!mounted) return;
-
-    final billData = _billDetails;
-    if (billData == null) {
-      AppSnackBar.showError(
-        context,
-        'Could not load this bill right now. Please try again.',
-      );
-      return;
-    }
-
+    setState(() => _loadingPdf = true);
     try {
+      if (_billDetails == null) {
+        await _loadBillDetailsIfNeeded();
+      }
+      if (!mounted) return;
+
+      final billData = _billDetails;
+      if (billData == null) {
+        AppSnackBar.showError(
+          context,
+          'Could not load this bill right now. Please try again.',
+        );
+        return;
+      }
+
       final billBytes = await PDFService.generateThermalBill(
         items: widget.order.items,
         tableId: widget.order.tableNumber ?? '1',
@@ -2158,7 +2191,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
             widget.order.tableNumber != null
                 ? 'Table ${widget.order.tableNumber}'
                 : 'Table 1',
-        orderNumber: widget.order.orderId.toString(),
+        orderNumber: _orderNo ?? widget.order.orderNo ?? widget.order.orderId.toString(),
         orderTime: widget.order.orderTime,
         subtotal: _subtotal,
         gstAmount: _gstAmount,
@@ -2183,13 +2216,17 @@ class _OrderDetailViewState extends State<OrderDetailView>
         builder:
             (context) => BillPDFViewerDialog(
               pdfBytes: billBytes,
-              orderNumber: _billNo ?? widget.order.orderId.toString(),
-              fileName: 'Bill_${_billNo ?? widget.order.orderId}.pdf',
+              orderNumber: _billNo ?? _orderNo ?? widget.order.orderNo ?? widget.order.orderId.toString(),
+              fileName: 'Bill_${_billNo ?? _orderNo ?? widget.order.orderNo ?? widget.order.orderId}.pdf',
             ),
       );
     } catch (e) {
       if (mounted) {
         AppSnackBar.showError(context, 'Error opening bill: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loadingPdf = false);
       }
     }
   }

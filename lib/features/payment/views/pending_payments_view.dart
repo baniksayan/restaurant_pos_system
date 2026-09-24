@@ -752,7 +752,7 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
             ),
           ),
           Text(
-            '${CurrencyConstants.symbol}${total.toStringAsFixed(2)}',
+            total.toCurrency(),
             style: const TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w900,
@@ -1422,7 +1422,7 @@ class _PendingPaymentBillCard extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '${CurrencyConstants.symbol}${bill.amount.toStringAsFixed(2)}',
+                          bill.amount.toCurrency(),
                           style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w900,

@@ -643,7 +643,7 @@ class _PaymentPageState extends State<PaymentPage>
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '${CurrencyConstants.symbol}${_paidNowTotal.toStringAsFixed(2)}'
+                      '${_paidNowTotal.toCurrency()}'
                       ' • $_tenderSummary',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: colorScheme.onSurfaceVariant,
@@ -665,7 +665,7 @@ class _PaymentPageState extends State<PaymentPage>
                           const SizedBox(height: 6),
                           _kv(
                             'Amount',
-                            '${CurrencyConstants.symbol}${_paidNowTotal.toStringAsFixed(2)}',
+                            _paidNowTotal.toCurrency(),
                             context,
                           ),
                           const SizedBox(height: 6),

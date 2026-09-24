@@ -258,7 +258,7 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '${CurrencyConstants.symbol}${_calculatedClosingBalance.toStringAsFixed(0)}',
+                            _calculatedClosingBalance.toCurrencyInt(),
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -332,7 +332,7 @@ class _CashManagementDialogState extends State<CashManagementDialog> {
         Flexible(
           flex: 1,
           child: Text(
-            '${CurrencyConstants.symbol}${amount.toStringAsFixed(0)}',
+            amount.toCurrencyInt(),
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: color,

@@ -157,7 +157,7 @@ class CartItemCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${CurrencyConstants.symbol}${item.price.toStringAsFixed(2)}',
+                            item.price.toCurrency(),
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
@@ -247,7 +247,7 @@ class CartItemCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '${CurrencyConstants.symbol}${(item.price * item.quantity).toStringAsFixed(2)}',
+                            (item.price * item.quantity).toCurrency(),
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
@@ -353,8 +353,7 @@ class CartItemCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: _buildValueColumn(
-                          value:
-                              '${CurrencyConstants.symbol}${item.price.toStringAsFixed(2)}',
+                          value: item.price.toCurrency(),
                           label: AppStrings.unitPrice,
                           valueColor: const Color(0xFF1E293B),
                         ),
@@ -370,8 +369,7 @@ class CartItemCard extends StatelessWidget {
                       Container(height: 24, width: 1, color: Colors.grey[300]),
                       Expanded(
                         child: _buildValueColumn(
-                          value:
-                              '${CurrencyConstants.symbol}${(item.price * item.quantity).toStringAsFixed(2)}',
+                          value: (item.price * item.quantity).toCurrency(),
                           label: AppStrings.total,
                           valueColor: accentColor,
                         ),

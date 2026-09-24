@@ -73,7 +73,7 @@ class TenderListCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${CurrencyConstants.symbol}${billTotal.toStringAsFixed(2)} total',
+                '${billTotal.toCurrency()} total',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -113,8 +113,7 @@ class TenderListCard extends StatelessWidget {
               amount: tenders[i].amount,
               sub:
                   tenders[i].returnAmount > 0
-                      ? 'tendered ${CurrencyConstants.symbol}'
-                          '${tenders[i].cashTendered.toStringAsFixed(2)}'
+                      ? 'tendered ${tenders[i].cashTendered.toCurrency()}'
                       : (tenders[i].refId.isNotEmpty
                           ? 'ref ${tenders[i].refId}'
                           : null),
@@ -189,7 +188,7 @@ class TenderListCard extends StatelessWidget {
           ),
         ),
         Text(
-          '${CurrencyConstants.symbol}${amount.toStringAsFixed(2)}',
+          amount.toCurrency(),
           style: TextStyle(
             fontSize: 13.5,
             fontWeight: FontWeight.w700,
@@ -234,7 +233,7 @@ class TenderListCard extends StatelessWidget {
         ),
         if (!hideAmount)
           Text(
-            '${CurrencyConstants.symbol}${amount.toStringAsFixed(2)}',
+            amount.toCurrency(),
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,

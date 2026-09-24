@@ -33,7 +33,7 @@ class PDFService {
   }
 
   static String _formatCurrency(num amount) {
-    return '${rupeeSymbol}${amount.toStringAsFixed(2)}';
+    return '$rupeeSymbol${CurrencyConstants.formatWithoutSymbol(amount, decimalDigits: 2)}';
   }
 
   static const double _kotPageWidth = 226.77; // hardcoded for KOT width  (80mm)
@@ -446,14 +446,14 @@ class PDFService {
                       pw.Expanded(
                         flex: 2,
                         child: pw.Text(
-                          "${rupeeSymbol}${item.price.toStringAsFixed(2)}",
+                          "$rupeeSymbol${item.price.toStringAsFixed(2)}",
                           textAlign: pw.TextAlign.center,
                         ),
                       ),
                       pw.Expanded(
                         flex: 2,
                         child: pw.Text(
-                          "${rupeeSymbol}${itemTotal.toStringAsFixed(2)}",
+                          "$rupeeSymbol${itemTotal.toStringAsFixed(2)}",
                           textAlign: pw.TextAlign.right,
                           style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                         ),
@@ -503,19 +503,19 @@ class PDFService {
                   children: [
                     _buildTotalRow(
                       "Subtotal:",
-                      "${rupeeSymbol}${subtotal.toStringAsFixed(2)}",
+                      "$rupeeSymbol${subtotal.toStringAsFixed(2)}",
                     ),
                     pw.SizedBox(height: 8),
                     _buildTotalRow(
                       "$gstLabel:",
-                      "${rupeeSymbol}${gstAmount.toStringAsFixed(2)}",
+                      "$rupeeSymbol${gstAmount.toStringAsFixed(2)}",
                     ),
                     pw.SizedBox(height: 8),
                     pw.Divider(thickness: 2),
                     pw.SizedBox(height: 8),
                     _buildTotalRow(
                       "TOTAL AMOUNT:",
-                      "${rupeeSymbol}${total.toStringAsFixed(2)}",
+                      "$rupeeSymbol${total.toStringAsFixed(2)}",
                       isTotal: true,
                     ),
                   ],

@@ -836,7 +836,7 @@ class _TableReservationViewState extends State<TableReservationView> {
             children: [
               const Text('Base Amount:', style: TextStyle(fontSize: 14)),
               Text(
-                '${CurrencyConstants.symbol}${_calculatedPrice.toStringAsFixed(0)}',
+                _calculatedPrice.toCurrencyInt(),
                 style: const TextStyle(fontSize: 14),
               ),
             ],
@@ -848,7 +848,7 @@ class _TableReservationViewState extends State<TableReservationView> {
               children: [
                 const Text('Decoration:', style: TextStyle(fontSize: 14)),
                 Text(
-                  '${CurrencyConstants.symbol}500',
+                  500.toCurrencyInt(),
                   style: const TextStyle(fontSize: 14),
                 ),
               ],
@@ -867,7 +867,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                 ),
               ),
               Text(
-                '${CurrencyConstants.symbol}${_calculatedPrice.toStringAsFixed(0)}',
+                _calculatedPrice.toCurrencyInt(),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -896,7 +896,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                       ),
                     ),
                     Text(
-                      '${CurrencyConstants.symbol}${advanceAmount.toStringAsFixed(0)}',
+                      advanceAmount.toCurrencyInt(),
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -914,7 +914,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     Text(
-                      '${CurrencyConstants.symbol}${remainingAmount.toStringAsFixed(0)}',
+                      remainingAmount.toCurrencyInt(),
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
@@ -959,7 +959,7 @@ class _TableReservationViewState extends State<TableReservationView> {
               borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
             helperText:
-                'Minimum: ${CurrencyConstants.symbol}${_minAdvanceAmount.toStringAsFixed(0)} • Maximum: ${CurrencyConstants.symbol}${_calculatedPrice.toStringAsFixed(0)}',
+                'Minimum: ${_minAdvanceAmount.toCurrencyInt()} • Maximum: ${_calculatedPrice.toCurrencyInt()}',
             helperStyle: const TextStyle(fontSize: 11),
           ),
           onChanged: (value) {
@@ -974,7 +974,7 @@ class _TableReservationViewState extends State<TableReservationView> {
               return 'Please enter valid amount';
             }
             if (amount < _minAdvanceAmount) {
-              return 'Minimum advance: ${CurrencyConstants.symbol}${_minAdvanceAmount.toStringAsFixed(0)}';
+              return 'Minimum advance: ${_minAdvanceAmount.toCurrencyInt()}';
             }
             if (amount > _calculatedPrice) {
               return 'Cannot exceed total amount';
@@ -1211,7 +1211,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                   icon: Icons.attach_money,
                   title: AppStrings.reservations.advancePayment,
                   description:
-                      'Minimum 20% of total amount, ${CurrencyConstants.symbol}100 minimum',
+                      'Minimum 20% of total amount, ${100.toCurrencyInt()} minimum',
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -1400,7 +1400,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Table: ${reservation.tableName}\nAdvance: ${CurrencyConstants.symbol}${reservation.advanceAmount.toStringAsFixed(0)}\nBill: ${reservation.billNumber}',
+                      'Table: ${reservation.tableName}\nAdvance: ${reservation.advanceAmount.toCurrencyInt()}\nBill: ${reservation.billNumber}',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey[600]),
                     ),

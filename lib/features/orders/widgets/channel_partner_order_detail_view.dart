@@ -107,7 +107,12 @@ class _ChannelPartnerOrderDetailViewState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Order #${widget.order.orderId}',
+                      widget.order.orderNo != null &&
+                              widget.order.orderNo!.trim().isNotEmpty
+                          ? (widget.order.orderNo!.trim().startsWith('#')
+                              ? 'Order ${widget.order.orderNo!.trim()}'
+                              : 'Order #${widget.order.orderNo!.trim()}')
+                          : 'Order #${widget.order.orderId}',
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 20,
@@ -149,7 +154,7 @@ class _ChannelPartnerOrderDetailViewState
                 ),
               ),
               child: Text(
-                '${CurrencyConstants.symbol}${widget.order.totalAmount.toStringAsFixed(2)}',
+                widget.order.totalAmount.toCurrency(),
                 style: const TextStyle(
                   color: AppColors.primary,
                   fontSize: 24,
@@ -318,7 +323,7 @@ class _ChannelPartnerOrderDetailViewState
                             ),
                           ),
                           Text(
-                            '${CurrencyConstants.symbol}${item.price.toStringAsFixed(2)} each',
+                            '${item.price.toCurrency()} each',
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 12,
@@ -328,7 +333,7 @@ class _ChannelPartnerOrderDetailViewState
                       ),
                     ),
                     Text(
-                      '${CurrencyConstants.symbol}${(item.price * item.quantity).toStringAsFixed(2)}',
+                      (item.price * item.quantity).toCurrency(),
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 14,
@@ -402,7 +407,7 @@ class _ChannelPartnerOrderDetailViewState
           ),
         ),
         Text(
-          '${CurrencyConstants.symbol}${amount.toStringAsFixed(2)}',
+          amount.toCurrency(),
           style: TextStyle(
             color: isTotal ? AppColors.primary : AppColors.textPrimary,
             fontSize: isTotal ? 16 : 14,

@@ -79,7 +79,7 @@ class _CartFooterState extends State<CartFooter> {
                           Expanded(
                             child: _buildPriceRow(
                               "TOTAL AMOUNT:",
-                              "${CurrencyConstants.symbol}${(widget.subtotal + taxProvider.calculateGstAmount(widget.subtotal)).toStringAsFixed(2)}",
+                              (widget.subtotal + taxProvider.calculateGstAmount(widget.subtotal)).toCurrency(),
                               isTotal: true,
                             ),
                           ),
@@ -177,12 +177,12 @@ class _CartFooterState extends State<CartFooter> {
                       ),
                       _buildPriceRow(
                         "Subtotal:",
-                        "${CurrencyConstants.symbol}${widget.subtotal.toStringAsFixed(2)}",
+                        widget.subtotal.toCurrency(),
                       ),
                       const SizedBox(height: 6),
                       _buildPriceRow(
                         "GST (${gstPercentage.toStringAsFixed(1)}%):",
-                        "${CurrencyConstants.symbol}${gstAmount.toStringAsFixed(2)}",
+                        gstAmount.toCurrency(),
                       ),
                       const SizedBox(height: 8),
                       Divider(
@@ -193,7 +193,7 @@ class _CartFooterState extends State<CartFooter> {
                       const SizedBox(height: 8),
                       _buildPriceRow(
                         "TOTAL AMOUNT:",
-                        "${CurrencyConstants.symbol}${total.toStringAsFixed(2)}",
+                        total.toCurrency(),
                         isTotal: true,
                       ),
                       const SizedBox(height: 10),

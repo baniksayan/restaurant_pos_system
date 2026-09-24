@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
-import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/shared/widgets/cards/app_card.dart';
 
 class ItemsListCard extends StatelessWidget {
@@ -71,11 +70,11 @@ class ItemsListCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '${CurrencyConstants.symbol}${item.price.toStringAsFixed(2)} × ${item.quantity}',
+                        '${item.price.toCurrency()} × ${item.quantity}',
                         style: const TextStyle(fontSize: 12),
                       ),
                       Text(
-                        '${CurrencyConstants.symbol}${(item.price * item.quantity).toStringAsFixed(2)}',
+                        (item.price * item.quantity).toCurrency(),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,

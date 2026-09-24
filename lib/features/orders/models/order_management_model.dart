@@ -10,6 +10,7 @@ enum OrderStatusType {
 
 class OrderItem {
   final String orderId;
+  final String? orderNo;
   final String customerName;
   final String? phoneNumber;
   final String orderType;
@@ -27,6 +28,7 @@ class OrderItem {
 
   const OrderItem({
     required this.orderId,
+    this.orderNo,
     required this.customerName,
     this.phoneNumber,
     required this.orderType,
@@ -45,6 +47,7 @@ class OrderItem {
 
   // Copy with method for state updates
   OrderItem copyWith({
+    String? orderNo,
     OrderStatusType? status,
     DateTime? acceptedTime,
     DateTime? expectedDeliveryTime,
@@ -52,6 +55,7 @@ class OrderItem {
   }) {
     return OrderItem(
       orderId: orderId,
+      orderNo: orderNo ?? this.orderNo,
       customerName: customerName,
       phoneNumber: phoneNumber,
       orderType: orderType,

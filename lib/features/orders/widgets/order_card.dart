@@ -35,10 +35,15 @@ class OrderCard extends StatelessWidget {
             : 'TABLE ORDER')
         : (isPhone ? 'PHONE ORDER' : 'TAKEAWAY');
 
-    final displayOrderId = order.orderId.isNotEmpty
-        ? (order.orderId.startsWith('OD') || order.orderId.startsWith('#')
-            ? order.orderId
-            : '#${order.orderId}')
+    final resolvedOrderNo =
+        (order.orderNo != null && order.orderNo!.trim().isNotEmpty)
+            ? order.orderNo!.trim()
+            : order.orderId;
+
+    final displayOrderNo = resolvedOrderNo.isNotEmpty
+        ? (resolvedOrderNo.startsWith('#')
+            ? resolvedOrderNo
+            : '#$resolvedOrderNo')
         : '#ORDER';
 
     return Container(
@@ -215,43 +220,91 @@ class OrderCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Chips Row: Order ID, Waiter, Phone
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
+                    // Chips Row: Order No & Phone on Left, Waiter Name on Right
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                        // Left side: Order No & Optional Phone Number
+                        Flexible(
+                          child: Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
-                              const Icon(
-                                Icons.receipt_rounded,
-                                size: 11,
-                                color: Color(0xFF64748B),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                displayOrderId,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF334155),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: const Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.receipt_rounded,
+                                      size: 11,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      displayOrderNo,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF334155),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+                              if (order.phoneNumber != null &&
+                                  order.phoneNumber!.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF0FDF4),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: const Color(0xFFBBF7D0),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.phone_outlined,
+                                        size: 11,
+                                        color: Color(0xFF16A34A),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        order.phoneNumber!,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF15803D),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                             ],
                           ),
                         ),
+
+                        // Right side: Waiter Name
                         if (order.waiterName != null &&
-                            order.waiterName!.isNotEmpty)
+                            order.waiterName!.isNotEmpty) ...[
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 7,
@@ -273,51 +326,22 @@ class OrderCard extends StatelessWidget {
                                   color: Color(0xFF4F46E5),
                                 ),
                                 const SizedBox(width: 4),
-                                Text(
-                                  order.waiterName!,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF4338CA),
+                                ConstrainedBox(
+                                  constraints: const BoxConstraints(maxWidth: 120),
+                                  child: Text(
+                                    order.waiterName!,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF4338CA),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        if (order.phoneNumber != null &&
-                            order.phoneNumber!.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF0FDF4),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: const Color(0xFFBBF7D0),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.phone_outlined,
-                                  size: 11,
-                                  color: Color(0xFF16A34A),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  order.phoneNumber!,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF15803D),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                        ],
                       ],
                     ),
 
@@ -352,7 +376,7 @@ class OrderCard extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                '${CurrencyConstants.symbol}${order.totalAmount.toStringAsFixed(2)}',
+                                order.totalAmount.toCurrency(),
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w900,

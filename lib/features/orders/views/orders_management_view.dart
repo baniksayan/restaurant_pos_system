@@ -759,7 +759,7 @@ class _OrdersManagementViewState extends State<OrdersManagementView>
             _buildMetricDivider(),
             _buildMetricColumn(
               label: 'VOLUME',
-              value: '${CurrencyConstants.symbol}${totalAmount.toStringAsFixed(0)}',
+              value: totalAmount.toCurrencyInt(),
               color: const Color(0xFF4F46E5),
             ),
           ],
