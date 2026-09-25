@@ -527,12 +527,15 @@ class _PaymentPageState extends State<PaymentPage>
       isRedirecting = true;
       timer?.cancel();
 
+      final tp = tableProvider;
+      final acp = animatedCartProvider;
+
       // 1. Update table status if tableId is present — only when this
       // payment actually finishes the order. A split bill with other
       // guests' items still unbilled must NOT release the table or wipe
       // the shared cart data; just refresh so it reflects the latest paid
       // amount from the server.
-      if (widget.tableId != null && tableProvider != null) {
+      if (widget.tableId != null && tp != null) {
         if (widget.isFinalSettlement) {
           try {
             // Forget the settled order's bill and cart before refreshing. The
@@ -546,22 +549,22 @@ class _PaymentPageState extends State<PaymentPage>
             // another group's still-unpaid bill.
             final settledOrderId = widget.orderId;
             if (settledOrderId != null && settledOrderId.isNotEmpty) {
-              await tableProvider.clearBillId(settledOrderId);
+              await tp.clearBillId(settledOrderId);
             }
 
-            if (animatedCartProvider != null &&
+            if (acp != null &&
                 settledOrderId != null &&
                 settledOrderId.isNotEmpty) {
-              animatedCartProvider.clearOrderData(settledOrderId);
+              acp.clearOrderData(settledOrderId);
             }
 
-            await tableProvider.refreshTables();
+            await tp.refreshTables();
           } catch (e) {
             debugPrint('Error releasing table after settlement: $e');
           }
         } else {
           try {
-            await tableProvider.refreshTables();
+            await tp.refreshTables();
           } catch (e) {
             debugPrint('Error refreshing table after split payment: $e');
           }
@@ -574,9 +577,9 @@ class _PaymentPageState extends State<PaymentPage>
       }
 
       // 3. Refresh dashboard tables
-      if (tableProvider != null) {
+      if (tp != null) {
         try {
-          await tableProvider.refreshTables();
+          await tp.refreshTables();
         } catch (e) {
           debugPrint('Error refreshing dashboard: $e');
         }

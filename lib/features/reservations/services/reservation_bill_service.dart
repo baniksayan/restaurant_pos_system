@@ -40,7 +40,7 @@ class ReservationBillService {
                     children: [
                       pw.Text(
                         'WHIZEATS PRO',
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontSize: 24,
                           fontWeight: pw.FontWeight.bold,
                           color: PdfColors.blue800,
@@ -49,7 +49,7 @@ class ReservationBillService {
                       pw.SizedBox(height: 5),
                       pw.Text(
                         'TABLE RESERVATION BILL',
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontSize: 16,
                           fontWeight: pw.FontWeight.bold,
                         ),
@@ -75,7 +75,7 @@ class ReservationBillService {
                 pw.SizedBox(height: 5),
                 pw.Text(
                   'Bill No: ${reservation.billNumber}',
-                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
                 ),
 
                 pw.SizedBox(height: 20),
@@ -93,7 +93,7 @@ class ReservationBillService {
                     children: [
                       pw.Text(
                         'CUSTOMER DETAILS',
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -120,7 +120,7 @@ class ReservationBillService {
                     children: [
                       pw.Text(
                         'RESERVATION DETAILS',
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -168,7 +168,7 @@ class ReservationBillService {
                         ),
                         child: pw.Text(
                           'PRICING DETAILS',
-                          style: pw.TextStyle(
+                          style: const pw.TextStyle(
                             fontWeight: pw.FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -208,14 +208,14 @@ class ReservationBillService {
                               children: [
                                 pw.Text(
                                   'Total Amount:',
-                                  style: pw.TextStyle(
+                                  style: const pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold,
                                     fontSize: 16,
                                   ),
                                 ),
                                 pw.Text(
                                   '${CurrencyConstants.symbol}${reservation.finalPrice.toStringAsFixed(0)}',
-                                  style: pw.TextStyle(
+                                  style: const pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold,
                                     fontSize: 16,
                                   ),
@@ -229,14 +229,14 @@ class ReservationBillService {
                               children: [
                                 pw.Text(
                                   'Advance Paid:',
-                                  style: pw.TextStyle(
+                                  style: const pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold,
                                     color: PdfColors.green800,
                                   ),
                                 ),
                                 pw.Text(
                                   '${CurrencyConstants.symbol}${reservation.advanceAmount.toStringAsFixed(0)}',
-                                  style: pw.TextStyle(
+                                  style: const pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold,
                                     color: PdfColors.green800,
                                   ),
@@ -283,7 +283,7 @@ class ReservationBillService {
                     children: [
                       pw.Text(
                         'ADVANCE PAYMENT RECEIVED',
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           color: PdfColors.green800,
                         ),
@@ -311,7 +311,7 @@ class ReservationBillService {
                     children: [
                       pw.Text(
                         'IMPORTANT NOTES',
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
                       ),
                       pw.SizedBox(height: 8),
                       pw.Text(AppStrings.pdf.arriveEarly),
@@ -334,7 +334,7 @@ class ReservationBillService {
                       ),
                       pw.Text(
                         'WHIZEATS PRO',
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           fontSize: 16,
                           color: PdfColors.blue800,

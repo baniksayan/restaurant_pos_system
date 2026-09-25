@@ -87,7 +87,7 @@ class PDFService {
                       alignment: pw.Alignment.centerRight,
                       child: pw.Text(
                         'QTY',
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontSize: 9,
                           fontWeight: pw.FontWeight.bold,
                         ),
@@ -98,7 +98,7 @@ class PDFService {
                       flex: 4,
                       child: pw.Text(
                         'ITEM NAME',
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontSize: 9,
                           fontWeight: pw.FontWeight.bold,
                         ),
@@ -108,7 +108,7 @@ class PDFService {
                       flex: 3,
                       child: pw.Text(
                         'NOTE',
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontSize: 9,
                           fontWeight: pw.FontWeight.bold,
                         ),
@@ -136,7 +136,7 @@ class PDFService {
                     children: [
                       pw.Text(
                         _kotLetterSpace("SPECIAL INSTRUCTIONS"),
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontSize: 8,
                           fontWeight: pw.FontWeight.bold,
                           color: PdfColors.grey700,
@@ -223,7 +223,7 @@ class PDFService {
                   children: [
                     pw.Text(
                       resolvedName,
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 28,
                         fontWeight: pw.FontWeight.bold,
                         color: PdfColors.blue800,
@@ -240,7 +240,7 @@ class PDFService {
                     pw.SizedBox(height: 5),
                     pw.Text(
                       "GST No: $resolvedGstNo",
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                      style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
                     ),
                   ],
                 ),
@@ -251,7 +251,7 @@ class PDFService {
               pw.Center(
                 child: pw.Text(
                   "INVOICE",
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 24,
                     fontWeight: pw.FontWeight.bold,
                     color: PdfColors.blue800,
@@ -269,7 +269,7 @@ class PDFService {
                     children: [
                       pw.Text(
                         "Bill To:",
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           fontSize: 16,
                         ),
@@ -294,7 +294,7 @@ class PDFService {
                     children: [
                       pw.Text(
                         "Invoice Date:",
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           fontSize: 16,
                         ),
@@ -331,7 +331,7 @@ class PDFService {
                       flex: 3,
                       child: pw.Text(
                         "ITEM",
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           color: PdfColors.white,
                           fontWeight: pw.FontWeight.bold,
                         ),
@@ -341,7 +341,7 @@ class PDFService {
                       flex: 1,
                       child: pw.Text(
                         "QTY",
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           color: PdfColors.white,
                           fontWeight: pw.FontWeight.bold,
                         ),
@@ -352,7 +352,7 @@ class PDFService {
                       flex: 2,
                       child: pw.Text(
                         "PRICE",
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           color: PdfColors.white,
                           fontWeight: pw.FontWeight.bold,
                         ),
@@ -363,7 +363,7 @@ class PDFService {
                       flex: 2,
                       child: pw.Text(
                         "TOTAL",
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           color: PdfColors.white,
                           fontWeight: pw.FontWeight.bold,
                         ),
@@ -394,7 +394,7 @@ class PDFService {
                           children: [
                             pw.Text(
                               item.name,
-                              style: pw.TextStyle(
+                              style: const pw.TextStyle(
                                 fontWeight: pw.FontWeight.bold,
                               ),
                             ),
@@ -455,7 +455,7 @@ class PDFService {
                         child: pw.Text(
                           "$rupeeSymbol${itemTotal.toStringAsFixed(2)}",
                           textAlign: pw.TextAlign.right,
-                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                          style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
                         ),
                       ),
                     ],
@@ -479,7 +479,7 @@ class PDFService {
                     children: [
                       pw.Text(
                         "Special Instructions:",
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
                       ),
                       pw.SizedBox(height: 5),
                       pw.Text(
@@ -538,7 +538,7 @@ class PDFService {
                         children: [
                           pw.Text(
                             "Payment Method: Cash",
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                            style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
                           ),
                           pw.Text(
                             "Status: Paid",
@@ -553,7 +553,7 @@ class PDFService {
                         children: [
                           pw.Text(
                             "Thank you for dining with us!",
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                            style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
                           ),
                           pw.Text(
                             "Visit again!",
@@ -674,7 +674,7 @@ class PDFService {
                 child: pw.Text(
                   resolvedName,
                   textAlign: pw.TextAlign.center,
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 13,
                     fontWeight: pw.FontWeight.bold,
                   ),
@@ -702,7 +702,7 @@ class PDFService {
               pw.Center(
                 child: pw.Text(
                   _kotLetterSpace('TAX INVOICE'),
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 10.5,
                     fontWeight: pw.FontWeight.bold,
                   ),
@@ -730,7 +730,7 @@ class PDFService {
                     flex: 5,
                     child: pw.Text(
                       'ITEM',
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 8.5,
                         fontWeight: pw.FontWeight.bold,
                       ),
@@ -741,7 +741,7 @@ class PDFService {
                     child: pw.Text(
                       'QTY',
                       textAlign: pw.TextAlign.center,
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 8.5,
                         fontWeight: pw.FontWeight.bold,
                       ),
@@ -752,7 +752,7 @@ class PDFService {
                     child: pw.Text(
                       'RATE',
                       textAlign: pw.TextAlign.right,
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 8.5,
                         fontWeight: pw.FontWeight.bold,
                       ),
@@ -763,7 +763,7 @@ class PDFService {
                     child: pw.Text(
                       'AMOUNT',
                       textAlign: pw.TextAlign.right,
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 8.5,
                         fontWeight: pw.FontWeight.bold,
                       ),
@@ -814,7 +814,7 @@ class PDFService {
               pw.Center(
                 child: pw.Text(
                   'THANK YOU, VISIT AGAIN!',
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 9,
                     fontWeight: pw.FontWeight.bold,
                   ),
@@ -1126,7 +1126,7 @@ class PDFService {
                     fit: pw.BoxFit.scaleDown,
                     child: pw.Text(
                       cleanKotNo,
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 11,
                         fontWeight: pw.FontWeight.bold,
                       ),
@@ -1154,7 +1154,7 @@ class PDFService {
                           pw.SizedBox(width: 4),
                           pw.Text(
                             cleanTableName,
-                            style: pw.TextStyle(
+                            style: const pw.TextStyle(
                               fontSize: 9.5,
                               fontWeight: pw.FontWeight.bold,
                             ),
@@ -1188,7 +1188,7 @@ class PDFService {
                     fit: pw.BoxFit.scaleDown,
                     child: pw.Text(
                       cleanOrderNo,
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 10,
                         fontWeight: pw.FontWeight.bold,
                       ),
@@ -1245,7 +1245,7 @@ class PDFService {
         pw.SizedBox(width: 10),
         pw.Text(
           _kotLetterSpace(text),
-          style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold),
+          style: const pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(width: 10),
         pw.Expanded(child: pw.Container(height: 1, color: PdfColors.grey700)),
@@ -1266,7 +1266,7 @@ class PDFService {
             child: pw.Text(
               value,
               textAlign: pw.TextAlign.right,
-              style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold),
+              style: const pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold),
             ),
           ),
         ],
@@ -1346,7 +1346,7 @@ class PDFService {
                 child: pw.Text(
                   amount.toStringAsFixed(2),
                   textAlign: pw.TextAlign.right,
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 8.5,
                     fontWeight: pw.FontWeight.bold,
                   ),
@@ -1400,7 +1400,7 @@ class PDFService {
                 alignment: pw.Alignment.centerLeft,
                 child: pw.Text(
                   '$index.',
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 10,
                     color: PdfColors.grey700,
                     fontWeight: pw.FontWeight.bold,
@@ -1413,7 +1413,7 @@ class PDFService {
                 alignment: pw.Alignment.center,
                 child: pw.Text(
                   '${item.quantity}x',
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 10,
                     color: PdfColors.grey800,
                     fontWeight: pw.FontWeight.bold,
@@ -1426,7 +1426,7 @@ class PDFService {
                 flex: 4,
                 child: pw.Text(
                   itemName,
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 10,
                     fontWeight: pw.FontWeight.bold,
                   ),

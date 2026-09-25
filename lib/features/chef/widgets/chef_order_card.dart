@@ -131,7 +131,7 @@ class _ChefOrderCardState extends State<ChefOrderCard>
 
     return SizeTransition(
       sizeFactor: _sizeAnimation,
-      axisAlignment: 0.0,
+      alignment: Alignment.center,
       child: FadeTransition(
         opacity: _fadeAnimation,
         child: Container(
