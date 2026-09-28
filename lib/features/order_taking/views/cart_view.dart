@@ -146,18 +146,38 @@ class _CartViewState extends State<CartView> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SafeArea(
+        bottom: false,
         child: Consumer2<AnimatedCartProvider, TableProvider>(
           builder: (context, cartProvider, tableProvider, child) {
-            if (tableProvider.isLoading) {
-              return Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 10),
-                    const SkeletonLoader.rectangular(width: 140, height: 24),
-                    const SizedBox(height: 30),
-                    Expanded(
+            final items = cartProvider.cartItems.values.toList();
+            final newItems = cartProvider.newItems.values.toList();
+            final kotGeneratedItems =
+                cartProvider.kotGeneratedItems.values.toList();
+            final serverKotItems = cartProvider.serverKotItems;
+            final hasLocalKotItems = kotGeneratedItems.isNotEmpty;
+            final hasServerKotItems = serverKotItems.isNotEmpty;
+            final hasKotItems = hasLocalKotItems || hasServerKotItems;
+            final hasNewItems = newItems.isNotEmpty;
+
+            return Column(
+              children: [
+                CartHeader(
+                  hasKotItems: hasKotItems,
+                  hasNewItems: hasNewItems,
+                  kotOrderNumber:
+                      _kotNumbers.isNotEmpty ? _kotNumbers.join(', ') : null,
+                  tableName: widget.tableName,
+                  selectedLocation: widget.selectedLocation,
+                  totalItems: cartProvider.totalItems,
+                  hasItems: items.isNotEmpty,
+                  showClearAll: hasNewItems,
+                  onClearCart: () => _showClearCartDialog(cartProvider),
+                  onAddMore: () => _navigateBackToMenu(cartProvider),
+                ),
+                if (tableProvider.isLoading)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
                       child: ListView.builder(
                         itemCount: 4,
                         itemBuilder: (context, index) {
@@ -203,37 +223,8 @@ class _CartViewState extends State<CartView> {
                         },
                       ),
                     ),
-                  ],
-                ),
-              );
-            }
-
-            final items = cartProvider.cartItems.values.toList();
-            final newItems = cartProvider.newItems.values.toList();
-            final kotGeneratedItems =
-                cartProvider.kotGeneratedItems.values.toList();
-            final serverKotItems = cartProvider.serverKotItems;
-            final hasLocalKotItems = kotGeneratedItems.isNotEmpty;
-            final hasServerKotItems = serverKotItems.isNotEmpty;
-            final hasKotItems = hasLocalKotItems || hasServerKotItems;
-            final hasNewItems = newItems.isNotEmpty;
-
-            return Column(
-              children: [
-                CartHeader(
-                  hasKotItems: hasKotItems,
-                  hasNewItems: hasNewItems,
-                  kotOrderNumber:
-                      _kotNumbers.isNotEmpty ? _kotNumbers.join(', ') : null,
-                  tableName: widget.tableName,
-                  selectedLocation: widget.selectedLocation,
-                  totalItems: cartProvider.totalItems,
-                  hasItems: items.isNotEmpty,
-                  showClearAll: hasNewItems,
-                  onClearCart: () => _showClearCartDialog(cartProvider),
-                  onAddMore: () => _navigateBackToMenu(cartProvider),
-                ),
-                if (items.isEmpty)
+                  )
+                else if (items.isEmpty)
                   const Expanded(child: EmptyCartWidget())
                 else
                   Expanded(

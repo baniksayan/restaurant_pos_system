@@ -143,6 +143,8 @@ class _MenuViewState extends State<MenuView> {
 
             debugPrint('MenuView DEBUG: canOrder = $canOrder');
 
+            final hasMenuItems = menuProvider.apiMenuItems.isNotEmpty;
+
             return Consumer<AnimatedCartProvider>(
               builder: (context, cartProvider, child) {
                 return Column(
@@ -153,34 +155,60 @@ class _MenuViewState extends State<MenuView> {
                           widget.tableName ?? _getOrderDisplayName(navProvider),
                       selectedLocation: widget.selectedLocation,
                       onPrintKOT: _printKOT,
+                      showStatusTag: hasMenuItems,
                     ),
                     Expanded(
                       child: Stack(
                         children: [
-                          NestedScrollView(
-                            headerSliverBuilder: (context, innerBoxIsScrolled) {
-                              return [
-                                SliverAppBar(
-                                  floating: true,
-                                  snap: true,
-                                  pinned: false,
-                                  elevation: 0,
-                                  backgroundColor: Colors.grey[50],
-                                  automaticallyImplyLeading: false,
-                                  toolbarHeight: 140,
-                                  flexibleSpace: const SafeArea(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        MenuSearchBar(),
-                                        CategoryTabs(),
-                                      ],
+                          if (hasMenuItems)
+                            NestedScrollView(
+                              headerSliverBuilder: (context, innerBoxIsScrolled) {
+                                return [
+                                  SliverAppBar(
+                                    floating: true,
+                                    snap: true,
+                                    pinned: false,
+                                    elevation: 0,
+                                    backgroundColor: Colors.grey[50],
+                                    automaticallyImplyLeading: false,
+                                    toolbarHeight: 140,
+                                    flexibleSpace: const SafeArea(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          MenuSearchBar(),
+                                          CategoryTabs(),
+                                        ],
+                                      ),
                                     ),
                                   ),
+                                ];
+                              },
+                              body: PremiumRefreshIndicator(
+                                onRefresh: () async {
+                                  final outletId = HiveService.getOutletId();
+                                  if (outletId != null && outletId > 0) {
+                                    await menuProvider.loadMenuData(
+                                      outletId: outletId,
+                                    );
+                                  }
+                                },
+                                child: Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom:
+                                        canOrder && cartProvider.newItemsCount > 0
+                                            ? 95
+                                            : 0,
+                                  ),
+                                  child: MenuGrid(
+                                    canOrder: canOrder,
+                                    onAddToCart: widget.onAddToCart,
+                                  ),
                                 ),
-                              ];
-                            },
-                            body: PremiumRefreshIndicator(
+                              ),
+                            )
+                          else
+                            PremiumRefreshIndicator(
                               onRefresh: () async {
                                 final outletId = HiveService.getOutletId();
                                 if (outletId != null && outletId > 0) {
@@ -189,20 +217,11 @@ class _MenuViewState extends State<MenuView> {
                                   );
                                 }
                               },
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                  bottom:
-                                      canOrder && cartProvider.newItemsCount > 0
-                                          ? 95
-                                          : 0,
-                                ),
-                                child: MenuGrid(
-                                  canOrder: canOrder,
-                                  onAddToCart: widget.onAddToCart,
-                                ),
+                              child: MenuGrid(
+                                canOrder: canOrder,
+                                onAddToCart: widget.onAddToCart,
                               ),
                             ),
-                          ),
                           if (canOrder && cartProvider.newItemsCount > 0)
                             Positioned(
                               left: 0,

@@ -77,6 +77,7 @@ class CartHeader extends StatelessWidget {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
                       children: [
@@ -111,25 +112,18 @@ class CartHeader extends StatelessWidget {
                         ],
                       ],
                     ),
-                    // Text(
-                    //   kotGenerated && kotOrderNumber != null
-                    //       ? 'Order #$kotOrderNumber • $totalItems items'
-                    //       : '$totalItems items',
-                    //   style: const TextStyle(
-                    //     fontSize: 14,
-                    //     color: AppColors.textSecondary,
-                    //   ),
-                    // ),
-                    if (tableName != null) ...[
+                    if (tableName != null && tableName!.isNotEmpty) ...[
                       Text(
-                        'Table: $tableName',
+                        tableName!.startsWith('Table')
+                            ? tableName!
+                            : 'Table: $tableName',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.primary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      if (selectedLocation != null)
+                      if (selectedLocation != null && selectedLocation!.isNotEmpty)
                         Text(
                           'Location: $selectedLocation',
                           style: const TextStyle(

@@ -32,7 +32,17 @@ class AppStrings {
   static const String login = 'Login';
   static const String logout = 'Logout';
   static const String signOut = 'Sign Out';
+  static const String signingOut = 'Signing out...';
+  static const String loggingOut = 'Logging out...';
+  static const String signOutConfirmation = 'Sign Out Confirmation';
+  static const String signOutProConfirm =
+      'Are you sure you want to sign out of WhizEats Pro?';
+  static const String signOutKdsConfirm =
+      'Are you sure you want to sign out of WhizEats KDS?';
+  static const String signingOutOfKds = 'Signing out of KDS...';
   static const String connect = 'Connect';
+  static const String clear = 'Clear';
+  static const String openNavigationDrawer = 'Open navigation drawer';
 
   // Common labels
   static const String unitPrice = 'Unit Price';
@@ -95,7 +105,8 @@ class _AuthStrings {
   final String noServerResponse =
       'No response from server. Please check your connection.';
   final String authCheckError = 'Error checking authentication state';
-  final String invalidCredentials = 'Invalid username or password';
+  final String invalidCredentials =
+      'Invalid username or password. Please verify credentials.';
   final String loginFailedCredentials =
       'Login failed. Please check your credentials.';
   final String serverResponseError = 'Server response error. Please try again.';

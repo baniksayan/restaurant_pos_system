@@ -24,13 +24,19 @@ class CategoryTabs extends StatelessWidget {
           );
         }
 
+        if (!menuProvider.hasMenuItems) {
+          return const SizedBox.shrink();
+        }
+
         // Get API categories
         final rawCategories = menuProvider.categoryNames;
 
-        // Build combined tabs: ['All', 'Veg Only', ...other API categories]
+        // Build combined tabs: ['All', if (hasVegItems) 'Veg Only', ...other API categories]
         final List<String> tabs = [];
         tabs.add('All');
-        tabs.add('Veg Only');
+        if (menuProvider.hasVegItems) {
+          tabs.add('Veg Only');
+        }
         for (var cat in rawCategories) {
           if (cat != 'All' && cat != 'Veg Only') {
             tabs.add(cat);

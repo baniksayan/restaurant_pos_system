@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
-import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/services/app_version_service.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
+import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/shared/widgets/dialogs/sign_out_confirmation_dialog.dart';
+import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
 
 class LogoutSection extends StatelessWidget {
   const LogoutSection({super.key});
@@ -54,33 +56,10 @@ class LogoutSection extends StatelessWidget {
   }
 
   void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Text(AppStrings.logout),
-            content: Text(AppStrings.profile.logoutConfirm),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(AppStrings.cancel),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _performLogout(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text(AppStrings.logout),
-              ),
-            ],
-          ),
+    SignOutConfirmationDialog.show(
+      context,
+      message: AppStrings.signOutProConfirm,
+      onConfirm: () => _performLogout(context),
     );
   }
 
@@ -92,31 +71,28 @@ class LogoutSection extends StatelessWidget {
       showDialog(
         context: context,
         barrierDismissible: false,
+        barrierColor: Colors.transparent,
         builder:
-            (context) => AlertDialog(
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  Text(AppStrings.profile.loggingOut),
-                ],
-              ),
-            ),
+            (context) =>
+                const HourglassLoadingOverlay(message: AppStrings.signingOut),
       );
 
       final authProvider = context.read<AuthProvider>();
       await authProvider.logout();
 
       if (context.mounted) {
-        Navigator.pop(context);
-        // Removed green SnackBar per request: logged out successfully message
+        Navigator.of(context, rootNavigator: true).pop();
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
       }
     } catch (e) {
       if (context.mounted) {
-        Navigator.pop(context);
+        Navigator.of(context, rootNavigator: true).pop();
         AppSnackBar.showError(context, 'Logout failed: $e');
       }
     }
   }
 }
+

@@ -11,6 +11,8 @@ import '../widgets/cash_management_dialog.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/services/app_version_service.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
+import 'package:restaurant_pos_system/shared/widgets/dialogs/sign_out_confirmation_dialog.dart';
+import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({super.key});
@@ -474,45 +476,10 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Row(
-              children: [
-                Icon(Icons.logout, color: Colors.red, size: 24),
-                SizedBox(width: 8),
-                Text(AppStrings.signOut),
-              ],
-            ),
-            content: const Text(
-              'Are you sure you want to sign out?',
-              style: TextStyle(height: 1.4),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(AppStrings.cancel),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  Navigator.pop(context); // Close dialog
-                  await _performCompleteLogout();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text(AppStrings.signOut),
-              ),
-            ],
-          ),
+    SignOutConfirmationDialog.show(
+      context,
+      message: AppStrings.signOutProConfirm,
+      onConfirm: _performCompleteLogout,
     );
   }
 
@@ -522,17 +489,10 @@ class _ProfileViewState extends State<ProfileView> {
       showDialog(
         context: context,
         barrierDismissible: false,
+        barrierColor: Colors.transparent,
         builder:
-            (context) => AlertDialog(
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  Text(AppStrings.profile.signingOut),
-                ],
-              ),
-            ),
+            (context) =>
+                const HourglassLoadingOverlay(message: AppStrings.signingOut),
       );
 
       // Logout from AuthProvider (this returns Future<void>)
@@ -540,11 +500,10 @@ class _ProfileViewState extends State<ProfileView> {
 
       if (!mounted) return;
 
-      // FIX: ProfileProvider logout returns void, so DON'T use await
+      // ProfileProvider logout returns void, so DON'T use await
       try {
-        context.read<ProfileProvider>().logout(); // Remove 'await' here
+        context.read<ProfileProvider>().logout();
       } catch (e) {
-        // ProfileProvider might not have logout method, continue anyway
         debugPrint('ProfileProvider logout error: $e');
       }
 

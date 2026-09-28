@@ -106,6 +106,16 @@ class MenuGrid extends StatelessWidget {
         final filteredItems = menuProvider.filteredItems;
 
         if (filteredItems.isEmpty) {
+          final String emptyDescription;
+          if (menuProvider.apiMenuItems.isEmpty) {
+            emptyDescription = 'No menu items are currently available for this outlet.';
+          } else if (menuProvider.searchQuery.isNotEmpty) {
+            emptyDescription =
+                'No menu items match "${menuProvider.searchQuery}". Try adjusting your filters or search.';
+          } else {
+            emptyDescription = 'There are currently no items in this category.';
+          }
+
           return LayoutBuilder(
             builder: (context, constraints) {
               return ListView(
@@ -117,10 +127,7 @@ class MenuGrid extends StatelessWidget {
                     child: EmptyStateWidget(
                       icon: Icons.restaurant_menu_rounded,
                       title: AppStrings.menu.noItemsAvailable,
-                      description:
-                          menuProvider.searchQuery.isNotEmpty
-                              ? 'No menu items match "${menuProvider.searchQuery}". Try adjusting your filters or search.'
-                              : 'There are currently no items in this category.',
+                      description: emptyDescription,
                     ),
                   ),
                 ],

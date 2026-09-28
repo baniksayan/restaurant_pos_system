@@ -32,6 +32,8 @@ class MenuProvider with ChangeNotifier {
   // Getters
   List<Data> get apiMenuItems => _apiMenuItems;
   List<CategoryModel> get categories => _categories;
+  bool get hasMenuItems => _apiMenuItems.isNotEmpty;
+  bool get hasVegItems => _apiMenuItems.any((item) => item.pureVeg == true);
   String get searchQuery =>
       _currentTableId != null
           ? (_tableWiseSearchQuery[_currentTableId] ?? '')
@@ -40,10 +42,16 @@ class MenuProvider with ChangeNotifier {
       _currentTableId != null
           ? (_tableWiseCategory[_currentTableId] ?? 'All')
           : _selectedCategory;
-  String get selectedDietaryFilter =>
-      _currentTableId != null
-          ? (_tableWiseDietaryFilter[_currentTableId] ?? 'All')
-          : _selectedDietaryFilter;
+  String get selectedDietaryFilter {
+    final filter =
+        _currentTableId != null
+            ? (_tableWiseDietaryFilter[_currentTableId] ?? 'All')
+            : _selectedDietaryFilter;
+    if (filter == 'Veg' && !hasVegItems) {
+      return 'All';
+    }
+    return filter;
+  }
   Map<String, int> get cart =>
       const <
         String,
@@ -342,6 +350,28 @@ class MenuProvider with ChangeNotifier {
     _tableWiseDietaryFilter.clear();
     _currentTableId = null;
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  void setMenuItemsForTesting(List<Data> items) {
+    _apiMenuItems = items;
+    final Set<String> uniqueCategories = {};
+    final List<CategoryModel> tempCategories = [];
+    for (final item in _apiMenuItems) {
+      final categoryName = item.categoryName;
+      final categoryId = item.categoryId;
+      if (categoryName != null &&
+          categoryName.isNotEmpty &&
+          categoryId != null &&
+          !uniqueCategories.contains(categoryName)) {
+        uniqueCategories.add(categoryName);
+        tempCategories.add(
+          CategoryModel(categoryId: categoryId, categoryName: categoryName),
+        );
+      }
+    }
+    _categories = tempCategories;
     notifyListeners();
   }
 }

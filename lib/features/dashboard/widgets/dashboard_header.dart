@@ -48,6 +48,7 @@ class DashboardHeader extends StatelessWidget {
                 onPressed: onMenuPressed,
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                 padding: const EdgeInsets.all(6),
+                tooltip: AppStrings.openNavigationDrawer,
               ),
             ),
             const SizedBox(width: 12),
@@ -155,7 +156,7 @@ class DashboardHeader extends StatelessWidget {
               ),
               child: IconButton(
                 icon: const Icon(
-                  Icons.add_shopping_cart_rounded,
+                  Icons.add_rounded,
                   size: 20,
                   color: Colors.white,
                 ),

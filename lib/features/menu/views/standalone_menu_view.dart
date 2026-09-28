@@ -290,6 +290,9 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 768;
 
+    final menuProvider = Provider.of<MenuProvider>(context);
+    final hasMenuItems = menuProvider.hasMenuItems;
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: PreferredSize(
@@ -313,17 +316,18 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
           toolbarHeight: isTablet ? 70 : 56,
           actions: [
             // Search Button
-            IconButton(
-              onPressed: () {
-                setState(() {
-                  _showSearchBar = !_showSearchBar;
-                });
-              },
-              icon: Icon(
-                _showSearchBar ? Icons.close : Icons.search,
-                size: isTablet ? 26 : 22,
+            if (hasMenuItems)
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _showSearchBar = !_showSearchBar;
+                  });
+                },
+                icon: Icon(
+                  _showSearchBar ? Icons.close : Icons.search,
+                  size: isTablet ? 26 : 22,
+                ),
               ),
-            ),
             // Profile Button
             Container(
               margin: EdgeInsets.only(right: isTablet ? 16 : 8),

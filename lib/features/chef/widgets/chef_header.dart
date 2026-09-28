@@ -52,6 +52,7 @@ class ChefHeader extends StatelessWidget {
                 onPressed: onMenuPressed,
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                 padding: const EdgeInsets.all(6),
+                tooltip: AppStrings.openNavigationDrawer,
               ),
             ),
             const SizedBox(width: 12),

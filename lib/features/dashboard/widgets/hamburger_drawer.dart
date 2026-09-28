@@ -12,6 +12,7 @@ import 'package:restaurant_pos_system/features/payment/views/pending_payments_vi
 import 'package:restaurant_pos_system/features/orders/views/reprint_view.dart';
 import 'package:restaurant_pos_system/features/profile/views/profile_view.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
+import 'package:restaurant_pos_system/shared/widgets/dialogs/sign_out_confirmation_dialog.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
@@ -638,184 +639,10 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
   }
 
   void _confirmLogout() {
-    showDialog(
-      context: context,
-      barrierColor: Colors.transparent,
-      builder: (BuildContext dialogContext) {
-        final size = MediaQuery.sizeOf(dialogContext);
-        final maxWidth = size.width < 480 ? size.width * 0.92 : 380.0;
-
-        return Material(
-          type: MaterialType.transparency,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => Navigator.of(dialogContext).maybePop(),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 3.5, sigmaY: 3.5),
-                    child: Container(
-                      color: Colors.black.withValues(alpha: 0.08),
-                    ),
-                  ),
-                ),
-                SafeArea(
-                  child: Center(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 24,
-                      ),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: maxWidth),
-                        child: GestureDetector(
-                          onTap:
-                              () {}, // Prevent backdrop tap from dismissing dialog
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(24),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.52),
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.75),
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.06,
-                                      ),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 8),
-                                    ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(22),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.withValues(
-                                            alpha: 0.12,
-                                          ),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.logout_rounded,
-                                          color: Colors.redAccent,
-                                          size: 28,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 14),
-                                      const Text(
-                                        'Sign Out Confirmation',
-                                        style: TextStyle(
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        'Are you sure you want to sign out of WhizEats Pro?',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontSize: 13.5,
-                                          color: AppColors.textSecondary,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 22),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: OutlinedButton(
-                                              onPressed:
-                                                  () => Navigator.pop(
-                                                    dialogContext,
-                                                  ),
-                                              style: OutlinedButton.styleFrom(
-                                                backgroundColor: Colors.white
-                                                    .withValues(alpha: 0.4),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 13,
-                                                    ),
-                                                side: BorderSide(
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.75),
-                                                ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                              ),
-                                              child: const Text(
-                                                'Cancel',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  color:
-                                                      AppColors.textSecondary,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: ElevatedButton(
-                                              onPressed: () {
-                                                Navigator.pop(dialogContext);
-                                                _performLogout();
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    Colors.redAccent,
-                                                foregroundColor: Colors.white,
-                                                elevation: 0,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 13,
-                                                    ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                              ),
-                                              child: const Text(
-                                                'Sign Out',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    SignOutConfirmationDialog.show(
+      context,
+      message: AppStrings.signOutProConfirm,
+      onConfirm: _performLogout,
     );
   }
 
@@ -827,7 +654,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
         barrierColor: Colors.transparent,
         builder:
             (context) =>
-                const HourglassLoadingOverlay(message: 'Signing out...'),
+                const HourglassLoadingOverlay(message: AppStrings.signingOut),
       );
 
       final authProvider = context.read<AuthProvider>();

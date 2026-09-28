@@ -298,8 +298,18 @@ class AuthProvider with ChangeNotifier {
         return true;
       } else {
         // Handle different error scenarios
+        final msg = model.message?.trim().toLowerCase() ?? '';
+        final isNoData = msg == 'no data' ||
+            msg == 'nodata' ||
+            msg == 'no records found' ||
+            msg == 'invalid credentials';
+        final isInvalidCreds =
+            model.statusCode == 401 || model.statusCode == 403 || isNoData;
+
         if (model.statusCode == 500) {
           _errorMessage = AppStrings.auth.serverError;
+        } else if (isInvalidCreds) {
+          _errorMessage = AppStrings.auth.invalidCredentials;
         } else if (model.message != null && model.message!.isNotEmpty) {
           _errorMessage = model.message!;
         } else {

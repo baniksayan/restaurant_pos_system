@@ -8,7 +8,6 @@ import 'package:restaurant_pos_system/shared/widgets/forms/custom_text_field.dar
 import 'package:restaurant_pos_system/shared/widgets/animations/fade_in_animation.dart';
 import 'package:restaurant_pos_system/shared/widgets/buttons/animated_button.dart';
 import 'package:restaurant_pos_system/features/menu/views/standalone_menu_view.dart';
-import 'package:flutter/gestures.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/url_helper.dart';
 import 'package:restaurant_pos_system/shared/widgets/feedback/app_message_banner.dart';
@@ -33,23 +32,12 @@ class _LoginFormState extends State<LoginForm> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _agreeToTerms = true;
-  late final TapGestureRecognizer _termsRecognizer;
-  late final TapGestureRecognizer _privacyRecognizer;
 
   @override
   void initState() {
     super.initState();
     _usernameController.addListener(_clearErrorOnTyping);
     _passwordController.addListener(_clearErrorOnTyping);
-    _termsRecognizer =
-        TapGestureRecognizer()
-          ..onTap =
-              () =>
-                  UrlHelper.openUrl(context, AppStrings.termsAndConditionsUrl);
-    _privacyRecognizer =
-        TapGestureRecognizer()
-          ..onTap =
-              () => UrlHelper.openUrl(context, AppStrings.privacyPolicyUrl);
   }
 
   void _clearErrorOnTyping() {
@@ -63,8 +51,6 @@ class _LoginFormState extends State<LoginForm> {
   void dispose() {
     _usernameController.removeListener(_clearErrorOnTyping);
     _passwordController.removeListener(_clearErrorOnTyping);
-    _termsRecognizer.dispose();
-    _privacyRecognizer.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -275,61 +261,102 @@ class _LoginFormState extends State<LoginForm> {
   }
 
   Widget _buildTermsAndPrivacyConsent() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          height: 20,
-          width: 20,
-          child: Checkbox(
-            value: _agreeToTerms,
-            onChanged: (val) {
-              setState(() {
-                _agreeToTerms = val ?? false;
-              });
-            },
-            activeColor: AppColors.primary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
-            ),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text.rich(
-            TextSpan(
-              text: AppStrings.auth.iAgreeToThe,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                height: 1.35,
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _agreeToTerms = !_agreeToTerms;
+        });
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 24,
+              width: 24,
+              child: Checkbox(
+                value: _agreeToTerms,
+                onChanged: (val) {
+                  setState(() {
+                    _agreeToTerms = val ?? false;
+                  });
+                },
+                activeColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              children: [
-                TextSpan(
-                  text: AppStrings.auth.termsAndConditions,
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                  ),
-                  recognizer: _termsRecognizer,
-                ),
-                TextSpan(text: AppStrings.auth.and),
-                TextSpan(
-                  text: AppStrings.auth.privacyPolicy,
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                  ),
-                  recognizer: _privacyRecognizer,
-                ),
-              ],
             ),
-          ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    AppStrings.auth.iAgreeToThe,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.35,
+                    ),
+                  ),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => UrlHelper.openUrl(
+                      context,
+                      AppStrings.termsAndConditionsUrl,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        AppStrings.auth.termsAndConditions,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    AppStrings.auth.and,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.35,
+                    ),
+                  ),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => UrlHelper.openUrl(
+                      context,
+                      AppStrings.privacyPolicyUrl,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        AppStrings.auth.privacyPolicy,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 

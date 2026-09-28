@@ -6,6 +6,7 @@ class MenuHeader extends StatelessWidget {
   final String? tableName;
   final String? selectedLocation;
   final VoidCallback? onPrintKOT;
+  final bool showStatusTag;
 
   const MenuHeader({
     super.key,
@@ -13,25 +14,45 @@ class MenuHeader extends StatelessWidget {
     this.tableName,
     this.selectedLocation,
     this.onPrintKOT,
+    this.showStatusTag = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
+        border: const Border(
           bottom: BorderSide(color: AppColors.cardShadow, width: 1),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          const Icon(Icons.restaurant_menu, color: Colors.orange, size: 28),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.restaurant_menu,
+              color: Colors.orange,
+              size: 24,
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
                   'Menu',
@@ -41,54 +62,63 @@ class MenuHeader extends StatelessWidget {
                     color: AppColors.textPrimary,
                   ),
                 ),
-                if (canOrder)
+                if (tableName != null && tableName!.isNotEmpty) ...[
                   Text(
-                    tableName ?? 'Select Table',
+                    tableName!.startsWith('Table')
+                        ? tableName!
+                        : 'Table: $tableName',
                     style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                if ((selectedLocation ?? '').isNotEmpty)
-                  Text(
-                    'Location: $selectedLocation',
-                    style: const TextStyle(fontSize: 12, color: Colors.orange),
-                  ),
+                  if (selectedLocation != null && selectedLocation!.isNotEmpty)
+                    Text(
+                      'Location: $selectedLocation',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange,
+                      ),
+                    ),
+                ],
               ],
             ),
           ),
-          if (canOrder) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.green.shade100,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                'ORDERING',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
+          if (showStatusTag) ...[
+            if (canOrder)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'ORDERING',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'VIEW ONLY',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
                 ),
               ),
-            ),
-          ] else
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                'VIEW ONLY',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-            ),
+          ],
         ],
       ),
     );
