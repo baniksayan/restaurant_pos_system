@@ -32,7 +32,8 @@ class StandaloneMenuView extends StatefulWidget {
 class _StandaloneMenuViewState extends State<StandaloneMenuView> {
   String? _selectedTableId;
   String? _selectedTableName;
-  final String _selectedLocation = 'Main Hall';
+  String get _selectedLocation =>
+      HiveService.getSelectedLocationName() ?? '';
   bool _isInitialized = false;
   bool _showSearchBar = false;
 

@@ -21,4 +21,9 @@ class StorageKeys {
   static const String companyInfo = 'companyInfo';
   static const String hasCheckedInitialPermissions =
       'has_checked_initial_permissions';
+  static const String selectedLocationName = 'selected_location_name';
+  static const String selectedLocationId = 'selected_location_id';
+  static const String locations = 'locations';
+  static const String kdsSelectedTabIndex = 'kds_selected_tab_index';
+  static const String kdsSelectedStatusFilter = 'kds_selected_status_filter';
 }

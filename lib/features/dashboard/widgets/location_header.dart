@@ -4,9 +4,13 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
+import 'location_selector_dialog.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/table_provider.dart';
+import 'package:restaurant_pos_system/features/menu/providers/menu_provider.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
+import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 
 class LocationHeader extends StatelessWidget {
   final String selectedLocation;
@@ -22,108 +26,191 @@ class LocationHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final availableCount =
+        tables.where((t) => t.status == TableStatus.available).length;
+    final totalCount = tables.length;
+    final statsText = totalCount == 0
+        ? 'No tables'
+        : '$totalCount ${totalCount == 1 ? "table" : "tables"} • $availableCount free';
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.fromLTRB(18, 6, 16, 12),
+      color: Colors.white,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Location info
+          // Minimalist Premium Outlet Title & Real-Time Stats (Unboxed & Elegant)
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      _getLocationIcon(),
-                      color: AppColors.primary,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        selectedLocation.isEmpty
-                            ? 'All Tables'
-                            : selectedLocation,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: locations.length > 1
+                    ? () {
+                        HapticHelper.triggerFeedback();
+                        _showLocationDialog(context);
+                      }
+                    : null,
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              selectedLocation.isEmpty
+                                  ? 'All Tables'
+                                  : selectedLocation,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF0F172A),
+                                letterSpacing: -0.3,
+                                height: 1.2,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (locations.length > 1) ...[
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: Color(0xFF64748B),
+                              size: 20,
+                            ),
+                          ],
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${tables.length} ${tables.length == 1 ? 'table' : 'tables'}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          // Clean emerald live indicator dot
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF10B981),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              statsText,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF64748B),
+                                letterSpacing: -0.1,
+                                height: 1.2,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
-          // Dynamic status filter dropdown on the right top
+          const SizedBox(width: 12),
+          // Sleek minimal filter capsule on the right
           _buildFilterDropdown(context),
         ],
       ),
     );
   }
 
+  void _showLocationDialog(BuildContext context) {
+    final dashboardProvider = context.read<DashboardProvider>();
+    LocationSelectorDialog.show(
+      context,
+      locations: dashboardProvider.locations,
+      selectedLocation: dashboardProvider.selectedLocation,
+      onLocationChanged: (location) {
+        if (dashboardProvider.selectedLocation != location) {
+          dashboardProvider.changeLocation(location);
+          final matched =
+              dashboardProvider.locations
+                  .where((l) => l.name == location)
+                  .firstOrNull;
+          final outletId = matched?.id ?? HiveService.getOutletId();
+          if (outletId != null && outletId > 0) {
+            final tableProvider = context.read<TableProvider>();
+            tableProvider.setOutletId(outletId);
+            tableProvider.setSelectedLocation(location);
+            tableProvider.refreshTables();
+
+            context.read<MenuProvider>().loadMenuData(
+                  outletId: outletId,
+                  forceRefresh: true,
+                );
+          }
+        }
+      },
+    );
+  }
+
   Widget _buildFilterDropdown(BuildContext context) {
     final dashboardProvider = Provider.of<DashboardProvider>(context);
+    final isFiltered =
+        dashboardProvider.selectedStatusFilter.toLowerCase() != 'all';
 
-    return InkWell(
-      onTap: () => _showStatusFilterDialog(context),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9), // Slate 100
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: const Color(0xFFE2E8F0),
-            width: 1.2,
-          ), // Slate 200
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.filter_list_rounded,
-              size: 15,
-              color: AppColors.primary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              _getStatusFilterDisplayName(
-                dashboardProvider.selectedStatusFilter,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticHelper.triggerFeedback();
+          _showStatusFilterDialog(context);
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+          decoration: BoxDecoration(
+            color: isFiltered
+                ? AppColors.primary.withValues(alpha: 0.12)
+                : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.tune_rounded,
+                size: 14,
+                color:
+                    isFiltered ? AppColors.primary : const Color(0xFF64748B),
               ),
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+              const SizedBox(width: 5),
+              Text(
+                _getStatusFilterDisplayName(
+                  dashboardProvider.selectedStatusFilter,
+                ),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color:
+                      isFiltered ? AppColors.primary : const Color(0xFF334155),
+                  letterSpacing: -0.1,
+                ),
               ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 16,
-              color: AppColors.textSecondary,
-            ),
-          ],
+              const SizedBox(width: 3),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 16,
+                color:
+                    isFiltered ? AppColors.primary : const Color(0xFF94A3B8),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -546,26 +633,5 @@ class LocationHeader extends StatelessWidget {
       case TableStatus.outOfOrder:
         return 'out_of_order';
     }
-  }
-
-  IconData _getLocationIcon() {
-    if (selectedLocation.isEmpty) return Icons.all_inclusive;
-
-    // Safe access to locations list
-    if (locations.isNotEmpty) {
-      try {
-        final location = locations.firstWhere(
-          (loc) => loc.name == selectedLocation,
-          orElse:
-              () => LocationSection('Default', Icons.location_on, Colors.grey),
-        );
-        return location.icon;
-      } catch (e) {
-        // If firstWhere fails, return default icon
-        return Icons.location_on;
-      }
-    }
-
-    return Icons.location_on;
   }
 }

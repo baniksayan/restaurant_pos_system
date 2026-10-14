@@ -8,6 +8,8 @@ import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/app_gradients.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
+import 'package:restaurant_pos_system/features/chef/providers/chef_provider.dart';
+import 'package:restaurant_pos_system/features/dashboard/providers/dashboard_provider.dart';
 import 'package:restaurant_pos_system/features/menu/views/standalone_menu_view.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
@@ -139,6 +141,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
       if (mounted) {
         // Restore Chef Session if logged in
         if (HiveService.isChefLoggedIn()) {
+          context.read<ChefProvider>().loadFromHive();
           Navigator.of(context).pushReplacementNamed('/chef');
           if (kDebugMode) {
             debugPrint('Chef session restored - navigating directly to /chef');
@@ -154,6 +157,8 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
             setState(() {
               _statusText = 'Loading restaurant data...';
             });
+            // Hydrate location & outletId from Hive database immediately on startup
+            context.read<DashboardProvider>().loadLocationsFromHive();
           }
           final companySiteUrl = HiveService.getCompanySiteUrl();
 

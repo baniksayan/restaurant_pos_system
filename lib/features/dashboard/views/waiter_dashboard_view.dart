@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/features/reservations/views/table_reservation_view.dart';
@@ -15,6 +17,7 @@ import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../providers/table_provider.dart';
+import 'package:restaurant_pos_system/features/menu/providers/menu_provider.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/dashboard_states.dart';
 import '../widgets/add_party_dialog.dart';
@@ -38,6 +41,7 @@ class WaiterDashboardView extends StatefulWidget {
 class _WaiterDashboardViewState extends State<WaiterDashboardView> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   String? _navigatingTableName;
+  bool _isLocationHeaderVisible = true;
 
   bool get _isTableNavigationInProgress => _navigatingTableName != null;
 
@@ -46,11 +50,11 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     super.initState();
     // CRITICAL: Delay initialization to ensure provider is ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TableProvider>().initializeTables();
       final dashboardProvider = context.read<DashboardProvider>();
-      if (dashboardProvider.selectedLocation.isEmpty) {
-        dashboardProvider.changeLocation('Main Hall');
-      }
+      dashboardProvider.loadLocationsFromHive();
+      final tableProvider = context.read<TableProvider>();
+      tableProvider.setSelectedLocation(dashboardProvider.selectedLocation);
+      tableProvider.initializeTables();
     });
   }
 
@@ -80,8 +84,25 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
               // stack — so that second pop emptied the navigator and left a
               // black screen.
               onLocationChanged: (location) {
-                dashboardProvider.changeLocation(location);
-                _showSnackBar('Showing: $location', Colors.blue);
+                if (dashboardProvider.selectedLocation != location) {
+                  dashboardProvider.changeLocation(location);
+                  final matchedLoc = dashboardProvider.locations
+                      .where((l) => l.name == location)
+                      .firstOrNull;
+                  final outletId = matchedLoc?.id ?? HiveService.getOutletId();
+                  if (outletId != null && outletId > 0) {
+                    final tableProvider = context.read<TableProvider>();
+                    tableProvider.setOutletId(outletId);
+                    tableProvider.setSelectedLocation(location);
+                    tableProvider.refreshTables();
+
+                    context.read<MenuProvider>().loadMenuData(
+                          outletId: outletId,
+                          forceRefresh: true,
+                        );
+                  }
+                  _showSnackBar('Showing: $location', Colors.blue);
+                }
               },
               onStatusFilterChanged: (statusFilter) {
                 dashboardProvider.changeStatusFilter(statusFilter);
@@ -132,83 +153,126 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                                 () => _scaffoldKey.currentState?.openDrawer(),
                             onAddOrderPressed: _handleAddOrderPressed,
                           ),
-                          LocationHeader(
-                            selectedLocation:
-                                dashboardProvider.selectedLocation,
-                            locations: dashboardProvider.locations,
-                            tables: tables,
+                          // Collapsible LocationHeader on scroll
+                          ClipRect(
+                            child: AnimatedSize(
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeInOutCubic,
+                              child: (_isLocationHeaderVisible || tables.isEmpty)
+                                  ? LocationHeader(
+                                      selectedLocation:
+                                          dashboardProvider.selectedLocation,
+                                      locations: dashboardProvider.locations,
+                                      tables: tables,
+                                    )
+                                  : const SizedBox.shrink(),
+                            ),
                           ),
-                          // Pull-to-refresh for tables area
+                          // Pull-to-refresh for tables area with scroll listener
                           Expanded(
-                            child: PremiumRefreshIndicator(
-                              onRefresh: () async {
-                                try {
-                                  // Re-initialize / reload tables from provider (API)
-                                  context
-                                      .read<TableProvider>()
-                                      .initializeTables();
-                                  // Removed green SnackBar per request
-                                } catch (e) {
-                                  if (kDebugMode) {
-                                    debugPrint('Refresh error: $e');
+                            child: NotificationListener<ScrollNotification>(
+                              onNotification: (notification) {
+                                if (notification is UserScrollNotification) {
+                                  if (notification.direction ==
+                                      ScrollDirection.reverse) {
+                                    // User scrolling down: hide header if scrolled past 20px
+                                    if (_isLocationHeaderVisible &&
+                                        notification.metrics.pixels > 20) {
+                                      setState(() {
+                                        _isLocationHeaderVisible = false;
+                                      });
+                                    }
+                                  } else if (notification.direction ==
+                                      ScrollDirection.forward) {
+                                    // User scrolling up: restore header
+                                    if (!_isLocationHeaderVisible) {
+                                      setState(() {
+                                        _isLocationHeaderVisible = true;
+                                      });
+                                    }
                                   }
-                                  _showSnackBar(
-                                    'Failed to refresh tables',
-                                    Colors.red,
-                                  );
+                                } else if (notification
+                                    is ScrollUpdateNotification) {
+                                  // Near top of list, ensure header is visible
+                                  if (notification.metrics.pixels <= 10 &&
+                                      !_isLocationHeaderVisible) {
+                                    setState(() {
+                                      _isLocationHeaderVisible = true;
+                                    });
+                                  }
                                 }
+                                return false;
                               },
-                              // The TableGrid likely uses a scrollable (GridView). For empty state,
-                              // provide a scrollable ListView so pull-to-refresh still works.
-                              child:
-                                  tables.isEmpty
-                                      ? LayoutBuilder(
-                                        builder: (context, constraints) {
-                                          return ListView(
-                                            physics:
-                                                const AlwaysScrollableScrollPhysics(),
-                                            children: [
-                                              Container(
-                                                constraints: BoxConstraints(
-                                                  minHeight:
-                                                      constraints.maxHeight,
+                              child: PremiumRefreshIndicator(
+                                onRefresh: () async {
+                                  try {
+                                    // Re-initialize / reload tables from provider (API)
+                                    context
+                                        .read<TableProvider>()
+                                        .initializeTables();
+                                    // Removed green SnackBar per request
+                                  } catch (e) {
+                                    if (kDebugMode) {
+                                      debugPrint('Refresh error: $e');
+                                    }
+                                    _showSnackBar(
+                                      'Failed to refresh tables',
+                                      Colors.red,
+                                    );
+                                  }
+                                },
+                                // The TableGrid likely uses a scrollable (GridView). For empty state,
+                                // provide a scrollable ListView so pull-to-refresh still works.
+                                child:
+                                    tables.isEmpty
+                                        ? LayoutBuilder(
+                                          builder: (context, constraints) {
+                                            return ListView(
+                                              physics:
+                                                  const AlwaysScrollableScrollPhysics(),
+                                              children: [
+                                                Container(
+                                                  constraints: BoxConstraints(
+                                                    minHeight:
+                                                        constraints.maxHeight,
+                                                  ),
+                                                  child: DashboardEmptyState(
+                                                    selectedLocation:
+                                                        dashboardProvider
+                                                                .selectedLocation
+                                                                .isEmpty
+                                                            ? 'All Tables'
+                                                            : dashboardProvider
+                                                                .selectedLocation,
+                                                    onChangeLocation:
+                                                        () =>
+                                                            _scaffoldKey
+                                                                .currentState
+                                                                ?.openDrawer(),
+                                                  ),
                                                 ),
-                                                child: DashboardEmptyState(
-                                                  selectedLocation:
-                                                      dashboardProvider
-                                                              .selectedLocation
-                                                              .isEmpty
-                                                          ? 'All Tables'
-                                                          : dashboardProvider
-                                                              .selectedLocation,
-                                                  onChangeLocation:
-                                                      () =>
-                                                          _scaffoldKey
-                                                              .currentState
-                                                              ?.openDrawer(),
-                                                ),
+                                              ],
+                                            );
+                                          },
+                                        )
+                                        : TableGrid(
+                                          tables: tables,
+                                          onTableTap:
+                                              (table) => _handleTableClick(
+                                                table,
+                                                tableProvider,
+                                                dashboardProvider,
                                               ),
-                                            ],
-                                          );
-                                        },
-                                      )
-                                      : TableGrid(
-                                        tables: tables,
-                                        onTableTap:
-                                            (table) => _handleTableClick(
-                                              table,
-                                              tableProvider,
-                                              dashboardProvider,
-                                            ),
-                                        onTableLongPress:
-                                            (table) =>
-                                                _handleTableLongPress(table),
-                                        onAddParty:
-                                            (table) => _handleAddParty(
-                                              table,
-                                              tableProvider,
-                                            ),
-                                      ),
+                                          onTableLongPress:
+                                              (table) =>
+                                                  _handleTableLongPress(table),
+                                          onAddParty:
+                                              (table) => _handleAddParty(
+                                                table,
+                                                tableProvider,
+                                              ),
+                                        ),
+                              ),
                             ),
                           ),
                         ],

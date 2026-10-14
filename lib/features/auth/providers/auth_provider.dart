@@ -6,9 +6,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:restaurant_pos_system/core/constants/api_constants.dart';
 import 'package:restaurant_pos_system/data/models/auth_api_res_model.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
+import 'package:restaurant_pos_system/features/dashboard/providers/dashboard_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/billing/providers/tax_provider.dart';
 import 'package:restaurant_pos_system/features/billing/providers/billing_provider.dart';
+import 'package:restaurant_pos_system/features/chef/providers/chef_provider.dart';
+import 'package:restaurant_pos_system/features/profile/providers/profile_provider.dart';
 import 'package:restaurant_pos_system/features/menu/providers/menu_provider.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/order_provider.dart';
@@ -26,12 +29,16 @@ class AuthProvider with ChangeNotifier {
   bool _shouldNavigateDirectlyToMenu = false;
   String? _autoSelectedTableId;
   String? _autoSelectedTableName;
+  DashboardProvider? _dashboardProvider;
   MenuProvider? _menuProvider;
   TableProvider? _tableProvider;
   AnimatedCartProvider? _animatedCartProvider;
   OrderProvider? _orderProvider;
   BillingProvider? _billingProvider;
   OrdersManagementProvider? _ordersManagementProvider;
+  ChefProvider? _chefProvider;
+  TaxProvider? _taxProvider;
+  ProfileProvider? _profileProvider;
 
   /// Set to true when the API login succeeds but the returned role list does
   /// not contain either "operator" or "chef".  The login view watches this to
@@ -179,15 +186,36 @@ class AuthProvider with ChangeNotifier {
         HiveService.setUserId(model.data?.userDetails?.userId ?? '');
         HiveService.setWaiterId("cceb307f-2f01-4e0e-8f28-e07ba8e941ac");
 
-        // Extract and save outlet ID from locationId (as specified by user)
+        // Extract and save outlet ID from locationId dynamically
         debugPrint('=== OUTLET ID PROCESSING ===');
-        debugPrint('Full API Response Data: ${model.data?.location?.toJson()}');
+        final locations = model.data?.location ?? [];
+        debugPrint(
+          'Full API Response Locations: ${locations.map((e) => e.toJson()).toList()}',
+        );
 
-        final locationId = model.data?.location?.locationId;
-        debugPrint('Extracted locationId from API: $locationId');
+        if (locations.isNotEmpty) {
+          await HiveService.saveLocations(locations);
+        }
 
-        // Save locationId as outlet ID (as per user's requirement)
-        HiveService.setOutletId(locationId ?? 10080);
+        final savedLocationName = HiveService.getSelectedLocationName();
+        final matchedSaved = (savedLocationName != null && savedLocationName.isNotEmpty)
+            ? locations.where((l) => l.locationName == savedLocationName).firstOrNull
+            : null;
+        final activeLocation =
+            matchedSaved ?? (locations.isNotEmpty ? locations.first : null);
+        final locationId = activeLocation?.locationId;
+        final locationName = activeLocation?.locationName;
+        debugPrint(
+          'Resolved active locationId from API: $locationId (name: $locationName)',
+        );
+
+        if (locationId != null && locationId > 0) {
+          HiveService.setOutletId(locationId);
+          await HiveService.setSelectedLocationId(locationId);
+        }
+        if (locationName != null && locationName.isNotEmpty) {
+          await HiveService.setSelectedLocationName(locationName);
+        }
 
         final savedOutletId = HiveService.getOutletId();
         debugPrint('Final outlet ID saved to Hive: $savedOutletId');
@@ -456,12 +484,18 @@ class AuthProvider with ChangeNotifier {
       // Get providers from context
       final tableProvider = Provider.of<TableProvider>(context, listen: false);
       final taxProvider = Provider.of<TaxProvider>(context, listen: false);
+      _dashboardProvider = Provider.of<DashboardProvider>(context, listen: false);
+      _dashboardProvider?.loadLocationsFromHive();
       _menuProvider = Provider.of<MenuProvider>(context, listen: false);
       _tableProvider = Provider.of<TableProvider>(context, listen: false);
       _animatedCartProvider = Provider.of<AnimatedCartProvider>(context, listen: false);
       _orderProvider = Provider.of<OrderProvider>(context, listen: false);
       _billingProvider = Provider.of<BillingProvider>(context, listen: false);
       _ordersManagementProvider = Provider.of<OrdersManagementProvider>(context, listen: false);
+      _chefProvider = Provider.of<ChefProvider>(context, listen: false);
+      _chefProvider?.loadLocationsFromHive();
+      _taxProvider = Provider.of<TaxProvider>(context, listen: false);
+      _profileProvider = Provider.of<ProfileProvider>(context, listen: false);
       final outletId = HiveService.getOutletId() ?? 0;
 
       // Initialize TableProvider
@@ -584,12 +618,9 @@ class AuthProvider with ChangeNotifier {
       await prefs.remove('user_role');
       await prefs.setBool('remember_me', false);
 
-      // Clear Hive storage (auth token and data)
+      // Clear Hive storage (auth token, user data, locations, taxes, tables, orders, sync)
       try {
-        await HiveService.clearAuthToken();
-        await HiveService.clearAuthData();
-        // Also clear chef session flag if present
-        await HiveService.clearChefSession();
+        await HiveService.clearAllUserData();
       } catch (hiveError) {
         if (kDebugMode) {
           debugPrint('Error clearing Hive data: $hiveError');
@@ -624,10 +655,14 @@ class AuthProvider with ChangeNotifier {
   void _clearProviderState() {
     _menuProvider?.clearMenuData();
     _tableProvider?.reset();
+    _dashboardProvider?.reset();
     _animatedCartProvider?.reset();
     _orderProvider?.reset();
     _billingProvider?.reset();
     _ordersManagementProvider?.reset();
+    _taxProvider?.reset();
+    _chefProvider?.reset();
+    _profileProvider?.reset();
   }
 
   // Method to check if logout is in progress
@@ -655,6 +690,7 @@ class AuthProvider with ChangeNotifier {
       // Clear credentials in background
       unawaited(_clearStoredCredentials());
       unawaited(_clearUserCache());
+      _clearProviderState();
 
       if (kDebugMode) {
         debugPrint('Force logout completed');

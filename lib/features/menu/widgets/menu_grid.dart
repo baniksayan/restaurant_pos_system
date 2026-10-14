@@ -87,9 +87,14 @@ class MenuGrid extends StatelessWidget {
                       description: menuProvider.errorMessage!,
                       action: ElevatedButton.icon(
                         onPressed: () async {
-                          final outletId = HiveService.getOutletId();
+                          final outletId =
+                              HiveService.getSelectedLocationId() ??
+                              HiveService.getOutletId();
                           if (outletId != null && outletId > 0) {
-                            await menuProvider.loadMenuData(outletId: outletId);
+                            await menuProvider.loadMenuData(
+                              outletId: outletId,
+                              forceRefresh: true,
+                            );
                           }
                         },
                         icon: const Icon(Icons.refresh, size: 16),

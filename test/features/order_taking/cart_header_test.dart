@@ -16,14 +16,14 @@ void main() {
                 const MenuHeader(
                   canOrder: true,
                   tableName: 'Table 1',
-                  selectedLocation: 'Main Hall',
+                  selectedLocation: 'Outlet 1',
                   showStatusTag: false,
                 ),
                 CartHeader(
                   hasKotItems: false,
                   hasNewItems: false,
                   tableName: 'Table 1',
-                  selectedLocation: 'Main Hall',
+                  selectedLocation: 'Outlet 1',
                   totalItems: 0,
                   hasItems: false,
                   showClearAll: false,

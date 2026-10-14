@@ -88,51 +88,35 @@ class DashboardLoadingState extends StatelessWidget {
   /// Skeleton matching LocationHeader
   Widget _buildLocationHeaderSkeleton() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.fromLTRB(18, 6, 16, 12),
+      color: Colors.white,
       child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    SkeletonLoader.rectangular(
-                      width: 16,
-                      height: 16,
-                      borderRadius: BorderRadius.all(Radius.circular(4)),
-                    ),
-                    SizedBox(width: 6),
-                    SkeletonLoader.rectangular(
-                      width: 90,
-                      height: 14,
-                      borderRadius: BorderRadius.all(Radius.circular(4)),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 4),
                 SkeletonLoader.rectangular(
-                  width: 55,
+                  width: 140,
+                  height: 18,
+                  borderRadius: BorderRadius.all(Radius.circular(4)),
+                ),
+                SizedBox(height: 5),
+                SkeletonLoader.rectangular(
+                  width: 95,
                   height: 12,
                   borderRadius: BorderRadius.all(Radius.circular(4)),
                 ),
               ],
             ),
           ),
+          SizedBox(width: 12),
           // Skeleton filter dropdown pill
           SkeletonLoader.rectangular(
-            width: 110,
-            height: 30,
+            width: 95,
+            height: 32,
             borderRadius: BorderRadius.all(Radius.circular(20)),
           ),
         ],

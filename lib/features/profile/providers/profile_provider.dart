@@ -24,4 +24,6 @@ class ProfileProvider extends ChangeNotifier {
     _breakStartTime = null;
     notifyListeners();
   }
+
+  void reset() => logout();
 }

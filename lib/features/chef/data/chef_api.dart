@@ -10,13 +10,15 @@ class ChefApi {
   /// Fetch KOT details for the given outlet and status ids and map them into
   /// `ChefOrder` objects grouped by `kotHeadId`.
   static Future<List<ChefOrder>> fetchChefOrders({
+    int? outletId,
     List<int>? statusIds,
     String searchBy = '',
     DateTime? fromDate,
     DateTime? toDate,
   }) async {
-    final outletId = HiveService.getOutletId();
-    if (outletId == null) return [];
+    final effectiveOutletId =
+        outletId ?? HiveService.getSelectedLocationId() ?? HiveService.getOutletId();
+    if (effectiveOutletId == null || effectiveOutletId <= 0) return [];
 
     final ids = statusIds ?? [1, 2, 3]; // New, InProgress, Completed
 
@@ -29,7 +31,7 @@ class ChefApi {
       'searchBy': searchBy,
       'fromDate': fd.toIso8601String(),
       'toDate': td.toIso8601String(),
-      'outletId': outletId,
+      'outletId': effectiveOutletId,
     };
 
     try {
@@ -66,6 +68,8 @@ class ChefApi {
         String? channelName;
         String? generatedOrderNo;
         int? waitingMinutes;
+        int? rowOutletId;
+        String? rowOutletName;
         final List<ChefOrderItem> items = [];
 
         bool hasRejected = false;
@@ -75,6 +79,20 @@ class ChefApi {
 
         for (final r in rows) {
           if (r is! Map) continue;
+
+          final rOutletId = r['outletId'] ?? r['locationId'];
+          if (rOutletId != null) {
+            if (rOutletId is num) {
+              rowOutletId = rOutletId.toInt();
+            } else if (rOutletId is String) {
+              rowOutletId = int.tryParse(rOutletId);
+            }
+          }
+          final rOutletName =
+              r['outletName']?.toString() ?? r['locationName']?.toString();
+          if (rOutletName != null && rOutletName.trim().isNotEmpty) {
+            rowOutletName = rOutletName.trim();
+          }
 
           final rKotNo = r['kotNo']?.toString();
           if (rKotNo != null && rKotNo.trim().isNotEmpty) kotNo = rKotNo.trim();
@@ -175,6 +193,8 @@ class ChefApi {
                     ? generatedOrderNo.trim()
                     : null,
             waitingMinutes: waitingMinutes,
+            outletId: rowOutletId ?? effectiveOutletId,
+            outletName: rowOutletName,
             orderNumber: resolvedOrderNo,
             tableNumber: displayTable,
             orderTime: orderTime ?? DateTime.now(),

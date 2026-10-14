@@ -54,6 +54,8 @@ class ChefOrder {
   final String? channelName;
   final String? generatedOrderNo;
   final int? waitingMinutes;
+  final int? outletId;
+  final String? outletName;
   final String orderNumber; // Display KOT No / Order identifier in UI
   final String tableNumber; // e.g. "Table 10 P2" or "Table 12"
   final DateTime orderTime;
@@ -71,6 +73,8 @@ class ChefOrder {
     this.channelName,
     this.generatedOrderNo,
     this.waitingMinutes,
+    this.outletId,
+    this.outletName,
     required this.orderNumber,
     required this.tableNumber,
     required this.orderTime,
@@ -116,6 +120,8 @@ class ChefOrder {
     String? channelName,
     String? generatedOrderNo,
     int? waitingMinutes,
+    int? outletId,
+    String? outletName,
     String? orderNumber,
     String? tableNumber,
     DateTime? orderTime,
@@ -133,6 +139,8 @@ class ChefOrder {
       channelName: channelName ?? this.channelName,
       generatedOrderNo: generatedOrderNo ?? this.generatedOrderNo,
       waitingMinutes: waitingMinutes ?? this.waitingMinutes,
+      outletId: outletId ?? this.outletId,
+      outletName: outletName ?? this.outletName,
       orderNumber: orderNumber ?? this.orderNumber,
       tableNumber: tableNumber ?? this.tableNumber,
       orderTime: orderTime ?? this.orderTime,

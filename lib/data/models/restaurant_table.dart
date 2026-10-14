@@ -8,6 +8,7 @@ class RestaurantTable {
   final String name;
   final int capacity;
   final String location;
+  final int? locationId;
   final TableStatus status;
   final bool kotGenerated;
   final bool billGenerated;
@@ -19,6 +20,7 @@ class RestaurantTable {
     required this.name,
     required this.capacity,
     required this.location,
+    this.locationId,
     required this.status,
     required this.kotGenerated,
     required this.billGenerated,
@@ -89,6 +91,7 @@ class RestaurantTable {
     String? name,
     int? capacity,
     String? location,
+    int? locationId,
     TableStatus? status,
     bool? kotGenerated,
     bool? billGenerated,
@@ -100,6 +103,7 @@ class RestaurantTable {
       name: name ?? this.name,
       capacity: capacity ?? this.capacity,
       location: location ?? this.location,
+      locationId: locationId ?? this.locationId,
       status: status ?? this.status,
       kotGenerated: kotGenerated ?? this.kotGenerated,
       billGenerated: billGenerated ?? this.billGenerated,

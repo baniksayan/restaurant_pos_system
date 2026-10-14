@@ -14,7 +14,6 @@ import 'package:restaurant_pos_system/features/profile/views/profile_view.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
 import 'package:restaurant_pos_system/shared/widgets/dialogs/sign_out_confirmation_dialog.dart';
 import '../providers/dashboard_provider.dart';
-import '../providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
@@ -261,30 +260,18 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
   }
 
   Widget _buildLocationFilters() {
-    return Consumer2<DashboardProvider, TableProvider>(
-      builder: (context, dashboardProvider, tableProvider, child) {
-        final availableLocations = _getAvailableLocations(
-          dashboardProvider.locations,
-          tableProvider.tables,
-        );
+    return Consumer<DashboardProvider>(
+      builder: (context, dashboardProvider, child) {
+        final locations = dashboardProvider.locations;
 
         return Column(
           children:
-              availableLocations
+              locations
                   .map((location) => _buildLocationTile(location))
                   .toList(),
         );
       },
     );
-  }
-
-  List<LocationSection> _getAvailableLocations(
-    List<LocationSection> allLocations,
-    List tables,
-  ) {
-    return allLocations.where((location) {
-      return tables.any((table) => table.location == location.name);
-    }).toList();
   }
 
   Widget _buildLocationTile(LocationSection location) {
@@ -335,15 +322,36 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    location.name,
-                    style: TextStyle(
-                      color:
-                          isSelected ? location.color : AppColors.textPrimary,
-                      fontWeight:
-                          isSelected ? FontWeight.w700 : FontWeight.w500,
-                      fontSize: 13.5,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        location.name,
+                        style: TextStyle(
+                          color:
+                              isSelected ? location.color : AppColors.textPrimary,
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                          fontSize: 13.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (location.address != null &&
+                          location.address!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          location.address!.trim(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary.withValues(alpha: 0.8),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 if (isSelected)

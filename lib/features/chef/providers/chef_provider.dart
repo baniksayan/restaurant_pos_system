@@ -1,6 +1,10 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
+import 'package:restaurant_pos_system/data/models/auth_api_res_model.dart';
 import 'package:restaurant_pos_system/features/chef/data/chef_api.dart';
+import 'package:restaurant_pos_system/features/dashboard/providers/dashboard_provider.dart';
 import '../models/chef_order_model.dart';
 
 class ChefProvider extends ChangeNotifier {
@@ -9,15 +13,12 @@ class ChefProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   String _selectedStatusFilter = 'All Statuses';
-  String _selectedLocation = 'Main Kitchen';
+  String _selectedLocation = '';
+  int? _selectedLocationId;
   int _currentTabIndex = 0; // 0 = All, 1 = Queue, 2 = Preparing, 3 = Serve
   Timer? _pollingTimer;
 
-  final List<String> _locations = [
-    'Main Kitchen',
-    'Bar Kitchen',
-    'Dessert & Bakery',
-  ];
+  List<LocationSection> _locations = [];
 
   final List<String> _statusFilters = [
     'All Statuses',
@@ -33,7 +34,8 @@ class ChefProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String get selectedStatusFilter => _selectedStatusFilter;
   String get selectedLocation => _selectedLocation;
-  List<String> get locations => _locations;
+  int? get selectedLocationId => _selectedLocationId;
+  List<LocationSection> get locations => _locations;
   List<String> get statusFilters => _statusFilters;
   List<String> get availableCategories => [
     'All',
@@ -44,10 +46,27 @@ class ChefProvider extends ChangeNotifier {
   String get selectedMenuCategory => 'All';
   int get currentTabIndex => _currentTabIndex;
 
-  ChefProvider() {
-    // Load live KOT data from backend
-    fetchOrders();
-    _startPolling();
+  ChefProvider({
+    bool autoStartPolling = true,
+    bool autoFetch = true,
+  }) {
+    loadFromHive();
+    if (autoFetch) {
+      fetchOrders();
+    }
+    if (autoStartPolling) {
+      _startPolling();
+    }
+  }
+
+  /// Hydrate full KDS state (locations, selected location, tab index, and filter)
+  /// from local Hive storage.
+  void loadFromHive() {
+    loadLocationsFromHive(notify: false);
+    _currentTabIndex = HiveService.getKdsSelectedTabIndex() ?? 0;
+    _selectedStatusFilter =
+        HiveService.getKdsSelectedStatusFilter() ?? 'All Statuses';
+    notifyListeners();
   }
 
   void _startPolling() {
@@ -57,14 +76,154 @@ class ChefProvider extends ChangeNotifier {
     });
   }
 
+  void loadLocationsFromHive({bool notify = true}) {
+    final storedLocations = HiveService.getLocations();
+    if (storedLocations.isNotEmpty) {
+      _locations = mapApiLocationsToSections(storedLocations);
+      final savedName = HiveService.getSelectedLocationName();
+      final savedId =
+          HiveService.getSelectedLocationId() ?? HiveService.getOutletId();
+
+      LocationSection? matched;
+      if (savedId != null && savedId > 0) {
+        matched = _locations.where((l) => l.id == savedId).firstOrNull;
+      }
+      if (matched == null && savedName != null && savedName.isNotEmpty) {
+        matched = _locations.where((l) => l.name == savedName).firstOrNull;
+      }
+
+      if (matched != null) {
+        _selectedLocation = matched.name;
+        _selectedLocationId = matched.id;
+      } else {
+        _selectedLocation = _locations.first.name;
+        _selectedLocationId = _locations.first.id;
+      }
+
+      if (_selectedLocationId != null) {
+        HiveService.setOutletId(_selectedLocationId!);
+        HiveService.setSelectedLocationId(_selectedLocationId!);
+      }
+      HiveService.setSelectedLocationName(_selectedLocation);
+    } else {
+      _locations = [];
+      _selectedLocation = '';
+      _selectedLocationId = HiveService.getOutletId();
+    }
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateLocationsFromApi(List<Location> apiLocations) async {
+    if (apiLocations.isEmpty) return;
+    await HiveService.saveLocations(apiLocations);
+    _locations = mapApiLocationsToSections(apiLocations);
+    final savedName = HiveService.getSelectedLocationName();
+    final savedId =
+        HiveService.getSelectedLocationId() ?? HiveService.getOutletId();
+
+    LocationSection? matched;
+    if (savedId != null && savedId > 0) {
+      matched = _locations.where((l) => l.id == savedId).firstOrNull;
+    }
+    if (matched == null && savedName != null && savedName.isNotEmpty) {
+      matched = _locations.where((l) => l.name == savedName).firstOrNull;
+    }
+
+    if (matched != null) {
+      _selectedLocation = matched.name;
+      _selectedLocationId = matched.id;
+    } else {
+      _selectedLocation = _locations.first.name;
+      _selectedLocationId = _locations.first.id;
+    }
+
+    if (_selectedLocationId != null) {
+      HiveService.setOutletId(_selectedLocationId!);
+      await HiveService.setSelectedLocationId(_selectedLocationId!);
+    }
+    await HiveService.setSelectedLocationName(_selectedLocation);
+    notifyListeners();
+  }
+
+  static List<LocationSection> mapApiLocationsToSections(
+    List<Location> apiLocations,
+  ) {
+    const icons = [
+      Icons.storefront_rounded,
+      Icons.restaurant_rounded,
+      Icons.soup_kitchen_rounded,
+      Icons.local_dining_rounded,
+      Icons.lunch_dining_rounded,
+      Icons.dinner_dining_rounded,
+      Icons.coffee_rounded,
+    ];
+    const colors = [
+      Colors.blue,
+      Colors.teal,
+      Colors.orange,
+      Colors.purple,
+      Colors.indigo,
+      Colors.deepOrange,
+    ];
+
+    return apiLocations.asMap().entries.map((entry) {
+      final index = entry.key;
+      final loc = entry.value;
+      final name = loc.locationName?.trim().isNotEmpty == true
+          ? loc.locationName!.trim()
+          : 'Location ${loc.locationId ?? index + 1}';
+      return LocationSection(
+        name,
+        icons[index % icons.length],
+        colors[index % colors.length],
+        id: loc.locationId,
+        type: loc.locationType,
+        address: loc.locAddress,
+      );
+    }).toList();
+  }
+
+  void reset() {
+    _pollingTimer?.cancel();
+    _orders = [];
+    _locations = [];
+    _selectedLocation = '';
+    _selectedLocationId = null;
+    _isLoading = false;
+    _errorMessage = null;
+    _currentTabIndex = 0;
+    _selectedStatusFilter = 'All Statuses';
+    HiveService.setKdsSelectedTabIndex(0);
+    HiveService.setKdsSelectedStatusFilter('All Statuses');
+    notifyListeners();
+  }
+
+  bool _isDisposed = false;
+
   @override
   void dispose() {
+    _isDisposed = true;
     _pollingTimer?.cancel();
     super.dispose();
   }
 
-  /// Fetch latest orders from backend and replace local orders when available
-  Future<void> fetchOrders({bool silent = false}) async {
+  @override
+  void notifyListeners() {
+    if (_isDisposed) return;
+    super.notifyListeners();
+  }
+
+  /// Fetch latest orders from backend for active outlet and replace local orders
+  Future<void> fetchOrders({
+    int? outletId,
+    bool silent = false,
+    bool forceRefresh = false,
+  }) async {
+    final targetOutletId =
+        outletId ?? _selectedLocationId ?? HiveService.getOutletId();
+
     if (!silent) {
       _isLoading = true;
       _errorMessage = null;
@@ -72,10 +231,8 @@ class ChefProvider extends ChangeNotifier {
     }
 
     try {
-      final fetched = await ChefApi.fetchChefOrders();
-      if (fetched.isNotEmpty) {
-        _orders = fetched;
-      }
+      final fetched = await ChefApi.fetchChefOrders(outletId: targetOutletId);
+      _orders = fetched;
     } catch (e, st) {
       if (kDebugMode) {
         debugPrint('ChefProvider.fetchOrders error: $e');
@@ -177,17 +334,46 @@ class ChefProvider extends ChangeNotifier {
   // Filter & Navigation controls
   void changeTabIndex(int index) {
     _currentTabIndex = index;
+    HiveService.setKdsSelectedTabIndex(index);
     notifyListeners();
   }
 
   void changeStatusFilter(String status) {
     _selectedStatusFilter = status;
+    HiveService.setKdsSelectedStatusFilter(status);
     notifyListeners();
   }
 
-  void changeLocation(String location) {
+  Future<void> changeLocation(
+    String location, {
+    int? outletId,
+    bool fetchNewOrders = true,
+  }) async {
+    if (_selectedLocation == location &&
+        (outletId == null || _selectedLocationId == outletId)) {
+      return;
+    }
+
     _selectedLocation = location;
+    final matched =
+        _locations.where((l) => l.name == location).firstOrNull;
+    final resolvedId = outletId ?? matched?.id;
+
+    if (resolvedId != null && resolvedId > 0) {
+      _selectedLocationId = resolvedId;
+      HiveService.setOutletId(resolvedId);
+      await HiveService.setSelectedLocationId(resolvedId);
+    }
+    await HiveService.setSelectedLocationName(location);
+
+    // Clear current orders immediately so stale orders from previous outlet
+    // are never displayed.
+    _orders = [];
     notifyListeners();
+
+    if (fetchNewOrders) {
+      fetchOrders(outletId: _selectedLocationId, forceRefresh: true);
+    }
   }
 
   // Order state workflow:

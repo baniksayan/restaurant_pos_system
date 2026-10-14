@@ -28,10 +28,12 @@ class AppStrings {
   static const String close = 'Close';
   static const String tryAgain = 'Try Again';
   static const String gotIt = 'Got it';
+  static const String okGotIt = 'OK, Got It';
   static const String done = 'Done';
   static const String login = 'Login';
   static const String logout = 'Logout';
   static const String signOut = 'Sign Out';
+  static const String accessDenied = 'Access Denied';
   static const String signingOut = 'Signing out...';
   static const String loggingOut = 'Logging out...';
   static const String signOutConfirmation = 'Sign Out Confirmation';
@@ -116,6 +118,14 @@ class _AuthStrings {
       'No internet connection. Please check your network.';
   final String connectionTimeout = 'Connection timeout. Please try again.';
   final String loginFailed = 'Login failed. Please try again.';
+
+  // Access Denied Dialog
+  final String accessDenied = 'Access Denied';
+  final String accessDeniedSubtitle =
+      'Your account does not have permission to access WhizEats Pro.';
+  final String accessDeniedMessage =
+      'Only Operator and Chef accounts are allowed to sign in. Please contact your administrator to get the correct access.';
+  final String okGotIt = 'OK, Got It';
 }
 
 // --- Dashboard ---

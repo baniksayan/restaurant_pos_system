@@ -8,10 +8,11 @@ import 'package:restaurant_pos_system/shared/widgets/layout/premium_refresh_indi
 import '../widgets/chef_drawer.dart';
 import '../widgets/chef_empty_state.dart';
 import '../widgets/chef_header.dart';
+import '../widgets/chef_location_header.dart';
 import '../widgets/chef_order_card.dart';
 import '../widgets/chef_order_skeleton.dart';
-import '../widgets/chef_status_filter_dialog.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
 
 class ChefDashboardView extends StatefulWidget {
   const ChefDashboardView({super.key});
@@ -50,7 +51,19 @@ class _ChefDashboardViewState extends State<ChefDashboardView> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
+    final initialTab = HiveService.getKdsSelectedTabIndex() ?? 0;
+    _pageController = PageController(initialPage: initialTab);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final chefProvider = context.read<ChefProvider>();
+        chefProvider.loadFromHive();
+        final currentTab = chefProvider.currentTabIndex;
+        if (_pageController.hasClients &&
+            _pageController.page?.round() != currentTab) {
+          _pageController.jumpToPage(currentTab);
+        }
+      }
+    });
   }
 
   @override
@@ -135,13 +148,14 @@ class _ChefDashboardViewState extends State<ChefDashboardView> {
         drawer: const ChefDrawer(),
         body: Column(
           children: [
-            // Top Header ("WhizEats KDS" + Hamburger Menu & Filter Button)
+            // Top Header ("WhizEats KDS" + Hamburger Menu)
             ChefHeader(
-              showFilter: chefProvider.currentTabIndex == 0,
+              showFilter: false,
               onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
-              onFilterPressed:
-                  () => showChefStatusFilterDialog(context, chefProvider),
             ),
+
+            // Dynamic Minimalist Location Header & Status Filter
+            const ChefLocationHeader(),
 
             // Swipeable PageView across 4 tabs (All, Queue, Preparing, Serve)
             Expanded(

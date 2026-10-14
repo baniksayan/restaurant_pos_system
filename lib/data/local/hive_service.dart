@@ -93,14 +93,36 @@ class HiveService {
     await posBox.delete(StorageKeys.token);
   }
 
+  // Helper for deep recursive Map and List casting from Hive
+  static dynamic _deepCast(dynamic value) {
+    if (value is Map) {
+      return value.map((k, v) => MapEntry(k.toString(), _deepCast(v)));
+    } else if (value is List) {
+      return value.map(_deepCast).toList();
+    }
+    return value;
+  }
+
   // Auth Data Management
   static Future<void> saveAuthData(dynamic data) async {
     // Store as a plain Map (JSON) to avoid requiring a Hive TypeAdapter
     if (data is AuthApiResModel) {
       await posBox.put(StorageKeys.authData, data.toJson());
+      // Also save locations into dedicated key for robust offline retrieval
+      if (data.data?.location != null && data.data!.location!.isNotEmpty) {
+        await saveLocations(data.data!.location!);
+      }
     } else {
       // Fallback: store whatever was provided (defensive)
       await posBox.put(StorageKeys.authData, data);
+      if (data is Map && data['data'] is Map && data['data']['location'] is List) {
+        try {
+          final locs = (data['data']['location'] as List)
+              .map((e) => Location.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList();
+          await saveLocations(locs);
+        } catch (_) {}
+      }
     }
   }
 
@@ -109,13 +131,20 @@ class HiveService {
     if (raw == null) return null;
     // If the stored value is already the model (unlikely), return it.
     if (raw is AuthApiResModel) return raw;
-    // If it's a Map (stored JSON), convert and deserialize.
+    // If it's a Map (stored JSON), deep convert and deserialize.
     if (raw is Map) {
       try {
-        final map = Map<String, dynamic>.from(raw);
-        return AuthApiResModel.fromJson(map);
+        final casted = _deepCast(raw);
+        if (casted is Map<String, dynamic>) {
+          return AuthApiResModel.fromJson(casted);
+        }
+        return AuthApiResModel.fromJson(
+          Map<String, dynamic>.from(casted as Map),
+        );
       } catch (e) {
-        // If casting fails, return null
+        if (kDebugMode) {
+          debugPrint('[HiveService] Failed to parse authData: $e');
+        }
         return null;
       }
     }
@@ -133,7 +162,6 @@ class HiveService {
   }
 
   static void setUserId(String userId) {
-    // Store in both boxes for consistenc
     posBox.put(StorageKeys.userId, userId);
   }
 
@@ -143,7 +171,6 @@ class HiveService {
   }
 
   static void setWaiterId(String waiterId) {
-    // Store in both boxes for consistency
     posBox.put(StorageKeys.waiterId, waiterId);
   }
 
@@ -154,6 +181,133 @@ class HiveService {
 
   static void setOutletId(int outletId) {
     posBox.put(StorageKeys.outletId, outletId);
+    posBox.put(StorageKeys.selectedLocationId, outletId);
+  }
+
+  // Location Management
+  static int? getSelectedLocationId() {
+    return posBox.get(StorageKeys.selectedLocationId) ?? getOutletId();
+  }
+
+  static Future<void> setSelectedLocationId(int locationId) async {
+    await posBox.put(StorageKeys.selectedLocationId, locationId);
+    setOutletId(locationId);
+  }
+
+  static String? getSelectedLocationName() {
+    return posBox.get(StorageKeys.selectedLocationName);
+  }
+
+  static Future<void> setSelectedLocationName(String locationName) async {
+    await posBox.put(StorageKeys.selectedLocationName, locationName);
+  }
+
+  // KDS State Persistence (Tab Index & Status Filter)
+  static int? getKdsSelectedTabIndex() {
+    final val = posBox.get(StorageKeys.kdsSelectedTabIndex);
+    if (val is int) return val;
+    if (val is num) return val.toInt();
+    if (val is String) return int.tryParse(val);
+    return null;
+  }
+
+  static Future<void> setKdsSelectedTabIndex(int index) async {
+    await posBox.put(StorageKeys.kdsSelectedTabIndex, index);
+  }
+
+  static String? getKdsSelectedStatusFilter() {
+    final val = posBox.get(StorageKeys.kdsSelectedStatusFilter);
+    return val is String && val.isNotEmpty ? val : null;
+  }
+
+  static Future<void> setKdsSelectedStatusFilter(String filter) async {
+    await posBox.put(StorageKeys.kdsSelectedStatusFilter, filter);
+  }
+
+  /// Saves the list of Location objects into a dedicated database key in Hive.
+  static Future<void> saveLocations(List<Location> locations) async {
+    try {
+      final list = locations.map((loc) => loc.toJson()).toList();
+      await posBox.put(StorageKeys.locations, list);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[HiveService] Failed to save locations: $e');
+      }
+    }
+  }
+
+  /// Fetches locations from the local database.
+  /// Deduplicates across both dedicated `StorageKeys.locations` and `authData`
+  /// by `locationId` so no location is ever omitted.
+  static List<Location> getLocations() {
+    final Map<int, Location> locationMap = {};
+
+    // 1. Populate from dedicated locations cache
+    try {
+      final raw = posBox.get(StorageKeys.locations);
+      if (raw is List && raw.isNotEmpty) {
+        final casted = _deepCast(raw) as List;
+        for (final item in casted) {
+          if (item is Map<String, dynamic>) {
+            final loc = Location.fromJson(item);
+            if (loc.locationId != null) {
+              locationMap[loc.locationId!] = loc;
+            }
+          } else if (item is Map) {
+            final loc = Location.fromJson(Map<String, dynamic>.from(item));
+            if (loc.locationId != null) {
+              locationMap[loc.locationId!] = loc;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[HiveService] Error reading dedicated locations: $e');
+      }
+    }
+
+    // 2. Supplement from authData in case additional locations are present
+    final authData = getAuthData();
+    final authLocations = authData?.data?.location ?? [];
+    for (final loc in authLocations) {
+      if (loc.locationId != null && !locationMap.containsKey(loc.locationId)) {
+        locationMap[loc.locationId!] = loc;
+      }
+    }
+
+    return locationMap.values.toList();
+  }
+
+  /// Wipes all user-specific and company-specific data from Hive upon logout or uninstall.
+  static Future<void> clearAllUserData() async {
+    try {
+      await posBox.delete(StorageKeys.token);
+      await posBox.delete(StorageKeys.authData);
+      await posBox.delete(StorageKeys.userId);
+      await posBox.delete(StorageKeys.waiterId);
+      await posBox.delete(StorageKeys.outletId);
+      await posBox.delete(StorageKeys.selectedLocationName);
+      await posBox.delete(StorageKeys.selectedLocationId);
+      await posBox.delete(StorageKeys.locations);
+      await posBox.delete(StorageKeys.kdsSelectedTabIndex);
+      await posBox.delete(StorageKeys.kdsSelectedStatusFilter);
+      await posBox.delete(StorageKeys.companySiteUrl);
+      await posBox.delete(StorageKeys.isChefLoggedIn);
+      await posBox.delete(StorageKeys.taxData);
+      await posBox.delete(StorageKeys.taxDataTimestamp);
+      await posBox.delete(StorageKeys.companyInfo);
+      await tablesBox.clear();
+      await ordersBox.clear();
+      await syncBox.clear();
+      if (kDebugMode) {
+        debugPrint('[HiveService] All local user data cleared completely');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[HiveService] Error clearing all user data: $e');
+      }
+    }
   }
 
   // Company Site URL Management

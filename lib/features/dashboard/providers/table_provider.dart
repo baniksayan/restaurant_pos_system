@@ -11,7 +11,7 @@ class TableProvider extends ChangeNotifier {
   List<RestaurantTable> _tables = [];
   bool _isLoading = false;
   String? _error;
-  String _selectedLocation = 'Main Hall';
+  String _selectedLocation = '';
   int? _outletId; // Remove static assignment - will get from Hive
 
   // Multi-order support
@@ -27,7 +27,15 @@ class TableProvider extends ChangeNotifier {
   List<RestaurantTable> get tables => _tables;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  String get selectedLocation => _selectedLocation;
+  String get selectedLocation =>
+      _selectedLocation.isNotEmpty
+          ? _selectedLocation
+          : (HiveService.getSelectedLocationName() ?? '');
+
+  void setSelectedLocation(String location) {
+    _selectedLocation = location;
+    notifyListeners();
+  }
   int get outletId => _outletId ?? _getOutletIdFromHive();
 
   // Helper method to get outlet ID from Hive
@@ -100,17 +108,19 @@ class TableProvider extends ChangeNotifier {
   }
 
   /// Fetch tables using ONLY API data - FIXED UI UPDATE
-  Future<void> fetchTablesWithAuth(String token, int outletId) async {
+  Future<void> fetchTablesWithAuth(String token, int outletId, [String? locationName]) async {
     _isLoading = true;
     _error = null;
     notifyListeners(); // First notification: Loading state
     try {
+      final effectiveLocation = locationName ?? selectedLocation;
       debugPrint(
-        '[TableProvider] Fetching REAL API tables - Outlet: $outletId',
+        '[TableProvider] Fetching REAL API tables - Outlet: $outletId, Location: $effectiveLocation',
       );
       final tables = await TableRepository.fetchTablesFromOrderChannelAPI(
         token: token,
         outletId: outletId,
+        locationName: effectiveLocation,
       );
 
       // CRITICAL FIX: Merge API data with existing local data to preserve bill IDs
@@ -250,10 +260,18 @@ class TableProvider extends ChangeNotifier {
     List<RestaurantTable> filteredTables = List.from(_tables);
 
     // Filter by location
-    filteredTables =
-        filteredTables
-            .where((table) => table.location == locationName)
-            .toList();
+    if (locationName.isNotEmpty) {
+      final selectedLocId = HiveService.getSelectedLocationId();
+      filteredTables =
+          filteredTables
+              .where((table) {
+                if (selectedLocId != null && table.locationId != null && table.locationId! > 0) {
+                  return table.locationId == selectedLocId;
+                }
+                return table.location == locationName || table.location.isEmpty;
+              })
+              .toList();
+    }
 
     // Filter by status if provided
     if (statusFilter != null && statusFilter != 'all') {
@@ -801,11 +819,6 @@ class TableProvider extends ChangeNotifier {
     // This is now handled by API calls and refresh
   }
 
-  void setSelectedLocation(String location) {
-    _selectedLocation = location;
-    notifyListeners(); // Notify location change
-  }
-
   void clearError() {
     _error = null;
     notifyListeners();
@@ -817,6 +830,7 @@ class TableProvider extends ChangeNotifier {
     _orderCartStates.clear();
     _currentOrderId = null;
     _outletId = null;
+    _selectedLocation = '';
     _orderChannels = [];
     _error = null;
     notifyListeners();
@@ -826,7 +840,7 @@ class TableProvider extends ChangeNotifier {
     final token = _getAuthToken();
     final outletId = _getOutletId();
     if (token != null && outletId != null) {
-      await fetchTablesWithAuth(token, outletId);
+      await fetchTablesWithAuth(token, outletId, selectedLocation);
     }
   }
 

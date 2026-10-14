@@ -176,6 +176,26 @@ class MenuProvider with ChangeNotifier {
 
   // MAIN FIX: Load menu items from API with token guard
   Future<void> loadMenuItems({required int outletId}) async {
+    final targetOutletId = outletId > 0
+        ? outletId
+        : (HiveService.getSelectedLocationId() ?? HiveService.getOutletId() ?? 0);
+
+    // OUTLET ID CHECK
+    if (targetOutletId <= 0) {
+      debugPrint(
+        'Invalid outlet ID ($targetOutletId) - skipping menu load in MenuProvider',
+      );
+      _apiMenuItems = [];
+      _errorMessage = 'Invalid outlet ID. Cannot load menu items.';
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
+
+    // Persist active outlet ID for session restoration and app restarts
+    HiveService.setOutletId(targetOutletId);
+    HiveService.setSelectedLocationId(targetOutletId);
+
     // TOKEN CHECK - THIS PREVENTS 500 ERRORS ON FIRST LAUNCH
     final token = HiveService.getAuthToken();
     if (token.isEmpty) {
@@ -184,17 +204,7 @@ class MenuProvider with ChangeNotifier {
       );
       _apiMenuItems = [];
       _errorMessage = null; // Don't show error for expected behavior
-      notifyListeners();
-      return;
-    }
-
-    // OUTLET ID CHECK
-    if (outletId <= 0) {
-      debugPrint(
-        'Invalid outlet ID ($outletId) - skipping menu load in MenuProvider',
-      );
-      _apiMenuItems = [];
-      _errorMessage = 'Invalid outlet ID. Cannot load menu items.';
+      _isLoading = false;
       notifyListeners();
       return;
     }
@@ -208,7 +218,7 @@ class MenuProvider with ChangeNotifier {
         "itemCode": "",
         "itemName": "",
         "isItemCode": false,
-        "outletId": HiveService.getOutletId() ?? outletId,
+        "outletId": targetOutletId,
       };
 
       final response = await ApiService.apiRequestHttpRawBody(
@@ -248,12 +258,53 @@ class MenuProvider with ChangeNotifier {
     }
   }
 
+  int? _currentOutletId;
+  int? get currentOutletId => _currentOutletId;
+
   // Load menu items first, then extract categories
-  Future<void> loadMenuData({required int outletId}) async {
+  Future<void> loadMenuData({
+    required int outletId,
+    bool forceRefresh = false,
+  }) async {
+    final targetOutletId = outletId > 0
+        ? outletId
+        : (HiveService.getSelectedLocationId() ?? HiveService.getOutletId() ?? 0);
+
+    if (targetOutletId <= 0) return;
+
+    final isDifferentOutlet =
+        _currentOutletId != null && _currentOutletId != targetOutletId;
+
+    if (!forceRefresh &&
+        !isDifferentOutlet &&
+        _currentOutletId == targetOutletId &&
+        _apiMenuItems.isNotEmpty) {
+      debugPrint(
+        '[MenuProvider] Menu already loaded for outletId: $targetOutletId, preserving menu',
+      );
+      return;
+    }
+
+    if (isDifferentOutlet || forceRefresh) {
+      // Clear previous location's menu data immediately so stale data is never shown
+      _apiMenuItems = [];
+      _categories = [];
+      _selectedCategory = 'All';
+      _selectedDietaryFilter = 'All';
+      _searchQuery = '';
+      _tableWiseCategory.clear();
+      _tableWiseDietaryFilter.clear();
+      _tableWiseSearchQuery.clear();
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+    }
+
+    _currentOutletId = targetOutletId;
     // Load menu items first
-    await loadMenuItems(outletId: outletId);
+    await loadMenuItems(outletId: targetOutletId);
     // Then extract categories from menu items
-    await loadCategories(outletId: outletId);
+    await loadCategories(outletId: targetOutletId);
   }
 
   // Update search query
@@ -342,6 +393,7 @@ class MenuProvider with ChangeNotifier {
   void clearMenuData() {
     _apiMenuItems = [];
     _categories = [];
+    _currentOutletId = null;
     _searchQuery = '';
     _selectedCategory = 'All';
     _selectedDietaryFilter = 'All';
@@ -352,6 +404,8 @@ class MenuProvider with ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
   }
+
+  void reset() => clearMenuData();
 
   @visibleForTesting
   void setMenuItemsForTesting(List<Data> items) {

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../local/hive_service.dart';
 import '../models/order_channel_list_api_response_model.dart';
 import '../models/restaurant_table.dart';
 import '../remote/api_service.dart';
@@ -11,6 +12,7 @@ class TableRepository {
   static Future<List<RestaurantTable>> fetchTablesFromOrderChannelAPI({
     required String token,
     required int outletId,
+    String? locationName,
     String orderChannelType = "Table",
   }) async {
     try {
@@ -33,7 +35,11 @@ class TableRepository {
 
         if (response.data != null && response.data!.isNotEmpty) {
           // Convert API data to RestaurantTable objects
-          final apiTables = _convertApiDataToRestaurantTables(response.data!);
+          final apiTables = _convertApiDataToRestaurantTables(
+            response.data!,
+            locationName: locationName,
+            locationId: outletId,
+          );
           debugPrint(
             '[TableRepo] Successfully converted ${apiTables.length} tables from API',
           );
@@ -71,8 +77,10 @@ class TableRepository {
 
   /// Convert API data to RestaurantTable objects using YOUR real JSON structure
   static List<RestaurantTable> _convertApiDataToRestaurantTables(
-    List<TableData> apiTables,
-  ) {
+    List<TableData> apiTables, {
+    String? locationName,
+    int? locationId,
+  }) {
     debugPrint('[TableRepo] Converting ${apiTables.length} API tables');
     debugPrint('[TableRepo] Raw API tables data: $apiTables');
 
@@ -152,11 +160,21 @@ class TableRepository {
             '[TableRepo] Table ${table.name}: status=$tableStatus, orders=${activeOrders.length}, billed=$billGenerated',
           );
 
+          final resolvedLocation =
+              (locationName != null && locationName.isNotEmpty)
+                  ? locationName
+                  : (HiveService.getSelectedLocationName() ?? '');
+          final resolvedLocationId =
+              locationId ??
+              HiveService.getSelectedLocationId() ??
+              HiveService.getOutletId();
+
           return RestaurantTable(
             id: table.orderChannelId ?? '',
             name: table.name ?? 'Unknown Table',
             capacity: table.capacity ?? 0,
-            location: 'Main Hall', // All API tables go to Main Hall
+            location: resolvedLocation,
+            locationId: resolvedLocationId,
             status: tableStatus,
             kotGenerated: kotGenerated,
             billGenerated: billGenerated,

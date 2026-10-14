@@ -65,7 +65,7 @@ class TaxProvider with ChangeNotifier {
       // tax while the server went on charging the real rate.
       final outletId =
           HiveService.getOutletId() ??
-          HiveService.getAuthData()?.data?.location?.locationId ??
+          HiveService.getAuthData()?.data?.location?.firstOrNull?.locationId ??
           0;
 
       if (outletId > 0 && HiveService.getOutletId() == null) {
@@ -242,4 +242,6 @@ class TaxProvider with ChangeNotifier {
     HiveService.clearTaxData();
     notifyListeners();
   }
+
+  void reset() => clearTaxData();
 }

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/navigation_provider.dart';
+import '../providers/dashboard_provider.dart';
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/order_provider.dart';
 import '../providers/table_provider.dart';
@@ -90,15 +92,19 @@ class _MainNavigationState extends State<MainNavigation> {
   void _handleAutoTableSelection() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final navProvider = Provider.of<NavigationProvider>(context, listen: false);
+    final dashboardProvider = Provider.of<DashboardProvider>(context, listen: false);
 
     if (authProvider.shouldNavigateDirectlyToMenu &&
         authProvider.autoSelectedTableId != null &&
         authProvider.autoSelectedTableName != null) {
       // Auto-select the table and navigate to menu
+      final location = dashboardProvider.selectedLocation.isNotEmpty
+          ? dashboardProvider.selectedLocation
+          : (HiveService.getSelectedLocationName() ?? '');
       navProvider.selectTableAndNavigateToMenu(
         authProvider.autoSelectedTableId!,
         authProvider.autoSelectedTableName!,
-        'Main Hall', // Default location
+        location,
       );
 
       // Reset the auto navigation flags
@@ -212,6 +218,14 @@ class _MainNavigationState extends State<MainNavigation> {
       ),
       child: Consumer<NavigationProvider>(
         builder: (context, navProvider, _) {
+          final dashboardProvider = Provider.of<DashboardProvider>(context);
+          final effectiveLocation = (navProvider.selectedLocation != null &&
+                  navProvider.selectedLocation!.isNotEmpty)
+              ? navProvider.selectedLocation
+              : (dashboardProvider.selectedLocation.isNotEmpty
+                  ? dashboardProvider.selectedLocation
+                  : null);
+
           return PopScope(
             canPop: navProvider.currentIndex == 0,
             onPopInvokedWithResult: (didPop, _) {
@@ -239,7 +253,7 @@ class _MainNavigationState extends State<MainNavigation> {
                         navProvider.selectTable(
                           tableId,
                           tableName,
-                          navProvider.selectedLocation ?? '',
+                          effectiveLocation ?? '',
                         );
                       },
                     ),
@@ -247,7 +261,7 @@ class _MainNavigationState extends State<MainNavigation> {
                     MenuView(
                       selectedTableId: navProvider.selectedTableId,
                       tableName: navProvider.selectedTableName,
-                      selectedLocation: navProvider.selectedLocation,
+                      selectedLocation: effectiveLocation,
                       onAddToCart: _handleAddToCart,
                     ),
                     // Cart Tab
@@ -262,7 +276,7 @@ class _MainNavigationState extends State<MainNavigation> {
                               : navProvider.selectedOrderType == 'Takeaway'
                               ? 'Takeaway - ${navProvider.customerName ?? "Unknown"}'
                               : null),
-                      selectedLocation: navProvider.selectedLocation,
+                      selectedLocation: effectiveLocation,
                     ),
                     if (navProvider.currentIndex == 3) const ReportsView(),
                   ],

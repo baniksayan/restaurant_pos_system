@@ -2030,7 +2030,8 @@ class _OrderDetailViewState extends State<OrderDetailView>
               (context) => CartView(
                 tableId: widget.order.tableNumber,
                 tableName: 'Table ${widget.order.tableNumber}',
-                selectedLocation: 'Main Hall',
+                selectedLocation:
+                    HiveService.getSelectedLocationName() ?? '',
               ),
         ),
       );

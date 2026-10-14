@@ -8,8 +8,11 @@ import 'package:restaurant_pos_system/shared/widgets/forms/custom_text_field.dar
 import 'package:restaurant_pos_system/shared/widgets/animations/fade_in_animation.dart';
 import 'package:restaurant_pos_system/shared/widgets/buttons/animated_button.dart';
 import 'package:restaurant_pos_system/features/menu/views/standalone_menu_view.dart';
+import 'package:restaurant_pos_system/features/dashboard/providers/dashboard_provider.dart';
+import 'package:restaurant_pos_system/features/chef/providers/chef_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/url_helper.dart';
+import 'package:restaurant_pos_system/shared/widgets/dialogs/access_denied_dialog.dart';
 import 'package:restaurant_pos_system/shared/widgets/feedback/app_message_banner.dart';
 
 class LoginForm extends StatefulWidget {
@@ -91,13 +94,23 @@ class _LoginFormState extends State<LoginForm> {
       }
 
       if (success && mounted) {
+        final apiLocations = HiveService.getLocations();
+
         // If authenticated user is a Chef, navigate to Chef KDS
         if (HiveService.isChefLoggedIn()) {
+          if (apiLocations.isNotEmpty && mounted) {
+            await context.read<ChefProvider>().updateLocationsFromApi(apiLocations);
+          }
           if (mounted) {
             Navigator.of(context).pushReplacementNamed('/chef');
           }
           return;
         }
+        // Update DashboardProvider with the freshly received locations
+        if (apiLocations.isNotEmpty && mounted) {
+          context.read<DashboardProvider>().updateLocationsFromApi(apiLocations);
+        }
+
         // Check if we need direct menu navigation
         if (authProvider.shouldNavigateDirectlyToMenu) {
           // Navigate directly to standalone menu view
@@ -118,84 +131,14 @@ class _LoginFormState extends State<LoginForm> {
     }
   }
 
-  /// Shows a modal dialog explaining that this account does not have access
-  /// to WhizEats Pro.  The flag is cleared once the user taps OK.
+  /// Shows a premium glassmorphic modal dialog explaining that this account
+  /// does not have access to WhizEats Pro. The flag is cleared once dismissed.
   Future<void> _showAccessDeniedDialog(AuthProvider authProvider) async {
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Lock icon
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.lock_person_rounded,
-                color: AppColors.error,
-                size: 36,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Access Denied',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Your account does not have permission to access WhizEats Pro.\n\n'
-              'Only Operator and Chef accounts are allowed to sign in. '
-              'Please contact your administrator to get the correct access.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13.5,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-                height: 1.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.error,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 13),
-              ),
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                authProvider.clearAccessDenied();
-              },
-              child: const Text(
-                'OK, Got It',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    await AccessDeniedDialog.show(
+      context,
+      onDismiss: () {
+        authProvider.clearAccessDenied();
+      },
     );
   }
 

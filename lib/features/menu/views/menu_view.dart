@@ -5,6 +5,7 @@ import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import '../providers/menu_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/navigation_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
+import 'package:restaurant_pos_system/features/dashboard/providers/dashboard_provider.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import '../widgets/menu_header.dart';
 import '../widgets/menu_search_bar.dart';
@@ -42,11 +43,38 @@ class MenuView extends StatefulWidget {
 }
 
 class _MenuViewState extends State<MenuView> {
+  int _resolveOutletId() {
+    try {
+      final dashboardProvider =
+          Provider.of<DashboardProvider>(context, listen: false);
+      if (widget.selectedLocation != null &&
+          widget.selectedLocation!.isNotEmpty) {
+        final matched = dashboardProvider.locations
+            .where((l) => l.name == widget.selectedLocation)
+            .firstOrNull;
+        if (matched?.id != null && matched!.id! > 0) {
+          return matched.id!;
+        }
+      }
+      final dId = dashboardProvider.selectedLocationId;
+      if (dId != null && dId > 0) {
+        return dId;
+      }
+    } catch (_) {
+      // DashboardProvider not present in some test widget trees
+    }
+
+    return HiveService.getSelectedLocationId() ??
+        HiveService.getOutletId() ??
+        0;
+  }
+
   @override
   void initState() {
     super.initState();
     // Load menu data when the widget initializes - BUT ONLY IF AUTHENTICATED
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
       final menuProvider = Provider.of<MenuProvider>(context, listen: false);
 
       // Switch to selected table for proper state isolation
@@ -57,16 +85,12 @@ class _MenuViewState extends State<MenuView> {
       // Check if user is authenticated before loading menu
       final token = HiveService.getAuthToken();
       if (token.isNotEmpty) {
-        final outletId = HiveService.getOutletId();
-        debugPrint('[MenuView] Raw outlet ID from Hive: $outletId');
+        final outletId = _resolveOutletId();
+        debugPrint('[MenuView] Resolved outlet ID: $outletId');
 
-        if (outletId != null && outletId > 0) {
+        if (outletId > 0) {
           debugPrint('[MenuView] ✅ Using outlet ID: $outletId');
-          // Only load if menu is empty — avoids redundant API call when
-          // data was already fetched by AuthProvider on login.
-          if (menuProvider.apiMenuItems.isEmpty) {
-            menuProvider.loadMenuData(outletId: outletId);
-          }
+          menuProvider.loadMenuData(outletId: outletId);
         } else {
           debugPrint(
             '[MenuView] ❌ No valid outlet ID available - skipping menu load',
@@ -84,7 +108,23 @@ class _MenuViewState extends State<MenuView> {
     // Switch to new table when table selection changes
     if (widget.selectedTableId != oldWidget.selectedTableId) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await _switchToNewTable();
+        if (mounted) await _switchToNewTable();
+      });
+    }
+
+    // Reload menu if selected location changes
+    if (widget.selectedLocation != oldWidget.selectedLocation) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final outletId = _resolveOutletId();
+        if (outletId > 0) {
+          debugPrint(
+            '[MenuView] Location changed to ${widget.selectedLocation} -> reloading for outlet ID: $outletId',
+          );
+          Provider.of<MenuProvider>(context, listen: false).loadMenuData(
+            outletId: outletId,
+          );
+        }
       });
     }
   }
@@ -143,6 +183,23 @@ class _MenuViewState extends State<MenuView> {
 
             debugPrint('MenuView DEBUG: canOrder = $canOrder');
 
+            final effectiveOutletId = _resolveOutletId();
+            if (effectiveOutletId > 0 &&
+                menuProvider.currentOutletId != null &&
+                menuProvider.currentOutletId != effectiveOutletId &&
+                !menuProvider.isLoading) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted &&
+                    menuProvider.currentOutletId != effectiveOutletId &&
+                    !menuProvider.isLoading) {
+                  debugPrint(
+                    '[MenuView] Outlet desync detected (current: ${menuProvider.currentOutletId}, expected: $effectiveOutletId). Reloading menu.',
+                  );
+                  menuProvider.loadMenuData(outletId: effectiveOutletId);
+                }
+              });
+            }
+
             final hasMenuItems = menuProvider.apiMenuItems.isNotEmpty;
 
             return Consumer<AnimatedCartProvider>(
@@ -186,10 +243,11 @@ class _MenuViewState extends State<MenuView> {
                               },
                               body: PremiumRefreshIndicator(
                                 onRefresh: () async {
-                                  final outletId = HiveService.getOutletId();
-                                  if (outletId != null && outletId > 0) {
+                                  final outletId = _resolveOutletId();
+                                  if (outletId > 0) {
                                     await menuProvider.loadMenuData(
                                       outletId: outletId,
+                                      forceRefresh: true,
                                     );
                                   }
                                 },
@@ -210,10 +268,11 @@ class _MenuViewState extends State<MenuView> {
                           else
                             PremiumRefreshIndicator(
                               onRefresh: () async {
-                                final outletId = HiveService.getOutletId();
-                                if (outletId != null && outletId > 0) {
+                                final outletId = _resolveOutletId();
+                                if (outletId > 0) {
                                   await menuProvider.loadMenuData(
                                     outletId: outletId,
+                                    forceRefresh: true,
                                   );
                                 }
                               },

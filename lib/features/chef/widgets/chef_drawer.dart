@@ -6,10 +6,12 @@ import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/app_gradients.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
+import 'package:restaurant_pos_system/features/chef/providers/chef_provider.dart';
 import 'package:restaurant_pos_system/features/profile/views/profile_view.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
 import 'package:restaurant_pos_system/shared/widgets/dialogs/sign_out_confirmation_dialog.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import 'package:restaurant_pos_system/shared/widgets/feedback/app_version_label.dart';
 
 class ChefDrawer extends StatelessWidget {
@@ -17,6 +19,19 @@ class ChefDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final chefProvider = context.watch<ChefProvider>();
+    final locations = chefProvider.locations.isNotEmpty
+        ? chefProvider.locations
+        : ChefProvider.mapApiLocationsToSections(HiveService.getLocations());
+
+    if (chefProvider.locations.isEmpty && locations.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          context.read<ChefProvider>().loadLocationsFromHive();
+        }
+      });
+    }
+
     return Drawer(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -37,8 +52,8 @@ class ChefDrawer extends StatelessWidget {
             child: SafeArea(
               child: Column(
                 children: [
-                  // Glassmorphic Drawer Header
-                  _buildDrawerHeader(),
+                  // Glassmorphic Drawer Header with active location
+                  _buildDrawerHeader(chefProvider),
 
                   // Scrollable Content
                   Expanded(
@@ -50,6 +65,45 @@ class ChefDrawer extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Section: Locations
+                          if (locations.isNotEmpty) ...[
+                            _buildSectionHeader(
+                              'LOCATIONS',
+                              Icons.storefront_rounded,
+                            ),
+                            const SizedBox(height: 8),
+                            ...locations.map((loc) {
+                              final isSelected =
+                                  chefProvider.selectedLocation == loc.name;
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: _buildLocationNavTile(
+                                  title: loc.name,
+                                  subtitle: (loc.address != null &&
+                                          loc.address!.trim().isNotEmpty)
+                                      ? loc.address!.trim()
+                                      : (loc.type ?? 'Outlet'),
+                                  icon: loc.icon,
+                                  color: loc.color,
+                                  isSelected: isSelected,
+                                  onTap: () async {
+                                    if (!isSelected) {
+                                      HapticHelper.triggerFeedback();
+                                      await chefProvider.changeLocation(
+                                        loc.name,
+                                        outletId: loc.id,
+                                      );
+                                    }
+                                    if (context.mounted) {
+                                      Navigator.pop(context);
+                                    }
+                                  },
+                                ),
+                              );
+                            }),
+                            const SizedBox(height: 12),
+                          ],
+
                           // Section: Navigation & Account
                           _buildSectionHeader(
                             'KITCHEN MENU',
@@ -114,17 +168,13 @@ class ChefDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildDrawerHeader() {
+  Widget _buildDrawerHeader(ChefProvider chefProvider) {
     return Container(
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.fromLTRB(14, 12, 14, 8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.75),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.9),
-          width: 1.2,
-        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -165,11 +215,12 @@ class ChefDrawer extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
+                const Text(
                   'WhizEats KDS',
                   style: TextStyle(
                     fontSize: 15,
@@ -178,13 +229,18 @@ class ChefDrawer extends StatelessWidget {
                     letterSpacing: -0.2,
                   ),
                 ),
+                const SizedBox(height: 1),
                 Text(
-                  'Kitchen Display System',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
+                  chefProvider.selectedLocation.isNotEmpty
+                      ? chefProvider.selectedLocation
+                      : 'Kitchen Display System',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -253,6 +309,86 @@ class ChefDrawer extends StatelessWidget {
                 size: 13,
                 color: AppColors.textSecondary,
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationNavTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? color.withValues(alpha: 0.12)
+                : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isSelected ? color : color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  color: isSelected ? Colors.white : color,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: isSelected ? color : AppColors.textPrimary,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w600,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (isSelected)
+                Icon(
+                  Icons.check_circle_rounded,
+                  color: color,
+                  size: 18,
+                )
+              else
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 13,
+                  color: AppColors.textSecondary,
+                ),
             ],
           ),
         ),
@@ -347,6 +483,7 @@ class ChefDrawer extends StatelessWidget {
     );
 
     try {
+      context.read<ChefProvider>().reset();
       await authProvider.logout();
       await HiveService.clearChefSession();
       await Future.delayed(const Duration(milliseconds: 300));

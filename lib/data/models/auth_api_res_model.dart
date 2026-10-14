@@ -33,7 +33,7 @@ class Data {
   List<BindParentMenu>? bindParentMenu;
   List<BindMenu>? bindMenu;
   String? posToken;
-  Location? location;
+  List<Location>? location;
 
   Data({
     this.userDetails,
@@ -82,8 +82,22 @@ class Data {
       });
     }
     posToken = json['posToken'];
-    location =
-        json['location'] != null ? Location.fromJson(json['location']) : null;
+    if (json['location'] != null) {
+      location = <Location>[];
+      if (json['location'] is List) {
+        for (var v in (json['location'] as List)) {
+          if (v is Map<String, dynamic>) {
+            location!.add(Location.fromJson(v));
+          } else if (v is Map) {
+            location!.add(Location.fromJson(Map<String, dynamic>.from(v)));
+          }
+        }
+      } else if (json['location'] is Map) {
+        location!.add(
+          Location.fromJson(Map<String, dynamic>.from(json['location'])),
+        );
+      }
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -110,7 +124,7 @@ class Data {
     }
     data['posToken'] = posToken;
     if (location != null) {
-      data['location'] = location!.toJson();
+      data['location'] = location!.map((v) => v.toJson()).toList();
     }
     return data;
   }
@@ -138,11 +152,14 @@ class UserDetails {
   bool? isActive;
   String? createdDate;
   String? createdBy;
+  String? modifiedDate;
+  String? modifiedBy;
   bool? isCustomer;
   String? phoneCode;
   String? userPhoneCountryCode;
   String? apiKey;
   String? companySiteUrl;
+  bool? isKotNeeded;
 
   UserDetails({
     this.userId,
@@ -166,11 +183,14 @@ class UserDetails {
     this.isActive,
     this.createdDate,
     this.createdBy,
+    this.modifiedDate,
+    this.modifiedBy,
     this.isCustomer,
     this.phoneCode,
     this.userPhoneCountryCode,
     this.apiKey,
     this.companySiteUrl,
+    this.isKotNeeded,
   });
 
   UserDetails.fromJson(Map<String, dynamic> json) {
@@ -195,11 +215,14 @@ class UserDetails {
     isActive = json['isActive'];
     createdDate = json['createdDate'];
     createdBy = json['createdBy'];
+    modifiedDate = json['modifiedDate'];
+    modifiedBy = json['modifiedBy'];
     isCustomer = json['isCustomer'];
     phoneCode = json['phoneCode'];
     userPhoneCountryCode = json['userPhoneCountryCode'];
     apiKey = json['apiKey'];
     companySiteUrl = json['companySiteUrl'];
+    isKotNeeded = json['isKotNeeded'];
   }
 
   Map<String, dynamic> toJson() {
@@ -225,11 +248,14 @@ class UserDetails {
     data['isActive'] = isActive;
     data['createdDate'] = createdDate;
     data['createdBy'] = createdBy;
+    data['modifiedDate'] = modifiedDate;
+    data['modifiedBy'] = modifiedBy;
     data['isCustomer'] = isCustomer;
     data['phoneCode'] = phoneCode;
     data['userPhoneCountryCode'] = userPhoneCountryCode;
     data['apiKey'] = apiKey;
     data['companySiteUrl'] = companySiteUrl;
+    data['isKotNeeded'] = isKotNeeded;
     return data;
   }
 }
@@ -369,10 +395,14 @@ class Location {
   });
 
   Location.fromJson(Map<String, dynamic> json) {
-    locationId = json['locationId'];
-    locationName = json['locationName'];
-    locationType = json['locationType'];
-    locAddress = json['locAddress'];
+    if (json['locationId'] != null) {
+      locationId = json['locationId'] is int
+          ? json['locationId'] as int
+          : int.tryParse(json['locationId'].toString());
+    }
+    locationName = json['locationName']?.toString();
+    locationType = json['locationType']?.toString();
+    locAddress = json['locAddress']?.toString();
   }
 
   Map<String, dynamic> toJson() {
