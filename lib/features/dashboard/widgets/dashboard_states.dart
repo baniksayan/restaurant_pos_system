@@ -188,23 +188,25 @@ class DashboardErrorState extends StatelessWidget {
           icon: Icons.error_outline_rounded,
           title: AppStrings.dashboard.errorLoadingTables,
           description: tableProvider.error ?? 'Unknown error occurred',
-          action: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              OutlinedButton(
-                onPressed: () => tableProvider.clearError(),
-                child: Text(AppStrings.dashboard.clearError),
+          action: ElevatedButton.icon(
+            onPressed: () {
+              tableProvider.clearError();
+              tableProvider.fetchTables();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: () {
-                  tableProvider.clearError();
-                  tableProvider.fetchTables();
-                },
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text(AppStrings.retry),
-              ),
-            ],
+              elevation: 0,
+            ),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text(
+              AppStrings.retry,
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ),

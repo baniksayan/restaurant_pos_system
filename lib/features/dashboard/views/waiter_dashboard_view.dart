@@ -7,7 +7,6 @@ import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
-import 'package:restaurant_pos_system/features/reservations/views/table_reservation_view.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import '../widgets/hamburger_drawer.dart';
 import '../widgets/location_header.dart';
@@ -21,7 +20,6 @@ import 'package:restaurant_pos_system/features/menu/providers/menu_provider.dart
 import '../widgets/dashboard_header.dart';
 import '../widgets/dashboard_states.dart';
 import '../widgets/add_party_dialog.dart';
-import '../widgets/table_action_dialog.dart';
 import '../widgets/table_grid.dart';
 import '../widgets/multi_order_management_dialog.dart';
 import 'package:restaurant_pos_system/data/models/order_channel_types_model.dart';
@@ -484,58 +482,53 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
       return;
     }
 
-    // 4. Empty / Available table -> Show occupy or reserve dialog
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierColor: Colors.transparent,
-      builder:
-          (BuildContext context) => TableActionDialog(
-            table: table,
-            onOccupy: () async {
-              // Resolved before any await: this closure runs on the dialog's
-              // context, which is torn down as soon as the dialog closes, and
-              // this State's `mounted` says nothing about it.
-              final navProvider = context.read<NavigationProvider>();
-              final selectedLocation = dashboardProvider.selectedLocation;
-
-              // Ask how many people are sitting down. The first group is a
-              // party like any other — it used to skip this prompt entirely
-              // and every table was recorded as a single adult.
-              final party = await AddPartyDialog.show(
-                context,
-                tableName: table.name,
-                capacity: table.capacity,
-                seatedGuests: table.seatedGuests ?? 0,
-              );
-              if (party == null) return;
-
-              // Create the order BEFORE navigating. The menu and cart scope
-              // themselves by TableProvider.currentOrderId, which only exists
-              // once saveOrderHead has returned — navigating first meant items
-              // were added under a fallback scope and the cart, opening later
-              // against the real order, looked empty.
-              final success = await tableProvider.createOrderForTable(
-                table.id,
-                table.name,
-                adults: party.adults,
-                children: party.children,
-                customerName: party.customerName,
-              );
-              if (!mounted) return;
-              if (!success) {
-                _showSnackBar(
-                  'Failed to occupy ${table.name} on server',
-                  Colors.red,
-                );
-                return;
-              }
-
-              navProvider.selectTable(table.id, table.name, selectedLocation);
-            },
-            onReserve: () => _showReservationPage(table, tableProvider),
-          ),
+    // 4. Empty / Available table -> Directly trigger Occupy & Order (New Party popup)
+    final party = await AddPartyDialog.show(
+      context,
+      tableName: table.name,
+      capacity: table.capacity,
+      seatedGuests: table.seatedGuests ?? 0,
     );
+    if (party == null || !mounted) return;
+
+    final navProvider = context.read<NavigationProvider>();
+    final selectedLocation = dashboardProvider.selectedLocation;
+
+    _setTableNavigationLoading(table.name);
+    bool success = false;
+    try {
+      success = await tableProvider.createOrderForTable(
+        table.id,
+        table.name,
+        adults: party.adults,
+        children: party.children,
+        customerName: party.customerName,
+      );
+    } finally {
+      _clearTableNavigationLoading();
+    }
+    if (!mounted) return;
+    if (!success) {
+      _showSnackBar(
+        'Failed to occupy ${table.name} on server',
+        Colors.red,
+      );
+      return;
+    }
+
+    final newOrderId = tableProvider.currentOrderId;
+    if (newOrderId != null && newOrderId.isNotEmpty) {
+      final animatedCart = context.read<AnimatedCartProvider>();
+      animatedCart.importFromOrderCart(
+        [],
+        orderId: newOrderId,
+        tableId: table.id,
+        tableName: table.name,
+        clearExisting: true,
+      );
+    }
+
+    navProvider.selectTable(table.id, table.name, selectedLocation);
   }
 
   /// Seats another group at a table that already has orders.
@@ -659,27 +652,6 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     );
   }
 
-  void _showReservationPage(
-    RestaurantTable table,
-    TableProvider tableProvider,
-  ) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => TableReservationView(
-              table: table,
-              onReservationConfirmed: (reservation) {
-                tableProvider.updateTableStatus(table.id, 'reserved');
-                _showSnackBar(
-                  '${table.name} reserved successfully!',
-                  Colors.green,
-                );
-              },
-            ),
-      ),
-    );
-  }
 
   void _showSnackBar(String message, Color color) {
     if (!mounted) return;

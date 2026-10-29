@@ -27,6 +27,7 @@ import 'features/orders/providers/ready_to_collect_provider.dart';
 import 'features/profile/providers/profile_provider.dart';
 import 'features/reservations/providers/reservation_provider.dart';
 import 'features/splash/views/splash_view.dart';
+import 'shared/widgets/layout/global_network_wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -89,6 +90,8 @@ class RestaurantPOSApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             initialRoute: '/',
+            builder: (context, child) =>
+                GlobalNetworkWrapper(child: child ?? const SizedBox()),
             routes: {
               '/': (context) => const SplashView(),
               '/login': (context) => const LoginView(),

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
+import 'package:restaurant_pos_system/core/utils/connectivity_helper.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
 import 'package:restaurant_pos_system/data/models/bill_details_response.dart';
@@ -153,15 +154,9 @@ class TableProvider extends ChangeNotifier {
         mergedTables.add(apiTable.copyWith(activeOrders: mergedOrders));
       }
 
-      _tables = mergedTables; // Replace with merged data
-
-      if (_tables.isEmpty) {
-        _error =
-            'No tables found for this outlet. Check backend configuration.';
-        debugPrint(
-          '[TableProvider] API returned no tables - Check backend data',
-        );
-      } else {
+      if (tables.isNotEmpty) {
+        _tables = mergedTables;
+        _error = null;
         debugPrint(
           '[TableProvider] Successfully loaded ${_tables.length} REAL tables from API',
         );
@@ -170,11 +165,29 @@ class TableProvider extends ChangeNotifier {
             '[TableProvider] API Table: ${table.name} (${table.location}) - Orders: ${table.activeOrders.length}',
           );
         }
+      } else {
+        // If API returned 0 tables, check if we're offline before asserting any error
+        final isConnected = await ConnectivityHelper.hasInternetConnection();
+        if (!isConnected) {
+          // Keep existing tables if any, do not set misleading error
+          _error = null;
+          debugPrint('[TableProvider] Offline: preserved ${_tables.length} existing tables');
+        } else {
+          _tables = [];
+          _error = null; // Let the empty state handle it gracefully
+          debugPrint('[TableProvider] Online: No tables found for this outlet');
+        }
       }
     } catch (e) {
-      _error = 'Failed to fetch tables: ${e.toString()}';
-      _tables = []; // Empty list if API fails
-      debugPrint('[TableProvider] API Error: $e');
+      final isConnected = await ConnectivityHelper.hasInternetConnection();
+      if (!isConnected) {
+        _error = null;
+        debugPrint('[TableProvider] Offline caught: preserved ${_tables.length} existing tables');
+      } else {
+        _error = 'Failed to fetch tables: ${e.toString()}';
+        _tables = [];
+        debugPrint('[TableProvider] API Error: $e');
+      }
     } finally {
       _isLoading = false;
       notifyListeners(); // CRITICAL: Notify after data changes

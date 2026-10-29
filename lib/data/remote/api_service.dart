@@ -15,6 +15,7 @@ import 'package:restaurant_pos_system/data/models/order_detail_api_response_mode
 import 'package:restaurant_pos_system/data/models/pending_bill.dart';
 import 'package:restaurant_pos_system/data/models/company_info_model.dart';
 import '../../core/constants/api_constants.dart';
+import '../../core/utils/connectivity_helper.dart';
 
 class ApiService {
   ApiService._();
@@ -1498,8 +1499,6 @@ class ApiService {
 
   /// Check internet connectivity
   static Future<bool> checkInternetAndGoForward() async {
-    // TODO: Implement using your existing connectivity_helper.dart
-    // This should check actual internet connectivity
-    return true;
+    return await ConnectivityHelper.hasInternetConnection();
   }
 }
