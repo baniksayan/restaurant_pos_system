@@ -8,6 +8,8 @@ import '../widgets/login_header.dart';
 import 'forgot_password_view.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/permissions/app_permission_service.dart';
+import 'package:restaurant_pos_system/core/localization/widgets/language_selection_dialog.dart';
+import 'package:restaurant_pos_system/core/localization/extensions/localization_extension.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -67,6 +69,17 @@ class _LoginViewState extends State<LoginView> {
             children: [
               // Ambient glowing background orbs matching SplashView
               _buildAmbientGlowOrbs(),
+
+              // Top right language switcher
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: _buildLanguageSelector(context),
+                  ),
+                ),
+              ),
 
               // Main Glassmorphism Content Card matching SplashView
               SafeArea(
@@ -164,21 +177,21 @@ class _LoginViewState extends State<LoginView> {
   }
 
   Widget _buildBottomBranding() {
-    return const Column(
+    return Column(
       children: [
         Text(
           AppStrings.poweredBy,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
             color: AppColors.textSecondary,
             letterSpacing: 0.3,
           ),
         ),
-        SizedBox(height: 3),
+        const SizedBox(height: 3),
         Text(
           AppStrings.solutionTagline,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 10.5,
             fontWeight: FontWeight.w400,
             color: AppColors.textHint,
@@ -186,6 +199,60 @@ class _LoginViewState extends State<LoginView> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildLanguageSelector(BuildContext context) {
+    final currentLang = context.currentLanguage;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => LanguageSelectionDialog.show(context),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.9),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.translate_rounded,
+                size: 16,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                currentLang.nativeName,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

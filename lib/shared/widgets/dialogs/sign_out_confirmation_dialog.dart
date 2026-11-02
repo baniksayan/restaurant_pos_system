@@ -8,20 +8,20 @@ import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 /// Features the frosted glass backdrop blur, rounded translucent card,
 /// warning sign-out icon, message, and glassmorphic Cancel/Sign Out action buttons.
 class SignOutConfirmationDialog extends StatelessWidget {
-  final String title;
-  final String message;
-  final String confirmText;
-  final String cancelText;
+  final String? title;
+  final String? message;
+  final String? confirmText;
+  final String? cancelText;
   final VoidCallback? onConfirm;
   final VoidCallback? onCancel;
   final double? maxWidth;
 
   const SignOutConfirmationDialog({
     super.key,
-    this.title = AppStrings.signOutConfirmation,
-    this.message = AppStrings.signOutProConfirm,
-    this.confirmText = AppStrings.signOut,
-    this.cancelText = AppStrings.cancel,
+    this.title,
+    this.message,
+    this.confirmText,
+    this.cancelText,
     this.onConfirm,
     this.onCancel,
     this.maxWidth,
@@ -32,10 +32,10 @@ class SignOutConfirmationDialog extends StatelessWidget {
   /// Returns `true` if the user confirmed sign out, `false` or `null` otherwise.
   static Future<bool?> show(
     BuildContext context, {
-    String title = AppStrings.signOutConfirmation,
-    String message = AppStrings.signOutProConfirm,
-    String confirmText = AppStrings.signOut,
-    String cancelText = AppStrings.cancel,
+    String? title,
+    String? message,
+    String? confirmText,
+    String? cancelText,
     VoidCallback? onConfirm,
     VoidCallback? onCancel,
     bool useRootNavigator = false,
@@ -65,6 +65,11 @@ class SignOutConfirmationDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveTitle = title ?? AppStrings.signOutConfirmation;
+    final effectiveMessage = message ?? AppStrings.signOutProConfirm;
+    final effectiveConfirm = confirmText ?? AppStrings.signOut;
+    final effectiveCancel = cancelText ?? AppStrings.cancel;
+
     final size = MediaQuery.sizeOf(context);
     final dialogMaxWidth =
         maxWidth ?? (size.width < 480 ? size.width * 0.92 : 380.0);
@@ -141,7 +146,7 @@ class SignOutConfirmationDialog extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 14),
                                   Text(
-                                    title,
+                                    effectiveTitle,
                                     style: const TextStyle(
                                       fontSize: 17,
                                       fontWeight: FontWeight.w700,
@@ -150,7 +155,7 @@ class SignOutConfirmationDialog extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    message,
+                                    effectiveMessage,
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
                                       fontSize: 13.5,
@@ -189,7 +194,7 @@ class SignOutConfirmationDialog extends StatelessWidget {
                                             ),
                                           ),
                                           child: Text(
-                                            cancelText,
+                                            effectiveCancel,
                                             style: const TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.w600,
@@ -221,7 +226,7 @@ class SignOutConfirmationDialog extends StatelessWidget {
                                             ),
                                           ),
                                           child: Text(
-                                            confirmText,
+                                            effectiveConfirm,
                                             style: const TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.w600,

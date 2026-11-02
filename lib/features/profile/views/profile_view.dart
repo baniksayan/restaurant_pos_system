@@ -13,6 +13,7 @@ import 'package:restaurant_pos_system/core/services/app_version_service.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 import 'package:restaurant_pos_system/shared/widgets/dialogs/sign_out_confirmation_dialog.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
+import 'package:restaurant_pos_system/core/localization/widgets/language_selection_dialog.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({super.key});
@@ -213,6 +214,12 @@ class _ProfileViewState extends State<ProfileView> {
         _buildSimpleMenuSection(
           title: AppStrings.profile.systemAndSettings,
           items: [
+            _buildMenuItem(
+              icon: Icons.translate_rounded,
+              title: AppStrings.profile.language,
+              subtitle: AppStrings.profile.languageSubtitle,
+              onTap: () => LanguageSelectionDialog.show(context),
+            ),
             _buildMenuItem(
               icon: Icons.print,
               title: AppStrings.profile.printerSettings,
@@ -492,7 +499,7 @@ class _ProfileViewState extends State<ProfileView> {
         barrierColor: Colors.transparent,
         builder:
             (context) =>
-                const HourglassLoadingOverlay(message: AppStrings.signingOut),
+                HourglassLoadingOverlay(message: AppStrings.signingOut),
       );
 
       // Logout from AuthProvider (this returns Future<void>)
@@ -577,7 +584,7 @@ class _ProfileViewState extends State<ProfileView> {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text(AppStrings.gotIt),
+                  child: Text(AppStrings.gotIt),
                 ),
               ],
             ),
@@ -614,7 +621,7 @@ class _ProfileViewState extends State<ProfileView> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text(AppStrings.close),
+                child: Text(AppStrings.close),
               ),
             ],
           ),

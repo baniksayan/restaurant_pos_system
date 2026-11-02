@@ -98,7 +98,7 @@ class MenuGrid extends StatelessWidget {
                           }
                         },
                         icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text(AppStrings.retry),
+                        label: Text(AppStrings.retry),
                       ),
                     ),
                   ),

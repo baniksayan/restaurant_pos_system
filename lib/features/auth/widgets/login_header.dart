@@ -47,9 +47,9 @@ class LoginHeader extends StatelessWidget {
           delay: const Duration(milliseconds: 400),
           child: Column(
             children: [
-              const Text(
+              Text(
                 AppStrings.brandName,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
@@ -57,9 +57,9 @@ class LoginHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              const Text(
+              Text(
                 AppStrings.brandSuffix,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: AppColors.primary,
@@ -81,9 +81,9 @@ class LoginHeader extends StatelessWidget {
                     color: AppColors.primary.withValues(alpha: 0.2),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   AppStrings.posTagline,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,

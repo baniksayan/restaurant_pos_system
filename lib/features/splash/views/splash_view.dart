@@ -407,9 +407,9 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
             child: Column(
               children: [
                 // Main title - high contrast dark text
-                const Text(
+                Text(
                   AppStrings.brandName,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
@@ -419,9 +419,9 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                 const SizedBox(height: 2),
 
                 // Subtitle
-                const Text(
+                Text(
                   AppStrings.brandSuffix,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primary,
@@ -443,9 +443,9 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                       color: AppColors.primary.withValues(alpha: 0.2),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     AppStrings.posTagline,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
@@ -531,21 +531,21 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
       builder: (context, child) {
         return FadeTransition(
           opacity: _textFadeAnimation,
-          child: const Column(
+          child: Column(
             children: [
               Text(
                 AppStrings.poweredBy,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textSecondary,
                   letterSpacing: 0.3,
                 ),
               ),
-              SizedBox(height: 3),
+              const SizedBox(height: 3),
               Text(
                 AppStrings.solutionTagline,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w400,
                   color: AppColors.textHint,

@@ -583,7 +583,7 @@ class _CartViewState extends State<CartView> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text(AppStrings.ok),
+                child: Text(AppStrings.ok),
               ),
             ],
           ),
@@ -608,7 +608,7 @@ class _CartViewState extends State<CartView> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text(AppStrings.ok),
+                child: Text(AppStrings.ok),
               ),
             ],
           ),
@@ -977,7 +977,7 @@ class _CartViewState extends State<CartView> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text(AppStrings.ok),
+                    child: Text(AppStrings.ok),
                   ),
                   ElevatedButton(
                     onPressed: () {
@@ -989,7 +989,7 @@ class _CartViewState extends State<CartView> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange,
                     ),
-                    child: const Text(AppStrings.retry),
+                    child: Text(AppStrings.retry),
                   ),
                 ],
               ),

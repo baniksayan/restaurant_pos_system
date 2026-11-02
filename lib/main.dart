@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'core/constants/currency_constants.dart';
+import 'core/localization/app_localizations.dart';
+import 'core/localization/locale_provider.dart';
+import 'core/localization/models/app_language.dart';
 import 'core/services/app_version_service.dart';
 import 'core/theme/app_theme.dart';
 import 'data/local/hive_service.dart';
@@ -67,6 +71,7 @@ class RestaurantPOSApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => LocaleProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ChefProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
@@ -83,12 +88,30 @@ class RestaurantPOSApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => BillingProvider()),
         ChangeNotifierProvider(create: (_) => NetworkProvider()..initialize()),
       ],
-      child: Builder(
-        builder: (context) {
+      child: Consumer<LocaleProvider>(
+        builder: (context, localeProvider, _) {
           return MaterialApp(
             title: 'WhizEats Pro',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
+            locale: localeProvider.locale,
+            supportedLocales: AppLanguage.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            localeResolutionCallback: (deviceLocale, supportedLocales) {
+              if (deviceLocale != null) {
+                for (final supported in supportedLocales) {
+                  if (supported.languageCode == deviceLocale.languageCode) {
+                    return supported;
+                  }
+                }
+              }
+              return const Locale('en');
+            },
             initialRoute: '/',
             builder: (context, child) =>
                 GlobalNetworkWrapper(child: child ?? const SizedBox()),

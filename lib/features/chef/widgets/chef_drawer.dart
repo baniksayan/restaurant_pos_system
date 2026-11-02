@@ -13,6 +13,8 @@ import 'package:restaurant_pos_system/shared/widgets/dialogs/sign_out_confirmati
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import 'package:restaurant_pos_system/shared/widgets/feedback/app_version_label.dart';
+import 'package:restaurant_pos_system/core/localization/widgets/language_selection_dialog.dart';
+import 'package:restaurant_pos_system/core/localization/extensions/localization_extension.dart';
 
 class ChefDrawer extends StatelessWidget {
   const ChefDrawer({super.key});
@@ -68,7 +70,7 @@ class ChefDrawer extends StatelessWidget {
                           // Section: Locations
                           if (locations.isNotEmpty) ...[
                             _buildSectionHeader(
-                              'LOCATIONS',
+                              AppStrings.drawer.locations,
                               Icons.storefront_rounded,
                             ),
                             const SizedBox(height: 8),
@@ -106,7 +108,7 @@ class ChefDrawer extends StatelessWidget {
 
                           // Section: Navigation & Account
                           _buildSectionHeader(
-                            'KITCHEN MENU',
+                            AppStrings.drawer.kitchenMenu,
                             Icons.grid_view_rounded,
                           ),
                           const SizedBox(height: 8),
@@ -124,6 +126,18 @@ class ChefDrawer extends StatelessWidget {
                                   builder: (context) => const ProfileView(),
                                 ),
                               );
+                            },
+                          ),
+                          const SizedBox(height: 6),
+
+                          // Option: Language Selection
+                          _buildCleanNavTile(
+                            title: AppStrings.drawer.language,
+                            subtitle: context.currentLanguage.nativeName,
+                            icon: Icons.translate_rounded,
+                            onTap: () {
+                              Navigator.pop(context);
+                              LanguageSelectionDialog.show(context);
                             },
                           ),
                           const SizedBox(height: 12),
@@ -420,26 +434,32 @@ class ChefDrawer extends StatelessWidget {
                 width: 1,
               ),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.logout_rounded, color: Colors.redAccent, size: 18),
-                SizedBox(width: 12),
+                const Icon(
+                  Icons.logout_rounded,
+                  color: Colors.redAccent,
+                  size: 18,
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Sign Out',
-                        style: TextStyle(
+                        AppStrings.signOut,
+                        style: const TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w700,
                           color: Colors.redAccent,
                         ),
                       ),
                       Text(
-                        'Exit Kitchen Display System',
-                        style: TextStyle(
+                        AppStrings.signOutKdsConfirm,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textSecondary,
                         ),
@@ -447,7 +467,7 @@ class ChefDrawer extends StatelessWidget {
                     ],
                   ),
                 ),
-                Icon(
+                const Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 13,
                   color: Colors.redAccent,
@@ -477,7 +497,7 @@ class ChefDrawer extends StatelessWidget {
       barrierDismissible: false,
       barrierColor: Colors.transparent,
       useRootNavigator: true,
-      builder: (ctx) => const HourglassLoadingOverlay(
+      builder: (ctx) => HourglassLoadingOverlay(
         message: AppStrings.signingOutOfKds,
       ),
     );

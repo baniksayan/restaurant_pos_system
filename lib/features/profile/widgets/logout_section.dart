@@ -74,7 +74,7 @@ class LogoutSection extends StatelessWidget {
         barrierColor: Colors.transparent,
         builder:
             (context) =>
-                const HourglassLoadingOverlay(message: AppStrings.signingOut),
+                HourglassLoadingOverlay(message: AppStrings.signingOut),
       );
 
       final authProvider = context.read<AuthProvider>();

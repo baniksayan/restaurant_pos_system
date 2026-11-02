@@ -112,8 +112,8 @@ class _MainNavigationState extends State<MainNavigation> {
     }
   }
 
-  // Updated navigation items - removed Profile
-  final List<NavigationItem> _navigationItems = [
+  // Dynamically localized navigation items
+  List<NavigationItem> get _navigationItems => [
     NavigationItem(
       icon: Icons.table_restaurant,
       label: AppStrings.dashboard.tables,

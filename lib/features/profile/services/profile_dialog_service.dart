@@ -66,7 +66,7 @@ class ProfileDialogService {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text(AppStrings.gotIt),
+                  child: Text(AppStrings.gotIt),
                 ),
               ],
             ),
@@ -103,7 +103,7 @@ class ProfileDialogService {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text(AppStrings.close),
+                child: Text(AppStrings.close),
               ),
             ],
           ),

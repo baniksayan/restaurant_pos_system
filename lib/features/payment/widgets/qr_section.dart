@@ -146,7 +146,7 @@ class _QRSectionState extends State<QRSection> {
                         children: [
                           TextButton(
                             onPressed: () => Navigator.pop(ctx),
-                            child: const Text(AppStrings.cancel),
+                            child: Text(AppStrings.cancel),
                           ),
                           const SizedBox(width: 8),
                           FilledButton(

@@ -26,4 +26,5 @@ class StorageKeys {
   static const String locations = 'locations';
   static const String kdsSelectedTabIndex = 'kds_selected_tab_index';
   static const String kdsSelectedStatusFilter = 'kds_selected_status_filter';
+  static const String selectedLanguageCode = 'selected_language_code';
 }

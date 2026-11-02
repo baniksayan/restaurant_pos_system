@@ -1437,7 +1437,7 @@ class _TableReservationViewState extends State<TableReservationView> {
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
                             ),
-                            child: const Text(AppStrings.done),
+                            child: Text(AppStrings.done),
                           ),
                         ),
                       ],

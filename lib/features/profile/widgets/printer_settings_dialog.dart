@@ -243,7 +243,7 @@ class _PrinterSettingsDialogState extends State<PrinterSettingsDialog> {
                                               vertical: 8,
                                             ),
                                           ),
-                                          child: const Text(AppStrings.connect),
+                                          child: Text(AppStrings.connect),
                                         )
                                         : const Text(
                                           'Offline',
@@ -287,7 +287,7 @@ class _PrinterSettingsDialogState extends State<PrinterSettingsDialog> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(AppStrings.cancel),
+                    child: Text(AppStrings.cancel),
                   ),
                 ),
                 const SizedBox(width: 12),

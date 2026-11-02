@@ -480,7 +480,7 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
                                   );
                                 },
                                 icon: const Icon(Icons.refresh),
-                                label: const Text(AppStrings.tryAgain),
+                                label: Text(AppStrings.tryAgain),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primary,
                                   foregroundColor: Colors.white,

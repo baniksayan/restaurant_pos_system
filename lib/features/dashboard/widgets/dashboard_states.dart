@@ -203,9 +203,9 @@ class DashboardErrorState extends StatelessWidget {
               elevation: 0,
             ),
             icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text(
+            label: Text(
               AppStrings.retry,
-              style: TextStyle(fontWeight: FontWeight.w600),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
         ),

@@ -13,6 +13,8 @@ import 'package:restaurant_pos_system/features/orders/views/reprint_view.dart';
 import 'package:restaurant_pos_system/features/profile/views/profile_view.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
 import 'package:restaurant_pos_system/shared/widgets/dialogs/sign_out_confirmation_dialog.dart';
+import 'package:restaurant_pos_system/core/localization/widgets/language_selection_dialog.dart';
+import 'package:restaurant_pos_system/core/localization/extensions/localization_extension.dart';
 import '../providers/dashboard_provider.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
@@ -75,7 +77,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                         children: [
                           // Section 1: Locations
                           _buildSectionHeader(
-                            'LOCATIONS',
+                            AppStrings.drawer.locations,
                             Icons.location_on_rounded,
                           ),
                           const SizedBox(height: 6),
@@ -84,7 +86,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
 
                           // Section 2: Quick Actions
                           _buildSectionHeader(
-                            'QUICK ACTIONS',
+                            AppStrings.drawer.quickActions,
                             Icons.grid_view_rounded,
                           ),
                           const SizedBox(height: 6),
@@ -96,8 +98,8 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                           // bill is the table that produced it, which fails
                           // once that table has been reused.
                           _buildCleanNavTile(
-                            title: 'Pending Payments',
-                            subtitle: 'Collect on unpaid bills',
+                            title: AppStrings.drawer.pendingPayments,
+                            subtitle: AppStrings.drawer.pendingPaymentsSubtitle,
                             icon: Icons.account_balance_wallet_outlined,
                             onTap: () {
                               Navigator.pop(context);
@@ -115,8 +117,8 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                           // than splitting bills and KOTs across separate
                           // drawer rows.
                           _buildCleanNavTile(
-                            title: 'Reprint',
-                            subtitle: 'Past bills and KOTs',
+                            title: AppStrings.drawer.reprint,
+                            subtitle: AppStrings.drawer.reprintSubtitle,
                             icon: Icons.print_outlined,
                             onTap: () {
                               Navigator.pop(context);
@@ -136,7 +138,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
 
                           // Section 3: Clean Account List (Profile)
                           _buildSectionHeader(
-                            'ACCOUNT',
+                            AppStrings.drawer.account,
                             Icons.account_circle_rounded,
                           ),
                           const SizedBox(height: 6),
@@ -407,21 +409,21 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                 ),
               ),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Orders Management',
-                      style: TextStyle(
+                      AppStrings.drawer.ordersManagement,
+                      style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
                         fontSize: 13.5,
                       ),
                     ),
                     Text(
-                      'View & track all orders',
-                      style: TextStyle(
+                      AppStrings.drawer.ordersManagementSubtitle,
+                      style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.textSecondary,
                       ),
@@ -446,8 +448,8 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
   /// as active notifications are displayed directly via the main AppBar indicator.
   Widget _buildReadyToCollectTile() {
     return _buildCleanNavTile(
-      title: 'Ready to Collect',
-      subtitle: 'Collect prepared orders from kitchen',
+      title: AppStrings.drawer.readyToCollect,
+      subtitle: AppStrings.drawer.readyToCollectSubtitle,
       icon: Icons.room_service_rounded,
       onTap: () {
         Navigator.pop(context);
@@ -474,6 +476,16 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
               context,
               MaterialPageRoute(builder: (context) => const ProfileView()),
             );
+          },
+        ),
+        const SizedBox(height: 6),
+        _buildCleanNavTile(
+          title: AppStrings.drawer.language,
+          subtitle: context.currentLanguage.nativeName,
+          icon: Icons.translate_rounded,
+          onTap: () {
+            Navigator.pop(context);
+            LanguageSelectionDialog.show(context);
           },
         ),
         // Settings and Performance commented out per request
@@ -610,22 +622,22 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Sign Out',
-                        style: TextStyle(
+                        AppStrings.signOut,
+                        style: const TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w700,
                           color: Colors.redAccent,
                         ),
                       ),
                       Text(
-                        'Log out of your account',
-                        style: TextStyle(
+                        AppStrings.profile.logoutConfirm,
+                        style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textSecondary,
                         ),
@@ -662,7 +674,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
         barrierColor: Colors.transparent,
         builder:
             (context) =>
-                const HourglassLoadingOverlay(message: AppStrings.signingOut),
+                HourglassLoadingOverlay(message: AppStrings.signingOut),
       );
 
       final authProvider = context.read<AuthProvider>();

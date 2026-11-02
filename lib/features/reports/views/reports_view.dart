@@ -1335,7 +1335,7 @@ class _ReportsViewState extends State<ReportsView>
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text(AppStrings.cancel),
+                    child: Text(AppStrings.cancel),
                   ),
                 ),
               ],
