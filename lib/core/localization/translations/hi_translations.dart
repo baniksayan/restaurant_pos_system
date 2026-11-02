@@ -815,3 +815,4 @@ class _HiDrawerTranslations implements DrawerTranslations {
   @override
   String get languageChanged => 'भाषा सफलतापूर्वक बदल दी गई है';
 }
+

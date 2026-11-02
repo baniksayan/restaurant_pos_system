@@ -416,3 +416,4 @@ abstract class DrawerTranslations {
   String get bengali;
   String get languageChanged;
 }
+

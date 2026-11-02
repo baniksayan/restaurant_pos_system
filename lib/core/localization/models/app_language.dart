@@ -58,3 +58,4 @@ enum AppLanguage {
     return fromLanguageCode(locale.languageCode);
   }
 }
+

@@ -815,3 +815,4 @@ class _BnDrawerTranslations implements DrawerTranslations {
   @override
   String get languageChanged => 'ভাষা সফলভাবে পরিবর্তন করা হয়েছে';
 }
+

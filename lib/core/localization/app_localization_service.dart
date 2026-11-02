@@ -39,3 +39,4 @@ class LocalizationService {
     return _translations[code] ?? const EnTranslations();
   }
 }
+

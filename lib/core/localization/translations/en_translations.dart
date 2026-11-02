@@ -821,3 +821,4 @@ class _EnDrawerTranslations implements DrawerTranslations {
   @override
   String get languageChanged => 'Language changed successfully';
 }
+
