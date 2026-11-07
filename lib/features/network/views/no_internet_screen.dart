@@ -363,7 +363,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
             icon: Icons.signal_cellular_alt_rounded,
             iconGradient: const [Color(0xFF10B981), Color(0xFF059669)],
             title: 'Mobile Data',
-            subtitle: 'Enable cellular data or roaming backup',
+            subtitle: 'Open SIM manager & mobile network settings',
             onTap: () async {
               await HapticHelper.triggerFeedback();
               networkProvider.openMobileDataSettings();

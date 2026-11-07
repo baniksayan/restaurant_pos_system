@@ -58,7 +58,7 @@ class KOTPDFViewerDialog extends StatefulWidget {
 }
 
 class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
-  final bool _isSharing = false;
+  bool _isSharing = false;
   bool _isPrinting = false;
 
   @override
@@ -68,138 +68,151 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
 
     return Material(
       type: MaterialType.transparency,
-      child: Stack(
-        children: [
-          // Fullscreen Minimal Backdrop Blur matching clear_cart_dialog / edit_item_dialog
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 3.5, sigmaY: 3.5),
-              child: Container(color: Colors.black.withValues(alpha: 0.08)),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () async {
+          await HapticHelper.triggerFeedback();
+          _closeDialog();
+        },
+        child: Stack(
+          children: [
+            // Fullscreen Minimal Backdrop Blur matching clear_cart_dialog / edit_item_dialog
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 3.5, sigmaY: 3.5),
+                child: Container(color: Colors.black.withValues(alpha: 0.12)),
+              ),
             ),
-          ),
 
-          // Main Glassmorphism Dialog Card with Balanced Proportions & Breathing Room
-          SafeArea(
-            child: Center(
-              child: Container(
-                width: isTablet ? size.width * 0.72 : size.width * 0.88,
-                height: isTablet ? size.height * 0.76 : size.height * 0.80,
-                constraints: BoxConstraints(
-                  maxWidth: isTablet ? 650 : 440,
-                  maxHeight: isTablet ? 740 : 640,
-                ),
-                margin: EdgeInsets.symmetric(
-                  horizontal: isTablet ? 28 : 16,
-                  vertical: isTablet ? 20 : 16,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(
-                          alpha: 0.34,
-                        ), // Genuine ultra-translucent frosted glass
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.55),
-                          width: 1.2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.10),
-                            blurRadius: 32,
-                            offset: const Offset(0, 12),
-                          ),
-                          BoxShadow(
-                            color: Colors.white.withValues(alpha: 0.20),
-                            blurRadius: 10,
-                            offset: const Offset(0, -2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          // Glassmorphic Header Bar
-                          _buildHeader(context),
-
-                          // PDF Preview Canvas Container with Visible Scrollbar
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                12,
-                                10,
-                                12,
-                                10,
-                              ),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.65),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.75),
-                                    width: 1,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.05,
-                                      ),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: PdfPreview(
-                                    build: (format) => widget.pdfBytes,
-                                    allowPrinting: false,
-                                    allowSharing: false,
-                                    canChangePageFormat: false,
-                                    canChangeOrientation: false,
-                                    canDebug: false,
-                                    maxPageWidth: double.infinity,
-                                    pdfFileName: widget.fileName,
-                                    loadingWidget: Center(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.hourglass_empty_rounded,
-                                            size: 40,
-                                            color: AppColors.primary,
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Text(
-                                            'Rendering KOT Preview...',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.grey[700],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
+            // Main Glassmorphism Dialog Card with Balanced Proportions & Breathing Room
+            SafeArea(
+              child: Center(
+                child: GestureDetector(
+                  onTap: () {}, // Prevent card tap from dismissing
+                  child: Container(
+                    width: isTablet ? size.width * 0.72 : size.width * 0.88,
+                    height: isTablet ? size.height * 0.76 : size.height * 0.80,
+                    constraints: BoxConstraints(
+                      maxWidth: isTablet ? 650 : 440,
+                      maxHeight: isTablet ? 740 : 640,
+                    ),
+                    margin: EdgeInsets.symmetric(
+                      horizontal: isTablet ? 28 : 16,
+                      vertical: isTablet ? 20 : 16,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(
+                              alpha: 0.34,
+                            ), // Genuine ultra-translucent frosted glass
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.55),
+                              width: 1.2,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.10),
+                                blurRadius: 32,
+                                offset: const Offset(0, 12),
+                              ),
+                              BoxShadow(
+                                color: Colors.white.withValues(alpha: 0.20),
+                                blurRadius: 10,
+                                offset: const Offset(0, -2),
+                              ),
+                            ],
                           ),
+                          child: Column(
+                            children: [
+                              // Glassmorphic Header Bar
+                              _buildHeader(context),
 
-                          // Docked Action Buttons Bar
-                          _buildActionBar(context),
-                        ],
+                              // PDF Preview Canvas Container with Visible Scrollbar
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    12,
+                                    10,
+                                    12,
+                                    10,
+                                  ),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.65),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.75,
+                                        ),
+                                        width: 1,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.05,
+                                          ),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: PdfPreview(
+                                        build: (format) => widget.pdfBytes,
+                                        allowPrinting: false,
+                                        allowSharing: false,
+                                        canChangePageFormat: false,
+                                        canChangeOrientation: false,
+                                        canDebug: false,
+                                        maxPageWidth: double.infinity,
+                                        pdfFileName: widget.fileName,
+                                        loadingWidget: Center(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.hourglass_empty_rounded,
+                                                size: 40,
+                                                color: AppColors.primary,
+                                              ),
+                                              const SizedBox(height: 12),
+                                              Text(
+                                                'Rendering KOT Preview...',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.grey[700],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              // Docked Action Buttons Bar
+                              _buildActionBar(context),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -314,55 +327,52 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.28),
+        color: Colors.white.withValues(alpha: 0.35),
         border: Border(
           top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.45),
+            color: Colors.white.withValues(alpha: 0.55),
             width: 1,
           ),
         ),
       ),
       child: Row(
         children: [
-          // Share Button
+          // Done Button (Left - Secondary action)
           Expanded(
             flex: 3,
-            child: ElevatedButton.icon(
-              onPressed:
-                  _isSharing
-                      ? null
-                      : () async {
-                        await HapticHelper.triggerFeedback();
-                        _shareKOT();
-                      },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(
-                  0xFF0284C7,
-                ).withValues(alpha: 0.88), // Sky 600
-                foregroundColor: Colors.white,
-                elevation: 1.5,
-                shadowColor: const Color(0xFF0284C7).withValues(alpha: 0.25),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 44,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  await HapticHelper.triggerFeedback();
+                  _closeDialog();
+                },
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.70),
+                  foregroundColor: const Color(0xFF334155),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  side: const BorderSide(
+                    color: Color(0xFFCBD5E1),
+                    width: 1.2,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-              ),
-              icon:
-                  _isSharing
-                      ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation(Colors.white),
-                        ),
-                      )
-                      : const Icon(Icons.share_rounded, size: 16),
-              label: Text(
-                _isSharing ? 'Sharing...' : 'Share',
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
+                icon: const Icon(
+                  Icons.check_rounded,
+                  size: 16,
+                  color: Color(0xFF475569),
+                ),
+                label: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Done',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -370,79 +380,87 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
 
           const SizedBox(width: 8),
 
-          // Print Button (Primary Action)
+          // Share Button (Middle - Tonal action)
+          Expanded(
+            flex: 3,
+            child: SizedBox(
+              height: 44,
+              child: ElevatedButton.icon(
+                onPressed: _isSharing ? null : _shareKOT,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0284C7),
+                  foregroundColor: Colors.white,
+                  elevation: 1.5,
+                  shadowColor: const Color(0xFF0284C7).withValues(alpha: 0.30),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: _isSharing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.share_rounded, size: 15),
+                label: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    _isSharing ? 'Sharing...' : 'Share',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          // Print Button (Right - Primary prominent action)
           Expanded(
             flex: 4,
-            child: ElevatedButton.icon(
-              onPressed:
-                  _isPrinting
-                      ? null
-                      : () async {
-                        await HapticHelper.triggerFeedback();
-                        _printKOT();
-                      },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 3,
-                shadowColor: AppColors.primary.withValues(alpha: 0.35),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 44,
+              child: ElevatedButton.icon(
+                onPressed: _isPrinting ? null : _printKOT,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 3,
+                  shadowColor: AppColors.primary.withValues(alpha: 0.40),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-              ),
-              icon:
-                  _isPrinting
-                      ? const SizedBox(
-                        width: 16,
-                        height: 16,
+                icon: _isPrinting
+                    ? const SizedBox(
+                        width: 15,
+                        height: 15,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation(Colors.white),
                         ),
                       )
-                      : const Icon(Icons.print_rounded, size: 18),
-              label: Text(
-                _isPrinting ? 'Printing...' : 'Print KOT',
-                style: const TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.2,
+                    : const Icon(Icons.print_rounded, size: 17),
+                label: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    _isPrinting ? 'Printing...' : 'Print KOT',
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Close / Done Button
-          Expanded(
-            flex: 3,
-            child: OutlinedButton.icon(
-              onPressed: () async {
-                await HapticHelper.triggerFeedback();
-                _closeDialog();
-              },
-              style: OutlinedButton.styleFrom(
-                backgroundColor: Colors.white.withValues(alpha: 0.65),
-                foregroundColor: const Color(0xFF334155),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                side: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  width: 1,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: const Icon(
-                Icons.check_circle_outline_rounded,
-                size: 16,
-                color: Color(0xFF475569),
-              ),
-              label: const Text(
-                'Done',
-                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -452,25 +470,45 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
   }
 
   Future<void> _shareKOT() async {
-    await PDFShareBottomSheet.show(
-      context,
-      pdfBytes: widget.pdfBytes,
-      fileName: widget.fileName,
-      orderNumber: widget.kotNumber,
-    );
+    if (_isSharing) return;
+    await HapticHelper.triggerFeedback();
+    setState(() => _isSharing = true);
+    try {
+      await PDFShareBottomSheet.show(
+        context,
+        pdfBytes: widget.pdfBytes,
+        fileName: widget.fileName,
+        orderNumber: widget.kotNumber,
+      );
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'Failed to share KOT: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSharing = false);
+      }
+    }
   }
 
   Future<void> _printKOT() async {
     if (_isPrinting) return;
-
+    await HapticHelper.triggerFeedback();
     setState(() => _isPrinting = true);
 
     try {
-      await Printing.layoutPdf(
+      final printed = await Printing.layoutPdf(
         onLayout: (format) async => widget.pdfBytes,
         name: widget.fileName,
         format: PdfPageFormat.roll80,
       );
+      if (printed && mounted) {
+        AppSnackBar.showSuccess(
+          context,
+          'KOT sent to printer',
+          duration: const Duration(seconds: 2),
+        );
+      }
     } catch (e) {
       if (mounted) {
         AppSnackBar.showError(

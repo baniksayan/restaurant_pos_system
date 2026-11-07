@@ -1,10 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
+import 'package:restaurant_pos_system/core/utils/no_emoji_formatter.dart';
 import 'package:restaurant_pos_system/features/billing/providers/tax_provider.dart';
+import 'package:restaurant_pos_system/features/order_taking/widgets/kitchen_note_dialog.dart';
 
 class CartFooter extends StatefulWidget {
   final double subtotal;
@@ -13,6 +16,9 @@ class CartFooter extends StatefulWidget {
   final VoidCallback onSendToKitchen;
   final VoidCallback onGenerateBill;
   final VoidCallback onShowGSTInfo;
+  final String kotNote;
+  final ValueChanged<String>? onKotNoteChanged;
+  final VoidCallback? onOpenKotNoteDialog;
 
   const CartFooter({
     super.key,
@@ -22,6 +28,9 @@ class CartFooter extends StatefulWidget {
     required this.onSendToKitchen,
     required this.onGenerateBill,
     required this.onShowGSTInfo,
+    this.kotNote = '',
+    this.onKotNoteChanged,
+    this.onOpenKotNoteDialog,
   });
 
   @override
@@ -29,7 +38,59 @@ class CartFooter extends StatefulWidget {
 }
 
 class _CartFooterState extends State<CartFooter> {
-  bool _expanded = false; // default collapsed
+  bool _expanded = false; // default collapsed (for GST details)
+  bool _isNoteExpanded = false; // default collapsed in bottom section
+  late final TextEditingController _noteController;
+
+  static const int _maxNoteCharacters = 75;
+
+  @override
+  void initState() {
+    super.initState();
+    _noteController =
+        TextEditingController(text: removeEmojis(widget.kotNote));
+    _noteController.addListener(_onNoteTextChanged);
+  }
+
+  @override
+  void didUpdateWidget(CartFooter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.kotNote != oldWidget.kotNote &&
+        widget.kotNote != _noteController.text) {
+      _noteController.text = removeEmojis(widget.kotNote);
+    }
+  }
+
+  void _onNoteTextChanged() {
+    if (widget.onKotNoteChanged != null &&
+        _noteController.text != widget.kotNote) {
+      widget.onKotNoteChanged!(_noteController.text);
+    }
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _noteController.removeListener(_onNoteTextChanged);
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleOpenFullDialog() async {
+    if (widget.onOpenKotNoteDialog != null) {
+      widget.onOpenKotNoteDialog!();
+      return;
+    }
+    final result = await KitchenNoteDialog.show(
+      context,
+      initialNote: _noteController.text,
+    );
+    if (result != null) {
+      _noteController.text = result;
+      widget.onKotNoteChanged?.call(result);
+      if (mounted) setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -237,31 +298,339 @@ class _CartFooterState extends State<CartFooter> {
   }
 
   Widget _buildPreKOTButtons() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () async {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildCollapsibleKitchenNote(),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () async {
+              await HapticHelper.triggerFeedback();
+              widget.onGenerateKOT();
+            },
+            icon: const Icon(Icons.print_rounded, size: 18),
+            label: const Text(
+              'Generate KOT',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.3,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF16A34A).withValues(alpha: 0.92),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCollapsibleKitchenNote() {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      child: _isNoteExpanded
+          ? _buildExpandedNotePanel()
+          : _buildCollapsedNoteBar(),
+    );
+  }
+
+  Widget _buildCollapsedNoteBar() {
+    final note = _noteController.text.trim();
+    final hasNote = note.isNotEmpty;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
           await HapticHelper.triggerFeedback();
-          widget.onGenerateKOT();
+          setState(() => _isNoteExpanded = true);
         },
-        icon: const Icon(Icons.print_rounded, size: 18),
-        label: const Text(
-          'Generate KOT',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.3,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF16A34A).withValues(alpha: 0.92),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 11),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+          decoration: BoxDecoration(
+            color: hasNote
+                ? const Color(0xFFFFF7ED)
+                : Colors.white.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: hasNote
+                  ? const Color(0xFFEA580C).withValues(alpha: 0.65)
+                  : Colors.grey.withValues(alpha: 0.32),
+              width: 1.1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                hasNote
+                    ? Icons.soup_kitchen_rounded
+                    : Icons.edit_note_rounded,
+                size: 16,
+                color: hasNote
+                    ? const Color(0xFFEA580C)
+                    : const Color(0xFF64748B),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  hasNote ? 'Note: $note' : 'Note for Kitchen (Optional)',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: hasNote ? FontWeight.w700 : FontWeight.w600,
+                    color: hasNote
+                        ? const Color(0xFF9A3412)
+                        : const Color(0xFF475569),
+                  ),
+                ),
+              ),
+              if (hasNote) ...[
+                // Clear button
+                InkWell(
+                  onTap: () async {
+                    await HapticHelper.triggerFeedback();
+                    _noteController.clear();
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: const Padding(
+                    padding: EdgeInsets.all(3.0),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 14,
+                      color: Color(0xFF9A3412),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    hasNote ? 'Edit' : '+ Add',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: hasNote
+                          ? const Color(0xFFEA580C)
+                          : const Color(0xFF6D28D9),
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: hasNote
+                        ? const Color(0xFFEA580C)
+                        : const Color(0xFF6D28D9),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildExpandedNotePanel() {
+    final length = _noteController.text.length;
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFEA580C).withValues(alpha: 0.45),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Section header with counter badge and collapse trigger
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.soup_kitchen_rounded,
+                    size: 14,
+                    color: Color(0xFFEA580C),
+                  ),
+                  SizedBox(width: 5),
+                  Text(
+                    'NOTE FOR KITCHEN',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.6,
+                      color: Color(0xFF9A3412),
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Full dialog button
+                  InkWell(
+                    onTap: _handleOpenFullDialog,
+                    borderRadius: BorderRadius.circular(6),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Icon(
+                        Icons.open_in_full_rounded,
+                        size: 13,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  // Character counter badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: length >= _maxNoteCharacters
+                          ? Colors.orange.withValues(alpha: 0.15)
+                          : Colors.grey.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '$length/$_maxNoteCharacters',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: length >= _maxNoteCharacters
+                            ? Colors.deepOrange
+                            : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  // Collapse button
+                  InkWell(
+                    onTap: () async {
+                      await HapticHelper.triggerFeedback();
+                      setState(() => _isNoteExpanded = false);
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: const Padding(
+                      padding: EdgeInsets.all(2.0),
+                      child: Icon(
+                        Icons.keyboard_arrow_up_rounded,
+                        size: 18,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+
+          // Compact text input
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+            ),
+            child: TextField(
+              controller: _noteController,
+              maxLength: _maxNoteCharacters,
+              inputFormatters: [
+                LengthLimitingTextInputFormatter(_maxNoteCharacters),
+                noEmojiFormatter,
+              ],
+              buildCounter: (
+                context, {
+                required currentLength,
+                required isFocused,
+                maxLength,
+              }) =>
+                  null,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1E293B),
+                height: 1.25,
+              ),
+              decoration: InputDecoration(
+                hintText: 'e.g. Serve together, no onions across table...',
+                hintStyle: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF94A3B8),
+                ),
+                counterText: '',
+                isDense: true,
+                filled: false,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFEA580C),
+                    width: 1.2,
+                  ),
+                ),
+                suffixIcon: _noteController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, size: 14),
+                        color: const Color(0xFF94A3B8),
+                        splashRadius: 14,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 28,
+                          minHeight: 28,
+                        ),
+                        onPressed: () => _noteController.clear(),
+                      )
+                    : null,
+                suffixIconConstraints: const BoxConstraints(
+                  minWidth: 28,
+                  minHeight: 28,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

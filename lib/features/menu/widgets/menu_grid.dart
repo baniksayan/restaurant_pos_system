@@ -141,9 +141,11 @@ class MenuGrid extends StatelessWidget {
           );
         }
 
+        final hasFloatingCart = canOrder && cartProvider.newItemsCount > 0;
         return Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, hasFloatingCart ? 80 : 16),
           child: GridView.builder(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             physics: const AlwaysScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: 185,

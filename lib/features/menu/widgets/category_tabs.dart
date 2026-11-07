@@ -12,12 +12,12 @@ class CategoryTabs extends StatelessWidget {
       builder: (context, menuProvider, child) {
         if (menuProvider.isCategoriesLoading) {
           return Container(
-            height: 50,
+            height: 36,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: const Center(
               child: SizedBox(
-                width: 20,
-                height: 20,
+                width: 18,
+                height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
@@ -47,10 +47,11 @@ class CategoryTabs extends StatelessWidget {
         final selectedCat = menuProvider.selectedCategory;
 
         return Container(
-          height: 48,
+          height: 36,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
             itemCount: tabs.length,
             itemBuilder: (context, index) {
               final tab = tabs[index];
@@ -68,12 +69,12 @@ class CategoryTabs extends StatelessWidget {
               // Color configuration
               final Color activeColor =
                   tab == 'Veg Only'
-                      ? const Color(0xFF4CAF50)
+                      ? const Color(0xFF10B981)
                       : AppColors.primary;
 
               return Center(
                 child: Container(
-                  margin: const EdgeInsets.only(right: 12),
+                  margin: const EdgeInsets.only(right: 8),
                   child: GestureDetector(
                     onTap: () {
                       if (tab == 'All') {
@@ -89,39 +90,56 @@ class CategoryTabs extends StatelessWidget {
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
                       alignment: Alignment.center,
                       constraints: const BoxConstraints(
-                        minWidth: 64,
-                        minHeight: 36,
-                        maxHeight: 36,
+                        minWidth: 56,
+                        minHeight: 32,
+                        maxHeight: 32,
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                       decoration: BoxDecoration(
-                        color: isSelected ? activeColor : Colors.white,
-                        borderRadius: BorderRadius.circular(18),
+                        color:
+                            isSelected
+                                ? activeColor
+                                : Colors.white.withValues(alpha: 0.60),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color:
-                              isSelected ? activeColor : Colors.grey.shade300,
-                          width: 1.5,
+                              isSelected
+                                  ? activeColor
+                                  : const Color(0xFFE2E8F0).withValues(alpha: 0.85),
+                          width: 1.0,
                         ),
                         boxShadow:
                             isSelected
                                 ? [
                                   BoxShadow(
-                                    color: activeColor.withValues(alpha: 0.3),
+                                    color: activeColor.withValues(alpha: 0.28),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2),
                                   ),
                                 ]
-                                : null,
+                                : [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFF0F172A,
+                                    ).withValues(alpha: 0.02),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
                       ),
                       child: Text(
                         tab,
                         style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.grey[700],
+                          color:
+                              isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF475569),
                           fontWeight:
-                              isSelected ? FontWeight.bold : FontWeight.normal,
-                          fontSize: 14,
+                              isSelected ? FontWeight.w600 : FontWeight.w500,
+                          fontSize: 13,
                         ),
                       ),
                     ),

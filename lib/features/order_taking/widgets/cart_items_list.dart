@@ -5,11 +5,13 @@ import 'cart_item_card.dart';
 class CartItemsList extends StatelessWidget {
   final List<CartItem> items;
   final Function(CartItem) onEditItem;
+  final bool showKotBadge;
 
   const CartItemsList({
     super.key,
     required this.items,
     required this.onEditItem,
+    this.showKotBadge = false,
   });
 
   @override
@@ -18,10 +20,14 @@ class CartItemsList extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: items.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      separatorBuilder: (context, index) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final item = items[index];
-        return CartItemCard(item: item, onEdit: () => onEditItem(item));
+        return CartItemCard(
+          item: item,
+          onEdit: () => onEditItem(item),
+          showKotBadge: showKotBadge,
+        );
       },
     );
   }

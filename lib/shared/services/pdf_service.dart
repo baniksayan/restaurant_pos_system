@@ -11,7 +11,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/data/models/bill_details_response.dart'
     show PaymentDetail;
+import 'package:restaurant_pos_system/core/utils/no_emoji_formatter.dart';
 import '../../core/constants/currency_constants.dart';
+import 'package:restaurant_pos_system/features/billing/utils/bill_item_merger.dart';
 
 class PDFService {
   /// Fallbacks only — used if a real bill's company details couldn't be
@@ -81,35 +83,46 @@ class PDFService {
                 padding: const pw.EdgeInsets.only(bottom: 8),
                 child: pw.Row(
                   children: [
-                    pw.SizedBox(width: 18),
                     pw.Container(
-                      width: 24,
-                      alignment: pw.Alignment.centerRight,
+                      width: 18,
+                      alignment: pw.Alignment.centerLeft,
+                      child: pw.Text(
+                        '#',
+                        style: const pw.TextStyle(
+                          fontSize: 8.5,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                    ),
+                    pw.Container(
+                      width: 22,
+                      alignment: pw.Alignment.center,
                       child: pw.Text(
                         'QTY',
                         style: const pw.TextStyle(
-                          fontSize: 9,
+                          fontSize: 8.5,
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
                     ),
-                    pw.SizedBox(width: 15),
+                    pw.SizedBox(width: 6),
                     pw.Expanded(
-                      flex: 4,
+                      flex: 5,
                       child: pw.Text(
                         'ITEM NAME',
                         style: const pw.TextStyle(
-                          fontSize: 9,
+                          fontSize: 8.5,
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
                     ),
                     pw.Expanded(
-                      flex: 3,
+                      flex: 5,
                       child: pw.Text(
                         'NOTE',
                         style: const pw.TextStyle(
-                          fontSize: 9,
+                          fontSize: 8.5,
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
@@ -122,35 +135,49 @@ class PDFService {
                 _kotItemCard(i + 1, items[i]),
 
               pw.SizedBox(height: 4),
-              // Special Notes for entire order
+              // Special Notes for entire order (Emoji-sanitized & capped within 75 chars)
               if (specialNotes != null && specialNotes.trim().isNotEmpty) ...[
-                pw.SizedBox(height: 10),
-                pw.Container(
-                  width: double.infinity,
-                  padding: const pw.EdgeInsets.all(8),
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: PdfColors.black, width: 0.8),
-                  ),
-                  child: pw.Column(
+                () {
+                  String cleanNotes = removeEmojis(specialNotes.trim());
+                  if (cleanNotes.length > 75) {
+                    cleanNotes = '${cleanNotes.substring(0, 75)}...';
+                  }
+                  if (cleanNotes.isEmpty) return pw.SizedBox.shrink();
+
+                  return pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text(
-                        _kotLetterSpace("SPECIAL INSTRUCTIONS"),
-                        style: const pw.TextStyle(
-                          fontSize: 8,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.grey700,
+                      pw.SizedBox(height: 10),
+                      pw.Container(
+                        width: double.infinity,
+                        padding: const pw.EdgeInsets.all(8),
+                        decoration: pw.BoxDecoration(
+                          border:
+                              pw.Border.all(color: PdfColors.black, width: 0.8),
+                        ),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              _kotLetterSpace("SPECIAL INSTRUCTIONS"),
+                              style: const pw.TextStyle(
+                                fontSize: 8,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.grey700,
+                              ),
+                            ),
+                            pw.SizedBox(height: 4),
+                            pw.Text(
+                              cleanNotes,
+                              style: const pw.TextStyle(fontSize: 9.5),
+                            ),
+                          ],
                         ),
                       ),
-                      pw.SizedBox(height: 4),
-                      pw.Text(
-                        specialNotes.trim(),
-                        style: const pw.TextStyle(fontSize: 10),
-                      ),
+                      pw.SizedBox(height: 12),
                     ],
-                  ),
-                ),
-                pw.SizedBox(height: 12),
+                  );
+                }(),
               ],
             ],
           );
@@ -202,6 +229,7 @@ class PDFService {
             ? companyGstNo.trim()
             : gstNumber;
 
+    final mergedItems = BillItemMerger.mergeDynamicCartItems(items);
     final pdf = pw.Document();
 
     pdf.addPage(
@@ -375,7 +403,7 @@ class PDFService {
               ),
 
               // Items List with special notes
-              ...items.asMap().entries.map((entry) {
+              ...mergedItems.asMap().entries.map((entry) {
                 final index = entry.key;
                 final item = entry.value;
                 final itemTotal = item.price * item.quantity;
@@ -657,6 +685,7 @@ class PDFService {
 
     final dateStr = _formatDate(orderTime);
     final timeStr = _formatTime(orderTime);
+    final mergedItems = BillItemMerger.mergeDynamicCartItems(items);
     final pdf = pw.Document();
 
     pdf.addPage(
@@ -773,7 +802,7 @@ class PDFService {
               ),
               pw.SizedBox(height: 4),
               _kotDashedLine(),
-              for (final item in items) _thermalItemRow(item),
+              for (final item in mergedItems) _thermalItemRow(item),
               _kotDashedLine(),
               pw.SizedBox(height: 6),
 
@@ -1369,39 +1398,34 @@ class PDFService {
   }
 
   static pw.Widget _kotItemCard(int index, CartItem item) {
-    String noteText = '-';
+    String noteText = '';
     if (item.specialNotes != null && item.specialNotes!.trim().isNotEmpty) {
-      String rawNote = item.specialNotes!.trim();
-      noteText = rawNote
-          .split(' ')
-          .map((word) {
-            if (word.isEmpty) return '';
-            return word[0].toUpperCase() + word.substring(1).toLowerCase();
-          })
-          .join(' ');
-      if (noteText.length > 30) {
-        // 30 char limit for note
-        noteText = '${noteText.substring(0, 30)}...';
+      String rawNote = removeEmojis(item.specialNotes!.trim());
+      if (rawNote.isNotEmpty) {
+        noteText = rawNote;
+        if (noteText.length > 75) {
+          noteText = '${noteText.substring(0, 75)}...';
+        }
       }
     }
 
-    final itemName =
-        item.name.trim().isNotEmpty ? item.name.trim().toUpperCase() : 'ITEM';
+    final rawName = item.name.trim().isNotEmpty ? item.name.trim() : 'ITEM';
+    final itemName = removeEmojis(rawName).toUpperCase();
 
     return pw.Column(
       children: [
         pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(vertical: 10),
+          padding: const pw.EdgeInsets.symmetric(vertical: 8),
           child: pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Container(
-                width: 20,
+                width: 18,
                 alignment: pw.Alignment.centerLeft,
                 child: pw.Text(
                   '$index.',
                   style: const pw.TextStyle(
-                    fontSize: 10,
+                    fontSize: 9,
                     color: PdfColors.grey700,
                     fontWeight: pw.FontWeight.bold,
                   ),
@@ -1409,35 +1433,38 @@ class PDFService {
               ),
 
               pw.Container(
-                width: 20,
+                width: 22,
                 alignment: pw.Alignment.center,
                 child: pw.Text(
                   '${item.quantity}x',
                   style: const pw.TextStyle(
-                    fontSize: 10,
+                    fontSize: 9,
                     color: PdfColors.grey800,
                     fontWeight: pw.FontWeight.bold,
                   ),
                 ),
               ),
-              pw.SizedBox(width: 15),
+              pw.SizedBox(width: 6),
 
               pw.Expanded(
-                flex: 4,
+                flex: 5,
                 child: pw.Text(
                   itemName,
                   style: const pw.TextStyle(
-                    fontSize: 10,
-                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 9,
+                    fontWeight: pw.FontWeight.normal,
                   ),
                 ),
               ),
 
               pw.Expanded(
-                flex: 3,
+                flex: 5,
                 child: pw.Text(
-                  noteText.trim().isNotEmpty ? noteText : '-',
-                  style: const pw.TextStyle(fontSize: 10),
+                  noteText,
+                  style: const pw.TextStyle(
+                    fontSize: 8.5,
+                    color: PdfColors.grey800,
+                  ),
                 ),
               ),
             ],

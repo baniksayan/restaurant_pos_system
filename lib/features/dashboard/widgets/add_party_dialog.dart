@@ -110,12 +110,26 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
     super.dispose();
   }
 
+  void _submit() async {
+    await HapticHelper.triggerFeedback();
+    if (!mounted) return;
+    Navigator.of(context).pop(
+      PartyDetails(
+        adults: _adults,
+        children: _children,
+        customerName: _nameController.text.trim(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final size = MediaQuery.sizeOf(context);
+    final viewInsets = MediaQuery.viewInsetsOf(context);
     final isTablet = size.width >= 600;
+    final isKeyboardOpen = viewInsets.bottom > 0;
 
     final remaining = _remainingSeats;
     final overCapacity = remaining != null && remaining < 0;
@@ -125,7 +139,10 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {
-          if (Navigator.of(context).canPop()) {
+          // If the keyboard is active, dismiss it first on backdrop tap
+          if (FocusScope.of(context).hasFocus) {
+            FocusScope.of(context).unfocus();
+          } else if (Navigator.of(context).canPop()) {
             Navigator.of(context).pop();
           }
         },
@@ -144,147 +161,178 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
               ),
             ),
 
-            // Centered Glassmorphic Modal Card
-            SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 24,
-                  ),
-                  child: GestureDetector(
-                    onTap: () {}, // Prevent taps inside the card from closing
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(26),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                        child: Container(
-                          width: isTablet ? 430 : size.width * 0.90,
-                          constraints: const BoxConstraints(maxWidth: 440),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors:
-                                  isDark
-                                      ? [
-                                        const Color(
-                                          0xFF0F172A,
-                                        ).withValues(alpha: 0.70),
-                                        const Color(
-                                          0xFF1E293B,
-                                        ).withValues(alpha: 0.60),
-                                      ]
-                                      : [
-                                        Colors.white.withValues(alpha: 0.80),
-                                        Colors.white.withValues(alpha: 0.60),
-                                      ],
+            // Modal card container animated to stay above keyboard
+            AnimatedPadding(
+              padding: EdgeInsets.only(bottom: viewInsets.bottom),
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              child: SafeArea(
+                child: Center(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: isKeyboardOpen ? 10 : 24,
+                    ),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        // Dismiss keyboard when tapping neutral card area
+                        FocusScope.of(context).unfocus();
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(26),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                          child: Container(
+                            width: isTablet ? 430 : size.width * 0.90,
+                            constraints: const BoxConstraints(maxWidth: 440),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors:
+                                    isDark
+                                        ? [
+                                          const Color(
+                                            0xFF0F172A,
+                                          ).withValues(alpha: 0.70),
+                                          const Color(
+                                            0xFF1E293B,
+                                          ).withValues(alpha: 0.60),
+                                        ]
+                                        : [
+                                          Colors.white.withValues(alpha: 0.80),
+                                          Colors.white.withValues(alpha: 0.60),
+                                        ],
+                              ),
+                              borderRadius: BorderRadius.circular(26),
+                              border: Border.all(
+                                color:
+                                    isDark
+                                        ? Colors.white.withValues(alpha: 0.18)
+                                        : Colors.white.withValues(alpha: 0.85),
+                                width: 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.08,
+                                  ),
+                                  blurRadius: 28,
+                                  offset: const Offset(0, 10),
+                                ),
+                                BoxShadow(
+                                  color: Colors.black.withValues(
+                                    alpha: isDark ? 0.35 : 0.08,
+                                  ),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
                             ),
-                            borderRadius: BorderRadius.circular(26),
-                            border: Border.all(
-                              color:
-                                  isDark
-                                      ? Colors.white.withValues(alpha: 0.18)
-                                      : Colors.white.withValues(alpha: 0.85),
-                              width: 1.5,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Glass Header
+                                _buildHeader(
+                                  context,
+                                  isDark,
+                                  isKeyboardOpen: isKeyboardOpen,
+                                ),
+
+                                // Main Dialog Body
+                                Padding(
+                                  padding: EdgeInsets.fromLTRB(
+                                    20,
+                                    isKeyboardOpen ? 12 : 18,
+                                    20,
+                                    isKeyboardOpen ? 10 : 16,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // Section Title: Party Size
+                                      _buildSectionLabel(
+                                        'PARTY SIZE',
+                                        Icons.group_outlined,
+                                        isDark,
+                                      ),
+                                      SizedBox(height: isKeyboardOpen ? 6 : 10),
+
+                                      // Adults Stepper Card
+                                      _buildCounterCard(
+                                        title: 'Adults',
+                                        subtitle: 'Standard / 12+ yrs',
+                                        icon: Icons.person_rounded,
+                                        iconColor: AppColors.primary,
+                                        value: _adults,
+                                        min: 1,
+                                        isDark: isDark,
+                                        isCompact: isKeyboardOpen,
+                                        onChanged:
+                                            (v) => setState(() => _adults = v),
+                                      ),
+                                      SizedBox(height: isKeyboardOpen ? 6 : 10),
+
+                                      // Children Stepper Card
+                                      _buildCounterCard(
+                                        title: 'Children',
+                                        subtitle: 'Under 12 yrs',
+                                        icon: Icons.child_care_rounded,
+                                        iconColor: AppColors.accent,
+                                        value: _children,
+                                        min: 0,
+                                        isDark: isDark,
+                                        isCompact: isKeyboardOpen,
+                                        onChanged:
+                                            (v) =>
+                                                setState(() => _children = v),
+                                      ),
+                                      SizedBox(
+                                        height: isKeyboardOpen ? 10 : 18,
+                                      ),
+
+                                      // Section Title: Customer Info
+                                      _buildSectionLabel(
+                                        'CUSTOMER DETAILS (OPTIONAL)',
+                                        Icons.badge_outlined,
+                                        isDark,
+                                      ),
+                                      SizedBox(height: isKeyboardOpen ? 6 : 10),
+
+                                      // Glass Customer Name Input
+                                      _buildNameInput(
+                                        isDark,
+                                        isKeyboardOpen: isKeyboardOpen,
+                                      ),
+                                      SizedBox(
+                                        height: isKeyboardOpen ? 10 : 16,
+                                      ),
+
+                                      // Live Capacity & Status Banner
+                                      _buildCapacityBanner(
+                                        remaining: remaining,
+                                        overCapacity: overCapacity,
+                                        isDark: isDark,
+                                        isCompact: isKeyboardOpen,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // Glass Footer Actions
+                                _buildFooter(
+                                  context,
+                                  isDark,
+                                  isKeyboardOpen: isKeyboardOpen,
+                                ),
+                              ],
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(
-                                  alpha: 0.08,
-                                ),
-                                blurRadius: 28,
-                                offset: const Offset(0, 10),
-                              ),
-                              BoxShadow(
-                                color: Colors.black.withValues(
-                                  alpha: isDark ? 0.35 : 0.08,
-                                ),
-                                blurRadius: 18,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // Glass Header
-                              _buildHeader(context, isDark),
-
-                              // Main Dialog Body
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  20,
-                                  18,
-                                  20,
-                                  16,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Section Title: Party Size
-                                    _buildSectionLabel(
-                                      'PARTY SIZE',
-                                      Icons.group_outlined,
-                                      isDark,
-                                    ),
-                                    const SizedBox(height: 10),
-
-                                    // Adults Stepper Card
-                                    _buildCounterCard(
-                                      title: 'Adults',
-                                      subtitle: 'Standard / 12+ yrs',
-                                      icon: Icons.person_rounded,
-                                      iconColor: AppColors.primary,
-                                      value: _adults,
-                                      min: 1,
-                                      isDark: isDark,
-                                      onChanged:
-                                          (v) => setState(() => _adults = v),
-                                    ),
-                                    const SizedBox(height: 10),
-
-                                    // Children Stepper Card
-                                    _buildCounterCard(
-                                      title: 'Children',
-                                      subtitle: 'Under 12 yrs',
-                                      icon: Icons.child_care_rounded,
-                                      iconColor: AppColors.accent,
-                                      value: _children,
-                                      min: 0,
-                                      isDark: isDark,
-                                      onChanged:
-                                          (v) => setState(() => _children = v),
-                                    ),
-                                    const SizedBox(height: 18),
-
-                                    // Section Title: Customer Info
-                                    _buildSectionLabel(
-                                      'CUSTOMER DETAILS (OPTIONAL)',
-                                      Icons.badge_outlined,
-                                      isDark,
-                                    ),
-                                    const SizedBox(height: 10),
-
-                                    // Glass Customer Name Input
-                                    _buildNameInput(isDark),
-                                    const SizedBox(height: 16),
-
-                                    // Live Capacity & Status Banner
-                                    _buildCapacityBanner(
-                                      remaining: remaining,
-                                      overCapacity: overCapacity,
-                                      isDark: isDark,
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // Glass Footer Actions
-                              _buildFooter(context, isDark),
-                            ],
                           ),
                         ),
                       ),
@@ -321,9 +369,18 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isDark) {
+  Widget _buildHeader(
+    BuildContext context,
+    bool isDark, {
+    bool isKeyboardOpen = false,
+  }) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+      padding: EdgeInsets.fromLTRB(
+        18,
+        isKeyboardOpen ? 12 : 16,
+        14,
+        isKeyboardOpen ? 12 : 16,
+      ),
       decoration: BoxDecoration(
         color:
             isDark
@@ -343,15 +400,15 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
         children: [
           // Header Icon Badge
           Container(
-            width: 38,
-            height: 38,
+            width: isKeyboardOpen ? 34 : 38,
+            height: isKeyboardOpen ? 34 : 38,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [AppColors.primary, AppColors.primaryDark],
               ),
-              borderRadius: BorderRadius.circular(11),
+              borderRadius: BorderRadius.circular(isKeyboardOpen ? 9 : 11),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.primary.withValues(alpha: 0.30),
@@ -360,10 +417,10 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               Icons.groups_rounded,
               color: Colors.white,
-              size: 20,
+              size: isKeyboardOpen ? 18 : 20,
             ),
           ),
           const SizedBox(width: 12),
@@ -377,13 +434,13 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
                 Text(
                   'New Party',
                   style: TextStyle(
-                    fontSize: 17,
+                    fontSize: isKeyboardOpen ? 16 : 17,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.3,
                     color: isDark ? Colors.white : AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 3),
+                SizedBox(height: isKeyboardOpen ? 2 : 3),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -428,7 +485,7 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
 
           // Close button
           IconButton(
-            icon: const Icon(Icons.close_rounded, size: 18),
+            icon: Icon(Icons.close_rounded, size: isKeyboardOpen ? 16 : 18),
             onPressed: () async {
               await HapticHelper.triggerFeedback();
               if (context.mounted) {
@@ -442,8 +499,11 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
                       : Colors.black.withValues(alpha: 0.05),
               foregroundColor:
                   isDark ? const Color(0xFFCBD5E1) : AppColors.textSecondary,
-              padding: const EdgeInsets.all(6),
-              minimumSize: const Size(32, 32),
+              padding: EdgeInsets.all(isKeyboardOpen ? 4 : 6),
+              minimumSize: Size(
+                isKeyboardOpen ? 28 : 32,
+                isKeyboardOpen ? 28 : 32,
+              ),
             ),
           ),
         ],
@@ -459,12 +519,16 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
     required int value,
     required int min,
     required bool isDark,
+    bool isCompact = false,
     required ValueChanged<int> onChanged,
   }) {
     final canDecrement = value > min;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: isCompact ? 7 : 10,
+      ),
       decoration: BoxDecoration(
         color:
             isDark
@@ -490,17 +554,17 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
         children: [
           // Icon Box
           Container(
-            width: 36,
-            height: 36,
+            width: isCompact ? 32 : 36,
+            height: isCompact ? 32 : 36,
             decoration: BoxDecoration(
               color: iconColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(isCompact ? 8 : 10),
               border: Border.all(
                 color: iconColor.withValues(alpha: 0.22),
                 width: 1,
               ),
             ),
-            child: Icon(icon, color: iconColor, size: 19),
+            child: Icon(icon, color: iconColor, size: isCompact ? 17 : 19),
           ),
           const SizedBox(width: 12),
 
@@ -513,7 +577,7 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: isCompact ? 13.5 : 14,
                     fontWeight: FontWeight.w700,
                     color: isDark ? Colors.white : AppColors.textPrimary,
                   ),
@@ -521,7 +585,7 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: isCompact ? 10.5 : 11,
                     fontWeight: FontWeight.w500,
                     color:
                         isDark ? const Color(0xFF94A3B8) : AppColors.textHint,
@@ -548,8 +612,8 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
                           : null,
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
-                    width: 34,
-                    height: 34,
+                    width: isCompact ? 30 : 34,
+                    height: isCompact ? 30 : 34,
                     decoration: BoxDecoration(
                       color:
                           canDecrement
@@ -574,7 +638,7 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
                     ),
                     child: Icon(
                       Icons.remove_rounded,
-                      size: 16,
+                      size: isCompact ? 14 : 16,
                       color:
                           canDecrement
                               ? (isDark ? Colors.white : AppColors.textPrimary)
@@ -588,12 +652,12 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
 
               // Counter Display
               SizedBox(
-                width: 38,
+                width: isCompact ? 32 : 38,
                 child: Text(
                   '$value',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: isCompact ? 15 : 16,
                     fontWeight: FontWeight.w800,
                     color: isDark ? Colors.white : AppColors.textPrimary,
                   ),
@@ -610,8 +674,8 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
                   },
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
-                    width: 34,
-                    height: 34,
+                    width: isCompact ? 30 : 34,
+                    height: isCompact ? 30 : 34,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
@@ -627,9 +691,9 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
                         ),
                       ],
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.add_rounded,
-                      size: 16,
+                      size: isCompact ? 14 : 16,
                       color: Colors.white,
                     ),
                   ),
@@ -642,7 +706,7 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
     );
   }
 
-  Widget _buildNameInput(bool isDark) {
+  Widget _buildNameInput(bool isDark, {bool isKeyboardOpen = false}) {
     return Container(
       decoration: BoxDecoration(
         color:
@@ -668,6 +732,8 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
       child: TextField(
         controller: _nameController,
         textCapitalization: TextCapitalization.words,
+        textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _submit(),
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
@@ -676,13 +742,13 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
         decoration: InputDecoration(
           hintText: 'Customer name (e.g. John Doe)',
           hintStyle: TextStyle(
-            fontSize: 13,
+            fontSize: isKeyboardOpen ? 12.5 : 13,
             fontWeight: FontWeight.w500,
             color: isDark ? const Color(0xFF64748B) : AppColors.textHint,
           ),
           prefixIcon: Icon(
             Icons.person_outline_rounded,
-            size: 20,
+            size: isKeyboardOpen ? 18 : 20,
             color: isDark ? const Color(0xFF94A3B8) : AppColors.primary,
           ),
           suffixIcon:
@@ -698,9 +764,9 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
                   : null,
           filled: false,
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(
+          contentPadding: EdgeInsets.symmetric(
             horizontal: 14,
-            vertical: 13,
+            vertical: isKeyboardOpen ? 10 : 13,
           ),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
@@ -717,6 +783,7 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
     required int? remaining,
     required bool overCapacity,
     required bool isDark,
+    bool isCompact = false,
   }) {
     final totalParty = _adults + _children;
 
@@ -746,7 +813,10 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
               : '$remaining of ${widget.capacity} ${widget.capacity == 1 ? 'seat' : 'seats'} available';
 
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: isCompact ? 7 : 10,
+        ),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(14),
@@ -758,7 +828,7 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
               overCapacity
                   ? Icons.warning_amber_rounded
                   : Icons.event_seat_rounded,
-              size: 16,
+              size: isCompact ? 15 : 16,
               color: bannerColor,
             ),
             const SizedBox(width: 8),
@@ -766,7 +836,7 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
               child: Text(
                 message,
                 style: TextStyle(
-                  fontSize: 11.5,
+                  fontSize: isCompact ? 11 : 11.5,
                   fontWeight: FontWeight.w600,
                   color:
                       isDark && !overCapacity
@@ -778,7 +848,10 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              padding: EdgeInsets.symmetric(
+                horizontal: isCompact ? 6 : 7,
+                vertical: isCompact ? 2.5 : 3,
+              ),
               decoration: BoxDecoration(
                 color:
                     isDark
@@ -789,7 +862,7 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
               child: Text(
                 'Total: $totalParty',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: isCompact ? 10.5 : 11,
                   fontWeight: FontWeight.w700,
                   color: isDark ? Colors.white : AppColors.textPrimary,
                 ),
@@ -802,7 +875,10 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
 
     // Default summary card when capacity is unknown
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: isCompact ? 7 : 10,
+      ),
       decoration: BoxDecoration(
         color:
             isDark
@@ -819,9 +895,9 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.info_outline_rounded,
-            size: 16,
+            size: isCompact ? 15 : 16,
             color: AppColors.primary,
           ),
           const SizedBox(width: 8),
@@ -829,7 +905,7 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
             child: Text(
               'Party of $totalParty ($_adults Adult${_adults == 1 ? '' : 's'}${_children > 0 ? ', $_children Child${_children == 1 ? '' : 'ren'}' : ''})',
               style: TextStyle(
-                fontSize: 11.5,
+                fontSize: isCompact ? 11 : 11.5,
                 fontWeight: FontWeight.w600,
                 color: isDark ? const Color(0xFFCBD5E1) : AppColors.textPrimary,
               ),
@@ -840,9 +916,18 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
     );
   }
 
-  Widget _buildFooter(BuildContext context, bool isDark) {
+  Widget _buildFooter(
+    BuildContext context,
+    bool isDark, {
+    bool isKeyboardOpen = false,
+  }) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        isKeyboardOpen ? 10 : 14,
+        20,
+        isKeyboardOpen ? 12 : 18,
+      ),
       decoration: BoxDecoration(
         color:
             isDark
@@ -864,7 +949,7 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
           Expanded(
             flex: 2,
             child: SizedBox(
-              height: 46,
+              height: isKeyboardOpen ? 40 : 46,
               child: OutlinedButton(
                 onPressed: () async {
                   await HapticHelper.triggerFeedback();
@@ -891,11 +976,16 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isKeyboardOpen ? 10 : 14,
+                  ),
                 ),
-                child: const Text(
+                child: Text(
                   'Cancel',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: isKeyboardOpen ? 13 : 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -906,19 +996,9 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
           Expanded(
             flex: 3,
             child: SizedBox(
-              height: 46,
+              height: isKeyboardOpen ? 40 : 46,
               child: ElevatedButton.icon(
-                onPressed: () async {
-                  await HapticHelper.triggerFeedback();
-                  if (!context.mounted) return;
-                  Navigator.of(context).pop(
-                    PartyDetails(
-                      adults: _adults,
-                      children: _children,
-                      customerName: _nameController.text.trim(),
-                    ),
-                  );
-                },
+                onPressed: _submit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -927,13 +1007,15 @@ class _AddPartyDialogState extends State<AddPartyDialog> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isKeyboardOpen ? 10 : 14,
+                  ),
                 ),
-                icon: const Icon(Icons.arrow_forward_rounded, size: 17),
-                label: const Text(
+                
+                label: Text(
                   'Start Order',
                   style: TextStyle(
-                    fontSize: 14.5,
+                    fontSize: isKeyboardOpen ? 13.5 : 14.5,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.2,
                   ),

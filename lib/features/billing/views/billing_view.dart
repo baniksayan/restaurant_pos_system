@@ -11,6 +11,7 @@ import '../widgets/bill_details_card.dart';
 import '../widgets/customer_phone_card.dart';
 import '../widgets/bill_success_dialog.dart';
 import '../widgets/bill_pdf_viewer_dialog.dart';
+import '../utils/bill_item_merger.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
@@ -109,10 +110,10 @@ class _BillingPageState extends State<BillingPage> {
                   children: [
                     OrderSummaryCard(
                       orderNumber: widget.orderNumber,
-                      cartItems: widget.cartItems,
+                      cartItems: mergeDynamicCartItems(widget.cartItems),
                     ),
                     const SizedBox(height: 20),
-                    ItemsListCard(cartItems: widget.cartItems),
+                    ItemsListCard(cartItems: mergeDynamicCartItems(widget.cartItems)),
                     const SizedBox(height: 20),
                     BillDetailsCard(
                       subtotal: subtotal,
@@ -305,7 +306,7 @@ class _BillingPageState extends State<BillingPage> {
 
     try {
       final billBytes = await billingProvider.generateBill(
-        cartItems: widget.cartItems,
+        cartItems: mergeDynamicCartItems(widget.cartItems),
         orderNumber: widget.orderNumber,
         subtotal: subtotal,
         gstAmount: gstAmount,

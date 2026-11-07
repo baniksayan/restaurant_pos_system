@@ -7,13 +7,18 @@ import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import 'package:restaurant_pos_system/features/menu/providers/menu_provider.dart';
 import '../providers/animated_cart_provider.dart';
-import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class CartItemCard extends StatelessWidget {
   final CartItem item;
   final VoidCallback onEdit;
+  final bool showKotBadge;
 
-  const CartItemCard({super.key, required this.item, required this.onEdit});
+  const CartItemCard({
+    super.key,
+    required this.item,
+    required this.onEdit,
+    this.showKotBadge = false,
+  });
 
   String _getImageUrl(BuildContext context) {
     if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
@@ -34,76 +39,228 @@ class CartItemCard extends StatelessWidget {
     return _buildPendingItemCard(context, cartProvider);
   }
 
-  // ✅ Pending KOT Item Card (Editable) matching reference sample code
+  // ✅ Pending KOT Item Card (Editable) - Compact POS Layout
   Widget _buildPendingItemCard(
     BuildContext context,
     AnimatedCartProvider cartProvider,
   ) {
     const accentColor = Color(0xFFEA580C);
     final imageUrl = _getImageUrl(context);
+    final hasNote =
+        item.specialNotes != null && item.specialNotes!.trim().isNotEmpty;
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFFED7AA),
+          width: 0.9,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(12.0),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 90x90 Item Image
+          // 52x52 Thumbnail with image or food icon
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: NetworkImageWidget(
-              imageUrl: imageUrl,
-              width: 90,
-              height: 90,
-              fit: BoxFit.cover,
+            borderRadius: BorderRadius.circular(10),
+            child: SizedBox(
+              width: 52,
+              height: 52,
+              child: imageUrl.isNotEmpty
+                  ? NetworkImageWidget(
+                      imageUrl: imageUrl,
+                      width: 52,
+                      height: 52,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      color: accentColor.withValues(alpha: 0.08),
+                      child: const Icon(
+                        Icons.restaurant_rounded,
+                        color: accentColor,
+                        size: 22,
+                      ),
+                    ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
+
+          // Main details & controls
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Top Row: Title + Action Icons
+                // Row 1: Name + Item Total Amount
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
                       child: Text(
                         item.name,
                         style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
                           color: Color(0xFF1E1B4B),
+                          letterSpacing: -0.2,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 8),
+                    Text(
+                      (item.price * item.quantity).toCurrency(),
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: accentColor,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 5),
+
+                // Row 2: Unit rate on left, compact stepper & edit/delete on right
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Unit rate & UOM
+                    Text(
+                      '${item.price.toCurrency()}${item.uom != null && item.uom!.isNotEmpty ? ' / ${item.uom}' : ''}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+
+                    // Controls: Stepper (- qty +), Edit Note icon, Delete icon
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Compact Stepper
+                        Container(
+                          height: 27,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(7),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              InkWell(
+                                onTap: () async {
+                                  await HapticHelper.triggerFeedback();
+                                  if (!context.mounted) return;
+                                  if (item.quantity == 1) {
+                                    final shouldRemove =
+                                        await _showRemoveConfirmDialog(context);
+                                    if (shouldRemove) {
+                                      cartProvider.removeItem(item.id);
+                                    }
+                                  } else {
+                                    cartProvider.removeItem(item.id);
+                                  }
+                                },
+                                borderRadius: const BorderRadius.horizontal(
+                                  left: Radius.circular(6),
+                                ),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 3,
+                                  ),
+                                  child: Icon(
+                                    Icons.remove_rounded,
+                                    size: 14,
+                                    color: Color(0xFF475569),
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                ),
+                                child: Text(
+                                  '${item.quantity}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: accentColor,
+                                  ),
+                                ),
+                              ),
+                              InkWell(
+                                onTap: () async {
+                                  await HapticHelper.triggerFeedback();
+                                  cartProvider.addItem(
+                                    item.id,
+                                    item.name,
+                                    item.price,
+                                    item.tableId,
+                                    item.tableName,
+                                    imageUrl: item.imageUrl,
+                                    specialNotes: item.specialNotes,
+                                    categoryId: item.categoryId,
+                                    categoryName: item.categoryName,
+                                    uom: item.uom,
+                                    discountPercentage: item.discountPercentage,
+                                  );
+                                },
+                                borderRadius: const BorderRadius.horizontal(
+                                  right: Radius.circular(6),
+                                ),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 3,
+                                  ),
+                                  child: Icon(
+                                    Icons.add_rounded,
+                                    size: 14,
+                                    color: Color(0xFF475569),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(width: 6),
+
+                        // Edit Note Button
                         InkWell(
                           onTap: () async {
                             await HapticHelper.triggerFeedback();
                             onEdit();
                           },
-                          child: const Icon(
-                            Icons.edit_note_rounded,
-                            size: 24,
-                            color: Color(0xFF6366F1),
+                          borderRadius: BorderRadius.circular(6),
+                          child: const Padding(
+                            padding: EdgeInsets.all(3.0),
+                            child: Icon(
+                              Icons.edit_note_rounded,
+                              size: 20,
+                              color: Color(0xFF6366F1),
+                            ),
                           ),
                         ),
+
+                        // Delete All Button (if qty > 1)
                         if (item.quantity > 1 && item.canEdit) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 2),
                           InkWell(
                             onTap: () async {
                               await HapticHelper.triggerFeedback();
@@ -116,10 +273,10 @@ class CartItemCard extends StatelessWidget {
                             },
                             borderRadius: BorderRadius.circular(6),
                             child: Padding(
-                              padding: const EdgeInsets.all(4.0),
+                              padding: const EdgeInsets.all(3.0),
                               child: Icon(
                                 Icons.delete_outline_rounded,
-                                size: 20,
+                                size: 18,
                                 color: Colors.red[600],
                               ),
                             ),
@@ -130,142 +287,11 @@ class CartItemCard extends StatelessWidget {
                   ],
                 ),
 
-                // Special Notes (if present)
-                if (item.specialNotes != null &&
-                    item.specialNotes!.isNotEmpty) ...[
+                // Row 3: Special Instructions / Item Note (at the bottom)
+                if (hasNote) ...[
                   const SizedBox(height: 6),
-                  _buildSpecialInstructions(context),
+                  _buildCompactSpecialInstructions(context),
                 ],
-
-                const SizedBox(height: 10),
-
-                // Bottom Calculation Bar
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Unit Price Column
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.price.toCurrency(),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E293B),
-                            ),
-                          ),
-                          const Text(
-                            'Unit Price',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Quantity Selector Controls
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            InkWell(
-                              onTap: () async {
-                                await HapticHelper.triggerFeedback();
-                                if (!context.mounted) return;
-                                if (item.quantity == 1) {
-                                  final shouldRemove =
-                                      await _showRemoveConfirmDialog(context);
-                                  if (shouldRemove) {
-                                    cartProvider.removeItem(item.id);
-                                  }
-                                } else {
-                                  cartProvider.removeItem(item.id);
-                                }
-                              },
-                              child: const Padding(
-                                padding: EdgeInsets.all(4.0),
-                                child: Icon(Icons.remove, size: 16),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8.0,
-                              ),
-                              child: Text(
-                                '${item.quantity}',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: accentColor,
-                                ),
-                              ),
-                            ),
-                            InkWell(
-                              onTap: () async {
-                                await HapticHelper.triggerFeedback();
-                                cartProvider.addItem(
-                                  item.id,
-                                  item.name,
-                                  item.price,
-                                  item.tableId,
-                                  item.tableName,
-                                  imageUrl: item.imageUrl,
-                                  specialNotes: item.specialNotes,
-                                  categoryId: item.categoryId,
-                                  categoryName: item.categoryName,
-                                  uom: item.uom,
-                                  discountPercentage: item.discountPercentage,
-                                );
-                              },
-                              child: const Padding(
-                                padding: EdgeInsets.all(4.0),
-                                child: Icon(Icons.add, size: 16),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Total Price Column
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            (item.price * item.quantity).toCurrency(),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: accentColor,
-                            ),
-                          ),
-                          const Text(
-                            'Total',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
@@ -274,109 +300,167 @@ class CartItemCard extends StatelessWidget {
     );
   }
 
-  // ✅ KOT Generated Item Card (Read-only) matching reference sample code
+  // ✅ KOT Generated Item Card (Read-only) - Compact POS Layout
   Widget _buildKotGeneratedCard(BuildContext context) {
     const accentColor = Color(0xFF6D28D9);
     final imageUrl = _getImageUrl(context);
+    final hasNote =
+        item.specialNotes != null && item.specialNotes!.trim().isNotEmpty;
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFDDD6FE),
+          width: 0.9,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(12.0),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 90x90 Item Image
+          // 52x52 Thumbnail with image or food icon
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: NetworkImageWidget(
-              imageUrl: imageUrl,
-              width: 90,
-              height: 90,
-              fit: BoxFit.cover,
+            borderRadius: BorderRadius.circular(10),
+            child: SizedBox(
+              width: 52,
+              height: 52,
+              child: imageUrl.isNotEmpty
+                  ? NetworkImageWidget(
+                      imageUrl: imageUrl,
+                      width: 52,
+                      height: 52,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      color: accentColor.withValues(alpha: 0.08),
+                      child: const Icon(
+                        Icons.restaurant_rounded,
+                        color: accentColor,
+                        size: 22,
+                      ),
+                    ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
+
+          // Main details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  item.name,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E1B4B),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: accentColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'KOT #${item.kotNumber ?? 'N/A'}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                // Row 1: Name + Total Price
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.name,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1E1B4B),
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Text(
+                      (item.price * item.quantity).toCurrency(),
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: accentColor,
+                      ),
+                    ),
+                  ],
                 ),
-                if (item.specialNotes != null &&
-                    item.specialNotes!.isNotEmpty) ...[
+
+                const SizedBox(height: 5),
+
+                // Row 2: Unit rate + Qty badge (Info dialog icon removed)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Unit rate
+                    Text(
+                      '${item.price.toCurrency()}${item.uom != null && item.uom!.isNotEmpty ? ' / ${item.uom}' : ''}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+
+                    // KOT Status Badges
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (showKotBadge && item.kotNumber != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: accentColor,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'KOT #${item.kotNumber}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: const Color(0xFF7C3AED).withValues(alpha: 0.25),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            'Qty: ${item.quantity}',
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              color: accentColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                // Row 3: Special Instructions / Item Note (at the bottom)
+                if (hasNote) ...[
                   const SizedBox(height: 6),
-                  _buildSpecialInstructions(context),
+                  _buildCompactSpecialInstructions(context),
                 ],
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildValueColumn(
-                          value: item.price.toCurrency(),
-                          label: AppStrings.unitPrice,
-                          valueColor: const Color(0xFF1E293B),
-                        ),
-                      ),
-                      Container(height: 24, width: 1, color: Colors.grey[300]),
-                      Expanded(
-                        child: _buildValueColumn(
-                          value: '${item.quantity}',
-                          label: AppStrings.quantity,
-                          valueColor: accentColor,
-                        ),
-                      ),
-                      Container(height: 24, width: 1, color: Colors.grey[300]),
-                      Expanded(
-                        child: _buildValueColumn(
-                          value: (item.price * item.quantity).toCurrency(),
-                          label: AppStrings.total,
-                          valueColor: accentColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
@@ -385,61 +469,66 @@ class CartItemCard extends StatelessWidget {
     );
   }
 
-  Widget _buildValueColumn({
-    required String value,
-    required String label,
-    required Color valueColor,
-  }) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: valueColor,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-        ),
-      ],
-    );
-  }
-
-  // ✅ Special instructions banner
-  Widget _buildSpecialInstructions(BuildContext context) {
+  // ✅ Special instructions banner - Perfectly Aligned Note Bar at bottom
+  Widget _buildCompactSpecialInstructions(BuildContext context) {
     final instruction = item.specialNotes!;
-    final isLong = instruction.length > 30;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
-      ),
-      child: GestureDetector(
-        onTap: isLong ? () => _showFullInstructionModal(context) : null,
+    return GestureDetector(
+      onTap: item.canEdit ? onEdit : null,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFBEB),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: const Color(0xFFFDE68A), width: 0.8),
+        ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.note_alt, color: Colors.blue[700], size: 14),
-            const SizedBox(width: 6),
+            const Padding(
+              padding: EdgeInsets.only(top: 1),
+              child: Icon(
+                Icons.edit_note_rounded,
+                color: Color(0xFFD97706),
+                size: 14,
+              ),
+            ),
+            const SizedBox(width: 5),
             Expanded(
-              child: Text(
-                isLong ? '${instruction.substring(0, 27)}...' : instruction,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.blue[700],
-                  fontStyle: FontStyle.italic,
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: 'Item Note: ',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFB45309),
+                      ),
+                    ),
+                    TextSpan(
+                      text: instruction,
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF92400E),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            if (isLong) ...[
+            if (item.canEdit) ...[
               const SizedBox(width: 4),
-              Icon(Icons.visibility, color: Colors.blue[700], size: 14),
+              const Padding(
+                padding: EdgeInsets.only(top: 1.5),
+                child: Icon(
+                  Icons.edit_outlined,
+                  color: Color(0xFFD97706),
+                  size: 12,
+                ),
+              ),
             ],
           ],
         ),
@@ -833,44 +922,5 @@ class CartItemCard extends StatelessWidget {
       },
     );
     return result ?? false;
-  }
-
-  // Modal for viewing full special instructions
-  void _showFullInstructionModal(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.note_alt, color: Colors.blue[700], size: 24),
-              const SizedBox(width: 8),
-              Text(AppStrings.orderTaking.specialInstructions),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Text(
-              item.specialNotes!,
-              style: const TextStyle(fontSize: 14, height: 1.5),
-            ),
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text('Close', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
   }
 }

@@ -57,110 +57,107 @@ class CartHeader extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.shopping_cart,
-                  color: Colors.green,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.shopping_cart,
+              color: Colors.green,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        const Text(
-                          'Cart',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        if (statusText != null && statusColor != null) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: statusColor,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              statusText,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+                    const Text(
+                      'Cart',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                    if (tableName != null && tableName!.isNotEmpty) ...[
-                      Text(
-                        tableName!.startsWith('Table')
-                            ? tableName!
-                            : 'Table: $tableName',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w500,
+                    if (statusText != null && statusColor != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          statusText,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                      if (selectedLocation != null && selectedLocation!.isNotEmpty)
-                        Text(
-                          'Location: $selectedLocation',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.orange,
-                          ),
-                        ),
                     ],
                   ],
                 ),
-              ),
-              if (showClearAll)
-                Container(
-                  margin: const EdgeInsets.only(left: 8),
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      await HapticHelper.triggerFeedback();
-                      onClearCart();
-                    },
-                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
-                    label: Text(AppStrings.orderTaking.clearAll),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red[600],
-                      side: BorderSide(color: Colors.red[300]!),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      minimumSize: const Size(0, 32),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                if (tableName != null && tableName!.isNotEmpty) ...[
+                  Text(
+                    tableName!.startsWith('Table')
+                        ? tableName!
+                        : 'Table: $tableName',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ),
-            ],
+                  if (selectedLocation != null &&
+                      selectedLocation!.isNotEmpty)
+                    Text(
+                      'Location: $selectedLocation',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange,
+                      ),
+                    ),
+                ],
+              ],
+            ),
           ),
+          if (showClearAll)
+            Container(
+              margin: const EdgeInsets.only(left: 8),
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  await HapticHelper.triggerFeedback();
+                  onClearCart();
+                },
+                icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                label: Text(AppStrings.orderTaking.clearAll),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red[600],
+                  side: BorderSide(color: Colors.red[300]!),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  minimumSize: const Size(0, 32),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

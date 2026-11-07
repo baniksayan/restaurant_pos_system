@@ -13,6 +13,7 @@ import 'bill_success_dialog.dart';
 import 'split_bill_picker.dart';
 import 'customer_info_step.dart';
 import 'take_payment_step.dart';
+import '../utils/bill_item_merger.dart';
 import 'package:restaurant_pos_system/features/payment/models/tender_line.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
@@ -242,6 +243,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
     return Consumer2<BillingProvider, TaxProvider>(
       builder: (context, billingProvider, taxProvider, child) {
         final effectiveCartItems = _effectiveCartItems(context);
+        final mergedCartItems = mergeCartItems(effectiveCartItems);
         final subtotal = billingProvider.calculateSubtotal(
           effectiveCartItems,
         );
@@ -326,7 +328,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                                         // Short Order Summary (No repeated Order Number!)
                                         _buildShortOrderSummary(
                                           context,
-                                          effectiveCartItems,
+                                          mergedCartItems,
                                         ),
                                         const SizedBox(height: 12),
 
@@ -365,7 +367,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
 
                                         // Order Items List
                                         _buildOrderItemsSection(
-                                          effectiveCartItems,
+                                          mergedCartItems,
                                         ),
                                         const SizedBox(height: 12),
 
@@ -1001,7 +1003,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
     if (!context.mounted) return;
     try {
       final billBytes = await billingProvider.generateBill(
-        cartItems: _effectiveCartItems(context),
+        cartItems: mergeCartItems(_effectiveCartItems(context)),
         orderNumber: widget.orderNumber,
         subtotal: subtotal,
         gstAmount: gstAmount,

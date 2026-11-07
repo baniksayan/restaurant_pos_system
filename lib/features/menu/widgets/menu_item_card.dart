@@ -84,11 +84,21 @@ class _MenuItemCardState extends State<MenuItemCard>
     _focusNode = FocusNode();
     _focusNode.addListener(() {
       if (!_focusNode.hasFocus) {
-        final val = _quantityController.text;
+        final val = _quantityController.text.trim();
         final qty = int.tryParse(val) ?? 0;
         if (qty <= 0) {
-          _quantityController.text = '1';
-          widget.onQuantityChanged?.call(1);
+          // If the user left the field blank or 0 and unfocused, remove from cart and collapse overlay
+          widget.onQuantityChanged?.call(0);
+          if (mounted) {
+            setState(() {
+              _locallySelected = false;
+            });
+            _animationController.reverse();
+          }
+        } else {
+          final clamped = qty > 99 ? 99 : qty;
+          _quantityController.text = clamped.toString();
+          widget.onQuantityChanged?.call(clamped);
         }
       }
     });
@@ -117,6 +127,7 @@ class _MenuItemCardState extends State<MenuItemCard>
       });
       _animationController.forward();
     } else if (widget.quantity == 0 && _locallySelected) {
+      _focusNode.unfocus();
       setState(() {
         _locallySelected = false;
       });
@@ -143,6 +154,7 @@ class _MenuItemCardState extends State<MenuItemCard>
 
     if (widget.quantity == 0 && !_locallySelected) {
       // **IMMEDIATE UI UPDATE: Show blur instantly**
+      _quantityController.text = '1';
       setState(() {
         _locallySelected = true;
       });
@@ -169,36 +181,26 @@ class _MenuItemCardState extends State<MenuItemCard>
   }
 
   void _handleQuantityChanged(String val) {
-    if (val.isEmpty) {
+    if (val.isEmpty || val == '0') {
+      // User erased all digits / pressed cross button to remove all:
+      // 1. Immediately reflect 0 in the cart (removes item)
+      widget.onQuantityChanged?.call(0);
+      _quantityController.text = '';
+      // 2. Unfocus and collapse the blur overlay so it goes away cleanly
+      _focusNode.unfocus();
+      if (mounted) {
+        setState(() {
+          _locallySelected = false;
+        });
+        _animationController.reverse();
+      }
       return;
     }
 
-    // Strip leading zeros (except single '0')
-    if (val.length > 1 && val.startsWith('0')) {
-      val = val.replaceFirst(RegExp(r'^0+'), '');
-      if (val.isEmpty) val = '1';
-      _quantityController.text = val;
-      _quantityController.selection = TextSelection.fromPosition(
-        TextPosition(offset: val.length),
-      );
-    }
-
-    var newQty = int.tryParse(val);
+    final newQty = int.tryParse(val);
     if (newQty != null) {
-      if (newQty <= 0) {
-        newQty = 1;
-        _quantityController.text = '1';
-        _quantityController.selection = TextSelection.fromPosition(
-          const TextPosition(offset: 1),
-        );
-      } else if (newQty > 99) {
-        newQty = 99;
-        _quantityController.text = '99';
-        _quantityController.selection = TextSelection.fromPosition(
-          const TextPosition(offset: 2),
-        );
-      }
-      widget.onQuantityChanged?.call(newQty);
+      final clamped = newQty > 99 ? 99 : newQty;
+      widget.onQuantityChanged?.call(clamped);
     }
   }
 
@@ -666,14 +668,14 @@ class _MenuItemCardState extends State<MenuItemCard>
             color: Colors.red[600]!,
           ),
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            margin: const EdgeInsets.symmetric(horizontal: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
               color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: SizedBox(
-              width: 28,
+              width: 38,
               child: TextField(
                 controller: _quantityController,
                 focusNode: _focusNode,
@@ -685,12 +687,29 @@ class _MenuItemCardState extends State<MenuItemCard>
                   fontSize: 15,
                 ),
                 cursorColor: AppColors.primary,
+                cursorWidth: 2.0,
+                cursorRadius: const Radius.circular(1.0),
                 decoration: const InputDecoration(
                   border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  filled: false,
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(vertical: 2),
                 ),
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(2),
+                  _QuantityInputFormatter(),
+                ],
+                onTap: () {
+                  _quantityController.selection = TextSelection(
+                    baseOffset: 0,
+                    extentOffset: _quantityController.text.length,
+                  );
+                },
                 onChanged: _handleQuantityChanged,
               ),
             ),
@@ -913,5 +932,25 @@ class _SubtleTappingBadgeState extends State<_SubtleTappingBadge>
         ),
       ),
     );
+  }
+}
+
+class _QuantityInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    var newText = newValue.text;
+    // Strip leading zeros if more than 1 character (e.g. "05" -> "5")
+    if (newText.length > 1 && newText.startsWith('0')) {
+      newText = newText.replaceFirst(RegExp(r'^0+'), '');
+      if (newText.isEmpty) newText = '0';
+      return TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: newText.length),
+      );
+    }
+    return newValue;
   }
 }

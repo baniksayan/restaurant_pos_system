@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/shared/widgets/cards/app_card.dart';
+import '../utils/bill_item_merger.dart';
 
 class ItemsListCard extends StatelessWidget {
   final List cartItems;
@@ -9,6 +10,7 @@ class ItemsListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mergedItems = mergeDynamicCartItems(cartItems);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -18,7 +20,7 @@ class ItemsListCard extends StatelessWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          ...cartItems.map(
+          ...mergedItems.map(
             (item) => Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(12),

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
@@ -606,16 +607,48 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
                                   pinned: false,
                                   elevation: 0,
                                   backgroundColor: Colors.transparent,
+                                  surfaceTintColor: Colors.transparent,
                                   automaticallyImplyLeading: false,
-                                  toolbarHeight: _showSearchBar ? 140 : 60,
-                                  flexibleSpace: SafeArea(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        if (_showSearchBar)
-                                          const MenuSearchBar(),
-                                        const CategoryTabs(),
-                                      ],
+                                  toolbarHeight: _showSearchBar ? 104 : 48,
+                                  flexibleSpace: ClipRect(
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(
+                                        sigmaX: 20,
+                                        sigmaY: 20,
+                                      ),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.75,
+                                          ),
+                                          border: Border(
+                                            bottom: BorderSide(
+                                              color: const Color(
+                                                0xFFE2E8F0,
+                                              ).withValues(alpha: 0.7),
+                                              width: 1.0,
+                                            ),
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(
+                                                0xFF0F172A,
+                                              ).withValues(alpha: 0.03),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            if (_showSearchBar)
+                                              const MenuSearchBar(),
+                                            const CategoryTabs(),
+                                            const SizedBox(height: 6),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -623,18 +656,9 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
                             },
                             body: ClipRRect(
                               borderRadius: BorderRadius.circular(16),
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                  bottom:
-                                      _selectedTableId != null &&
-                                              cartProvider.newItemsCount > 0
-                                          ? 95
-                                          : 0,
-                                ),
-                                child: MenuGrid(
-                                  canOrder: _selectedTableId != null,
-                                  onAddToCart: _handleAddToCart,
-                                ),
+                              child: MenuGrid(
+                                canOrder: _selectedTableId != null,
+                                onAddToCart: _handleAddToCart,
                               ),
                             ),
                           ),
@@ -645,7 +669,7 @@ class _StandaloneMenuViewState extends State<StandaloneMenuView> {
                             Positioned(
                               left: 0,
                               right: 0,
-                              bottom: 0,
+                              bottom: 12,
                               child: CartFooter(onPlaceOrder: _navigateToCart),
                             ),
                         ],

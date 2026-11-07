@@ -394,10 +394,14 @@ class AnimatedCartProvider extends ChangeNotifier {
   }
 
   // Mark items as KOT generated
-  void markItemsAsKotGenerated(List<String> cartKeys, String kotNumber) {
+  void markItemsAsKotGenerated(
+    List<String> cartKeys,
+    String kotNumber, {
+    String? kotNote,
+  }) {
     for (String cartKey in cartKeys) {
       if (_cartItems.containsKey(cartKey)) {
-        _cartItems[cartKey]!.markAsKotGenerated(kotNumber);
+        _cartItems[cartKey]!.markAsKotGenerated(kotNumber, kotNote: kotNote);
       }
     }
     notifyListeners();
@@ -654,6 +658,9 @@ class AnimatedCartProvider extends ChangeNotifier {
         discountPercentage: discountPercentage,
         isKotGenerated: isKotGenerated,
         kotNumber: kotNumber.isNotEmpty ? kotNumber : null,
+        kotNote: (raw['kotNote'] ?? '').toString().isNotEmpty
+            ? raw['kotNote'].toString()
+            : null,
         kotGeneratedAt: kotGeneratedAt,
       );
     }
@@ -691,6 +698,7 @@ class AnimatedCartProvider extends ChangeNotifier {
             'discountPercentage': item.discountPercentage,
             'isKotGenerated': item.isKotGenerated,
             'kotNumber': item.kotNumber,
+            'kotNote': item.kotNote,
             'kotGeneratedAt': item.kotGeneratedAt?.toIso8601String(),
           }),
         );
@@ -733,6 +741,7 @@ class AnimatedCartProvider extends ChangeNotifier {
                 (itemData['discountPercentage'] ?? 0.0).toDouble(),
             isKotGenerated: itemData['isKotGenerated'] ?? false,
             kotNumber: itemData['kotNumber'],
+            kotNote: itemData['kotNote'],
             kotGeneratedAt: kotGeneratedAt,
           );
         }
@@ -766,6 +775,7 @@ class CartItem {
   double? discountPercentage;
   bool isKotGenerated; // Track if this item has been KOT'd
   String? kotNumber; // Store KOT number for reference
+  String? kotNote; // Whole-KOT / Kitchen instruction note
   DateTime? kotGeneratedAt; // When was KOT generated
 
   CartItem({
@@ -783,16 +793,58 @@ class CartItem {
     this.discountPercentage,
     this.isKotGenerated = false,
     this.kotNumber,
+    this.kotNote,
     this.kotGeneratedAt,
   });
 
   // Mark this item as KOT generated
-  void markAsKotGenerated(String kotNo) {
+  void markAsKotGenerated(String kotNo, {String? kotNote}) {
     isKotGenerated = true;
     kotNumber = kotNo;
+    if (kotNote != null && kotNote.trim().isNotEmpty) {
+      this.kotNote = kotNote.trim();
+    }
     kotGeneratedAt = DateTime.now();
   }
 
   // Check if item can be edited (not KOT'd)
   bool get canEdit => !isKotGenerated;
+
+  CartItem copyWith({
+    String? id,
+    String? name,
+    double? price,
+    int? quantity,
+    String? tableId,
+    String? tableName,
+    String? imageUrl,
+    String? specialNotes,
+    String? categoryId,
+    String? categoryName,
+    String? uom,
+    double? discountPercentage,
+    bool? isKotGenerated,
+    String? kotNumber,
+    String? kotNote,
+    DateTime? kotGeneratedAt,
+  }) {
+    return CartItem(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      price: price ?? this.price,
+      quantity: quantity ?? this.quantity,
+      tableId: tableId ?? this.tableId,
+      tableName: tableName ?? this.tableName,
+      imageUrl: imageUrl ?? this.imageUrl,
+      specialNotes: specialNotes ?? this.specialNotes,
+      categoryId: categoryId ?? this.categoryId,
+      categoryName: categoryName ?? this.categoryName,
+      uom: uom ?? this.uom,
+      discountPercentage: discountPercentage ?? this.discountPercentage,
+      isKotGenerated: isKotGenerated ?? this.isKotGenerated,
+      kotNumber: kotNumber ?? this.kotNumber,
+      kotNote: kotNote ?? this.kotNote,
+      kotGeneratedAt: kotGeneratedAt ?? this.kotGeneratedAt,
+    );
+  }
 }

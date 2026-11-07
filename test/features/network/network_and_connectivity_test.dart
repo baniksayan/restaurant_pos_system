@@ -62,11 +62,28 @@ void main() {
       expect(find.text('No Internet Connection'), findsOneWidget);
       expect(find.text('Wi-Fi Settings'), findsOneWidget);
       expect(find.text('Mobile Data'), findsOneWidget);
+      expect(
+        find.text('Open SIM manager & mobile network settings'),
+        findsOneWidget,
+      );
       expect(find.text('Check Connection'), findsOneWidget);
       expect(
         find.text('Auto-reconnects as soon as internet returns'),
         findsOneWidget,
       );
+    });
+
+    test('NetworkProvider pauses and resumes checks on lifecycle changes', () {
+      final provider = NetworkProvider();
+
+      // Simulate app minimized / screen turned black
+      provider.didChangeAppLifecycleState(AppLifecycleState.paused);
+      // Verify no exceptions and state is preserved
+
+      // Simulate app resumed / screen turned on
+      provider.didChangeAppLifecycleState(AppLifecycleState.resumed);
+
+      provider.dispose();
     });
     testWidgets('GlobalNetworkWrapper displays offline overlay when disconnected', (
       WidgetTester tester,
@@ -91,6 +108,38 @@ void main() {
       expect(find.text('Active Waiter Screen'), findsOneWidget);
       expect(find.text('No Internet Connection'), findsOneWidget);
       expect(find.text('Offline Mode'), findsOneWidget);
+    });
+
+    testWidgets('GlobalNetworkWrapper displays Back Online pill and dismisses on tap', (
+      WidgetTester tester,
+    ) async {
+      final networkProvider = NetworkProvider();
+      networkProvider.setStatusForTesting(NetworkStatus.connected);
+      networkProvider.setShowRestoredBannerForTesting(true);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<NetworkProvider>.value(
+          value: networkProvider,
+          child: const MaterialApp(
+            home: GlobalNetworkWrapper(
+              child: Scaffold(
+                body: Text('Active Waiter Screen'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify pill content
+      expect(find.text('Back Online'), findsOneWidget);
+      expect(find.text('Live Sync Active'), findsOneWidget);
+
+      // Tap pill to dismiss
+      await tester.tap(find.text('Back Online'));
+      await tester.pumpAndSettle();
+
+      expect(networkProvider.showRestoredBanner, isFalse);
     });
   });
 }

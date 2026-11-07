@@ -18,6 +18,7 @@ import 'package:restaurant_pos_system/features/order_taking/views/cart_view.dart
 import 'package:restaurant_pos_system/features/payment/views/payment_view.dart';
 import 'package:restaurant_pos_system/shared/services/pdf_service.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/premium_refresh_indicator.dart';
+import 'package:restaurant_pos_system/features/billing/utils/bill_item_merger.dart';
 import '../models/order_management_model.dart';
 
 class OrderDetailView extends StatefulWidget {
@@ -1165,21 +1166,49 @@ class _OrderDetailViewState extends State<OrderDetailView>
 
   Widget _buildOrderItemsCard() {
     final List<Widget> itemWidgets = [];
+    int totalItemCount = 0;
 
     if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
       final list = _detailModel!.data!.first.orderDetailList;
       if (list != null && list.isNotEmpty) {
+        final Map<String, _MergedOrderItem> mergedMap = {};
         for (final d in list) {
-          final qty = d.productQty ?? 0;
+          final name = d.productName ?? 'Item';
           final price = (d.itemPrice ?? 0).toDouble();
-          final total = (d.totPrice ?? 0).toDouble();
-          itemWidgets.add(
-            _buildItemRow(
-              name: d.productName ?? 'Item',
-              quantity: qty.toInt(),
+          final qty = (d.productQty ?? 0).toInt();
+          final total = (d.totPrice ?? (price * qty)).toDouble();
+          final key =
+              '${name.trim().toLowerCase()}##${price.toStringAsFixed(2)}';
+
+          if (!mergedMap.containsKey(key)) {
+            mergedMap[key] = _MergedOrderItem(
+              name: name,
+              quantity: qty,
               price: price,
               total: total,
               instruction: d.instruction,
+            );
+          } else {
+            final prev = mergedMap[key]!;
+            mergedMap[key] = _MergedOrderItem(
+              name: prev.name,
+              quantity: prev.quantity + qty,
+              price: prev.price,
+              total: prev.total + total,
+              instruction:
+                  BillItemMerger.mergeNotes(prev.instruction, d.instruction),
+            );
+          }
+        }
+        for (final m in mergedMap.values) {
+          totalItemCount += m.quantity;
+          itemWidgets.add(
+            _buildItemRow(
+              name: m.name,
+              quantity: m.quantity,
+              price: m.price,
+              total: m.total,
+              instruction: m.instruction,
             ),
           );
         }
@@ -1187,21 +1216,43 @@ class _OrderDetailViewState extends State<OrderDetailView>
     }
 
     if (itemWidgets.isEmpty) {
+      final Map<String, _MergedOrderItem> mergedMap = {};
       for (final item in widget.order.items) {
-        itemWidgets.add(
-          _buildItemRow(
+        final key =
+            '${item.productName.trim().toLowerCase()}##${item.price.toStringAsFixed(2)}';
+        if (!mergedMap.containsKey(key)) {
+          mergedMap[key] = _MergedOrderItem(
             name: item.productName,
             quantity: item.quantity,
             price: item.price,
             total: item.quantity * item.price,
+            instruction: null,
+          );
+        } else {
+          final prev = mergedMap[key]!;
+          mergedMap[key] = _MergedOrderItem(
+            name: prev.name,
+            quantity: prev.quantity + item.quantity,
+            price: prev.price,
+            total: prev.total + (item.quantity * item.price),
+            instruction: prev.instruction,
+          );
+        }
+      }
+      for (final m in mergedMap.values) {
+        totalItemCount += m.quantity;
+        itemWidgets.add(
+          _buildItemRow(
+            name: m.name,
+            quantity: m.quantity,
+            price: m.price,
+            total: m.total,
           ),
         );
       }
     }
 
-    final itemCount =
-        _detailModel?.data?.first.orderDetailList?.length ??
-        widget.order.items.length;
+    final itemCount = totalItemCount;
 
     return Container(
       decoration: BoxDecoration(
@@ -2231,4 +2282,20 @@ class _OrderDetailViewState extends State<OrderDetailView>
       }
     }
   }
+}
+
+class _MergedOrderItem {
+  final String name;
+  final int quantity;
+  final double price;
+  final double total;
+  final String? instruction;
+
+  const _MergedOrderItem({
+    required this.name,
+    required this.quantity,
+    required this.price,
+    required this.total,
+    this.instruction,
+  });
 }

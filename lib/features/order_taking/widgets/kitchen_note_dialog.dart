@@ -1,7 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
+import 'package:restaurant_pos_system/core/utils/no_emoji_formatter.dart';
 
 /// Modal dialog for capturing an order-level note for the kitchen (KOT).
 ///
@@ -49,19 +51,16 @@ class KitchenNoteDialog extends StatefulWidget {
 class _KitchenNoteDialogState extends State<KitchenNoteDialog> {
   late final TextEditingController _controller;
 
-  static const List<String> _quickSuggestions = [
-    'Serve together',
-    'No onions',
-    'Less spicy',
-    'Extra spicy',
-    'Kids meal first',
-    'Allergies at table',
-  ];
+  static const int _maxCharacters = 75;
 
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.initialNote);
+    final clean = removeEmojis(widget.initialNote);
+    final initial = clean.length > _maxCharacters
+        ? clean.substring(0, _maxCharacters)
+        : clean;
+    _controller = TextEditingController(text: initial);
     _controller.addListener(_onTextChanged);
   }
 
@@ -74,19 +73,6 @@ class _KitchenNoteDialogState extends State<KitchenNoteDialog> {
     _controller.removeListener(_onTextChanged);
     _controller.dispose();
     super.dispose();
-  }
-
-  void _applySuggestion(String suggestion) async {
-    await HapticHelper.triggerFeedback();
-    final current = _controller.text.trim();
-    if (current.isEmpty) {
-      _controller.text = suggestion;
-    } else if (!current.toLowerCase().contains(suggestion.toLowerCase())) {
-      _controller.text = '$current, $suggestion';
-    }
-    _controller.selection = TextSelection.fromPosition(
-      TextPosition(offset: _controller.text.length),
-    );
   }
 
   @override
@@ -102,7 +88,7 @@ class _KitchenNoteDialogState extends State<KitchenNoteDialog> {
         behavior: HitTestBehavior.opaque,
         onTap: () {
           if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop('');
+            Navigator.of(context).pop(null);
           }
         },
         child: Stack(
@@ -188,17 +174,17 @@ class _KitchenNoteDialogState extends State<KitchenNoteDialog> {
 
                                 // Main Content Body
                                 Padding(
-                                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+                                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
+                                      // Section Header with Counter Badge
+                                      _buildNoteHeader(isDark),
+                                      const SizedBox(height: 8),
+
                                       // Multi-line Text Area
                                       _buildNoteInputField(isDark),
                                       const SizedBox(height: 14),
-
-                                      // Quick Suggestion Chips
-                                      _buildSuggestionsSection(isDark),
-                                      const SizedBox(height: 16),
 
                                       // Info Callout Banner
                                       _buildInfoCallout(isDark),
@@ -297,13 +283,13 @@ class _KitchenNoteDialogState extends State<KitchenNoteDialog> {
             ),
           ),
 
-          // Close button
+          // Close button (Cancels and returns null)
           IconButton(
             icon: const Icon(Icons.close_rounded, size: 18),
             onPressed: () async {
               await HapticHelper.triggerFeedback();
               if (context.mounted) {
-                Navigator.of(context).pop('');
+                Navigator.of(context).pop(null);
               }
             },
             style: IconButton.styleFrom(
@@ -321,13 +307,77 @@ class _KitchenNoteDialogState extends State<KitchenNoteDialog> {
     );
   }
 
+  Widget _buildNoteHeader(bool isDark) {
+    final currentLength = _controller.text.length;
+    final isNearLimit = currentLength >= _maxCharacters;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.edit_note_rounded,
+              size: 15,
+              color: isDark ? const Color(0xFF94A3B8) : AppColors.accent,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              'KITCHEN NOTE',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+                color: isDark
+                    ? const Color(0xFF94A3B8)
+                    : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(
+            color: isNearLimit
+                ? AppColors.warning.withValues(alpha: isDark ? 0.25 : 0.15)
+                : (isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.black.withValues(alpha: 0.04)),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isNearLimit
+                  ? AppColors.warning.withValues(alpha: 0.50)
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : Colors.black.withValues(alpha: 0.06)),
+              width: 0.8,
+            ),
+          ),
+          child: Text(
+            '$currentLength/$_maxCharacters',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: isNearLimit
+                  ? AppColors.warning
+                  : (isDark
+                      ? const Color(0xFF94A3B8)
+                      : AppColors.textSecondary),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildNoteInputField(bool isDark) {
     return Container(
       decoration: BoxDecoration(
         color: isDark
             ? const Color(0xFF1E293B).withValues(alpha: 0.45)
             : Colors.white.withValues(alpha: 0.70),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.12)
@@ -342,155 +392,68 @@ class _KitchenNoteDialogState extends State<KitchenNoteDialog> {
           ),
         ],
       ),
-      child: Column(
-        children: [
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            maxLines: 3,
-            minLines: 2,
-            textCapitalization: TextCapitalization.sentences,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : AppColors.textPrimary,
-              height: 1.35,
-            ),
-            decoration: InputDecoration(
-              hintText: 'e.g. serve together, no onions across the table, allergy alert...',
-              hintStyle: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: isDark ? const Color(0xFF64748B) : AppColors.textHint,
-                height: 1.35,
-              ),
-              prefixIcon: Padding(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: Icon(
-                  Icons.edit_note_rounded,
-                  size: 22,
-                  color: isDark ? const Color(0xFF94A3B8) : AppColors.accent,
-                ),
-              ),
-              suffixIcon: _controller.text.isNotEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      child: IconButton(
-                        icon: const Icon(Icons.clear_rounded, size: 16),
-                        color: isDark ? const Color(0xFF94A3B8) : AppColors.textHint,
-                        onPressed: () {
-                          _controller.clear();
-                        },
-                      ),
-                    )
-                  : null,
-              filled: false,
-              isDense: true,
-              contentPadding: const EdgeInsets.fromLTRB(12, 14, 14, 14),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: AppColors.accent, width: 1.6),
-              ),
-            ),
-          ),
+      child: TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLines: 3,
+        minLines: 2,
+        maxLength: _maxCharacters,
+        inputFormatters: [
+          LengthLimitingTextInputFormatter(_maxCharacters),
+          noEmojiFormatter,
         ],
+        buildCounter: (
+          context, {
+          required currentLength,
+          required isFocused,
+          maxLength,
+        }) =>
+            null,
+        textCapitalization: TextCapitalization.sentences,
+        style: TextStyle(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w600,
+          color: isDark ? Colors.white : AppColors.textPrimary,
+          height: 1.35,
+        ),
+        decoration: InputDecoration(
+          hintText: 'e.g. serve together, no onions, extra spicy...',
+          hintStyle: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: isDark ? const Color(0xFF64748B) : AppColors.textHint,
+            height: 1.35,
+          ),
+          counterText: '',
+          suffixIcon: _controller.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear_rounded, size: 16),
+                  color: isDark ? const Color(0xFF94A3B8) : AppColors.textHint,
+                  splashRadius: 16,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 36, minHeight: 36),
+                  onPressed: () {
+                    _controller.clear();
+                  },
+                )
+              : null,
+          suffixIconConstraints:
+              const BoxConstraints(minWidth: 36, minHeight: 36),
+          filled: false,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+          ),
+        ),
       ),
-    );
-  }
-
-  Widget _buildSuggestionsSection(bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              Icons.flash_on_rounded,
-              size: 13,
-              color: isDark ? const Color(0xFF94A3B8) : AppColors.accent,
-            ),
-            const SizedBox(width: 5),
-            Text(
-              'QUICK SUGGESTIONS',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
-                color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: _quickSuggestions.map((suggestion) {
-            final isIncluded = _controller.text
-                .toLowerCase()
-                .contains(suggestion.toLowerCase());
-
-            return Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => _applySuggestion(suggestion),
-                borderRadius: BorderRadius.circular(20),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isIncluded
-                        ? AppColors.accent.withValues(alpha: isDark ? 0.25 : 0.15)
-                        : (isDark
-                            ? Colors.white.withValues(alpha: 0.06)
-                            : Colors.white.withValues(alpha: 0.60)),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isIncluded
-                          ? AppColors.accent.withValues(alpha: 0.60)
-                          : (isDark
-                              ? Colors.white.withValues(alpha: 0.12)
-                              : Colors.white.withValues(alpha: 0.90)),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isIncluded) ...[
-                        const Icon(
-                          Icons.check_rounded,
-                          size: 12,
-                          color: AppColors.accent,
-                        ),
-                        const SizedBox(width: 4),
-                      ],
-                      Text(
-                        suggestion,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight:
-                              isIncluded ? FontWeight.w700 : FontWeight.w500,
-                          color: isIncluded
-                              ? AppColors.accent
-                              : (isDark
-                                  ? const Color(0xFFCBD5E1)
-                                  : AppColors.textSecondary),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
     );
   }
 
@@ -538,6 +501,8 @@ class _KitchenNoteDialogState extends State<KitchenNoteDialog> {
   }
 
   Widget _buildFooter(BuildContext context, bool isDark) {
+    final hasText = _controller.text.trim().isNotEmpty;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
       decoration: BoxDecoration(
@@ -555,72 +520,107 @@ class _KitchenNoteDialogState extends State<KitchenNoteDialog> {
       ),
       child: Row(
         children: [
-          // Skip Button
+          // Skip Button - Highlighted as primary action when text is empty
           Expanded(
             flex: 2,
             child: SizedBox(
               height: 46,
-              child: OutlinedButton(
-                onPressed: () async {
-                  await HapticHelper.triggerFeedback();
-                  if (context.mounted) {
-                    Navigator.of(context).pop('');
-                  }
-                },
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: isDark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : Colors.white.withValues(alpha: 0.50),
-                  foregroundColor:
-                      isDark ? const Color(0xFFCBD5E1) : AppColors.textSecondary,
-                  side: BorderSide(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.15)
-                        : const Color(0xFFCBD5E1),
-                    width: 1.2,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                ),
-                child: const Text(
-                  'Skip',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
+              child: hasText
+                  ? OutlinedButton(
+                      onPressed: () async {
+                        await HapticHelper.triggerFeedback();
+                        if (context.mounted) {
+                          Navigator.of(context).pop('');
+                        }
+                      },
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.white.withValues(alpha: 0.50),
+                        foregroundColor: isDark
+                            ? const Color(0xFFCBD5E1)
+                            : AppColors.textSecondary,
+                        side: BorderSide(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.15)
+                              : const Color(0xFFCBD5E1),
+                          width: 1.2,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                      ),
+                      child: const Text(
+                        'Skip',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  : ElevatedButton(
+                      onPressed: () async {
+                        await HapticHelper.triggerFeedback();
+                        if (context.mounted) {
+                          Navigator.of(context).pop('');
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 2,
+                        shadowColor: AppColors.primary.withValues(alpha: 0.3),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                      ),
+                      child: const Text(
+                        'Skip',
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
             ),
           ),
           const SizedBox(width: 12),
 
-          // Add & Send Button
+          // Add & Send Button - Disabled when text is empty, highlighted when text entered
           Expanded(
             flex: 3,
             child: SizedBox(
               height: 46,
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  await HapticHelper.triggerFeedback();
-                  if (!context.mounted) return;
-                  Navigator.of(context).pop(_controller.text.trim());
-                },
+              child: ElevatedButton(
+                onPressed: hasText
+                    ? () async {
+                        await HapticHelper.triggerFeedback();
+                        if (!context.mounted) return;
+                        Navigator.of(context).pop(_controller.text.trim());
+                      }
+                    : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  elevation: 3,
+                  disabledBackgroundColor: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : const Color(0xFFE2E8F0),
+                  disabledForegroundColor: isDark
+                      ? const Color(0xFF64748B)
+                      : const Color(0xFF94A3B8),
+                  elevation: hasText ? 3 : 0,
                   shadowColor: AppColors.primary.withValues(alpha: 0.35),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                 ),
-                icon: const Icon(Icons.send_rounded, size: 16),
-                label: Text(
-                  _controller.text.trim().isEmpty ? 'Send KOT' : 'Add & Send',
-                  style: const TextStyle(
+                child: const Text(
+                  'Add & Send',
+                  style: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.2,
