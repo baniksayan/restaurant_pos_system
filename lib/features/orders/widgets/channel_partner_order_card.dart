@@ -386,10 +386,15 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
                               style: FilledButton.styleFrom(
                                 backgroundColor: const Color(0xFF10B981),
                                 foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 10),
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                  horizontal: 12,
+                                ),
+                                minimumSize: const Size.fromHeight(38),
+                                visualDensity: VisualDensity.compact,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
                               icon: _isProcessing
@@ -404,7 +409,7 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
                                       ),
                                     )
                                   : const Icon(Icons.check_circle_outline_rounded,
-                                      size: 16),
+                                      size: 15),
                               label: Text(
                                 _isProcessing ? 'Accepting...' : 'ACCEPT',
                                 style: const TextStyle(
@@ -425,13 +430,17 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
                                 side: const BorderSide(
                                   color: Color(0xFFFECACA),
                                 ),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                  horizontal: 12,
+                                ),
+                                minimumSize: const Size.fromHeight(38),
+                                visualDensity: VisualDensity.compact,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
-                              icon: const Icon(Icons.cancel_outlined, size: 16),
+                              icon: const Icon(Icons.cancel_outlined, size: 15),
                               label: const Text(
                                 'DECLINE',
                                 style: TextStyle(
@@ -452,9 +461,14 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
                             elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 8,
+                              horizontal: 12,
+                            ),
+                            minimumSize: const Size.fromHeight(38),
+                            visualDensity: VisualDensity.compact,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                           ),
                           onPressed: widget.onTap,

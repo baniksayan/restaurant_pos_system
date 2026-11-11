@@ -156,6 +156,19 @@ class HiveService {
     await posBox.delete(StorageKeys.authData);
   }
 
+  /// Full dynamic display name of the currently logged-in staff / waiter.
+  static String? getUserFullName() {
+    final userDetails = getAuthData()?.data?.userDetails;
+    if (userDetails != null) {
+      final parts = [userDetails.firstName, userDetails.lastName]
+          .where((s) => s != null && s.trim().isNotEmpty)
+          .join(' ')
+          .trim();
+      if (parts.isNotEmpty) return parts;
+    }
+    return null;
+  }
+
   // User ID Management (Updated methods using both posBox and authBox)
   static String? getUserId() {
     return posBox.get(StorageKeys.userId);
@@ -474,6 +487,106 @@ class HiveService {
       }
     } catch (e) {
       debugPrint('Error getting order bill ID: $e');
+    }
+    return null;
+  }
+
+  static Future<void> saveBillTimestamp(String identifier, DateTime timestamp) async {
+    try {
+      if (identifier.trim().isEmpty) return;
+      final clean = identifier.replaceAll('#', '').trim();
+      await posBox.put('bill_time_$clean', timestamp.toIso8601String());
+      debugPrint('[HiveService] Saved bill timestamp for $clean: $timestamp');
+    } catch (e) {
+      debugPrint('[HiveService] Error saving bill timestamp: $e');
+    }
+  }
+
+  static Future<void> saveKotNote(String identifier, String note) async {
+    try {
+      if (identifier.trim().isEmpty || note.trim().isEmpty) return;
+      final clean = identifier.replaceAll('#', '').trim();
+      await posBox.put('kot_note_$clean', note.trim());
+      debugPrint('[HiveService] Saved KOT note for $clean: $note');
+    } catch (e) {
+      debugPrint('[HiveService] Error saving KOT note: $e');
+    }
+  }
+
+  static Future<void> saveCustomerName(String identifier, String name) async {
+    try {
+      if (identifier.trim().isEmpty || name.trim().isEmpty) return;
+      final clean = identifier.replaceAll('#', '').trim();
+      await posBox.put('cust_name_$clean', name.trim());
+      debugPrint('[HiveService] Saved customer name for $clean: $name');
+    } catch (e) {
+      debugPrint('[HiveService] Error saving customer name: $e');
+    }
+  }
+
+  static String? getCustomerName(String identifier) {
+    try {
+      if (identifier.trim().isEmpty) return null;
+      final clean = identifier.replaceAll('#', '').trim();
+      final name = posBox.get('cust_name_$clean');
+      if (name != null && name is String && name.trim().isNotEmpty) {
+        return name.trim();
+      }
+    } catch (e) {
+      debugPrint('[HiveService] Error getting customer name: $e');
+    }
+    return null;
+  }
+
+  static String? getKotNote(String identifier) {
+    try {
+      if (identifier.trim().isEmpty) return null;
+      final clean = identifier.replaceAll('#', '').trim();
+      final note = posBox.get('kot_note_$clean');
+      if (note != null && note is String && note.trim().isNotEmpty) {
+        return note.trim();
+      }
+    } catch (e) {
+      debugPrint('[HiveService] Error getting KOT note: $e');
+    }
+    return null;
+  }
+
+  static DateTime? getBillTimestamp(String identifier) {
+    try {
+      if (identifier.trim().isEmpty) return null;
+      final clean = identifier.replaceAll('#', '').trim();
+      final raw = posBox.get('bill_time_$clean');
+      if (raw is String && raw.isNotEmpty) {
+        return DateTime.tryParse(raw)?.toLocal();
+      }
+    } catch (e) {
+      debugPrint('[HiveService] Error getting bill timestamp: $e');
+    }
+    return null;
+  }
+
+  static Future<void> saveOrderNo(String identifier, String orderNo) async {
+    try {
+      if (identifier.trim().isEmpty || orderNo.trim().isEmpty) return;
+      final clean = identifier.replaceAll('#', '').trim();
+      await posBox.put('order_no_$clean', orderNo.trim());
+      debugPrint('[HiveService] Saved order number for $clean: $orderNo');
+    } catch (e) {
+      debugPrint('[HiveService] Error saving order number: $e');
+    }
+  }
+
+  static String? getOrderNo(String identifier) {
+    try {
+      if (identifier.trim().isEmpty) return null;
+      final clean = identifier.replaceAll('#', '').trim();
+      final no = posBox.get('order_no_$clean');
+      if (no != null && no is String && no.trim().isNotEmpty) {
+        return no.trim();
+      }
+    } catch (e) {
+      debugPrint('[HiveService] Error getting order number: $e');
     }
     return null;
   }

@@ -15,6 +15,7 @@ import 'package:restaurant_pos_system/features/dashboard/providers/table_provide
 import 'package:restaurant_pos_system/features/orders/providers/ready_to_collect_provider.dart'
     show ServedDateFilter;
 import 'package:restaurant_pos_system/shared/widgets/dialogs/app_date_range_picker_dialog.dart';
+import 'package:restaurant_pos_system/shared/widgets/dialogs/app_glass_dialog.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/premium_refresh_indicator.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/shimmer_effect.dart';
 import 'payment_view.dart';
@@ -1218,6 +1219,17 @@ class _PendingPaymentBillCard extends StatelessWidget {
                 : '#${bill.billNo}')
             : (bill.orderNo.isNotEmpty ? '#${bill.orderNo}' : '#BILL');
 
+    final cleanOrderNo = bill.orderNo.isNotEmpty
+        ? (bill.orderNo.startsWith('#') ? bill.orderNo : '#${bill.orderNo}')
+        : '';
+
+    final hasCustomer = bill.customerName.isNotEmpty &&
+        bill.customerName.toLowerCase() != 'walk-in' &&
+        bill.customerName.toLowerCase() != 'walk-in customer' &&
+        bill.customerName.toLowerCase() != 'walk-in guest';
+    final hasOrderNo =
+        cleanOrderNo.isNotEmpty && cleanOrderNo != displayBillNo;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1255,48 +1267,43 @@ class _PendingPaymentBillCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Tier 1: Bill Number Badge + Payment Status Pill
+                // Tier 1: Bill Number Badge (Left) + Status Pill (Right)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Flexible(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3.5,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                          width: 0.8,
                         ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.2),
-                            width: 0.8,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.receipt_rounded,
+                            size: 12,
+                            color: AppColors.primaryDark,
                           ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.receipt_rounded,
-                              size: 12,
+                          const SizedBox(width: 4),
+                          Text(
+                            displayBillNo,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
                               color: AppColors.primaryDark,
+                              letterSpacing: 0.2,
                             ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                displayBillNo,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primaryDark,
-                                  letterSpacing: 0.2,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1324,63 +1331,103 @@ class _PendingPaymentBillCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 7),
+                const SizedBox(height: 8),
 
-                // Tier 2: Customer info (Left) + Timestamp (Right)
+                // Tier 2: Customer info / Clean Order ID (Full width, soft-wrapped, NO "..."!)
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.person_outline_rounded,
-                      size: 14,
-                      color: AppColors.textSecondary.withValues(alpha: 0.85),
-                    ),
-                    const SizedBox(width: 5),
-                    Expanded(
-                      child: Text(
-                        bill.customerName.isNotEmpty
-                            ? bill.customerName
-                            : (bill.orderNo.isNotEmpty &&
-                                    bill.orderNo != bill.billNo
-                                ? 'Order #${bill.orderNo}'
-                                : 'Walk-in Guest'),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                    if (hasCustomer) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Icon(
+                          Icons.person_outline_rounded,
+                          size: 15,
+                          color: AppColors.textSecondary.withValues(alpha: 0.85),
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.schedule_rounded,
-                          size: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 3.5),
-                        Text(
-                          bill.billDate != null
-                              ? bill.billDate!.timeAgo()
-                              : 'Pending',
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          bill.customerName,
                           style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                          softWrap: true,
+                        ),
+                      ),
+                      if (hasOrderNo) ...[
+                        const SizedBox(width: 6),
+                        const Text(
+                          '•',
+                          style: TextStyle(
+                            fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
                         ),
+                        const SizedBox(width: 6),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Icon(
+                            Icons.assignment_outlined,
+                            size: 13,
+                            color: AppColors.textSecondary.withValues(alpha: 0.85),
+                          ),
+                        ),
+                        const SizedBox(width: 3.5),
+                        Text(
+                          cleanOrderNo,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF475569),
+                          ),
+                        ),
                       ],
-                    ),
+                    ] else if (hasOrderNo) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Icon(
+                          Icons.assignment_outlined,
+                          size: 14,
+                          color: AppColors.textSecondary.withValues(alpha: 0.85),
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          cleanOrderNo,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                          softWrap: true,
+                        ),
+                      ),
+                    ] else ...[
+                      const Expanded(
+                        child: Text(
+                          'Walk-in Guest',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          softWrap: true,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ],
             ),
           ),
 
-          // Body: Item count, Amount Due, and Action Button
+          // Body: Item count, Timestamp, Amount Due, and Action Button
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             child: Column(
@@ -1390,24 +1437,71 @@ class _PendingPaymentBillCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3.5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Text(
-                        '${bill.itemCount} ${bill.itemCount == 1 ? 'item' : 'items'}',
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF475569),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Text(
+                            '${bill.itemCount} ${bill.itemCount == 1 ? 'item' : 'items'}',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF475569),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        if (bill.billDate != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.calendar_today_rounded,
+                                size: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 3.5),
+                              Text(
+                                bill.hasTime
+                                    ? '${DateTimeFormatter.formatDate(bill.billDate!)} at ${DateTimeFormatter.formatTime(bill.billDate!)}'
+                                    : DateTimeFormatter.formatDate(bill.billDate!),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              if (bill.hasTime) ...[
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () => _showTimestampInfoDialog(context, bill),
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2.5),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFE2E8F0),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.info_outline_rounded,
+                                      size: 11.5,
+                                      color: Color(0xFF475569),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                      ],
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -1436,7 +1530,7 @@ class _PendingPaymentBillCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // Action Button: COLLECT PAYMENT
+                // Action Button: COLLECT PAYMENT (Compact)
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
@@ -1446,17 +1540,22 @@ class _PendingPaymentBillCard extends StatelessWidget {
                               ? const Color(0xFFD97706)
                               : AppColors.primary,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 11),
-                      elevation: 1,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 12,
+                      ),
+                      minimumSize: const Size.fromHeight(38),
+                      visualDensity: VisualDensity.compact,
+                      elevation: 0,
                     ),
                     onPressed: isOpening ? null : onCollectPayment,
                     icon:
                         isOpening
                             ? const SizedBox(
-                              width: 16,
-                              height: 16,
+                              width: 14,
+                              height: 14,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 color: Colors.white,
@@ -1464,14 +1563,14 @@ class _PendingPaymentBillCard extends StatelessWidget {
                             )
                             : const Icon(
                               Icons.payments_rounded,
-                              size: 17,
+                              size: 15,
                               color: Colors.white,
                             ),
                     label: Text(
                       isOpening ? 'OPENING...' : 'COLLECT PAYMENT',
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
-                        fontSize: 12.5,
+                        fontSize: 12,
                         letterSpacing: 0.3,
                         color: Colors.white,
                       ),
@@ -1479,6 +1578,103 @@ class _PendingPaymentBillCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void _showTimestampInfoDialog(BuildContext context, PendingBill bill) {
+    AppGlassDialog.show(
+      context,
+      maxWidth: 320,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.schedule_rounded,
+              size: 26,
+              color: AppColors.primaryDark,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Bill Timing Details',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1E1B4B),
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'This timestamp marks the exact moment when this bill was first generated or paid.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Colors.black.withValues(alpha: 0.7),
+              height: 1.4,
+            ),
+          ),
+          if (bill.billDate != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.access_time_filled_rounded,
+                    size: 13,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    '${DateTimeFormatter.formatDate(bill.billDate!)} at ${DateTimeFormatter.formatTime(bill.billDate!)}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                visualDensity: VisualDensity.compact,
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Got it',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ),
         ],

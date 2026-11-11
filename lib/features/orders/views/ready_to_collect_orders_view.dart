@@ -1487,26 +1487,100 @@ class _ReadyToCollectCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ...order.items.map((item) => _buildItemTile(item)),
+
+                // Kitchen Note (Whole-KOT special note)
+                if (order.kitchenNote != null &&
+                    order.kitchenNote!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFFE2E8F0),
+                        width: 0.9,
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF7C3AED)
+                                .withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(
+                            Icons.soup_kitchen_rounded,
+                            size: 14,
+                            color: Color(0xFF7C3AED),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Note for Kitchen',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF7C3AED),
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                order.kitchenNote!.trim(),
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF1E293B),
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 12),
 
-                // Action Button: Full-width COLLECTED & SERVED
+                // Action Button: Full-width COLLECTED & SERVED (Compact)
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF10B981),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 12,
+                      ),
+                      minimumSize: const Size.fromHeight(38),
+                      visualDensity: VisualDensity.compact,
+                      elevation: 0,
                     ),
                     onPressed: isConfirming ? null : onMarkCollected,
-                    icon: const Icon(Icons.done_all_rounded, size: 18),
+                    icon: const Icon(Icons.done_all_rounded, size: 16),
                     label: const Text(
                       'COLLECTED & SERVED',
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
-                        fontSize: 13,
+                        fontSize: 12,
                         letterSpacing: 0.3,
                       ),
                     ),
@@ -1521,7 +1595,31 @@ class _ReadyToCollectCard extends StatelessWidget {
   }
 
   Widget _buildItemTile(ChefOrderItem item) {
-    final hasNote = (item.specialInstructions ?? '').trim().isNotEmpty;
+    final rawItemNote = (item.specialInstructions ?? '').trim();
+    final rawKitchenNote = (order.kitchenNote ?? '').trim();
+    String cleanItemNote = rawItemNote;
+
+    if (rawKitchenNote.isNotEmpty) {
+      final kLower = rawKitchenNote.toLowerCase();
+      final iLower = cleanItemNote.toLowerCase();
+      if (iLower == kLower || iLower == ', $kLower') {
+        cleanItemNote = '';
+      } else if (iLower.endsWith(', $kLower')) {
+        cleanItemNote = cleanItemNote
+            .substring(0, cleanItemNote.length - (rawKitchenNote.length + 2))
+            .trim();
+      } else if (iLower.endsWith(kLower)) {
+        cleanItemNote = cleanItemNote
+            .substring(0, cleanItemNote.length - rawKitchenNote.length)
+            .trim();
+        if (cleanItemNote.endsWith(',')) {
+          cleanItemNote =
+              cleanItemNote.substring(0, cleanItemNote.length - 1).trim();
+        }
+      }
+    }
+
+    final hasNote = cleanItemNote.isNotEmpty;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.5),
       child: Row(
@@ -1583,7 +1681,7 @@ class _ReadyToCollectCard extends StatelessWidget {
                         const SizedBox(width: 3.5),
                         Flexible(
                           child: Text(
-                            item.specialInstructions!,
+                            cleanItemNote,
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -1755,6 +1853,74 @@ class _ServedKotCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ...order.items.map((item) => _buildItemTile(item)),
+
+                // Kitchen Note (Whole-KOT special note)
+                if (order.kitchenNote != null &&
+                    order.kitchenNote!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFFE2E8F0),
+                        width: 0.9,
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF7C3AED)
+                                .withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(
+                            Icons.soup_kitchen_rounded,
+                            size: 14,
+                            color: Color(0xFF7C3AED),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Note for Kitchen',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF7C3AED),
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                order.kitchenNote!.trim(),
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF1E293B),
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 10),
 
                 // View-Only Served Status Strip
@@ -1798,7 +1964,31 @@ class _ServedKotCard extends StatelessWidget {
   }
 
   Widget _buildItemTile(ChefOrderItem item) {
-    final hasNote = (item.specialInstructions ?? '').trim().isNotEmpty;
+    final rawItemNote = (item.specialInstructions ?? '').trim();
+    final rawKitchenNote = (order.kitchenNote ?? '').trim();
+    String cleanItemNote = rawItemNote;
+
+    if (rawKitchenNote.isNotEmpty) {
+      final kLower = rawKitchenNote.toLowerCase();
+      final iLower = cleanItemNote.toLowerCase();
+      if (iLower == kLower || iLower == ', $kLower') {
+        cleanItemNote = '';
+      } else if (iLower.endsWith(', $kLower')) {
+        cleanItemNote = cleanItemNote
+            .substring(0, cleanItemNote.length - (rawKitchenNote.length + 2))
+            .trim();
+      } else if (iLower.endsWith(kLower)) {
+        cleanItemNote = cleanItemNote
+            .substring(0, cleanItemNote.length - rawKitchenNote.length)
+            .trim();
+        if (cleanItemNote.endsWith(',')) {
+          cleanItemNote =
+              cleanItemNote.substring(0, cleanItemNote.length - 1).trim();
+        }
+      }
+    }
+
+    final hasNote = cleanItemNote.isNotEmpty;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.5),
       child: Row(
@@ -1860,7 +2050,7 @@ class _ServedKotCard extends StatelessWidget {
                         const SizedBox(width: 3.5),
                         Flexible(
                           child: Text(
-                            item.specialInstructions!,
+                            cleanItemNote,
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -1950,10 +2140,12 @@ class _CollectConfirmDialog extends StatelessWidget {
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.2),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      minimumSize: const Size.fromHeight(38),
+                      visualDensity: VisualDensity.compact,
                     ),
                     onPressed: () => Navigator.pop(context, false),
                     child: const Text(
@@ -1961,7 +2153,7 @@ class _CollectConfirmDialog extends StatelessWidget {
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w700,
-                        fontSize: 13,
+                        fontSize: 12.5,
                       ),
                     ),
                   ),
@@ -1972,16 +2164,19 @@ class _CollectConfirmDialog extends StatelessWidget {
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF10B981),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      minimumSize: const Size.fromHeight(38),
+                      visualDensity: VisualDensity.compact,
+                      elevation: 0,
                     ),
                     onPressed: () => Navigator.pop(context, true),
                     child: const Text(
                       'Yes, Delivered',
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
-                        fontSize: 13,
+                        fontSize: 12.5,
                       ),
                     ),
                   ),

@@ -100,6 +100,11 @@ class _LoginFormState extends State<LoginForm> {
         if (HiveService.isChefLoggedIn()) {
           if (apiLocations.isNotEmpty && mounted) {
             await context.read<ChefProvider>().updateLocationsFromApi(apiLocations);
+            if (mounted) {
+              try {
+                context.read<DashboardProvider>().updateLocationsFromApi(apiLocations);
+              } catch (_) {}
+            }
           }
           if (mounted) {
             Navigator.of(context).pushReplacementNamed('/chef');

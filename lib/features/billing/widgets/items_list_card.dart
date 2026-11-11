@@ -45,36 +45,36 @@ class ItemsListCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        if (item.specialNotes != null &&
-                            item.specialNotes!.isNotEmpty)
-                          Text(
-                            'Note: ${item.specialNotes}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.primary,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                      ],
+                    child: Text(
+                      item.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        '${item.price.toCurrency()} × ${item.quantity}',
-                        style: const TextStyle(fontSize: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${item.quantity}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
                       ),
+                      const SizedBox(height: 4),
                       Text(
                         (item.price * item.quantity).toCurrency(),
                         style: const TextStyle(

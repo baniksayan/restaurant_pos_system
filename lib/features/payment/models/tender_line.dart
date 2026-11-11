@@ -22,13 +22,17 @@ class TenderLine {
   /// Only cash produces change, so only a cash line can carry a return.
   final double cashTendered;
 
-  const TenderLine({
+  /// Timestamp when this tender was created or recorded.
+  final DateTime createdAt;
+
+  TenderLine({
     required this.modeId,
     required this.method,
     required this.amount,
     this.refId = '',
     this.cashTendered = 0,
-  });
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
 
   bool get isCash => method == 'cash';
 
@@ -46,6 +50,20 @@ class TenderLine {
     'upi' => 'UPI',
     _ => method.toUpperCase(),
   };
+
+  String get formattedTime {
+    final now = createdAt;
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final day = now.day;
+    final month = months[now.month - 1];
+    final hour = now.hour % 12 == 0 ? 12 : now.hour % 12;
+    final minute = now.minute.toString().padLeft(2, '0');
+    final ampm = now.hour >= 12 ? 'PM' : 'AM';
+    return '$day $month, ${hour.toString().padLeft(2, '0')}:$minute $ampm';
+  }
 
   /// The shape SavePayment expects. `status` defaults to settled (2), which
   /// is what the billing counter records for a completed tender.

@@ -39,7 +39,6 @@ class _OrderDetailViewState extends State<OrderDetailView>
 
   bool _isBilled = false;
   bool _isKOTGenerated = true;
-  final String _paymentMode = 'Cash';
 
   // Track if cart has been loaded to prevent duplicates
   bool _cartLoaded = false;
@@ -142,15 +141,50 @@ class _OrderDetailViewState extends State<OrderDetailView>
   }
 
   String? get _billNo {
+    // 1. Loaded bill details contains the complete formatted bill number
+    if (_billDetails != null &&
+        _billDetails!.billHeadDt.billNo.trim().isNotEmpty) {
+      return _billDetails!.billHeadDt.billNo.trim();
+    }
+    // 2. Associated bills from reprint API
+    if (_bills.isNotEmpty) {
+      final b = _bills.firstWhere(
+        (b) => b.billNo.trim().isNotEmpty,
+        orElse: () => _bills.first,
+      );
+      if (b.billNo.trim().isNotEmpty) return b.billNo.trim();
+    }
+    // 3. Generated bill number string from API detail model
     if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
-      return _detailModel!.data!.first.billNo?.toString();
+      final gen = _detailModel!.data!.first.generatedBillNo?.trim();
+      if (gen != null && gen.isNotEmpty) return gen;
+
+      final raw = _detailModel!.data!.first.billNo;
+      if (raw != null) {
+        final orderNum = _orderNo ?? widget.order.orderNo;
+        if (orderNum != null && orderNum.isNotEmpty && orderNum.contains('/')) {
+          final parts = orderNum.split('/');
+          if (parts.length >= 4) {
+            final outletCode = parts[1];
+            final dateCode = parts[2];
+            final seq = raw.toString().padLeft(4, '0');
+            return 'BL/$outletCode/$dateCode/$seq';
+          }
+        }
+        return '#${raw.toString().padLeft(4, '0')}';
+      }
     }
     return null;
   }
 
   String? get _billId {
     if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
-      return _detailModel!.data!.first.billId;
+      final id = _detailModel!.data!.first.billId;
+      if (id != null && id.isNotEmpty) return id;
+    }
+    if (_bills.isNotEmpty) {
+      final id = _bills.first.billId;
+      if (id.isNotEmpty) return id;
     }
     return null;
   }
@@ -176,9 +210,68 @@ class _OrderDetailViewState extends State<OrderDetailView>
     return null;
   }
 
+  String _formatTableName(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return '';
+    String cleaned = raw.trim();
+    // Collapse any repeated "Table Table"
+    cleaned = cleaned.replaceAll(
+      RegExp(r'\b(table\s*)+', caseSensitive: false),
+      '',
+    );
+    cleaned = cleaned.trim();
+    if (cleaned.isEmpty) return 'Table';
+    return 'Table $cleaned';
+  }
+
+  String _formatChannelLabel() {
+    if (widget.order.orderType == 'Table Orders' ||
+        (widget.order.tableNumber != null &&
+            widget.order.tableNumber!.trim().isNotEmpty)) {
+      if (widget.order.tableNumber != null &&
+          widget.order.tableNumber!.trim().isNotEmpty) {
+        return _formatTableName(widget.order.tableNumber);
+      }
+      return 'Dine-In';
+    }
+    if (widget.order.orderType == 'Phone Orders') {
+      return 'Phone Order';
+    }
+    return 'Takeaway';
+  }
+
+  String get _resolvedChannelTableValue {
+    if (_channelName != null && _channelName!.trim().isNotEmpty) {
+      String c = _channelName!.trim();
+      c = c.replaceAll(RegExp(r'\b(Table\s*)+', caseSensitive: false), 'Table ');
+      c = c.replaceAll(RegExp(r'Table Orders\s*-\s*', caseSensitive: false), '');
+      return c;
+    }
+    return _formatChannelLabel();
+  }
+
   String? get _waiterName {
     if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
-      return _detailModel!.data!.first.waiterName;
+      final name = _detailModel!.data!.first.waiterName?.trim();
+      if (name != null && name.isNotEmpty && name.toLowerCase() != 'null') {
+        return name;
+      }
+    }
+    if (widget.order.waiterName != null &&
+        widget.order.waiterName!.trim().isNotEmpty &&
+        widget.order.waiterName!.trim().toLowerCase() != 'null') {
+      return widget.order.waiterName!.trim();
+    }
+    if (_billDetails != null &&
+        _billDetails!.billOrderDt.isNotEmpty &&
+        _billDetails!.billOrderDt.first.waiterName.trim().isNotEmpty &&
+        _billDetails!.billOrderDt.first.waiterName.trim().toLowerCase() != 'null') {
+      return _billDetails!.billOrderDt.first.waiterName.trim();
+    }
+    final loggedInUser = HiveService.getUserFullName();
+    if (loggedInUser != null &&
+        loggedInUser.isNotEmpty &&
+        loggedInUser.toLowerCase() != 'null') {
+      return loggedInUser;
     }
     return null;
   }
@@ -188,6 +281,85 @@ class _OrderDetailViewState extends State<OrderDetailView>
       return _detailModel!.data!.first.fullOrderStatus;
     }
     return null;
+  }
+
+  String get _displayStatusText {
+    final bool isPaid = _isActuallyBilled && _isActuallyPaid;
+    final bool isUnpaidBill = _isActuallyBilled && !_isActuallyPaid;
+
+    if (isPaid || widget.order.status == OrderStatusType.completed) {
+      return 'Completed';
+    }
+    if (isUnpaidBill) {
+      return 'Payment Pending';
+    }
+    if (widget.order.status == OrderStatusType.delivered) {
+      return 'Delivered';
+    }
+    if (widget.order.status == OrderStatusType.ready) {
+      return 'Ready';
+    }
+    if (widget.order.status == OrderStatusType.preparing) {
+      return 'Preparing';
+    }
+    if (widget.order.status == OrderStatusType.cancelled) {
+      return 'Cancelled';
+    }
+
+    if (_fullOrderStatus != null &&
+        _fullOrderStatus!.trim().isNotEmpty &&
+        _fullOrderStatus!.trim().toLowerCase() != 'order placed') {
+      return _fullOrderStatus!;
+    }
+
+    return _formatStatus(widget.order.status);
+  }
+
+  List<String> get _paymentModesList {
+    final Set<String> modes = {};
+
+    // 1. From loaded bill details
+    if (_billDetails != null && _billDetails!.paymentDetail.isNotEmpty) {
+      for (final p in _billDetails!.paymentDetail) {
+        final mode = _cleanPaymentModeName(p.paymentMode);
+        if (mode.isNotEmpty) modes.add(mode);
+      }
+    }
+
+    // 2. From detail model
+    if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
+      final raw = _detailModel!.data!.first.paymentModes;
+      if (raw != null && raw.isNotEmpty) {
+        for (final m in raw) {
+          final mode = _cleanPaymentModeName(m);
+          if (mode.isNotEmpty) modes.add(mode);
+        }
+      }
+    }
+
+    return modes.toList();
+  }
+
+  static String _cleanPaymentModeName(String raw) {
+    final lower = raw.trim().toLowerCase();
+    if (lower.contains('cash')) return 'Cash';
+    if (lower.contains('upi') ||
+        lower.contains('qr') ||
+        lower.contains('gpay') ||
+        lower.contains('phonepe') ||
+        lower.contains('paytm')) {
+      return 'UPI';
+    }
+    if (lower.contains('card') ||
+        lower.contains('pos') ||
+        lower.contains('debit') ||
+        lower.contains('credit')) {
+      return 'Card';
+    }
+    if (raw.trim().isNotEmpty) {
+      return raw.trim()[0].toUpperCase() + raw.trim().substring(1);
+    }
+    return '';
   }
 
   String? get _instructions {
@@ -280,8 +452,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
 
   Future<void> _loadBillDetailsIfNeeded() async {
     final billId = _billId;
-    if (!_isActuallyBilled ||
-        billId == null ||
+    if (billId == null ||
         billId.isEmpty ||
         _loadingBillDetails ||
         _billDetails != null) {
@@ -303,7 +474,9 @@ class _OrderDetailViewState extends State<OrderDetailView>
 
   Future<void> _loadAllBills() async {
     final orderNo = _orderNo;
-    if (orderNo == null || orderNo.isEmpty || _loadingBills) return;
+    final orderId = widget.order.orderId;
+    if ((orderNo == null || orderNo.isEmpty) && orderId.isEmpty) return;
+    if (_loadingBills) return;
 
     final outletId = HiveService.getOutletId();
     if (outletId == null || outletId <= 0) return;
@@ -320,13 +493,28 @@ class _OrderDetailViewState extends State<OrderDetailView>
       );
       if (!mounted || bills == null) return;
       final matched =
-          bills.where((b) => b.orderNo == orderNo).toList()
+          bills
+              .where(
+                (b) =>
+                    (orderNo != null &&
+                        orderNo.isNotEmpty &&
+                        b.orderNo == orderNo) ||
+                    b.orderNo == orderId ||
+                    (b.billId.isNotEmpty && b.billId == _billId) ||
+                    (b.billNo.isNotEmpty && b.billNo == _billNo),
+              )
+              .toList()
             ..sort(
               (a, b) => (b.billDate ?? DateTime(0)).compareTo(
                 a.billDate ?? DateTime(0),
               ),
             );
       setState(() => _bills = matched);
+
+      // If _billDetails not loaded yet and we have matched bills, load bill details
+      if (_billDetails == null && matched.isNotEmpty) {
+        unawaited(_loadBillDetailsIfNeeded());
+      }
     } catch (e) {
       debugPrint('[OrderDetailView] Error loading bills: $e');
     } finally {
@@ -377,6 +565,14 @@ class _OrderDetailViewState extends State<OrderDetailView>
       final discountAmount =
           billData.billHeadDt.discountAmnt + billData.billHeadDt.specDisAmt;
 
+      final billTimestamp = billData.billHeadDt.parsedBillDate ??
+          bill.billDate ??
+          DateTime.now();
+      final resolvedCustomerName =
+          billData.billHeadDt.customerName.trim().isNotEmpty
+              ? billData.billHeadDt.customerName.trim()
+              : bill.customerName.trim();
+
       final billBytes = await PDFService.generateThermalBill(
         items: items,
         tableId: bill.orderNo,
@@ -385,7 +581,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
                 ? billData.orderChanelDt.first.channelName
                 : bill.orderNo,
         orderNumber: bill.orderNo,
-        orderTime: bill.billDate ?? DateTime.now(),
+        orderTime: billTimestamp,
         subtotal: billData.billHeadDt.amountAfterDisc,
         gstAmount: gstAmount > 0 ? gstAmount : 0,
         total: billData.billHeadDt.billAmountInclTax,
@@ -395,7 +591,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
         companyGstNo: billData.companyDt.gstNo,
         gstLabel: gstLabel,
         billNo: billData.billHeadDt.billNo,
-        customerName: billData.billHeadDt.customerName,
+        customerName: resolvedCustomerName,
         customerPhone: billData.billHeadDt.custMobNo,
         discountAmount: discountAmount,
         payments: billData.paymentDetail,
@@ -502,15 +698,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
   // ────────────────────────────────────────────────────────────────────────────
 
   Widget _buildTopHeader(BuildContext context) {
-    final String channelLabel =
-        widget.order.orderType == 'Table Orders'
-            ? (widget.order.tableNumber != null &&
-                    widget.order.tableNumber!.isNotEmpty
-                ? 'Table ${widget.order.tableNumber}'
-                : 'Dine-In')
-            : (widget.order.orderType == 'Phone Orders'
-                ? 'Phone Order'
-                : 'Takeaway');
+    final String channelLabel = _formatChannelLabel();
 
     final IconData channelIcon =
         widget.order.orderType == 'Table Orders'
@@ -521,6 +709,9 @@ class _OrderDetailViewState extends State<OrderDetailView>
 
     final String displayOrderNum =
         _orderNo ?? widget.order.orderId;
+    final String cleanOrderNo = displayOrderNum.startsWith('#')
+        ? displayOrderNum
+        : '#$displayOrderNum';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 40, 16, 12),
@@ -579,7 +770,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
                   ),
                   const SizedBox(height: 1),
                   Text(
-                    'Order #$displayOrderNum · $channelLabel',
+                    '$cleanOrderNo · $channelLabel',
                     style: const TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w500,
@@ -625,17 +816,34 @@ class _OrderDetailViewState extends State<OrderDetailView>
     );
   }
 
+  String get _cleanCustomerName {
+    String raw = widget.order.customerName.trim();
+    if (raw.isEmpty) return 'Walk-in Guest';
+    final match = RegExp(
+      r'^Table[^(]*\((.*?)\)$',
+      caseSensitive: false,
+    ).firstMatch(raw);
+    if (match != null) {
+      final inside = match.group(1)?.trim() ?? '';
+      if (inside.isNotEmpty) return inside;
+    }
+    if (raw.toLowerCase().startsWith('table ') ||
+        (widget.order.tableNumber != null &&
+            raw.toLowerCase() == widget.order.tableNumber!.toLowerCase()) ||
+        raw.toLowerCase() == 'table') {
+      return 'Walk-in Guest';
+    }
+    return raw;
+  }
+
   // ────────────────────────────────────────────────────────────────────────────
   // Card 1: Hero Overview Card
   // ────────────────────────────────────────────────────────────────────────────
 
   Widget _buildHeroOverviewCard() {
     final statusColor = _getStatusColor();
-    final statusText = _fullOrderStatus ?? _formatStatus(widget.order.status);
-    final String customerName =
-        widget.order.customerName.trim().isNotEmpty
-            ? widget.order.customerName.trim()
-            : 'Guest Customer';
+    final statusText = _displayStatusText;
+    final String customerName = _cleanCustomerName;
 
     return Container(
       decoration: BoxDecoration(
@@ -805,7 +1013,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
                 child: _buildMetaBadge(
                   icon: Icons.badge_outlined,
                   label: 'WAITER / STAFF',
-                  value: _waiterName ?? 'Counter Staff',
+                  value: _waiterName ?? 'Staff',
                 ),
               ),
             ],
@@ -817,11 +1025,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
                 child: _buildMetaBadge(
                   icon: Icons.table_bar_outlined,
                   label: 'CHANNEL / TABLE',
-                  value: _channelName ??
-                      (widget.order.tableNumber != null &&
-                              widget.order.tableNumber!.isNotEmpty
-                          ? 'Table ${widget.order.tableNumber}'
-                          : widget.order.orderType),
+                  value: _resolvedChannelTableValue,
                 ),
               ),
             ],
@@ -969,11 +1173,79 @@ class _OrderDetailViewState extends State<OrderDetailView>
                 : 'Not Generated Yet',
             isHighlighted: _isActuallyBilled,
           ),
-          _buildInfoRow(
-            'Payment Mode',
-            isPaid ? _paymentMode : (isUnpaidBill ? 'Pending' : 'N/A'),
-          ),
+          _buildPaymentModesRow(isPaid, isUnpaidBill),
           _buildInfoRow('Billing Date', _createdOnString),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentModesRow(bool isPaid, bool isUnpaidBill) {
+    if (!isPaid) {
+      return _buildInfoRow(
+        'Payment Mode',
+        isUnpaidBill ? 'Pending' : 'N/A',
+      );
+    }
+
+    final modes = _paymentModesList;
+    if (modes.isEmpty) {
+      return _buildInfoRow('Payment Mode', 'Cash');
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text(
+            'Payment Mode',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: modes.map((mode) {
+              final (IconData icon, Color color) = switch (mode.toLowerCase()) {
+                'cash' => (Icons.payments_rounded, const Color(0xFF10B981)),
+                'upi' => (Icons.qr_code_2_rounded, const Color(0xFF8B5CF6)),
+                'card' => (Icons.credit_card_rounded, const Color(0xFF3B82F6)),
+                _ => (Icons.account_balance_wallet_rounded, AppColors.primary),
+              };
+
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: color.withValues(alpha: 0.25),
+                    width: 0.8,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 12, color: color),
+                    const SizedBox(width: 4),
+                    Text(
+                      mode,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
         ],
       ),
     );
@@ -1999,6 +2271,16 @@ class _OrderDetailViewState extends State<OrderDetailView>
   }
 
   Color _getStatusColor() {
+    final bool isPaid = _isActuallyBilled && _isActuallyPaid;
+    final bool isUnpaidBill = _isActuallyBilled && !_isActuallyPaid;
+
+    if (isPaid || widget.order.status == OrderStatusType.completed) {
+      return const Color(0xFF10B981);
+    }
+    if (isUnpaidBill) {
+      return const Color(0xFFF59E0B);
+    }
+
     switch (widget.order.status) {
       case OrderStatusType.pending:
         return const Color(0xFFF59E0B);
@@ -2080,7 +2362,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
           builder:
               (context) => CartView(
                 tableId: widget.order.tableNumber,
-                tableName: 'Table ${widget.order.tableNumber}',
+                tableName: _formatTableName(widget.order.tableNumber),
                 selectedLocation:
                     HiveService.getSelectedLocationName() ?? '',
               ),
@@ -2107,7 +2389,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
 
       if (widget.order.orderType == 'Table Orders') {
         tableId = widget.order.tableNumber ?? 'Table1';
-        tableName = 'Table ${widget.order.tableNumber}';
+        tableName = _formatTableName(widget.order.tableNumber);
       } else if (widget.order.orderType == 'Phone Orders') {
         tableId = 'PhoneOrder';
         tableName = 'Phone Order - ${widget.order.customerName}';
@@ -2241,10 +2523,10 @@ class _OrderDetailViewState extends State<OrderDetailView>
         tableId: widget.order.tableNumber ?? '1',
         tableName:
             widget.order.tableNumber != null
-                ? 'Table ${widget.order.tableNumber}'
+                ? _formatTableName(widget.order.tableNumber)
                 : 'Table 1',
         orderNumber: _orderNo ?? widget.order.orderNo ?? widget.order.orderId.toString(),
-        orderTime: widget.order.orderTime,
+        orderTime: billData.billHeadDt.parsedBillDate ?? widget.order.orderTime,
         subtotal: _subtotal,
         gstAmount: _gstAmount,
         total: _grandTotal,

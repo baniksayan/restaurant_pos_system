@@ -61,12 +61,18 @@ class ChefProvider extends ChangeNotifier {
 
   /// Hydrate full KDS state (locations, selected location, tab index, and filter)
   /// from local Hive storage.
-  void loadFromHive() {
+  void loadFromHive({bool autoFetch = false}) {
     loadLocationsFromHive(notify: false);
     _currentTabIndex = HiveService.getKdsSelectedTabIndex() ?? 0;
     _selectedStatusFilter =
         HiveService.getKdsSelectedStatusFilter() ?? 'All Statuses';
     notifyListeners();
+    if (_pollingTimer == null || !_pollingTimer!.isActive) {
+      _startPolling();
+    }
+    if (autoFetch) {
+      fetchOrders();
+    }
   }
 
   void _startPolling() {
@@ -88,8 +94,11 @@ class ChefProvider extends ChangeNotifier {
       if (savedId != null && savedId > 0) {
         matched = _locations.where((l) => l.id == savedId).firstOrNull;
       }
-      if (matched == null && savedName != null && savedName.isNotEmpty) {
-        matched = _locations.where((l) => l.name == savedName).firstOrNull;
+      if (matched == null && savedName != null && savedName.trim().isNotEmpty) {
+        final cleanSaved = savedName.trim().toLowerCase();
+        matched = _locations.where((l) =>
+            l.name == savedName ||
+            l.name.trim().toLowerCase() == cleanSaved).firstOrNull;
       }
 
       if (matched != null) {
@@ -127,8 +136,11 @@ class ChefProvider extends ChangeNotifier {
     if (savedId != null && savedId > 0) {
       matched = _locations.where((l) => l.id == savedId).firstOrNull;
     }
-    if (matched == null && savedName != null && savedName.isNotEmpty) {
-      matched = _locations.where((l) => l.name == savedName).firstOrNull;
+    if (matched == null && savedName != null && savedName.trim().isNotEmpty) {
+      final cleanSaved = savedName.trim().toLowerCase();
+      matched = _locations.where((l) =>
+          l.name == savedName ||
+          l.name.trim().toLowerCase() == cleanSaved).firstOrNull;
     }
 
     if (matched != null) {
@@ -349,15 +361,32 @@ class ChefProvider extends ChangeNotifier {
     int? outletId,
     bool fetchNewOrders = true,
   }) async {
+    // Ensure locations are hydrated if currently empty
+    if (_locations.isEmpty) {
+      loadLocationsFromHive(notify: false);
+    }
+
+    final cleanLoc = location.trim().toLowerCase();
+    final matched = _locations.where((l) =>
+        l.name == location ||
+        l.name.trim().toLowerCase() == cleanLoc).firstOrNull;
+
+    final resolvedId = outletId ??
+        matched?.id ??
+        HiveService.getLocations()
+            .where((l) =>
+                l.locationName == location ||
+                l.locationName?.trim().toLowerCase() == cleanLoc)
+            .firstOrNull
+            ?.locationId;
+
     if (_selectedLocation == location &&
-        (outletId == null || _selectedLocationId == outletId)) {
+        _selectedLocationId == resolvedId &&
+        (resolvedId != null && resolvedId > 0)) {
       return;
     }
 
     _selectedLocation = location;
-    final matched =
-        _locations.where((l) => l.name == location).firstOrNull;
-    final resolvedId = outletId ?? matched?.id;
 
     if (resolvedId != null && resolvedId > 0) {
       _selectedLocationId = resolvedId;
@@ -372,7 +401,7 @@ class ChefProvider extends ChangeNotifier {
     notifyListeners();
 
     if (fetchNewOrders) {
-      fetchOrders(outletId: _selectedLocationId, forceRefresh: true);
+      await fetchOrders(outletId: _selectedLocationId, forceRefresh: true);
     }
   }
 

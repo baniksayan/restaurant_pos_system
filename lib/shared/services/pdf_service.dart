@@ -931,11 +931,19 @@ class PDFService {
   }
 
   static String _formatDate(DateTime date) {
-    return "${date.day}/${date.month}/${date.year}";
+    final dt = date.isUtc ? date.toLocal() : date;
+    final d = dt.day.toString().padLeft(2, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    return "$d/$m/${dt.year}";
   }
 
   static String _formatTime(DateTime date) {
-    return "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+    final dt = date.isUtc ? date.toLocal() : date;
+    final h = dt.hour;
+    final m = dt.minute.toString().padLeft(2, '0');
+    final period = h >= 12 ? 'PM' : 'AM';
+    final hour12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+    return "${hour12.toString().padLeft(2, '0')}:$m $period";
   }
 
   static bool _isVeg(String itemName) {

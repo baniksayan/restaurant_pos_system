@@ -19,6 +19,9 @@ import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
+import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
+import 'package:restaurant_pos_system/features/order_taking/providers/order_provider.dart';
 
 class GenerateBillSummaryDialog extends StatefulWidget {
   final String orderNumber;
@@ -82,6 +85,25 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
 
+  late String _resolvedOrderNumber;
+
+  static String _cleanOrderNumber(String? raw) {
+    if (raw == null) return '';
+    final trimmed = raw.trim();
+    final upper = trimmed.toUpperCase();
+    if (upper.isEmpty ||
+        upper == 'UNKNOWN' ||
+        upper.contains('UNKNOWN') ||
+        upper.startsWith('KT/') ||
+        upper.startsWith('#KT/')) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  String get _effectiveOrderNumber =>
+      _resolvedOrderNumber.isNotEmpty ? _resolvedOrderNumber : widget.orderNumber;
+
   // Split-bill state. Only usable when widget.orderId is a real, saved
   // order — the item-level ids it needs only exist on the server.
   bool _splitMode = false;
@@ -105,7 +127,38 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
   @override
   void initState() {
     super.initState();
+    _resolvedOrderNumber = _cleanOrderNumber(widget.orderNumber);
+    if (_resolvedOrderNumber.isEmpty && widget.orderId != null) {
+      final cached = HiveService.getOrderNo(widget.orderId!);
+      if (cached != null) {
+        _resolvedOrderNumber = _cleanOrderNumber(cached);
+      }
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_resolvedOrderNumber.isEmpty) {
+        // Try resolving from TableProvider or OrderProvider
+        final orderProvider = context.read<OrderProvider>();
+        final candidate = _cleanOrderNumber(orderProvider.generatedOrderNo).isNotEmpty
+            ? _cleanOrderNumber(orderProvider.generatedOrderNo)
+            : _cleanOrderNumber(orderProvider.orderNo?.toString());
+        if (candidate.isNotEmpty) {
+          setState(() => _resolvedOrderNumber = candidate);
+        } else if (widget.tableId != null) {
+          final tableProvider = context.read<TableProvider>();
+          final table = tableProvider.tables
+              .where((t) => t.id == widget.tableId)
+              .firstOrNull;
+          if (table != null && table.activeOrders.isNotEmpty) {
+            final o = table.activeOrders.first;
+            final gen = _cleanOrderNumber(o.generatedOrderNo);
+            if (gen.isNotEmpty) {
+              setState(() => _resolvedOrderNumber = gen);
+            }
+          }
+        }
+      }
+
       final billingProvider = context.read<BillingProvider>();
       billingProvider.loadPaymentModes();
 
@@ -158,6 +211,19 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
           (response?.isSuccess == true && (response?.data?.isNotEmpty ?? false))
               ? response!.data!.first
               : null;
+      if (order?.orderNo != null) {
+        final clean = _cleanOrderNumber(order!.orderNo);
+        if (clean.isNotEmpty) {
+          if (widget.orderId != null) {
+            HiveService.saveOrderNo(widget.orderId!, clean);
+          }
+          if (mounted && _resolvedOrderNumber != clean) {
+            setState(() {
+              _resolvedOrderNumber = clean;
+            });
+          }
+        }
+      }
       final unbilled =
           (order?.orderDetailList ?? [])
               .where((i) => (i.generatedBillNo ?? '').isEmpty)
@@ -341,6 +407,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                                           const SizedBox(height: 12),
                                         ],
                                         if (_splitMode) ...[
+                                          // Interactive Split Bill Item Picker (replaces static items list)
                                           SplitBillPicker(
                                             loading: _loadingSplitItems,
                                             items: _unbilledItems,
@@ -363,13 +430,13 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                                                 }),
                                           ),
                                           const SizedBox(height: 12),
+                                        ] else ...[
+                                          // Order Items List (shown in normal full-bill mode)
+                                          _buildOrderItemsSection(
+                                            mergedCartItems,
+                                          ),
+                                          const SizedBox(height: 12),
                                         ],
-
-                                        // Order Items List
-                                        _buildOrderItemsSection(
-                                          mergedCartItems,
-                                        ),
-                                        const SizedBox(height: 12),
 
                                         // Bill Amount & Breakdown
                                         _buildBillBreakdownSection(
@@ -492,7 +559,13 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                         ),
                       ),
                       child: Text(
-                        'Order #${widget.orderNumber}',
+                        _resolvedOrderNumber.isNotEmpty
+                            ? '#${_resolvedOrderNumber.replaceFirst(RegExp(r'^#+'), '')}'
+                            : (widget.orderNumber.isNotEmpty &&
+                                    !widget.orderNumber.toUpperCase().contains('KT/') &&
+                                    !widget.orderNumber.toLowerCase().contains('unknown')
+                                ? '#${widget.orderNumber.replaceFirst(RegExp(r'^#+'), '')}'
+                                : '#OD'),
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -599,32 +672,63 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
   Widget _buildSplitToggle() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.70),
+        color: _splitMode
+            ? AppColors.primary.withValues(alpha: 0.06)
+            : Colors.white.withValues(alpha: 0.70),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.90),
-          width: 1,
+          color: _splitMode
+              ? AppColors.primary.withValues(alpha: 0.35)
+              : Colors.white.withValues(alpha: 0.90),
+          width: 1.2,
         ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.call_split_rounded, size: 18, color: AppColors.primary),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'Split Bill',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.call_split_rounded,
+              size: 18,
+              color: AppColors.primary,
             ),
           ),
-          Switch(
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Split Bill',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                Text(
+                  'Bill items separately in multiple payments',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
             value: _splitMode,
-            activeThumbColor: AppColors.primary,
+            activeTrackColor: AppColors.primary,
+            activeThumbColor: Colors.white,
             onChanged: (value) async {
               await HapticHelper.triggerFeedback();
               await _toggleSplitMode(value);
@@ -681,6 +785,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                     ),
                   ),
                 ),
+                SizedBox(width: 8),
                 SizedBox(
                   width: 52,
                   child: Center(
@@ -876,7 +981,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
       ),
       child: SizedBox(
         width: double.infinity,
-        child: ElevatedButton.icon(
+        child: ElevatedButton(
           onPressed:
               (billingProvider.isGenerating ||
                       _loadingSplitItems ||
@@ -903,29 +1008,23 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
               borderRadius: BorderRadius.circular(12),
             ),
           ),
-          icon:
-              billingProvider.isGenerating
-                  ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(Colors.white),
-                    ),
-                  )
-                  : const Icon(Icons.print_rounded, size: 18),
-          label: Text(
-            billingProvider.isGenerating
-                ? 'Generating Bill...'
-                : (_splitMode
-                    ? 'Confirm & Print Split Bill'
-                    : 'Confirm & Print Bill'),
-            style: const TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.2,
-            ),
-          ),
+          child: billingProvider.isGenerating
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                  ),
+                )
+              : Text(
+                  _splitMode ? 'Print Split Bill' : 'Print Bill',
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.2,
+                  ),
+                ),
         ),
       ),
     );
@@ -978,33 +1077,35 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
       // Dine-in / walk-in: optional — Skip leaves every field blank,
       // matching the original "phone optional" behaviour.
       if (!context.mounted) return;
-      customerInfo = await Navigator.of(context).push<CustomerInfoResult>(
-        MaterialPageRoute(
-          builder:
-              (context) => CustomerInfoStep(orderNumber: widget.orderNumber),
-        ),
+      customerInfo = await CustomerInfoStep.show(
+        context,
+        orderNumber: _effectiveOrderNumber,
       );
     }
-    if (!mounted || customerInfo == null) return; // back-swiped, not Skip
+    if (!mounted || customerInfo == null) return; // Closed dialog with (X)
 
-    // Step 3: take payment now, or bill later. Nothing is charged yet —
-    // these tenders only become real Payment rows once createBill runs
-    // below with them attached.
-    if (!context.mounted) return;
-    final tenders = await Navigator.of(context).push<List<TenderLine>>(
-      MaterialPageRoute(
-        builder:
-            (context) =>
-                TakePaymentStep(orderNumber: widget.orderNumber, total: total),
-      ),
-    );
-    if (!mounted || tenders == null) return; // back-swiped, not Bill Later
+    // Step 3: take payment now, or bill later.
+    // If cashier tapped "Skip" in customer info, skip taking payment directly
+    // and generate the unpaid / walk-in bill without opening TakePaymentStep.
+    List<TenderLine> tenders = [];
+    if (!customerInfo.skipPayment) {
+      if (!context.mounted) return;
+      final result = await Navigator.of(context).push<List<TenderLine>>(
+        MaterialPageRoute(
+          builder:
+              (context) =>
+                  TakePaymentStep(orderNumber: _effectiveOrderNumber, total: total),
+        ),
+      );
+      if (!mounted || result == null) return; // back-swiped or cancelled
+      tenders = result;
+    }
 
     if (!context.mounted) return;
     try {
       final billBytes = await billingProvider.generateBill(
         cartItems: mergeCartItems(_effectiveCartItems(context)),
-        orderNumber: widget.orderNumber,
+        orderNumber: _effectiveOrderNumber,
         subtotal: subtotal,
         gstAmount: gstAmount,
         total: total,
@@ -1025,8 +1126,8 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
           builder:
               (context) => BillPDFViewerDialog(
                 pdfBytes: billBytes,
-                orderNumber: widget.orderNumber,
-                fileName: 'Bill_${widget.orderNumber}.pdf',
+                orderNumber: _effectiveOrderNumber,
+                fileName: 'Bill_$_effectiveOrderNumber.pdf',
               ),
         );
 
@@ -1040,17 +1141,25 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
         // "Done" and skips PaymentPage entirely — there is nothing left to
         // pay. Bill Later keeps the original "Proceed to Pay" flow.
         if (context.mounted) {
+          final tableProvider = context.read<TableProvider>();
+          final matchedTable = widget.tableId != null
+              ? tableProvider.tables
+                  .where((t) => t.id == widget.tableId)
+                  .firstOrNull
+              : null;
+
           await showDialog(
             context: context,
             barrierDismissible: false,
             builder:
                 (context) => BillSuccessDialog(
-                  orderNumber: widget.orderNumber,
+                  orderNumber: _effectiveOrderNumber,
                   total: total,
                   customerPhone: billingProvider.customerPhone,
                   billBytes: billBytes,
                   onBillGenerated: widget.onBillGenerated,
                   tableId: widget.tableId,
+                  tableName: matchedTable?.name,
                   orderId: widget.orderId,
                   remainingUnbilledCount: remainingUnbilledCount,
                   paidAtCheckout: tenders.isNotEmpty,
@@ -1133,46 +1242,31 @@ class _OrderItemRowTileState extends State<_OrderItemRowTile> {
                         ),
                     ],
                   ),
-                  if (widget.item.specialNotes?.isNotEmpty == true) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      widget.item.specialNotes!,
-                      style: const TextStyle(
-                        fontSize: 10.5,
-                        color: AppColors.textSecondary,
-                        fontStyle: FontStyle.italic,
-                      ),
-                      maxLines: _isExpanded ? null : 1,
-                      overflow:
-                          _isExpanded
-                              ? TextOverflow.visible
-                              : TextOverflow.ellipsis,
-                    ),
-                  ],
                 ],
               ),
             ),
             const SizedBox(width: 8),
 
-            // Quantity Column (Fixed 52px width, centered)
+            // Quantity Column (Fixed 52px width, centered numeric badge under QTY header)
             SizedBox(
               width: 52,
               child: Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2,
+                    horizontal: 8,
+                    vertical: 2.5,
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    'x${widget.item.quantity}',
+                    '${widget.item.quantity}',
                     style: const TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primary,
+                      fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
                 ),
@@ -1180,9 +1274,9 @@ class _OrderItemRowTileState extends State<_OrderItemRowTile> {
             ),
             const SizedBox(width: 8),
 
-            // Amount Column (Fixed 95px width, right aligned for max 5-digit values e.g. $12345.00)
+            // Amount Column (Fixed 95px width, right aligned to match header exactly)
             SizedBox(
-              width: 110,
+              width: 95,
               child: Text(
                 itemTotal.toCurrency(),
                 textAlign: TextAlign.right,

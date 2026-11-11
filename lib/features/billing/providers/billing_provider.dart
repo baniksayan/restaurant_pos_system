@@ -359,6 +359,38 @@ class BillingProvider extends ChangeNotifier {
 
         if (billResponse?.isSuccess == true) {
           _billId = billResponse!.data?.billId; // Store billId
+          final now = DateTime.now();
+          if (_billId != null && _billId!.isNotEmpty) {
+            await HiveService.saveBillTimestamp(_billId!, now);
+          }
+          final billNoVal = billResponse.data?.billNo;
+          if (billNoVal != null && billNoVal > 0) {
+            await HiveService.saveBillTimestamp(billNoVal.toString(), now);
+          }
+          if (billResponse.data?.generatedBillNo != null && billResponse.data!.generatedBillNo.isNotEmpty) {
+            await HiveService.saveBillTimestamp(billResponse.data!.generatedBillNo, now);
+          }
+          if (orderNumber.isNotEmpty) {
+            await HiveService.saveBillTimestamp(orderNumber, now);
+          }
+          final fullCustName = [resolvedFirstName, resolvedLastName]
+              .where((s) => s != null && s.trim().isNotEmpty)
+              .join(' ')
+              .trim();
+          if (fullCustName.isNotEmpty) {
+            if (_billId != null && _billId!.isNotEmpty) {
+              await HiveService.saveCustomerName(_billId!, fullCustName);
+            }
+            if (billNoVal != null && billNoVal > 0) {
+              await HiveService.saveCustomerName(billNoVal.toString(), fullCustName);
+            }
+            if (billResponse.data?.generatedBillNo != null && billResponse.data!.generatedBillNo.isNotEmpty) {
+              await HiveService.saveCustomerName(billResponse.data!.generatedBillNo, fullCustName);
+            }
+            if (orderNumber.isNotEmpty) {
+              await HiveService.saveCustomerName(orderNumber, fullCustName);
+            }
+          }
           debugPrint('BillingProvider - Bill Created Successfully:');
           debugPrint('Bill ID: $_billId');
           debugPrint(
@@ -415,6 +447,38 @@ class BillingProvider extends ChangeNotifier {
 
         if (billResponse?.isSuccess == true) {
           _billId = billResponse!.data?.billId; // Store billId
+          final now = DateTime.now();
+          if (_billId != null && _billId!.isNotEmpty) {
+            await HiveService.saveBillTimestamp(_billId!, now);
+          }
+          final billNoVal = billResponse.data?.billNo;
+          if (billNoVal != null && billNoVal > 0) {
+            await HiveService.saveBillTimestamp(billNoVal.toString(), now);
+          }
+          if (billResponse.data?.generatedBillNo != null && billResponse.data!.generatedBillNo.isNotEmpty) {
+            await HiveService.saveBillTimestamp(billResponse.data!.generatedBillNo, now);
+          }
+          if (orderNumber.isNotEmpty) {
+            await HiveService.saveBillTimestamp(orderNumber, now);
+          }
+          final fullCustName = [resolvedFirstName, resolvedLastName]
+              .where((s) => s != null && s.trim().isNotEmpty)
+              .join(' ')
+              .trim();
+          if (fullCustName.isNotEmpty) {
+            if (_billId != null && _billId!.isNotEmpty) {
+              await HiveService.saveCustomerName(_billId!, fullCustName);
+            }
+            if (billNoVal != null && billNoVal > 0) {
+              await HiveService.saveCustomerName(billNoVal.toString(), fullCustName);
+            }
+            if (billResponse.data?.generatedBillNo != null && billResponse.data!.generatedBillNo.isNotEmpty) {
+              await HiveService.saveCustomerName(billResponse.data!.generatedBillNo, fullCustName);
+            }
+            if (orderNumber.isNotEmpty) {
+              await HiveService.saveCustomerName(orderNumber, fullCustName);
+            }
+          }
           debugPrint('BillingProvider - Fallback Bill Created Successfully:');
           debugPrint('Bill ID: $_billId');
           debugPrint(
@@ -452,6 +516,7 @@ class BillingProvider extends ChangeNotifier {
       String? realCustomerPhone;
       double realDiscountAmount = 0;
       List<receipt.PaymentDetail>? realPayments;
+      DateTime? realBillDate;
 
       if (_billId != null && _billId!.isNotEmpty) {
         try {
@@ -485,6 +550,7 @@ class BillingProvider extends ChangeNotifier {
             realDiscountAmount =
                 billData.billHeadDt.discountAmnt + billData.billHeadDt.specDisAmt;
             realPayments = billData.paymentDetail;
+            realBillDate = billData.billHeadDt.parsedBillDate;
           }
         } catch (e) {
           debugPrint(
@@ -504,7 +570,7 @@ class BillingProvider extends ChangeNotifier {
         tableId: cartItems.first.tableId,
         tableName: cartItems.first.tableName,
         orderNumber: orderNumber,
-        orderTime: DateTime.now(),
+        orderTime: realBillDate ?? DateTime.now(),
         subtotal: pdfSubtotal,
         gstAmount: pdfGstAmount,
         total: pdfTotal,

@@ -14,6 +14,7 @@ class CustomTextField extends StatelessWidget {
   final String? hintText;
 
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final IconData? prefixIcon;
   final Widget? prefixWidget;
   final String? prefixText;
@@ -39,6 +40,7 @@ class CustomTextField extends StatelessWidget {
     this.labelText,
     this.hintText,
     required this.controller,
+    this.focusNode,
     this.prefixIcon,
     this.prefixWidget,
     this.prefixText,
@@ -69,6 +71,7 @@ class CustomTextField extends StatelessWidget {
 
     final field = TextFormField(
       controller: controller,
+      focusNode: focusNode,
       obscureText: obscureText,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,

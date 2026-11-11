@@ -14,6 +14,31 @@ class OrderCard extends StatelessWidget {
     required this.onTap,
   });
 
+  String _cleanCustomerName(String raw) {
+    if (raw.trim().isEmpty) return 'Walk-in Guest';
+    String cleaned = raw.trim();
+
+    // If it comes as "Table 6 (John Doe)", extract "John Doe"
+    final match = RegExp(
+      r'^Table[^(]*\((.*?)\)$',
+      caseSensitive: false,
+    ).firstMatch(cleaned);
+    if (match != null) {
+      final inside = match.group(1)?.trim() ?? '';
+      if (inside.isNotEmpty) return inside;
+    }
+
+    // If it equals "Table 6" or starts with "Table", fallback to Walk-in Guest
+    if (cleaned.toLowerCase().startsWith('table ') ||
+        (order.tableNumber != null &&
+            cleaned.toLowerCase() == order.tableNumber!.toLowerCase()) ||
+        cleaned.toLowerCase() == 'table') {
+      return 'Walk-in Guest';
+    }
+
+    return cleaned;
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusColor = _getStatusColor();
@@ -177,9 +202,7 @@ class OrderCard extends StatelessWidget {
                         const SizedBox(width: 5),
                         Expanded(
                           child: Text(
-                            order.customerName.isNotEmpty
-                                ? order.customerName
-                                : 'Walk-in Guest',
+                            _cleanCustomerName(order.customerName),
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
@@ -355,7 +378,9 @@ class OrderCard extends StatelessWidget {
                         Text(
                           order.items.isNotEmpty
                               ? '${order.items.length} ${order.items.length == 1 ? 'item' : 'items'}'
-                              : order.orderType,
+                              : (isTable
+                                  ? 'Dine-In'
+                                  : (isPhone ? 'Phone Delivery' : 'Takeaway')),
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -391,7 +416,7 @@ class OrderCard extends StatelessWidget {
 
                     const SizedBox(height: 12),
 
-                    // Action Button: View Order Details
+                    // Action Button: View Order Details (Compact)
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
@@ -399,9 +424,14 @@ class OrderCard extends StatelessWidget {
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 12,
+                          ),
+                          minimumSize: const Size.fromHeight(38),
+                          visualDensity: VisualDensity.compact,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         onPressed: onTap,

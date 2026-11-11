@@ -56,7 +56,8 @@ class _ChefDashboardViewState extends State<ChefDashboardView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final chefProvider = context.read<ChefProvider>();
-        chefProvider.loadFromHive();
+        chefProvider.loadFromHive(autoFetch: true);
+        chefProvider.fetchOrders();
         final currentTab = chefProvider.currentTabIndex;
         if (_pageController.hasClients &&
             _pageController.page?.round() != currentTab) {

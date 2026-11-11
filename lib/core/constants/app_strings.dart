@@ -209,18 +209,13 @@ class _BillingStrings {
 
   final String loadingPaymentModes = 'Loading payment modes...';
 
-  /// Tax line label carrying the live rate, e.g. "Tax & Charges (25%)".
-  ///
-  /// Deliberately not "GST": the components configured per company are not
-  /// all taxes — a real company has CGST and SGST alongside entries named
-  /// "charge" and "tax 1" — and the bill sums them into a single figure.
-  /// Calling that total GST would misdescribe what the customer is paying.
+  /// Tax line label carrying the live rate, e.g. "Tax (5%)".
   String gstWithRate(double percentage) {
     final rate =
         percentage == percentage.roundToDouble()
             ? percentage.toStringAsFixed(0)
             : percentage.toStringAsFixed(2);
-    return 'Tax & Charges ($rate%)';
+    return 'Tax ($rate%)';
   }
 }
 

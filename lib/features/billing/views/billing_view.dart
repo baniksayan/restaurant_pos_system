@@ -87,7 +87,7 @@ class _BillingPageState extends State<BillingPage> {
         return Scaffold(
           backgroundColor: Colors.grey[50],
           appBar: AppBar(
-            title: Text('Generate Bill - Order #${widget.orderNumber}'),
+            title: Text('Generate Bill - #${widget.orderNumber}'),
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             elevation: 0,
@@ -254,7 +254,7 @@ class _BillingPageState extends State<BillingPage> {
   ) {
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton.icon(
+      child: ElevatedButton(
         onPressed:
             billingProvider.isGenerating
                 ? null
@@ -264,25 +264,6 @@ class _BillingPageState extends State<BillingPage> {
                   gstAmount,
                   total,
                 ),
-        icon:
-            billingProvider.isGenerating
-                ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-                : const Icon(Icons.receipt_long, size: 20),
-        label: Text(
-          billingProvider.isGenerating
-              ? 'Generating Bill...'
-              : (billingProvider.customerPhone?.isNotEmpty == true
-                  ? 'Generate & Send Bill'
-                  : 'Generate Bill'),
-          style: const TextStyle(fontSize: 16),
-        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
@@ -290,6 +271,21 @@ class _BillingPageState extends State<BillingPage> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           elevation: 2,
         ),
+        child: billingProvider.isGenerating
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Text(
+                billingProvider.customerPhone?.isNotEmpty == true
+                    ? 'Generate & Send Bill'
+                    : 'Generate Bill',
+                style: const TextStyle(fontSize: 16),
+              ),
       ),
     );
   }

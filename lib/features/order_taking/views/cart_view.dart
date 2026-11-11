@@ -12,6 +12,10 @@ import 'package:restaurant_pos_system/data/remote/api_service.dart';
 
 import 'package:restaurant_pos_system/shared/services/pdf_service.dart';
 import 'package:restaurant_pos_system/features/billing/widgets/generate_bill_summary_dialog.dart';
+import 'package:restaurant_pos_system/features/billing/providers/billing_provider.dart';
+import 'package:restaurant_pos_system/features/billing/providers/tax_provider.dart';
+import 'package:restaurant_pos_system/features/payment/views/payment_view.dart';
+import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
 import '../widgets/cart_header.dart';
 import '../widgets/cart_items_list.dart';
 import '../widgets/cart_footer.dart';
@@ -133,6 +137,59 @@ class _CartViewState extends State<CartView> {
               }
             }
 
+            String? orderId;
+            if (_isTableOrder) {
+              if (widget.tableId != null) {
+                final matchedTable = tableProvider.tables
+                    .where(
+                      (t) =>
+                          t.id == widget.tableId ||
+                          t.name == widget.tableName,
+                    )
+                    .firstOrNull;
+                if (matchedTable != null &&
+                    matchedTable.activeOrders.isNotEmpty) {
+                  orderId = matchedTable.activeOrders.last.orderId;
+                }
+              }
+            } else {
+              final orderProvider = Provider.of<OrderProvider>(
+                context,
+                listen: false,
+              );
+              orderId = orderProvider.createdOrderId;
+            }
+            orderId ??= cartProvider.currentOrderId ?? _orderNumber;
+
+            final matchedTable =
+                widget.tableId != null
+                    ? tableProvider.tables
+                        .where(
+                          (t) =>
+                              t.id == widget.tableId ||
+                              t.name == widget.tableName,
+                        )
+                        .firstOrNull
+                    : null;
+
+            final bool isBilled =
+                cartProvider.isOrderBilled(orderId) ||
+                (matchedTable != null &&
+                    (matchedTable.status == TableStatus.billGenerated ||
+                        matchedTable.billGenerated ||
+                        matchedTable.activeOrders.any(
+                          (o) =>
+                              o.isBilled ||
+                              (orderId != null &&
+                                  o.orderId == orderId &&
+                                  o.isBilled),
+                        ))) ||
+                (orderId != null &&
+                    (tableProvider.getBillId(orderId) != null ||
+                        HiveService.getOrderBillId(orderId) != null));
+
+            final billingOrderNumber = _resolveOrderNumber(orderId);
+
             return Column(
               children: [
                 CartHeader(
@@ -144,7 +201,7 @@ class _CartViewState extends State<CartView> {
                   selectedLocation: widget.selectedLocation,
                   totalItems: cartProvider.totalItems,
                   hasItems: items.isNotEmpty,
-                  showClearAll: hasNewItems,
+                  showClearAll: hasNewItems && !isBilled,
                   onClearCart: () => _showClearCartDialog(cartProvider),
                   onAddMore: () => _navigateBackToMenu(cartProvider),
                 ),
@@ -209,6 +266,9 @@ class _CartViewState extends State<CartView> {
                           padding: const EdgeInsets.fromLTRB(0, 0, 0, 230),
                           child: Column(
                             children: [
+                              // Show billed banner if already billed
+                              if (isBilled) _buildBilledBanner(),
+
                               // Show KOT generated items section (from both local and server)
                               if (hasKotItems)
                                 _buildKotGeneratedSection(
@@ -228,6 +288,13 @@ class _CartViewState extends State<CartView> {
                             bottom: 0,
                             child: CartFooter(
                               subtotal: cartProvider.totalAmount,
+                              isBilled: isBilled,
+                              onProceedToPayment:
+                                  () => _navigateToPaymentFromCart(
+                                    cartProvider,
+                                    orderId,
+                                    billingOrderNumber,
+                                  ),
                               kotGenerated:
                                   hasKotItems &&
                                   !hasNewItems, // KOT generated and no new items
@@ -709,12 +776,37 @@ class _CartViewState extends State<CartView> {
                     ? rawOrderNo
                     : 'KOT';
 
-        // Backend order number for billing reference
-        final orderNumber = kotDetail?.orderNo ??
-            orderProvider.generatedOrderNo ??
-            orderProvider.orderNo?.toString() ??
-            apiKotNumber;
-        _orderNumber = orderNumber;
+        // Backend order number for billing reference (must never be a KOT number)
+        final rawOrderIdent = kotDetail?.orderIdentifier?.trim();
+        final genOrderNo = orderProvider.generatedOrderNo?.trim();
+        final numOrderNo = orderProvider.orderNo?.toString().trim();
+
+        String? validOrderNo;
+        if (rawOrderNo != null &&
+            rawOrderNo.isNotEmpty &&
+            !rawOrderNo.toUpperCase().contains('KT/')) {
+          validOrderNo = rawOrderNo;
+        } else if (rawOrderIdent != null &&
+            rawOrderIdent.toUpperCase().contains('OD/')) {
+          validOrderNo = rawOrderIdent;
+        } else if (genOrderNo != null &&
+            genOrderNo.isNotEmpty &&
+            !genOrderNo.toUpperCase().contains('KT/')) {
+          validOrderNo = genOrderNo;
+        } else if (numOrderNo != null &&
+            numOrderNo.isNotEmpty &&
+            !numOrderNo.toUpperCase().contains('KT/')) {
+          validOrderNo = numOrderNo;
+        }
+
+        final String orderNumber = validOrderNo ?? (rawOrderNo?.isNotEmpty == true ? rawOrderNo! : '');
+        if (validOrderNo != null) {
+          _orderNumber = validOrderNo;
+          final targetOrderId = kotDetail?.orderId ?? backendOrderId;
+          if (targetOrderId.isNotEmpty) {
+            HiveService.saveOrderNo(targetOrderId, validOrderNo);
+          }
+        }
 
         // Mark the new items as KOT generated with the actual API KOT number
         final newItemCartKeys = cartProvider.newItems.keys.toList();
@@ -744,6 +836,13 @@ class _CartViewState extends State<CartView> {
           _kotNumbers.add(apiKotNumber);
           if (kotNote.isNotEmpty) {
             _kotNotes[apiKotNumber] = kotNote;
+            HiveService.saveKotNote(apiKotNumber, kotNote);
+            if (rawHeadId != null && rawHeadId.isNotEmpty) {
+              HiveService.saveKotNote(rawHeadId, kotNote);
+            }
+            if (orderNumber.isNotEmpty) {
+              HiveService.saveKotNote(orderNumber, kotNote);
+            }
           }
           _currentKotNote = '';
         });
@@ -961,6 +1060,68 @@ class _CartViewState extends State<CartView> {
     }
   }
 
+  String _resolveOrderNumber(String? orderId) {
+    // 1. Direct _orderNumber if valid (not KT/ and not Unknown)
+    if (_orderNumber != null &&
+        _orderNumber!.trim().isNotEmpty &&
+        !_orderNumber!.toUpperCase().contains('KT/') &&
+        !_orderNumber!.toLowerCase().contains('unknown')) {
+      return _orderNumber!.trim();
+    }
+
+    // 2. OrderProvider generatedOrderNo or orderNo
+    final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+    final genOrderNo = orderProvider.generatedOrderNo?.trim();
+    if (genOrderNo != null &&
+        genOrderNo.isNotEmpty &&
+        !genOrderNo.toUpperCase().contains('KT/') &&
+        !genOrderNo.toLowerCase().contains('unknown')) {
+      return genOrderNo;
+    }
+    final numOrderNo = orderProvider.orderNo?.toString().trim();
+    if (numOrderNo != null &&
+        numOrderNo.isNotEmpty &&
+        !numOrderNo.toUpperCase().contains('KT/') &&
+        !numOrderNo.toLowerCase().contains('unknown')) {
+      return numOrderNo;
+    }
+
+    // 3. For table orders, check TableProvider's activeOrders
+    if (widget.tableId != null) {
+      final tableProvider = Provider.of<TableProvider>(context, listen: false);
+      final matchedTable = tableProvider.tables
+          .where((t) => t.id == widget.tableId || t.name == widget.tableName)
+          .firstOrNull;
+
+      if (matchedTable != null && matchedTable.activeOrders.isNotEmpty) {
+        final matchedOrder = orderId != null
+            ? matchedTable.activeOrders
+                .where((o) => o.orderId == orderId)
+                .firstOrNull
+            : null;
+        final targetOrder = matchedOrder ?? matchedTable.activeOrders.first;
+        if (targetOrder.generatedOrderNo.trim().isNotEmpty &&
+            !targetOrder.generatedOrderNo.toUpperCase().contains('KT/') &&
+            !targetOrder.generatedOrderNo.toLowerCase().contains('unknown')) {
+          return targetOrder.generatedOrderNo.trim();
+        }
+      }
+    }
+
+    // 4. Check cached order number by orderId in Hive
+    if (orderId != null && orderId.isNotEmpty) {
+      final cached = HiveService.getOrderNo(orderId);
+      if (cached != null &&
+          cached.isNotEmpty &&
+          !cached.toUpperCase().contains('KT/') &&
+          !cached.toLowerCase().contains('unknown')) {
+        return cached;
+      }
+    }
+
+    return '';
+  }
+
   // Navigate to Billing Page logic here
   void _navigateToBillingPage(AnimatedCartProvider cartProvider) {
     // Check if all items have been KOT'd
@@ -971,12 +1132,6 @@ class _CartViewState extends State<CartView> {
       );
       return;
     }
-
-    // Use the backend order number for billing reference
-    final billingOrderNumber = _orderNumber ??
-        Provider.of<OrderProvider>(context, listen: false).generatedOrderNo ??
-        Provider.of<OrderProvider>(context, listen: false).orderNo?.toString() ??
-        (_kotNumbers.isNotEmpty ? _kotNumbers.first : 'Unknown');
 
     // Get orderId from table provider or order provider based on context.
     // widget.tableId is non-null for Phone/Takeaway too (it carries the
@@ -992,6 +1147,9 @@ class _CartViewState extends State<CartView> {
       final orderProvider = Provider.of<OrderProvider>(context, listen: false);
       orderId = orderProvider.createdOrderId;
     }
+
+    // Resolve proper backend order number (never KT/ or Unknown)
+    final billingOrderNumber = _resolveOrderNumber(orderId);
 
     // Show Generate Bill Summary Glassmorphic Modal Popup (No full page navigation!)
     GenerateBillSummaryDialog.show(
@@ -1015,6 +1173,121 @@ class _CartViewState extends State<CartView> {
         navProvider.clearTableSelection();
         navProvider.navigateToTables();
       },
+    );
+  }
+
+  Widget _buildBilledBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.45),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.receipt_long_rounded,
+              color: Color(0xFFD97706),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Bill Generated · Payment Pending',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF92400E),
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  'This order has already been billed. Kitchen orders & billing are closed. Please proceed to payment below to settle.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFFB45309),
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToPaymentFromCart(
+    AnimatedCartProvider cartProvider,
+    String? orderId,
+    String orderNumber,
+  ) {
+    final tableProvider = Provider.of<TableProvider>(context, listen: false);
+    final billingProvider =
+        Provider.of<BillingProvider>(context, listen: false);
+
+    final billId =
+        (orderId != null ? tableProvider.getBillId(orderId) : null) ??
+        billingProvider.billId;
+
+    final taxProvider = Provider.of<TaxProvider>(context, listen: false);
+    final totalAmount = cartProvider.totalAmount +
+        taxProvider.calculateGstAmount(cartProvider.totalAmount);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => PaymentPage(
+              orderId: orderId,
+              orderNumber:
+                  orderNumber.isNotEmpty
+                      ? orderNumber
+                      : (_orderNumber ?? ''),
+              totalAmount: totalAmount,
+              tableId: widget.tableId,
+              billId: billId,
+              isFinalSettlement: true,
+              onPaymentCompleted: () {
+                cartProvider.clearCart();
+                if (orderId != null) {
+                  cartProvider.clearOrderData(orderId);
+                  tableProvider.clearBillId(orderId);
+                }
+                final navProvider = Provider.of<NavigationProvider>(
+                  context,
+                  listen: false,
+                );
+                navProvider.clearTableSelection();
+                navProvider.navigateToTables();
+              },
+            ),
+      ),
     );
   }
 }

@@ -82,19 +82,22 @@ class Data {
       });
     }
     posToken = json['posToken'];
-    if (json['location'] != null) {
+    final locList = json['location'] ?? json['locations'] ?? json['outlets'] ?? json['outlet'];
+    if (locList != null) {
       location = <Location>[];
-      if (json['location'] is List) {
-        for (var v in (json['location'] as List)) {
-          if (v is Map<String, dynamic>) {
+      if (locList is List) {
+        for (var v in locList) {
+          if (v is Location) {
+            location!.add(v);
+          } else if (v is Map<String, dynamic>) {
             location!.add(Location.fromJson(v));
           } else if (v is Map) {
             location!.add(Location.fromJson(Map<String, dynamic>.from(v)));
           }
         }
-      } else if (json['location'] is Map) {
+      } else if (locList is Map) {
         location!.add(
-          Location.fromJson(Map<String, dynamic>.from(json['location'])),
+          Location.fromJson(Map<String, dynamic>.from(locList)),
         );
       }
     }
@@ -395,14 +398,15 @@ class Location {
   });
 
   Location.fromJson(Map<String, dynamic> json) {
-    if (json['locationId'] != null) {
-      locationId = json['locationId'] is int
-          ? json['locationId'] as int
-          : int.tryParse(json['locationId'].toString());
+    final rawId = json['locationId'] ?? json['outletId'] ?? json['id'];
+    if (rawId != null) {
+      locationId = rawId is int
+          ? rawId
+          : int.tryParse(rawId.toString());
     }
-    locationName = json['locationName']?.toString();
-    locationType = json['locationType']?.toString();
-    locAddress = json['locAddress']?.toString();
+    locationName = (json['locationName'] ?? json['outletName'] ?? json['name'])?.toString();
+    locationType = (json['locationType'] ?? json['type'])?.toString();
+    locAddress = (json['locAddress'] ?? json['address'] ?? json['outletAddress'])?.toString();
   }
 
   Map<String, dynamic> toJson() {

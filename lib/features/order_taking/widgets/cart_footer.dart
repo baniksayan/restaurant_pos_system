@@ -19,6 +19,8 @@ class CartFooter extends StatefulWidget {
   final String kotNote;
   final ValueChanged<String>? onKotNoteChanged;
   final VoidCallback? onOpenKotNoteDialog;
+  final bool isBilled;
+  final VoidCallback? onProceedToPayment;
 
   const CartFooter({
     super.key,
@@ -31,6 +33,8 @@ class CartFooter extends StatefulWidget {
     this.kotNote = '',
     this.onKotNoteChanged,
     this.onOpenKotNoteDialog,
+    this.isBilled = false,
+    this.onProceedToPayment,
   });
 
   @override
@@ -162,7 +166,9 @@ class _CartFooterState extends State<CartFooter> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      if (!widget.kotGenerated)
+                      if (widget.isBilled)
+                        _buildBilledButtons()
+                      else if (!widget.kotGenerated)
                         _buildPreKOTButtons()
                       else
                         _buildPostKOTButtons(),
@@ -258,7 +264,9 @@ class _CartFooterState extends State<CartFooter> {
                         isTotal: true,
                       ),
                       const SizedBox(height: 10),
-                      if (!widget.kotGenerated)
+                      if (widget.isBilled)
+                        _buildBilledButtons()
+                      else if (!widget.kotGenerated)
                         _buildPreKOTButtons()
                       else
                         _buildPostKOTButtons(),
@@ -632,6 +640,76 @@ class _CartFooterState extends State<CartFooter> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBilledButtons() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFBEB),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.45),
+              width: 1,
+            ),
+          ),
+          child: const Row(
+            children: [
+              Icon(
+                Icons.receipt_long_rounded,
+                size: 16,
+                color: Color(0xFFD97706),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Bill Generated • Payment Pending',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF92400E),
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () async {
+              await HapticHelper.triggerFeedback();
+              widget.onProceedToPayment?.call();
+            },
+            icon: const Icon(Icons.payment_rounded, size: 18),
+            label: const Text(
+              'Proceed to Payment',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.3,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              elevation: 2,
+              shadowColor: const Color(0xFF10B981).withValues(alpha: 0.35),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

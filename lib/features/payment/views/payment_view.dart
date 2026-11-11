@@ -1,22 +1,24 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:vibration/vibration.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
+import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
+import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/features/billing/providers/billing_provider.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/data/models/bill_generation_models.dart';
-import '../widgets/amount_card.dart';
-import '../widgets/confirm_button.dart';
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
+import 'package:restaurant_pos_system/shared/widgets/layout/shimmer_effect.dart';
 import '../models/tender_line.dart';
+import '../widgets/amount_card.dart';
+import '../widgets/payment_status_illustration.dart';
+import '../widgets/payment_breakdown_card.dart';
 import '../widgets/add_tender_sheet.dart';
 import '../widgets/tender_list_card.dart';
-import 'package:restaurant_pos_system/core/constants/app_strings.dart';
-import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
+import '../widgets/payment_page_skeleton.dart';
 
 typedef PaymentView = PaymentPage;
 
@@ -28,12 +30,7 @@ class PaymentPage extends StatefulWidget {
   final String? tableId;
   final String? billId;
 
-  /// Whether this payment closes out the whole order. Defaults to true —
-  /// every existing caller keeps releasing the table and returning to the
-  /// dashboard exactly as before. A split bill that still leaves other
-  /// items unbilled passes `false` so the table stays occupied and the
-  /// local cart isn't wiped out from under the other guests' items — see
-  /// [GenerateBillSummaryDialog]'s split-bill flow.
+  /// Whether this payment closes out the whole order. Defaults to true.
   final bool isFinalSettlement;
 
   const PaymentPage({
@@ -53,38 +50,18 @@ class PaymentPage extends StatefulWidget {
 
 class _PaymentPageState extends State<PaymentPage>
     with TickerProviderStateMixin {
-  /// Tenders staged for this bill. A bill can be settled across several
-  /// modes — cash plus UPI, say — and SavePayment takes them all in one call,
-  /// writing a Payment row per entry. Collecting them here rather than paying
-  /// one mode at a time keeps it to a single transaction and a single receipt.
+  /// Tenders staged for this bill in this session.
   final List<TenderLine> _tenders = [];
 
   bool _processing = false;
-
   String? _fetchedOrderNumber;
   String? _fetchedBillId;
   double? _actualBillAmount;
 
-  /// Sum of payments already recorded against this bill, from
-  /// Order/GetPaymentDtByBillId. Subtracted from the bill total so the screen
-  /// asks for the outstanding balance rather than the whole bill again.
+  /// Sum of payments already recorded against this bill from earlier calls.
   double _alreadyPaidAmount = 0;
-
   bool _loadingDetails = false;
-
-  /// Cash tendered by the customer — drives the live change display and the
-  /// `returnAmt` sent with the payment. See [CashTenderCard].
-  final TextEditingController _cashReceivedController = TextEditingController();
-
-  /// Change actually handed back on the payment that just succeeded, shown
-  /// in the success dialog.
-  double _lastReturnAmt = 0;
-
-  /// What was taken on the payment that just succeeded. Captured before the
-  /// staged tenders are cleared, so the receipt can still describe a bill
-  /// settled across several modes — "Cash + UPI" rather than one of them.
-  double _paidNowTotal = 0;
-  String _tenderSummary = '';
+  bool _savedSettled = false;
 
   late final AnimationController _fadeController;
   late final Animation<double> _fadeIn;
@@ -95,32 +72,27 @@ class _PaymentPageState extends State<PaymentPage>
     debugPrint(
       '[PaymentPage] Initialized - orderId: ${widget.orderId}, amount: ${widget.totalAmount}, order: ${widget.orderNumber}, tableId: ${widget.tableId}, billId: ${widget.billId}',
     );
+
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 280),
       vsync: this,
     );
-    _fadeIn = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
+    _fadeIn = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeIn),
+    );
     _fadeController.forward();
 
     _loadPaymentDetails();
   }
 
   Future<void> _loadPaymentDetails() async {
-    setState(() {
-      _loadingDetails = true;
-    });
+    setState(() => _loadingDetails = true);
 
     try {
       String? effectiveBillId = widget.billId;
 
-      // 1. Fetch order details using Order/getOrderDetailById API if orderId is provided
+      // 1. Fetch order details if orderId is provided
       if (widget.orderId != null && widget.orderId!.isNotEmpty) {
-        debugPrint(
-          '[PaymentPage] Fetching order details for orderId: ${widget.orderId}',
-        );
         final orderDetails = await ApiService.getOrderDetailById(
           orderId: widget.orderId!,
         );
@@ -131,23 +103,11 @@ class _PaymentPageState extends State<PaymentPage>
             orderDetails.data!.isNotEmpty) {
           final data = orderDetails.data!.first;
           _fetchedOrderNumber = data.orderNo;
-          // The order's BillId is per order-DETAIL: unbilled lines carry the
-          // all-zero placeholder, and the header value is whichever line the
-          // API picked. Treat it as a hint only — never as an override.
           if (GuidHelper.isValid(data.billId)) {
             _fetchedBillId = data.billId;
-            // Only adopt it when the caller did not name a bill — see
-            // effectiveBillId for why the order's own answer is unreliable
-            // once an order has been split across several bills.
             effectiveBillId ??= data.billId;
-          } else if (data.billId != null) {
-            debugPrint(
-              '[PaymentPage] Ignoring placeholder billId from order details: '
-              '${data.billId}',
-            );
           }
 
-          // Calculate total from item list as fallback
           if (data.orderDetailList != null &&
               data.orderDetailList!.isNotEmpty) {
             double itemsSum = 0.0;
@@ -162,17 +122,11 @@ class _PaymentPageState extends State<PaymentPage>
               _actualBillAmount = itemsSum;
             }
           }
-          debugPrint(
-            '[PaymentPage] Order details fetched. OrderNo: $_fetchedOrderNumber, BillId: $_fetchedBillId',
-          );
         }
       }
 
-      // 2. Fetch bill details using getBillDetailByBillId API if billId is available
+      // 2. Fetch bill details if billId is available
       if (effectiveBillId != null && effectiveBillId.isNotEmpty) {
-        debugPrint(
-          '[PaymentPage] Fetching bill details for billId: $effectiveBillId',
-        );
         final billDetails = await ApiService.getBillDetailByBillId(
           billId: effectiveBillId,
         );
@@ -184,28 +138,20 @@ class _PaymentPageState extends State<PaymentPage>
           if (billAmt > 0) {
             _actualBillAmount = billAmt;
           }
-          debugPrint('[PaymentPage] Bill details fetched. Amount: ₹$billAmt');
         }
 
-        // A bill can be created unpaid and settled later, and can take more
-        // than one payment. Without subtracting what has already been paid,
-        // reopening a part-paid bill asks the customer for the full total a
-        // second time.
         final paid = await ApiService.getPaidAmountForBill(
           billId: effectiveBillId,
         );
         if (paid != null && paid > 0) {
           _alreadyPaidAmount = paid;
-          debugPrint('[PaymentPage] Already paid on this bill: ₹$paid');
         }
       }
     } catch (e) {
       debugPrint('[PaymentPage] Error loading payment details: $e');
     } finally {
       if (mounted) {
-        setState(() {
-          _loadingDetails = false;
-        });
+        setState(() => _loadingDetails = false);
       }
     }
   }
@@ -217,7 +163,7 @@ class _PaymentPageState extends State<PaymentPage>
     return widget.orderNumber ?? '';
   }
 
-  /// Full value of the bill, before considering anything already paid.
+  /// Full value of the bill before subtracting paid amounts.
   double get billTotalAmount {
     if (_actualBillAmount != null && _actualBillAmount! > 0) {
       return _actualBillAmount!;
@@ -225,176 +171,236 @@ class _PaymentPageState extends State<PaymentPage>
     return widget.totalAmount ?? 0.0;
   }
 
-  /// What the customer still owes, before anything staged on this screen.
-  /// Never negative — an overpaid bill owes nothing further.
+  /// What is still owed before considering staged tenders.
   double get currentAmount {
     final due = billTotalAmount - _alreadyPaidAmount;
     return due > 0 ? due : 0.0;
   }
 
-  /// Sum of the tenders staged but not yet saved.
+  /// Sum of tenders staged in this session.
   double get _stagedTotal =>
       _tenders.fold(0.0, (sum, t) => sum + t.amount);
 
-  /// Still outstanding once the staged tenders are counted.
+  /// Total amount paid (previously recorded + staged).
+  double get _totalPaid => _alreadyPaidAmount + _stagedTotal;
+
+  /// Remaining balance after considering staged tenders.
   double get _remainingAfterStaged {
-    final left = currentAmount - _stagedTotal;
+    final left = billTotalAmount - _totalPaid;
     return left > 0 ? left : 0.0;
   }
 
-  /// Whether the staged tenders clear the bill. Tolerates float dust, since
-  /// money here is 2dp and the server compares with >=.
+  /// Whether all dues are covered.
   bool get _fullySettled => _remainingAfterStaged <= 0.004;
 
-  /// Change owed across the staged cash tenders.
-  double get _stagedChange =>
-      _tenders.fold(0.0, (sum, t) => sum + t.returnAmount);
+  bool get _isAlreadySettled =>
+      _savedSettled || (_alreadyPaidAmount >= billTotalAmount - 0.004 && billTotalAmount > 0);
 
-  /// The bill this payment settles. Only ever a real id — the all-zero
-  /// placeholder is rejected at every source so it can never shadow the id the
-  /// caller passed in.
+  PaymentStatusState get _currentStatus {
+    if (_isAlreadySettled || _fullySettled || (billTotalAmount > 0 && _totalPaid >= billTotalAmount - 0.004)) {
+      return PaymentStatusState.paidInFull;
+    }
+    if (_totalPaid > 0.004) {
+      return PaymentStatusState.partiallyPaid;
+    }
+    return PaymentStatusState.pending;
+  }
+
   String? get effectiveBillId {
-    // The caller's bill id wins. An order can carry several bills — that is
-    // what splitting one produces — and getOrderDetailById reports only a
-    // single header-level BillId, taken from the first line that happens to
-    // carry one. On a split order that is the EARLIEST bill, which is usually
-    // already paid, so preferring it meant opening a settled bill and showing
-    // nothing left to pay while the bill actually being settled was ignored.
     final explicit = GuidHelper.orNull(widget.billId);
     if (explicit != null) return explicit;
-
-    // Only when no bill was named: fall back to whatever the order reports.
     return GuidHelper.orNull(_fetchedBillId);
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
-    _cashReceivedController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final currentStatus = _currentStatus;
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: theme.scaffoldBackgroundColor,
-        foregroundColor: theme.colorScheme.onSurface,
-        title: Text(AppStrings.payment.paymentTitle),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0F172A),
         centerTitle: false,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new),
-          onPressed: () {
-            _triggerHapticLight();
-            Navigator.pop(context);
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () async {
+            await HapticHelper.triggerFeedback();
+            if (context.mounted) Navigator.pop(context);
           },
         ),
+        title: const Text(
+          'Payment',
+          style: TextStyle(
+            fontSize: 18.5,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F172A),
+            letterSpacing: -0.3,
+          ),
+        ),
+        // (Top header print icon removed per user request)
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(28),
           child: Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+            padding: const EdgeInsets.only(left: 18, right: 18, bottom: 8),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Order #${currentOrderNumber.isNotEmpty ? currentOrderNumber : (widget.orderId ?? '')}',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
+                if (_loadingDetails)
+                  const ShimmerEffect(
+                    child: ShimmerBone(
+                      width: 140,
+                      height: 22,
+                      borderRadius: BorderRadius.all(Radius.circular(10)),
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+                    ),
+                    child: Text(
+                      'Order #${currentOrderNumber.isNotEmpty ? currentOrderNumber : (widget.orderId ?? '')}',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF475569),
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
         ),
       ),
-      body: FadeTransition(
-        opacity: _fadeIn,
-        child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            children: [
-              // The bill's own total, not the balance. It is labelled "Total
-              // Amount", and the Payments card below already reports paid and
-              // remaining — showing the balance here too gave two figures for
-              // the same thing, one of them under the wrong label.
-              AmountCard(
-                amount: billTotalAmount,
-                isLoading: _loadingDetails,
-              ),
-              const SizedBox(height: 16),
-
-              TenderListCard(
-                tenders: _tenders,
-                billTotal: billTotalAmount,
-                previouslyPaid: _alreadyPaidAmount,
-                onRemove: _removeTender,
-              ),
-              const SizedBox(height: 12),
-
-              // Nothing left to collect once the tenders cover the bill, so
-              // the action disappears rather than inviting an overpayment.
-              if (!_fullySettled)
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _loadingDetails ? null : _addTender,
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: Text(
-                      _tenders.isEmpty ? 'Add payment' : 'Add another payment',
+      body: _loadingDetails
+          ? const SafeArea(child: PaymentPageSkeleton())
+          : FadeTransition(
+              opacity: _fadeIn,
+              child: SafeArea(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  children: [
+                    // 1. Top Hero Card (Scenario 1, 2, or 4)
+                    AmountCard(
+                      totalAmount: billTotalAmount,
+                      paidAmount: _totalPaid,
+                      remainingAmount: _remainingAfterStaged,
+                      status: currentStatus,
                     ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                    const SizedBox(height: 14),
+
+                    // 2. Breakdown Card (Total Amount, Amount Paid, Amount Due)
+                    PaymentBreakdownCard(
+                      totalAmount: billTotalAmount,
+                      paidAmount: _totalPaid,
+                      remainingAmount: _remainingAfterStaged,
+                      status: currentStatus,
                     ),
-                  ),
+                    const SizedBox(height: 18),
+
+                    // 3. Payments Section (Empty card with + Add Payment, or list of payments + Add Another)
+                    TenderListCard(
+                      tenders: _tenders,
+                      billTotal: billTotalAmount,
+                      previouslyPaid: _alreadyPaidAmount,
+                      onRemove: _removeTender,
+                      onAddAnotherPayment: _addTender,
+                      isFullySettled: _fullySettled,
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
+              ),
+            ),
+      bottomNavigationBar: _isAlreadySettled
+          ? null
+          : SafeArea(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: const Border(
+                    top: BorderSide(color: Color(0xFFF1F5F9), width: 1.2),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, -3),
+                    ),
+                  ],
+                ),
+                child: _buildSingleActionButton(),
+              ),
+            ),
+    );
+  }
 
-              const SizedBox(height: 16),
-            ],
+  /// Builds the single bottom action button:
+  /// - Disabled by default when no payment is added.
+  /// - Enabled when tenders are staged.
+  /// - Shows success popup redirecting to dashboard when clicked.
+  Widget _buildSingleActionButton() {
+    if (_loadingDetails) {
+      return const ShimmerEffect(
+        child: ShimmerBone(
+          width: double.infinity,
+          height: 48,
+          borderRadius: BorderRadius.all(Radius.circular(14)),
+        ),
+      );
+    }
+
+    if (_processing) {
+      return const SizedBox(
+        height: 48,
+        child: Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            color: Color(0xFF4F46E5),
           ),
         ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            border: const Border(
-              top: BorderSide(color: Color(0xFFE2E8F0), width: 1.0),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, -4),
-              ),
-            ],
+      );
+    }
+
+    final bool isEnabled = _tenders.isNotEmpty;
+
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton.icon(
+        onPressed: isEnabled ? _processPayment : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF4F46E5),
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0xFFE2E8F0),
+          disabledForegroundColor: const Color(0xFF94A3B8),
+          elevation: isEnabled ? 2 : 0,
+          shadowColor: const Color(0xFF4F46E5).withValues(alpha: 0.35),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
           ),
-          child: ConfirmButton(
-            processing: _processing,
-            isLoading: _loadingDetails,
-            // Nothing staged means nothing to save. A part-payment is allowed
-            // — the bill simply stays open and the balance is collected later,
-            // which the server already supports via BillHead.IsPaid = 1.
-            onPressed:
-                (_processing || _tenders.isEmpty) ? null : _processPayment,
+        ),
+        icon: Icon(
+          isEnabled ? Icons.check_circle_rounded : Icons.lock_outline_rounded,
+          size: 18,
+        ),
+        label: const Text(
+          'Confirm Payment',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
           ),
         ),
       ),
@@ -402,7 +408,7 @@ class _PaymentPageState extends State<PaymentPage>
   }
 
   Future<void> _addTender() async {
-    await _triggerHapticLight();
+    await HapticHelper.triggerFeedback();
     if (!mounted) return;
 
     final tender = await AddTenderSheet.show(
@@ -420,19 +426,11 @@ class _PaymentPageState extends State<PaymentPage>
   }
 
   Future<void> _processPayment() async {
-    await _triggerHapticHeavy();
+    await HapticHelper.triggerFeedback();
     if (!mounted) return;
     setState(() => _processing = true);
 
     try {
-      debugPrint('=== PAYMENT PROCESSING DEBUG START ===');
-      debugPrint('Payment Page - Order ID: ${widget.orderId}');
-      debugPrint('Payment Page - Order Number: $currentOrderNumber');
-      debugPrint(
-        'Payment Page - Total Amount: ${CurrencyConstants.symbol}$currentAmount',
-      );
-      debugPrint('Payment Page - Table ID: ${widget.tableId}');
-
       String? billId = effectiveBillId;
 
       if (GuidHelper.isNullOrEmpty(billId)) {
@@ -451,29 +449,8 @@ class _PaymentPageState extends State<PaymentPage>
         }
       }
 
-      // Change comes only from cash overpayment, and each tender carries its
-      // own so the Payment rows stay individually correct.
-      _lastReturnAmt = _stagedChange;
-      _paidNowTotal = _stagedTotal;
-      _tenderSummary = _tenders
-          .map((t) => t.label)
-          .toSet()
-          .join(' + ')
-          .toUpperCase();
-
-      debugPrint(
-        'Payment Page - ${_tenders.length} tender(s), '
-        'staged ${_stagedTotal.toStringAsFixed(2)}, '
-        'change ${_stagedChange.toStringAsFixed(2)}',
-      );
-
       final savePaymentRequest = SavePaymentRequest(
-        // Non-null by this point: the guard above throws when no real bill id
-        // could be resolved.
         billId: billId!,
-        // One Payment row per tender. SP_SavePayment walks the list and
-        // SP_UpdPaymentStatusBill sums them, so a bill split across cash and
-        // UPI settles in a single call.
         paymentDetails: _tenders.map((t) => t.toPaymentDetail()).toList(),
       );
 
@@ -482,116 +459,77 @@ class _PaymentPageState extends State<PaymentPage>
       );
 
       if (response?.isSuccess == true) {
-        await _triggerHapticLight();
+        final now = DateTime.now();
+        if (widget.billId != null && widget.billId!.isNotEmpty) {
+          await HiveService.saveBillTimestamp(widget.billId!, now);
+        }
+        if (widget.orderId != null && widget.orderId!.isNotEmpty) {
+          await HiveService.saveBillTimestamp(widget.orderId!, now);
+        }
+        if (widget.orderNumber != null && widget.orderNumber!.isNotEmpty) {
+          await HiveService.saveBillTimestamp(widget.orderNumber!, now);
+        }
+
+        // Clean up cart and table state if order is completed
+        if (mounted && widget.tableId != null) {
+          try {
+            final tp = Provider.of<TableProvider>(context, listen: false);
+            final acp =
+                Provider.of<AnimatedCartProvider>(context, listen: false);
+            final settledOrderId = widget.orderId;
+            if (widget.isFinalSettlement) {
+              if (settledOrderId != null && settledOrderId.isNotEmpty) {
+                await tp.clearBillId(settledOrderId);
+                acp.clearOrderData(settledOrderId);
+              }
+            }
+            await tp.refreshTables();
+          } catch (e) {
+            debugPrint('[PaymentPage] Table cleanup error: $e');
+          }
+        }
+
+        setState(() {
+          _alreadyPaidAmount += _stagedTotal;
+          _tenders.clear();
+          _savedSettled = true;
+          _processing = false;
+        });
+
+        widget.onPaymentCompleted?.call();
+
+        // Show the success redirect popup
+        if (mounted) {
+          await _showSuccessRedirectDialog();
+        }
       } else {
         throw Exception('Failed to save payment: ${response?.message}');
       }
     } catch (e) {
       debugPrint('Error in payment processing: $e');
-      setState(() => _processing = false);
-
       if (mounted) {
+        setState(() => _processing = false);
         AppSnackBar.showError(context, 'Payment failed: $e');
       }
-      return;
     }
-
-    setState(() => _processing = false);
-    await _showSuccessDialog();
   }
 
-  Future<void> _showSuccessDialog() async {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    // Pre-capture providers and callbacks
-    final onCompleted = widget.onPaymentCompleted;
-    TableProvider? tableProvider;
-    AnimatedCartProvider? animatedCartProvider;
-    try {
-      tableProvider = Provider.of<TableProvider>(context, listen: false);
-      animatedCartProvider = Provider.of<AnimatedCartProvider>(
-        context,
-        listen: false,
-      );
-    } catch (e) {
-      debugPrint('[PaymentPage] Provider access error: $e');
-    }
-
+  /// Popup showing success and auto-redirecting to the dashboard.
+  Future<void> _showSuccessRedirectDialog() async {
     bool isRedirecting = false;
     Timer? timer;
-    int secondsRemaining = 5;
+    int secondsRemaining = 4;
 
-    Future<void> executeRedirect(BuildContext dialogContext) async {
+    void executeRedirect(BuildContext dialogContext) {
       if (isRedirecting) return;
       isRedirecting = true;
       timer?.cancel();
 
-      final tp = tableProvider;
-      final acp = animatedCartProvider;
-
-      // 1. Update table status if tableId is present — only when this
-      // payment actually finishes the order. A split bill with other
-      // guests' items still unbilled must NOT release the table or wipe
-      // the shared cart data; just refresh so it reflects the latest paid
-      // amount from the server.
-      if (widget.tableId != null && tp != null) {
-        if (widget.isFinalSettlement) {
-          try {
-            // Forget the settled order's bill and cart before refreshing. The
-            // server frees the table on its own once the order is fully paid
-            // (see SP_UpdPaymentStatusOrder — it sets OrderHead.IsPaid, and the
-            // channel list only reports orders that are still unpaid), so the
-            // refresh below already returns it as available. What the server
-            // cannot do is clear this device's cached bill id, and leaving it
-            // behind hands the next customer the previous bill. Scoped to the
-            // order so settling one group on a shared table does not wipe
-            // another group's still-unpaid bill.
-            final settledOrderId = widget.orderId;
-            if (settledOrderId != null && settledOrderId.isNotEmpty) {
-              await tp.clearBillId(settledOrderId);
-            }
-
-            if (acp != null &&
-                settledOrderId != null &&
-                settledOrderId.isNotEmpty) {
-              acp.clearOrderData(settledOrderId);
-            }
-
-            await tp.refreshTables();
-          } catch (e) {
-            debugPrint('Error releasing table after settlement: $e');
-          }
-        } else {
-          try {
-            await tp.refreshTables();
-          } catch (e) {
-            debugPrint('Error refreshing table after split payment: $e');
-          }
-        }
-      }
-
-      // 2. Close dialog if open
       if (dialogContext.mounted) {
         Navigator.pop(dialogContext);
       }
 
-      // 3. Refresh dashboard tables
-      if (tp != null) {
-        try {
-          await tp.refreshTables();
-        } catch (e) {
-          debugPrint('Error refreshing dashboard: $e');
-        }
-      }
-
-      // 4. Trigger payment completed callback
-      onCompleted?.call();
-
-      // 5. Navigate back to first route (Dashboard) — a split bill with
-      // items still unbilled leaves navigation to onCompleted instead, so
-      // it can return to the order screen rather than the whole dashboard.
-      if (mounted && widget.isFinalSettlement) {
+      if (mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     }
@@ -602,13 +540,10 @@ class _PaymentPageState extends State<PaymentPage>
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (builderContext, setDialogState) {
-            // Initialize 5-second countdown timer once
             timer ??= Timer.periodic(const Duration(seconds: 1), (t) {
               if (secondsRemaining > 1) {
                 if (builderContext.mounted) {
-                  setDialogState(() {
-                    secondsRemaining--;
-                  });
+                  setDialogState(() => secondsRemaining--);
                 }
               } else {
                 t.cancel();
@@ -617,92 +552,193 @@ class _PaymentPageState extends State<PaymentPage>
             });
 
             return Dialog(
+              backgroundColor: Colors.white,
+              elevation: 8,
               insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-              backgroundColor: theme.colorScheme.surface,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(22),
               ),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: Colors.green.withValues(alpha: 0.12),
-                      child: const Icon(
-                        Icons.check_rounded,
-                        color: Colors.green,
-                        size: 28,
+                    // Green circular checkmark with halo
+                    Container(
+                      width: 68,
+                      height: 68,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFDCFCE7),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF16A34A),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check_rounded,
+                          size: 30,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 14),
-                    Text(
+
+                    // Title
+                    const Text(
                       'Payment Successful',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                        letterSpacing: -0.3,
                       ),
-                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      '${_paidNowTotal.toCurrency()}'
-                      ' • $_tenderSummary',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
+
+                    // Pill: Bill Paid & Settled
                     Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 3.5,
                       ),
-                      child: Column(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFFBBF7D0),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          _kv('Order', '#$currentOrderNumber', context),
-                          const SizedBox(height: 6),
-                          _kv(
-                            'Amount',
-                            _paidNowTotal.toCurrency(),
-                            context,
+                          Icon(
+                            Icons.check_rounded,
+                            size: 13,
+                            color: Color(0xFF15803D),
                           ),
-                          const SizedBox(height: 6),
-                          _kv('Method', _tenderSummary, context),
-                          if (_lastReturnAmt > 0) ...[
-                            const SizedBox(height: 6),
-                            _kv(
-                              'Change Given',
-                              CurrencyConstants.format(_lastReturnAmt),
-                              context,
-                              valueColor: Colors.green[700],
+                          SizedBox(width: 4),
+                          Text(
+                            'Bill Paid & Settled',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF15803D),
                             ),
-                          ],
+                          ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Auto-redirecting in ${secondsRemaining}s...',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontStyle: FontStyle.italic,
+                    const SizedBox(height: 16),
+
+                    // Amount Card
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: const Color(0xFFE2E8F0),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Order',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                              Text(
+                                '#$currentOrderNumber',
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Amount Paid',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                              Text(
+                                billTotalAmount.toCurrency(),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF16A34A),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
+
+                    // Redirecting notice
+                    Text(
+                      'Redirecting to dashboard in ${secondsRemaining}s...',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Done Button
                     SizedBox(
                       width: double.infinity,
-                      height: 44,
-                      child: FilledButton(
+                      height: 46,
+                      child: ElevatedButton.icon(
                         onPressed: () {
-                          _triggerHapticLight();
+                          HapticHelper.triggerFeedback();
                           executeRedirect(dialogContext);
                         },
-                        child: Text('Continue (${secondsRemaining}s)'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF16A34A),
+                          foregroundColor: Colors.white,
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        label: const Text(
+                          'Done',
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -713,52 +749,5 @@ class _PaymentPageState extends State<PaymentPage>
         );
       },
     );
-  }
-
-  Widget _kv(String k, String v, BuildContext context, {Color? valueColor}) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            k,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        Text(
-          v,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: valueColor,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _triggerHapticLight() async {
-    try {
-      if (await Vibration.hasVibrator()) {
-        await Vibration.vibrate(duration: 30, amplitude: 128);
-      }
-      await HapticFeedback.lightImpact();
-    } catch (_) {
-      await HapticFeedback.lightImpact();
-    }
-  }
-
-  Future<void> _triggerHapticHeavy() async {
-    try {
-      if (await Vibration.hasVibrator()) {
-        await Vibration.vibrate(duration: 120, amplitude: 255);
-      }
-      await HapticFeedback.heavyImpact();
-    } catch (_) {
-      await HapticFeedback.heavyImpact();
-    }
   }
 }

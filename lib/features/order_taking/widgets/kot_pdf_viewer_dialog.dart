@@ -472,6 +472,7 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
   Future<void> _shareKOT() async {
     if (_isSharing) return;
     await HapticHelper.triggerFeedback();
+    if (!mounted) return;
     setState(() => _isSharing = true);
     try {
       await PDFShareBottomSheet.show(

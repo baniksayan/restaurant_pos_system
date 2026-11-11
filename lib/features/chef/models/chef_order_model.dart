@@ -60,6 +60,7 @@ class ChefOrder {
   final String tableNumber; // e.g. "Table 10 P2" or "Table 12"
   final DateTime orderTime;
   final List<ChefOrderItem> items;
+  final String? kitchenNote; // Whole-ticket KOT instruction note
   ChefOrderStatus status;
   String? rejectionReason;
   DateTime? startedPreparingTime;
@@ -79,6 +80,7 @@ class ChefOrder {
     required this.tableNumber,
     required this.orderTime,
     required this.items,
+    this.kitchenNote,
     this.status = ChefOrderStatus.pending,
     this.rejectionReason,
     this.startedPreparingTime,
@@ -90,21 +92,40 @@ class ChefOrder {
   double get totalAmount =>
       items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
 
+  /// Formatted as "YYYY-MM-DD • hh:mm a" (Year -> Month -> Day -> Hour -> Minute)
+  String get formattedOrderDateTime {
+    final year = orderTime.year.toString();
+    final month = orderTime.month.toString().padLeft(2, '0');
+    final day = orderTime.day.toString().padLeft(2, '0');
+    final h = orderTime.hour;
+    final m = orderTime.minute.toString().padLeft(2, '0');
+    final period = h >= 12 ? 'PM' : 'AM';
+    final hour12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+    return '$year-$month-$day • $hour12:$m $period';
+  }
+
   String get timeAgo {
-    final int minutes =
-        waitingMinutes ?? DateTime.now().difference(orderTime).inMinutes;
+    final now = DateTime.now();
+    final int minutes = now.difference(orderTime).inMinutes;
     if (minutes <= 0) {
       return 'Just now';
     }
-    final int hours = minutes ~/ 60;
+    final int days = minutes ~/ (60 * 24);
+    final int hours = (minutes % (60 * 24)) ~/ 60;
     final int remainingMins = minutes % 60;
 
-    if (hours == 0) {
-      return '$remainingMins min';
-    } else if (remainingMins == 0) {
-      return '${hours}h';
+    if (days > 0) {
+      if (hours > 0) {
+        return '${days}d ${hours}h ago';
+      }
+      return '${days}d ago';
+    } else if (hours > 0) {
+      if (remainingMins > 0) {
+        return '${hours}h ${remainingMins}m ago';
+      }
+      return '${hours}h ago';
     } else {
-      return '${hours}h ${remainingMins}m';
+      return '$remainingMins min ago';
     }
   }
 
@@ -126,6 +147,7 @@ class ChefOrder {
     String? tableNumber,
     DateTime? orderTime,
     List<ChefOrderItem>? items,
+    String? kitchenNote,
     ChefOrderStatus? status,
     String? rejectionReason,
     DateTime? startedPreparingTime,
@@ -145,6 +167,7 @@ class ChefOrder {
       tableNumber: tableNumber ?? this.tableNumber,
       orderTime: orderTime ?? this.orderTime,
       items: items ?? this.items,
+      kitchenNote: kitchenNote ?? this.kitchenNote,
       status: status ?? this.status,
       rejectionReason: rejectionReason ?? this.rejectionReason,
       startedPreparingTime: startedPreparingTime ?? this.startedPreparingTime,

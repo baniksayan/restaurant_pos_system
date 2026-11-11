@@ -7,6 +7,7 @@ import 'package:restaurant_pos_system/core/constants/app_gradients.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart';
 import 'package:restaurant_pos_system/features/chef/providers/chef_provider.dart';
+import 'package:restaurant_pos_system/features/dashboard/providers/dashboard_provider.dart';
 import 'package:restaurant_pos_system/features/profile/views/profile_view.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/hourglass_loading_overlay.dart';
 import 'package:restaurant_pos_system/shared/widgets/dialogs/sign_out_confirmation_dialog.dart';
@@ -93,6 +94,13 @@ class ChefDrawer extends StatelessWidget {
                                         loc.name,
                                         outletId: loc.id,
                                       );
+                                      try {
+                                        if (context.mounted) {
+                                          context
+                                              .read<DashboardProvider>()
+                                              .changeLocation(loc.name);
+                                        }
+                                      } catch (_) {}
                                     }
                                     if (context.mounted) {
                                       Navigator.pop(context);

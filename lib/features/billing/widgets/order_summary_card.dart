@@ -46,7 +46,7 @@ class OrderSummaryCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Order #$orderNumber',
+                      '#$orderNumber',
                       style: const TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                   ],

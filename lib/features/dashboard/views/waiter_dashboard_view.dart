@@ -463,12 +463,6 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                 onPaymentCompleted: () {
                   tableProvider.refreshTables();
                   navProvider.clearTableSelection();
-                  if (mounted) {
-                    _showSnackBar(
-                      'Payment completed for ${table.name}',
-                      Colors.green,
-                    );
-                  }
                 },
               ),
         ),

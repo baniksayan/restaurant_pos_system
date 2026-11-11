@@ -16,8 +16,8 @@ void main() {
     });
 
     test('noEmojiFormatter denies emoji input in text fields', () {
-      final oldValue = const TextEditingValue(text: 'Hello');
-      final newValueWithEmoji = const TextEditingValue(text: 'Hello 😊');
+      const oldValue = TextEditingValue(text: 'Hello');
+      const newValueWithEmoji = TextEditingValue(text: 'Hello 😊');
       final formatted = noEmojiFormatter.formatEditUpdate(oldValue, newValueWithEmoji);
       expect(formatted.text, 'Hello ');
     });

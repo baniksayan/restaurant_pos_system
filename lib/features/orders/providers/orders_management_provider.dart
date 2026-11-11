@@ -277,16 +277,24 @@ class OrdersManagementProvider extends ChangeNotifier {
           rawCustomerName.isNotEmpty ? rawCustomerName : channelNameStr;
 
       // Table orders show which table this is for, same as the Reprint and
-      // Tables screens — "New Table (Walk-in Customer)" rather than just the
-      // customer name, which by itself doesn't say where they're sitting.
-      // Phone/Takeaway have no table to add, so they stay as just the name.
-      final displayName =
-          channelType.toLowerCase() == 'table' &&
-                  channelNameStr.isNotEmpty &&
-                  customerName.isNotEmpty &&
-                  customerName != channelNameStr
-              ? '$channelNameStr ($customerName)'
-              : customerName;
+      // Keep customer name clean (e.g. "John Doe" or "Walk-in Guest").
+      // Do not duplicate the table number (e.g. "Table 6 (John Doe)") since
+      // the table number already has its own dedicated badge on the card and detail screen.
+      String cleanCustomer = customerName.trim();
+      final tablePattern = RegExp(
+        r'^Table[^(]*\((.*?)\)$',
+        caseSensitive: false,
+      );
+      final tableMatch = tablePattern.firstMatch(cleanCustomer);
+      if (tableMatch != null) {
+        cleanCustomer = tableMatch.group(1)?.trim() ?? '';
+      }
+      if (cleanCustomer.toLowerCase().startsWith('table ') ||
+          cleanCustomer.toLowerCase() == channelNameStr.toLowerCase() ||
+          cleanCustomer.toLowerCase() == 'table') {
+        cleanCustomer = '';
+      }
+      final displayName = cleanCustomer.isNotEmpty ? cleanCustomer : 'Walk-in Guest';
 
       final phone = (item['customerPhNumber'] ?? '').toString();
       final statusStr = (item['status'] ?? '').toString();
@@ -309,7 +317,15 @@ class OrdersManagementProvider extends ChangeNotifier {
 
       final orderTime = _parseCreatedOn(item['createdOn']);
       final tableName = channelNameStr;
-      final waiterName = (item['waiterName'] ?? '').toString();
+      final waiterNameRaw = item['waiterName'] ??
+          item['waiter_name'] ??
+          item['staffName'] ??
+          item['staff_name'] ??
+          item['waiter'] ??
+          item['serverName'] ??
+          item['createdBy'] ??
+          item['userName'];
+      final waiterName = (waiterNameRaw ?? '').toString().trim();
       final orderNoRaw = item['orderNo'] ??
           item['generatedOrderNo'] ??
           item['orderNumber'] ??

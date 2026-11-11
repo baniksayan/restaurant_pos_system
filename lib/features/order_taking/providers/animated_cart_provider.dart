@@ -10,6 +10,7 @@ class AnimatedCartProvider extends ChangeNotifier {
   // table-scoped cart merged their items together.
   final Map<String, Map<String, CartItem>> _orderWiseCarts = {};
   final Map<String, List<OrderDetailList>> _orderWiseServerKotItems = {};
+  final Set<String> _billedOrderIds = {};
   int _totalItems = 0;
   String? _currentOrderId;
   String? _currentTableId;
@@ -36,6 +37,24 @@ class AnimatedCartProvider extends ChangeNotifier {
   Map<String, CartItem> get kotGeneratedItems => Map.fromEntries(
     _cartItems.entries.where((entry) => entry.value.isKotGenerated),
   );
+
+  // Check if an order has been billed
+  bool isOrderBilled(String? orderId) {
+    if (orderId == null || orderId.isEmpty) return false;
+    return _billedOrderIds.contains(orderId);
+  }
+
+  void markOrderBilled(String orderId) {
+    if (orderId.isEmpty) return;
+    _billedOrderIds.add(orderId);
+    notifyListeners();
+  }
+
+  void clearOrderBilled(String orderId) {
+    if (orderId.isEmpty) return;
+    _billedOrderIds.remove(orderId);
+    notifyListeners();
+  }
 
   // Check if all items have been KOT'd (required for billing)
   bool get canProceedToBilling =>
@@ -503,6 +522,7 @@ class AnimatedCartProvider extends ChangeNotifier {
 
     _orderWiseCarts.remove(orderId);
     _orderWiseServerKotItems.remove(orderId);
+    _billedOrderIds.remove(orderId);
     HiveService.clearOrderCart(orderId);
 
     if (_currentOrderId == orderId) {

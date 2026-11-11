@@ -1,3 +1,5 @@
+import 'package:restaurant_pos_system/core/utils/date_time_formatter.dart';
+
 class BillDetailsResponse {
   final BillDetailsData? data;
   final String message;
@@ -156,10 +158,12 @@ class BillHeadDetails {
     required this.outletAddress,
   });
 
+  DateTime? get parsedBillDate => DateTimeFormatter.parseDateTime(billDate);
+
   factory BillHeadDetails.fromJson(Map<String, dynamic> json) {
     return BillHeadDetails(
       billNo: json['billNo'] ?? '',
-      billDate: json['billDate'] ?? '',
+      billDate: (json['billDate'] ?? json['billDateTime'] ?? json['createdOn'] ?? '').toString(),
       billCreatedBy: json['billCreatedBy'] ?? '',
       discountPerc: (json['discountPerc'] ?? 0).toDouble(),
       discountAmnt: (json['discountAmnt'] ?? 0).toDouble(),
@@ -168,7 +172,7 @@ class BillHeadDetails {
       amountAfterDisc: (json['amountAfterDisc'] ?? 0).toDouble(),
       billAmountExclTax: (json['billAmountExclTax'] ?? 0).toDouble(),
       billAmountInclTax: (json['billAmountInclTax'] ?? 0).toDouble(),
-      customerName: json['customerName'] ?? '',
+      customerName: DateTimeFormatter.resolveCustomerName(json),
       custMobNo: json['custMobNo'] ?? '',
       returnToCustomer: (json['returnToCustomer'] ?? 0).toDouble(),
       outletAddress: json['outletAddress'] ?? '',

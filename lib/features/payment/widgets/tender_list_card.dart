@@ -1,247 +1,336 @@
 import 'package:flutter/material.dart';
-import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import '../models/tender_line.dart';
 
-/// The tenders taken so far against a bill, with the running balance.
-///
-/// A bill can be settled across several payment modes — cash plus UPI, say —
-/// and the running totals are what let a cashier see, while they work, whether
-/// the customer still owes anything or is due change.
 class TenderListCard extends StatelessWidget {
   final List<TenderLine> tenders;
   final double billTotal;
-
-  /// Already recorded against this bill on an earlier visit. Counts towards
-  /// settling it, but cannot be removed here.
   final double previouslyPaid;
-
-  final ValueChanged<int> onRemove;
+  final ValueChanged<int>? onRemove;
+  final VoidCallback? onAddAnotherPayment;
+  final bool isFullySettled;
 
   const TenderListCard({
     super.key,
     required this.tenders,
     required this.billTotal,
     required this.previouslyPaid,
-    required this.onRemove,
+    this.onRemove,
+    this.onAddAnotherPayment,
+    this.isFullySettled = false,
   });
 
-  double get _tenderedNow =>
-      tenders.fold(0.0, (sum, t) => sum + t.amount);
-
-  double get _totalPaid => previouslyPaid + _tenderedNow;
-
-  double get _remaining {
-    final left = billTotal - _totalPaid;
-    return left > 0 ? left : 0;
-  }
-
-  double get _change => tenders.fold(0.0, (sum, t) => sum + t.returnAmount);
+  int get totalCount =>
+      tenders.length + (previouslyPaid > 0.004 ? 1 : 0);
 
   @override
   Widget build(BuildContext context) {
-    final settled = _remaining <= 0.004; // tolerate float dust on 2dp money
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section Title
+        Text(
+          'Payments ($totalCount)',
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F172A),
+            letterSpacing: -0.2,
+          ),
+        ),
+        const SizedBox(height: 10),
 
+        if (totalCount == 0)
+          // Empty State Card with prominent Add Payment action
+          _buildEmptyState()
+        else
+          // Payments List
+          Column(
+            children: [
+              // Previously Paid Row (if any)
+              if (previouslyPaid > 0.004)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _buildPaymentTile(
+                    method: 'Previous Payment',
+                    timestamp: 'Settled Earlier',
+                    amount: previouslyPaid,
+                    icon: Icons.check_circle_outline_rounded,
+                    iconBgColor: const Color(0xFFDCFCE7),
+                    iconColor: const Color(0xFF16A34A),
+                    canRemove: false,
+                  ),
+                ),
+
+              // Staged Tenders
+              for (int i = 0; i < tenders.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _buildTenderTile(tenders[i], i),
+                ),
+
+              // Add Another Payment Button (Shown when not fully settled)
+              if (!isFullySettled && onAddAnotherPayment != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      onPressed: onAddAnotherPayment,
+                      icon: const Icon(
+                        Icons.add_rounded,
+                        size: 18,
+                        color: Color(0xFF6366F1),
+                      ),
+                      label: const Text(
+                        'Add Another Payment',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF6366F1),
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF5F3FF),
+                        side: const BorderSide(
+                          color: Color(0xFFDDD6FE),
+                          width: 1,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return InkWell(
+      onTap: onAddAnotherPayment,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFFE2E8F0),
+            width: 1.2,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEEF2FF),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.account_balance_wallet_outlined,
+                size: 22,
+                color: Color(0xFF6366F1),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'No payments added yet',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Add a payment to settle this order.',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF64748B),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            if (onAddAnotherPayment != null) ...[
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 38,
+                child: ElevatedButton.icon(
+                  onPressed: onAddAnotherPayment,
+                  icon: const Icon(Icons.add_rounded, size: 17),
+                  label: const Text(
+                    'Add Payment',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4F46E5),
+                    foregroundColor: Colors.white,
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTenderTile(TenderLine tender, int index) {
+    final (icon, iconBgColor, iconColor) = switch (tender.method) {
+      'cash' => (
+          Icons.payments_rounded,
+          const Color(0xFFDCFCE7),
+          const Color(0xFF16A34A),
+        ),
+      'card' => (
+          Icons.credit_card_rounded,
+          const Color(0xFFE0E7FF),
+          const Color(0xFF4F46E5),
+        ),
+      'upi' => (
+          Icons.qr_code_2_rounded,
+          const Color(0xFFF3E8FF),
+          const Color(0xFF9333EA),
+        ),
+      _ => (
+          Icons.payment_rounded,
+          const Color(0xFFF1F5F9),
+          const Color(0xFF475569),
+        ),
+    };
+
+    return _buildPaymentTile(
+      method: tender.label,
+      timestamp: tender.formattedTime,
+      amount: tender.amount,
+      icon: icon,
+      iconBgColor: iconBgColor,
+      iconColor: iconColor,
+      canRemove: onRemove != null,
+      onDelete: onRemove != null ? () => onRemove!(index) : null,
+    );
+  }
+
+  Widget _buildPaymentTile({
+    required String method,
+    required String timestamp,
+    required double amount,
+    required IconData icon,
+    required Color iconBgColor,
+    required Color iconColor,
+    bool canRemove = false,
+    VoidCallback? onDelete,
+  }) {
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.receipt_long_rounded,
-                size: 16,
-                color: AppColors.primary,
-              ),
-              const SizedBox(width: 7),
-              const Text(
-                'Payments',
-                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
-              ),
-              const Spacer(),
-              Text(
-                '${billTotal.toCurrency()} total',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+          // Icon Container
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: iconBgColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+
+          // Method & Timestamp
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  method,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  timestamp,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Amount
+          Text(
+            amount.toCurrency(),
+            style: const TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // If removable (staged tender), show a clean delete button.
+          // Otherwise, if already settled, show a subtle checkmark (NO chevron '>').
+          if (canRemove && onDelete != null)
+            InkWell(
+              onTap: onDelete,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.close_rounded,
+                  size: 15,
+                  color: Color(0xFFDC2626),
                 ),
               ),
-            ],
-          ),
-
-          if (previouslyPaid > 0) ...[
-            const SizedBox(height: 10),
-            _row(
-              icon: Icons.history_rounded,
-              label: 'Paid earlier',
-              amount: previouslyPaid,
-              muted: true,
-            ),
-          ],
-
-          if (tenders.isEmpty && previouslyPaid <= 0) ...[
-            const SizedBox(height: 12),
-            const Text(
-              'No payment added yet',
-              style: TextStyle(
-                fontSize: 12.5,
-                color: AppColors.textHint,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-
-          for (var i = 0; i < tenders.length; i++) ...[
-            const SizedBox(height: 8),
-            _row(
-              icon: _iconFor(tenders[i].method),
-              label: tenders[i].label,
-              amount: tenders[i].amount,
-              sub:
-                  tenders[i].returnAmount > 0
-                      ? 'tendered ${tenders[i].cashTendered.toCurrency()}'
-                      : (tenders[i].refId.isNotEmpty
-                          ? 'ref ${tenders[i].refId}'
-                          : null),
-              onRemove: () => onRemove(i),
-            ),
-          ],
-
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Divider(height: 1, color: Color(0xFFE2E8F0)),
-          ),
-
-          _summary('Paid', _totalPaid, bold: true),
-          const SizedBox(height: 4),
-          if (settled && _change > 0)
-            _summary('Change to return', _change, tone: AppColors.success)
+            )
           else
-            _summary(
-              settled ? 'Fully settled' : 'Remaining',
-              settled ? 0 : _remaining,
-              tone: settled ? AppColors.success : AppColors.warning,
-              hideAmount: settled,
-              bold: true,
+            const Icon(
+              Icons.check_circle_rounded,
+              size: 16,
+              color: Color(0xFF16A34A),
             ),
         ],
       ),
-    );
-  }
-
-  IconData _iconFor(String method) => switch (method) {
-    'cash' => Icons.payments_rounded,
-    'card' => Icons.credit_card_rounded,
-    'upi' => Icons.qr_code_rounded,
-    _ => Icons.payment_rounded,
-  };
-
-  Widget _row({
-    required IconData icon,
-    required String label,
-    required double amount,
-    String? sub,
-    bool muted = false,
-    VoidCallback? onRemove,
-  }) {
-    final tone = muted ? AppColors.textHint : AppColors.textPrimary;
-    return Row(
-      children: [
-        Icon(icon, size: 15, color: muted ? AppColors.textHint : AppColors.primary),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: tone,
-                ),
-              ),
-              if (sub != null)
-                Text(
-                  sub,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textHint,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-            ],
-          ),
-        ),
-        Text(
-          amount.toCurrency(),
-          style: TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w700,
-            color: tone,
-            fontFeatures: const [FontFeature.tabularFigures()],
-          ),
-        ),
-        if (onRemove != null)
-          IconButton(
-            onPressed: onRemove,
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.only(left: 6),
-            constraints: const BoxConstraints(),
-            tooltip: 'Remove $label payment',
-            icon: const Icon(
-              Icons.close_rounded,
-              size: 16,
-              color: AppColors.textHint,
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _summary(
-    String label,
-    double amount, {
-    Color? tone,
-    bool bold = false,
-    bool hideAmount = false,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
-            color: tone ?? AppColors.textSecondary,
-          ),
-        ),
-        if (!hideAmount)
-          Text(
-            amount.toCurrency(),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: tone ?? AppColors.textPrimary,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-      ],
     );
   }
 }

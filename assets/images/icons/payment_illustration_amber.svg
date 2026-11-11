@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <linearGradient id="paperFillAmber" x1="64" y1="34" x2="183" y2="203" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF5" stop-opacity=".96"/>
+      <stop offset="1" stop-color="#FDE68A" stop-opacity=".65"/>
+    </linearGradient>
+    <linearGradient id="strokeAmber" x1="52" y1="37" x2="188" y2="201" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE68A"/>
+      <stop offset=".58" stop-color="#FBBF24"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+    <linearGradient id="foldAmber" x1="154" y1="28" x2="203" y2="74" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FEF3C7"/>
+      <stop offset="1" stop-color="#FDE68A"/>
+    </linearGradient>
+    <filter id="softShadowAmber" x="12" y="10" width="232" height="236" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+    <filter id="glowAmber" x="18" y="10" width="220" height="226" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="5"/>
+    </filter>
+  </defs>
+
+  <!-- soft ambient glow -->
+  <ellipse cx="126" cy="207" rx="83" ry="13" fill="#FCD34D" opacity=".24" filter="url(#softShadowAmber)"/>
+  <path d="M57 49C60 34 72 25 89 24L185 20C199 20 207 30 203 44L179 177C176 194 166 204 150 204H58C44 204 36 194 39 180L57 49Z"
+        fill="#FDE68A" opacity=".48" filter="url(#glowAmber)"/>
+
+  <!-- document body -->
+  <path d="M63 51C66 36 78 27 94 26L181 22C197 21 207 31 203 46L181 174C178 190 168 201 152 201H60C46 201 38 192 41 178L63 51Z"
+        fill="url(#paperFillAmber)" stroke="url(#strokeAmber)" stroke-width="5" stroke-linejoin="round"/>
+
+  <!-- top-right curled corner -->
+  <path d="M178 23L195 24C202 25 206 31 204 39L199 63C196 57 190 53 182 52L166 50L178 23Z"
+        fill="url(#foldAmber)" opacity=".88"/>
+  <path d="M178 23L166 50L183 52C191 53 197 57 199 63"
+        stroke="#FBBF24" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity=".75"/>
+
+  <!-- subtle paper highlight -->
+  <path d="M72 45C77 36 85 33 97 32L174 29" stroke="white" stroke-width="4" stroke-linecap="round" opacity=".72"/>
+
+  <!-- text lines -->
+  <path d="M91 75L169 72" stroke="#F59E0B" stroke-width="9" stroke-linecap="round" opacity=".85"/>
+  <path d="M84 111L151 109" stroke="#F59E0B" stroke-width="9" stroke-linecap="round" opacity=".85"/>
+  <path d="M77 148L133 146" stroke="#F59E0B" stroke-width="9" stroke-linecap="round" opacity=".85"/>
+
+  <!-- lower edge depth -->
+  <path d="M43 180C55 187 70 190 88 190H151C165 190 174 183 179 171"
+        stroke="#D97706" stroke-width="4" stroke-linecap="round" opacity=".42"/>
+</svg>

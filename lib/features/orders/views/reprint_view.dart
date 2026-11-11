@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
@@ -17,6 +18,7 @@ import 'package:restaurant_pos_system/features/order_taking/widgets/kot_pdf_view
 import 'package:restaurant_pos_system/features/orders/providers/ready_to_collect_provider.dart';
 import 'package:restaurant_pos_system/shared/services/pdf_service.dart';
 import 'package:restaurant_pos_system/shared/widgets/dialogs/app_date_range_picker_dialog.dart';
+import 'package:restaurant_pos_system/shared/widgets/dialogs/app_glass_dialog.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/premium_refresh_indicator.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/shimmer_effect.dart';
 
@@ -62,6 +64,7 @@ class _ReprintViewState extends State<ReprintView> {
   DateTimeRange? _kotsCustomDateRange;
   String? _openingKotId;
   late TextEditingController _kotsSearchController;
+  Timer? _liveTicker;
 
   final List<_ReprintTabItem> _tabs = [
     _ReprintTabItem(
@@ -87,10 +90,16 @@ class _ReprintViewState extends State<ReprintView> {
       _loadBills();
       _loadKots();
     });
+
+    // Auto-update elapsed time every 30 seconds for live freshness
+    _liveTicker = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    _liveTicker?.cancel();
     _pageController.dispose();
     _billsSearchController.dispose();
     _kotsSearchController.dispose();
@@ -521,6 +530,14 @@ class _ReprintViewState extends State<ReprintView> {
       final discountAmount =
           billData.billHeadDt.discountAmnt + billData.billHeadDt.specDisAmt;
 
+      final billTimestamp = billData.billHeadDt.parsedBillDate ??
+          bill.billDate ??
+          DateTime.now();
+      final resolvedCustomerName =
+          billData.billHeadDt.customerName.trim().isNotEmpty
+              ? billData.billHeadDt.customerName.trim()
+              : bill.customerName.trim();
+
       final billBytes = await PDFService.generateThermalBill(
         items: items,
         tableId: bill.orderNo,
@@ -528,7 +545,7 @@ class _ReprintViewState extends State<ReprintView> {
             ? billData.orderChanelDt.first.channelName
             : bill.orderNo,
         orderNumber: bill.orderNo.isNotEmpty ? bill.orderNo : bill.billNo,
-        orderTime: bill.billDate ?? DateTime.now(),
+        orderTime: billTimestamp,
         subtotal: billData.billHeadDt.amountAfterDisc,
         gstAmount: gstAmount > 0 ? gstAmount : 0,
         total: billData.billHeadDt.billAmountInclTax,
@@ -538,7 +555,7 @@ class _ReprintViewState extends State<ReprintView> {
         companyGstNo: billData.companyDt.gstNo,
         gstLabel: gstLabel,
         billNo: billData.billHeadDt.billNo,
-        customerName: billData.billHeadDt.customerName,
+        customerName: resolvedCustomerName,
         customerPhone: billData.billHeadDt.custMobNo,
         discountAmount: discountAmount,
         payments: billData.paymentDetail,
@@ -592,9 +609,12 @@ class _ReprintViewState extends State<ReprintView> {
           (kot.generatedOrderNo != null &&
                   kot.generatedOrderNo!.trim().isNotEmpty)
               ? kot.generatedOrderNo!.trim()
-              : (kot.orderNumber.trim().isNotEmpty
-                  ? kot.orderNumber.trim()
-                  : resolvedKotNo);
+              : ((kot.orderIdentifier != null &&
+                      kot.orderIdentifier!.trim().isNotEmpty)
+                  ? kot.orderIdentifier!.trim()
+                  : (kot.orderNumber.trim().isNotEmpty
+                      ? kot.orderNumber.trim()
+                      : resolvedKotNo));
       final resolvedTable =
           kot.tableNumber.trim().isNotEmpty ? kot.tableNumber.trim() : 'Table';
 
@@ -606,6 +626,10 @@ class _ReprintViewState extends State<ReprintView> {
         orderTime: kot.orderTime,
         kotNo: resolvedKotNo,
         waiterName: '',
+        specialNotes: (kot.kitchenNote != null &&
+                kot.kitchenNote!.trim().isNotEmpty)
+            ? kot.kitchenNote!.trim()
+            : null,
       );
 
       if (!mounted) return;
@@ -1904,6 +1928,7 @@ class _ReprintBillCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final paid = bill.isPaid == 2;
     final partiallyPaid = bill.isPaid == 1;
+    final canReprint = paid;
 
     final Color statusColor = paid
         ? const Color(0xFF10B981)
@@ -1917,9 +1942,16 @@ class _ReprintBillCard extends StatelessWidget {
             : '#${bill.billNo}')
         : (bill.orderNo.isNotEmpty ? '#${bill.orderNo}' : '#BILL');
 
-    final dateStr = bill.billDate != null
-        ? DateTimeFormatter.formatDateTime(bill.billDate!)
-        : 'Just now';
+    final cleanOrderNo = bill.orderNo.isNotEmpty
+        ? (bill.orderNo.startsWith('#') ? bill.orderNo : '#${bill.orderNo}')
+        : '';
+
+    final hasCustomer = bill.customerName.isNotEmpty &&
+        bill.customerName.toLowerCase() != 'walk-in' &&
+        bill.customerName.toLowerCase() != 'walk-in customer' &&
+        bill.customerName.toLowerCase() != 'walk-in guest';
+    final hasOrderNo =
+        cleanOrderNo.isNotEmpty && cleanOrderNo != displayBillNo;
 
     return Container(
       decoration: BoxDecoration(
@@ -1952,51 +1984,45 @@ class _ReprintBillCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Row 1: Bill Badge + Status Pill
+                // Row 1: Bill Number Badge (Left) + Status Pill (Right)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Flexible(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3.5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.2),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.receipt_long_rounded,
-                              size: 12,
-                              color: AppColors.primaryDark,
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                displayBillNo,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primaryDark,
-                                  letterSpacing: 0.3,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                          width: 0.8,
                         ),
                       ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.receipt_long_rounded,
+                            size: 12,
+                            color: AppColors.primaryDark,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            displayBillNo,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primaryDark,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 7,
@@ -2026,58 +2052,161 @@ class _ReprintBillCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 7),
+                const SizedBox(height: 8),
 
-                // Row 2: Customer / Order details (Left) + Time (Right)
+                // Row 2: Left: Clean Order # / Customer Name, Right: Amount
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.person_rounded,
-                      size: 14,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 5),
                     Expanded(
-                      child: Text(
-                        bill.customerName.isNotEmpty
-                            ? bill.customerName
-                            : (bill.orderNo.isNotEmpty
-                                ? 'Order #${bill.orderNo}'
-                                : 'Walk-in Customer'),
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.2,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                      child: Row(
+                        children: [
+                          if (hasCustomer) ...[
+                            const Icon(
+                              Icons.person_rounded,
+                              size: 14,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                bill.customerName,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                  letterSpacing: -0.2,
+                                ),
+                                softWrap: true,
+                              ),
+                            ),
+                            if (hasOrderNo) ...[
+                              const SizedBox(width: 6),
+                              const Text(
+                                '•',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.assignment_outlined,
+                                size: 13,
+                                color: Color(0xFF64748B),
+                              ),
+                              const SizedBox(width: 3.5),
+                              Text(
+                                cleanOrderNo,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF475569),
+                                ),
+                              ),
+                            ],
+                          ] else if (hasOrderNo) ...[
+                            const Icon(
+                              Icons.assignment_outlined,
+                              size: 14,
+                              color: Color(0xFF64748B),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              cleanOrderNo,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                          ] else ...[
+                            const Text(
+                              'Walk-in Customer',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textSecondary,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.schedule_rounded,
-                          size: 13,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 3.5),
-                        Text(
-                          bill.billDate != null
-                              ? bill.billDate!.timeAgo()
-                              : 'Today',
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      CurrencyConstants.format(bill.amount),
+                      style: const TextStyle(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
+                      ),
                     ),
                   ],
                 ),
+
+                // Partially Paid Breakdown
+                if (partiallyPaid) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFFDE68A)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.check_circle_outline_rounded,
+                              size: 13,
+                              color: Color(0xFF059669),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Paid: ${CurrencyConstants.format(bill.paidAmount)}',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF047857),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.pending_outlined,
+                              size: 13,
+                              color: Color(0xFFD97706),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Need to Pay: ${CurrencyConstants.format(bill.balanceAmount > 0 ? bill.balanceAmount : (bill.amount - bill.paidAmount))}',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFB45309),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -2090,8 +2219,10 @@ class _ReprintBillCard extends StatelessWidget {
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -2105,69 +2236,231 @@ class _ReprintBillCard extends StatelessWidget {
                           child: Text(
                             '${bill.itemCount} item${bill.itemCount == 1 ? '' : 's'}',
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 11.5,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF475569),
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          dateStr,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textSecondary,
+                        if (bill.billDate != null) ...[
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.calendar_today_rounded,
+                                size: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                bill.hasTime
+                                    ? '${DateTimeFormatter.formatDate(bill.billDate!)} at ${DateTimeFormatter.formatTime(bill.billDate!)}'
+                                    : DateTimeFormatter.formatDate(bill.billDate!),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              if (bill.hasTime) ...[
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () => _showTimestampInfoDialog(context, bill),
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2.5),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFE2E8F0),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.info_outline_rounded,
+                                      size: 11.5,
+                                      color: Color(0xFF475569),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                        ),
+                        ],
                       ],
                     ),
-                    Text(
-                      CurrencyConstants.format(bill.amount),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.3,
+                    if (bill.hasTime)
+                      Text(
+                        bill.billDate!.timeAgo(),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
 
-                // Action Button: Full-width VIEW & REPRINT BILL
+                // Action Button: Full-width VIEW & REPRINT BILL (Compact)
+                // Disabled if partially paid or not paid!
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: canReprint
+                          ? AppColors.primary
+                          : const Color(0xFFE2E8F0),
+                      foregroundColor: canReprint
+                          ? Colors.white
+                          : const Color(0xFF94A3B8),
+                      disabledBackgroundColor: const Color(0xFFE2E8F0),
+                      disabledForegroundColor: const Color(0xFF94A3B8),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 11),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 12,
+                      ),
+                      minimumSize: const Size.fromHeight(38),
+                      visualDensity: VisualDensity.compact,
+                      elevation: 0,
                     ),
-                    onPressed: isOpening ? null : onViewBill,
+                    onPressed: (canReprint && !isOpening) ? onViewBill : null,
                     icon: isOpening
                         ? const SizedBox(
-                            width: 16,
-                            height: 16,
+                            width: 14,
+                            height: 14,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               color: Colors.white,
                             ),
                           )
-                        : const Icon(Icons.print_rounded, size: 17),
+                        : Icon(
+                            canReprint
+                                ? Icons.print_rounded
+                                : Icons.lock_outline_rounded,
+                            size: 15,
+                            color: canReprint
+                                ? Colors.white
+                                : const Color(0xFF94A3B8),
+                          ),
                     label: Text(
-                      isOpening ? 'GENERATING...' : 'VIEW & REPRINT BILL',
-                      style: const TextStyle(
+                      isOpening
+                          ? 'GENERATING...'
+                          : canReprint
+                              ? 'VIEW & REPRINT BILL'
+                              : partiallyPaid
+                                  ? 'PARTIALLY PAID (REPRINT)'
+                                  : 'UNPAID (REPRINT)',
+                      style: TextStyle(
                         fontWeight: FontWeight.w800,
-                        fontSize: 13,
+                        fontSize: 12,
                         letterSpacing: 0.3,
+                        color: canReprint
+                            ? Colors.white
+                            : const Color(0xFF94A3B8),
                       ),
                     ),
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void _showTimestampInfoDialog(BuildContext context, PendingBill bill) {
+    AppGlassDialog.show(
+      context,
+      maxWidth: 320,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.schedule_rounded,
+              size: 26,
+              color: AppColors.primaryDark,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Bill Timing Details',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1E1B4B),
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'This timestamp marks the exact moment when this bill was first generated or paid.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Colors.black.withValues(alpha: 0.7),
+              height: 1.4,
+            ),
+          ),
+          if (bill.billDate != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.access_time_filled_rounded,
+                    size: 13,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    '${DateTimeFormatter.formatDate(bill.billDate!)} at ${DateTimeFormatter.formatTime(bill.billDate!)}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                visualDensity: VisualDensity.compact,
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Got it',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ),
         ],
@@ -2202,6 +2495,34 @@ class _ReprintKotCard extends StatelessWidget {
             ? '#${kot.orderNumber}'
             : '#KOT');
 
+    // Resolve channel type: Dine-in / Phone Order / Takeaway / Table
+    final channelNameLower = (kot.channelName ?? '').toLowerCase();
+    final tableLower = kot.tableNumber.toLowerCase();
+
+    final isPhoneOrder = channelNameLower.contains('phone') ||
+        tableLower.contains('phone');
+    final isTakeaway = channelNameLower.contains('takeaway') ||
+        tableLower.contains('takeaway');
+
+    final String channelLabel = isPhoneOrder
+        ? 'PHONE ORDER'
+        : isTakeaway
+            ? 'TAKEAWAY'
+            : (tableLower.startsWith('table')
+                ? 'DINE-IN • ${kot.tableNumber.toUpperCase()}'
+                : (kot.tableNumber.isNotEmpty
+                    ? kot.tableNumber.toUpperCase()
+                    : 'DINE-IN'));
+
+    final IconData channelIcon = isPhoneOrder
+        ? Icons.phone_in_talk_rounded
+        : isTakeaway
+            ? Icons.takeout_dining_rounded
+            : Icons.table_restaurant_rounded;
+
+    // Proper year -> month -> day • hour:minute + dynamic elapsed time
+    final timeStr = '${kot.formattedOrderDateTime} (${kot.timeAgo})';
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -2222,7 +2543,7 @@ class _ReprintKotCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Header: Table + Time + Status Badge ──
+          // ── Header: Channel/Table + Time + Status + KOT Number ──
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: const BoxDecoration(
@@ -2233,97 +2554,125 @@ class _ReprintKotCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Tier 1: Table Badge + Status Badge
+                // Row 1: Channel/Table (Left) + Status Badge (Right)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Flexible(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3.5,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                          width: 0.8,
                         ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.2),
-                            width: 0.8,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            channelIcon,
+                            size: 12,
+                            color: AppColors.primaryDark,
                           ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.table_restaurant_rounded,
-                              size: 12,
+                          const SizedBox(width: 4),
+                          Text(
+                            channelLabel,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
                               color: AppColors.primaryDark,
+                              letterSpacing: 0.3,
                             ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                kot.tableNumber.toUpperCase(),
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primaryDark,
-                                  letterSpacing: 0.3,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
+                            softWrap: true,
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 8),
                     ChefStatusBadge(status: kot.status),
                   ],
                 ),
-                const SizedBox(height: 7),
+                const SizedBox(height: 8),
 
-                // Tier 2: KOT Ticket Number (Left) + Timestamp (Right)
+                // Row 2: KOT Ticket Number (Left) + Total Items Count (Right)
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.receipt_long_rounded,
-                      size: 14,
-                      color: AppColors.textSecondary.withValues(alpha: 0.8),
-                    ),
-                    const SizedBox(width: 5),
                     Expanded(
-                      child: Text(
-                        displayKotNo,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.2,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.receipt_long_rounded,
+                            size: 14,
+                            color: AppColors.textSecondary.withValues(alpha: 0.8),
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              displayKotNo,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.2,
+                              ),
+                              softWrap: true,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.schedule_rounded,
-                          size: 13,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${kot.totalItemCount} item${kot.totalItemCount == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF475569),
+                        ),
+                        softWrap: true,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+
+                // Row 3: Full Timestamp (Zero "..." truncation, soft-wrapped)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.schedule_rounded,
+                      size: 12.5,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        timeStr,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary,
                         ),
-                        const SizedBox(width: 3.5),
-                        Text(
-                          kot.timeAgo,
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
+                        softWrap: true,
+                      ),
                     ),
                   ],
                 ),
@@ -2331,42 +2680,116 @@ class _ReprintKotCard extends StatelessWidget {
             ),
           ),
 
-          // ── Items List & Action Button ──
+          // ── Items List, Kitchen Note & Action Button ──
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Combined KOT Items List
                 ...kot.items.map((item) => _buildItemTile(item)),
+
+                // Whole-KOT / Kitchen Note (if given)
+                if (kot.kitchenNote != null &&
+                    kot.kitchenNote!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFFE2E8F0),
+                        width: 0.9,
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(
+                            Icons.soup_kitchen_rounded,
+                            size: 14,
+                            color: Color(0xFF7C3AED),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Note for Kitchen',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF7C3AED),
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                kot.kitchenNote!.trim(),
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF1E293B),
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 12),
 
-                // Action Button: Full-width VIEW & REPRINT KOT
+                // Action Button: Full-width VIEW & REPRINT KOT (Compact)
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF10B981),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 11),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 12,
+                      ),
+                      minimumSize: const Size.fromHeight(38),
+                      visualDensity: VisualDensity.compact,
+                      elevation: 0,
                     ),
                     onPressed: isOpening ? null : onViewKot,
                     icon: isOpening
                         ? const SizedBox(
-                            width: 16,
-                            height: 16,
+                            width: 14,
+                            height: 14,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               color: Colors.white,
                             ),
                           )
-                        : const Icon(Icons.print_rounded, size: 17),
+                        : const Icon(Icons.print_rounded, size: 15),
                     label: Text(
                       isOpening ? 'GENERATING...' : 'VIEW & REPRINT KOT',
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
-                        fontSize: 13,
+                        fontSize: 12,
                         letterSpacing: 0.3,
                       ),
                     ),
@@ -2381,17 +2804,42 @@ class _ReprintKotCard extends StatelessWidget {
   }
 
   Widget _buildItemTile(ChefOrderItem item) {
-    final hasNote = (item.specialInstructions ?? '').trim().isNotEmpty;
+    final rawItemNote = (item.specialInstructions ?? '').trim();
+    final rawKitchenNote = (kot.kitchenNote ?? '').trim();
+    String cleanItemNote = rawItemNote;
+
+    if (rawKitchenNote.isNotEmpty) {
+      final kLower = rawKitchenNote.toLowerCase();
+      final iLower = cleanItemNote.toLowerCase();
+      if (iLower == kLower || iLower == ', $kLower') {
+        cleanItemNote = '';
+      } else if (iLower.endsWith(', $kLower')) {
+        cleanItemNote = cleanItemNote
+            .substring(0, cleanItemNote.length - (rawKitchenNote.length + 2))
+            .trim();
+      } else if (iLower.endsWith(kLower)) {
+        cleanItemNote = cleanItemNote
+            .substring(0, cleanItemNote.length - rawKitchenNote.length)
+            .trim();
+        if (cleanItemNote.endsWith(',')) {
+          cleanItemNote =
+              cleanItemNote.substring(0, cleanItemNote.length - 1).trim();
+        }
+      }
+    }
+
+    final hasNote = cleanItemNote.isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6),
               border: Border.all(
                 color: AppColors.primary.withValues(alpha: 0.25),
               ),
@@ -2399,13 +2847,13 @@ class _ReprintKotCard extends StatelessWidget {
             child: Text(
               '${item.quantity}×',
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w800,
                 color: AppColors.primaryDark,
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2414,40 +2862,59 @@ class _ReprintKotCard extends StatelessWidget {
                 Text(
                   item.name,
                   style: const TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: Color(0xFF1E1B4B),
                     letterSpacing: -0.2,
                   ),
+                  softWrap: true,
                 ),
                 if (hasNote) ...[
-                  const SizedBox(height: 2.5),
+                  const SizedBox(height: 3),
                   Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 7,
-                      vertical: 2,
+                      vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7),
+                      color: const Color(0xFFFFFBEB),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFFFDE68A)),
+                      border: Border.all(color: const Color(0xFFFDE68A), width: 0.8),
                     ),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.edit_note_rounded,
-                          size: 13,
-                          color: Color(0xFFD97706),
+                        const Padding(
+                          padding: EdgeInsets.only(top: 1),
+                          child: Icon(
+                            Icons.edit_note_rounded,
+                            size: 13,
+                            color: Color(0xFFD97706),
+                          ),
                         ),
-                        const SizedBox(width: 3.5),
-                        Flexible(
-                          child: Text(
-                            item.specialInstructions!,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF92400E),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                const TextSpan(
+                                  text: 'Item Note: ',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFFB45309),
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: cleanItemNote,
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF92400E),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),

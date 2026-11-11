@@ -39,6 +39,8 @@ class OrderDetailData {
   bool? isPaid;
   List<OrderDetailList>? orderDetailList;
   String? billId;
+  String? generatedBillNo;
+  List<String>? paymentModes;
 
   OrderDetailData({
     this.orderId,
@@ -55,6 +57,8 @@ class OrderDetailData {
     this.isPaid,
     this.orderDetailList,
     this.billId,
+    this.generatedBillNo,
+    this.paymentModes,
   });
 
   OrderDetailData.fromJson(Map<String, dynamic> json) {
@@ -65,7 +69,14 @@ class OrderDetailData {
     channelType = json['channelType'];
     channelName = json['channelName'];
     waiterId = json['waiterId'];
-    waiterName = json['waiterName'];
+    waiterName = (json['waiterName'] ??
+            json['waiter_name'] ??
+            json['staffName'] ??
+            json['waiter'] ??
+            json['serverName'] ??
+            json['createdBy'] ??
+            json['userName'])
+        ?.toString();
     outletId = json['outletId'];
     billNo = json['billNo'];
     isBilled = json['isBilled'];
@@ -77,6 +88,29 @@ class OrderDetailData {
       });
     }
     billId = json['billId'];
+    generatedBillNo = (json['generatedBillNo'] ??
+            json['generatedBillNumber'] ??
+            json['billNumber'] ??
+            json['bill_no'] ??
+            json['formattedBillNo'])
+        ?.toString();
+
+    final rawModes = json['paymentModes'] ??
+        json['paymentMode'] ??
+        json['paymentMethod'] ??
+        json['paymentMethods'];
+    if (rawModes is List) {
+      paymentModes = rawModes
+          .map((e) => e.toString().trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    } else if (rawModes is String && rawModes.trim().isNotEmpty) {
+      paymentModes = rawModes
+          .split(',')
+          .map((e) => e.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
   }
 }
 

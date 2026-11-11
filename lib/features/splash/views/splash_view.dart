@@ -141,7 +141,11 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
       if (mounted) {
         // Restore Chef Session if logged in
         if (HiveService.isChefLoggedIn()) {
-          context.read<ChefProvider>().loadFromHive();
+          final chefProvider = context.read<ChefProvider>();
+          chefProvider.loadFromHive(autoFetch: true);
+          try {
+            context.read<DashboardProvider>().loadLocationsFromHive();
+          } catch (_) {}
           Navigator.of(context).pushReplacementNamed('/chef');
           if (kDebugMode) {
             debugPrint('Chef session restored - navigating directly to /chef');

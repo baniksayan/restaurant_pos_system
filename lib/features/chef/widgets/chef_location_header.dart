@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
+import 'package:restaurant_pos_system/features/dashboard/providers/dashboard_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/widgets/location_selector_dialog.dart';
 import '../providers/chef_provider.dart';
 import 'chef_status_filter_dialog.dart';
@@ -16,6 +18,21 @@ class ChefLocationHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chefProvider = context.watch<ChefProvider>();
+
+    // Resolve locations: prefer provider's list, fallback to Hive cache
+    final locations = chefProvider.locations.isNotEmpty
+        ? chefProvider.locations
+        : ChefProvider.mapApiLocationsToSections(HiveService.getLocations());
+
+    // Auto-hydrate chefProvider if it was empty but Hive has saved locations
+    if (chefProvider.locations.isEmpty && locations.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          context.read<ChefProvider>().loadLocationsFromHive();
+        }
+      });
+    }
+
     final orders = chefProvider.filteredOrders;
     final totalCount = orders.length;
     final queueCount = chefProvider.queueCount;
@@ -25,6 +42,13 @@ class ChefLocationHeader extends StatelessWidget {
         : '$totalCount ${totalCount == 1 ? "order" : "orders"} • $queueCount in queue';
 
     final isFiltered = chefProvider.selectedStatusFilter != 'All Statuses';
+    final canSwitch = locations.length > 1;
+
+    final displayLocationName = chefProvider.selectedLocation.isNotEmpty
+        ? chefProvider.selectedLocation
+        : (locations.isNotEmpty
+            ? locations.first.name
+            : (HiveService.getSelectedLocationName() ?? 'All Outlets'));
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 6, 16, 12),
@@ -37,10 +61,10 @@ class ChefLocationHeader extends StatelessWidget {
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: chefProvider.locations.length > 1
+                onTap: canSwitch
                     ? () {
                         HapticHelper.triggerFeedback();
-                        _showLocationDialog(context, chefProvider);
+                        _showLocationDialog(context, chefProvider, locations);
                       }
                     : null,
                 borderRadius: BorderRadius.circular(10),
@@ -58,9 +82,7 @@ class ChefLocationHeader extends StatelessWidget {
                         children: [
                           Flexible(
                             child: Text(
-                              chefProvider.selectedLocation.isEmpty
-                                  ? 'All Outlets'
-                                  : chefProvider.selectedLocation,
+                              displayLocationName,
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -72,7 +94,7 @@ class ChefLocationHeader extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (chefProvider.locations.length > 1) ...[
+                          if (canSwitch) ...[
                             const SizedBox(width: 4),
                             const Icon(
                               Icons.keyboard_arrow_down_rounded,
@@ -178,14 +200,39 @@ class ChefLocationHeader extends StatelessWidget {
     );
   }
 
-  void _showLocationDialog(BuildContext context, ChefProvider chefProvider) {
+  void _showLocationDialog(
+    BuildContext context,
+    ChefProvider chefProvider,
+    List<LocationSection> locations,
+  ) {
+    final activeSelected = chefProvider.selectedLocation.isNotEmpty
+        ? chefProvider.selectedLocation
+        : (locations.isNotEmpty ? locations.first.name : '');
+
     LocationSelectorDialog.show(
       context,
-      locations: chefProvider.locations,
-      selectedLocation: chefProvider.selectedLocation,
-      onLocationChanged: (location) {
+      locations: locations,
+      selectedLocation: activeSelected,
+      onLocationChanged: (location) async {
         if (chefProvider.selectedLocation != location) {
-          chefProvider.changeLocation(location);
+          final matched = locations
+              .where((l) =>
+                  l.name == location ||
+                  l.name.trim().toLowerCase() == location.trim().toLowerCase())
+              .firstOrNull;
+
+          await chefProvider.changeLocation(
+            location,
+            outletId: matched?.id,
+          );
+
+          // Synchronize DashboardProvider if present in tree
+          try {
+            if (context.mounted) {
+              final dashboardProvider = context.read<DashboardProvider>();
+              dashboardProvider.changeLocation(location);
+            }
+          } catch (_) {}
         }
       },
     );

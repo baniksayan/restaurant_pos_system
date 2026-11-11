@@ -619,7 +619,7 @@ class _KitchenNoteDialogState extends State<KitchenNoteDialog> {
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                 ),
                 child: const Text(
-                  'Add & Send',
+                  'Send',
                   style: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w700,
