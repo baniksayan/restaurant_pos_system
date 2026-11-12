@@ -61,6 +61,16 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
   bool _isSharing = false;
   bool _isPrinting = false;
 
+  String _formatKotNumber(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '#';
+    final stripped = trimmed
+        .replaceFirst(RegExp(r'^KOT\s*[-#]?\s*', caseSensitive: false), '')
+        .trim();
+    if (stripped.isEmpty || stripped.toUpperCase() == 'KOT') return '#';
+    return stripped.startsWith('#') ? stripped : '#$stripped';
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
@@ -290,7 +300,7 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
                         ),
                       ),
                       child: Text(
-                        'KOT #${widget.kotNumber}',
+                        _formatKotNumber(widget.kotNumber),
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -339,18 +349,18 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
         children: [
           // Done Button (Left - Secondary action)
           Expanded(
-            flex: 3,
             child: SizedBox(
               height: 44,
-              child: OutlinedButton.icon(
+              child: ElevatedButton.icon(
                 onPressed: () async {
                   await HapticHelper.triggerFeedback();
                   _closeDialog();
                 },
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.70),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
                   foregroundColor: const Color(0xFF334155),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  elevation: 1,
+                  shadowColor: Colors.black.withValues(alpha: 0.08),
                   side: const BorderSide(
                     color: Color(0xFFCBD5E1),
                     width: 1.2,
@@ -358,6 +368,7 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
                 ),
                 icon: const Icon(
                   Icons.check_rounded,
@@ -369,7 +380,7 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
                   child: Text(
                     'Done',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.5,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -382,7 +393,6 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
 
           // Share Button (Middle - Tonal action)
           Expanded(
-            flex: 3,
             child: SizedBox(
               height: 44,
               child: ElevatedButton.icon(
@@ -390,12 +400,12 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0284C7),
                   foregroundColor: Colors.white,
-                  elevation: 1.5,
-                  shadowColor: const Color(0xFF0284C7).withValues(alpha: 0.30),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  elevation: 1,
+                  shadowColor: const Color(0xFF0284C7).withValues(alpha: 0.25),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
                 ),
                 icon: _isSharing
                     ? const SizedBox(
@@ -406,13 +416,13 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
                           valueColor: AlwaysStoppedAnimation(Colors.white),
                         ),
                       )
-                    : const Icon(Icons.share_rounded, size: 15),
+                    : const Icon(Icons.share_rounded, size: 16),
                 label: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
                     _isSharing ? 'Sharing...' : 'Share',
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.5,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -423,9 +433,8 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
 
           const SizedBox(width: 8),
 
-          // Print Button (Right - Primary prominent action)
+          // Print Button (Right - Primary action)
           Expanded(
-            flex: 4,
             child: SizedBox(
               height: 44,
               child: ElevatedButton.icon(
@@ -433,31 +442,30 @@ class _KOTPDFViewerDialogState extends State<KOTPDFViewerDialog> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  elevation: 3,
-                  shadowColor: AppColors.primary.withValues(alpha: 0.40),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  elevation: 1,
+                  shadowColor: AppColors.primary.withValues(alpha: 0.25),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
                 ),
                 icon: _isPrinting
                     ? const SizedBox(
-                        width: 15,
-                        height: 15,
+                        width: 14,
+                        height: 14,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation(Colors.white),
                         ),
                       )
-                    : const Icon(Icons.print_rounded, size: 17),
+                    : const Icon(Icons.print_rounded, size: 16),
                 label: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    _isPrinting ? 'Printing...' : 'Print KOT',
+                    _isPrinting ? 'Printing...' : 'Print',
                     style: const TextStyle(
                       fontSize: 13.5,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.2,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),

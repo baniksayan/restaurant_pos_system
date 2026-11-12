@@ -290,22 +290,28 @@ class _ChefOrderCardState extends State<ChefOrderCard>
                         ),
                         const SizedBox(width: 5),
                         Expanded(
-                          child: Text(
-                            order.kotNo.isNotEmpty
-                                ? (order.kotNo.startsWith('KOT') ||
-                                        order.kotNo.startsWith('#')
-                                    ? order.kotNo
-                                    : '#${order.kotNo}')
-                                : (order.orderNumber.isNotEmpty
-                                    ? '#${order.orderNumber}'
-                                    : '#KOT'),
-                            softWrap: true,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.textPrimary,
-                              letterSpacing: -0.2,
-                            ),
+                          child: Builder(
+                            builder: (context) {
+                              final cleanKot = order.kotNo.trim().replaceFirst(
+                                    RegExp(r'^KOT\s*[-#]?\s*', caseSensitive: false),
+                                    '',
+                                  ).trim();
+                              final display = cleanKot.isNotEmpty
+                                  ? (cleanKot.startsWith('#') ? cleanKot : '#$cleanKot')
+                                  : (order.orderNumber.isNotEmpty
+                                      ? (order.orderNumber.startsWith('#') ? order.orderNumber : '#${order.orderNumber}')
+                                      : '#');
+                              return Text(
+                                display,
+                                softWrap: true,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.textPrimary,
+                                  letterSpacing: -0.2,
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ],

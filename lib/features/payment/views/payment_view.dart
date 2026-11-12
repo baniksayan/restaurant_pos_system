@@ -732,6 +732,7 @@ class _PaymentPageState extends State<PaymentPage>
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
+                        icon: const Icon(Icons.check_rounded, size: 18),
                         label: const Text(
                           'Done',
                           style: TextStyle(

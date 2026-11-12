@@ -239,24 +239,25 @@ class CartItemCard extends StatelessWidget {
                           ),
                         ),
 
-                        const SizedBox(width: 6),
-
-                        // Edit Note Button
-                        InkWell(
-                          onTap: () async {
-                            await HapticHelper.triggerFeedback();
-                            onEdit();
-                          },
-                          borderRadius: BorderRadius.circular(6),
-                          child: const Padding(
-                            padding: EdgeInsets.all(3.0),
-                            child: Icon(
-                              Icons.edit_note_rounded,
-                              size: 20,
-                              color: Color(0xFF6366F1),
+                        // Edit Note Button (only when note is not yet added, otherwise shown in note banner below)
+                        if (!hasNote && item.canEdit) ...[
+                          const SizedBox(width: 6),
+                          InkWell(
+                            onTap: () async {
+                              await HapticHelper.triggerFeedback();
+                              onEdit();
+                            },
+                            borderRadius: BorderRadius.circular(6),
+                            child: const Padding(
+                              padding: EdgeInsets.all(3.0),
+                              child: Icon(
+                                Icons.edit_note_rounded,
+                                size: 20,
+                                color: Color(0xFF6366F1),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
 
                         // Delete All Button (if qty > 1)
                         if (item.quantity > 1 && item.canEdit) ...[
@@ -418,13 +419,29 @@ class CartItemCard extends StatelessWidget {
                               color: accentColor,
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: Text(
-                              'KOT #${item.kotNumber}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w700,
-                              ),
+                            child: Builder(
+                              builder: (context) {
+                                final trimmed = item.kotNumber!.trim();
+                                final stripped = trimmed
+                                    .replaceFirst(
+                                      RegExp(r'^KOT\s*[-#]?\s*', caseSensitive: false),
+                                      '',
+                                    )
+                                    .trim();
+                                final display = stripped.isEmpty
+                                    ? '#'
+                                    : (stripped.startsWith('#')
+                                        ? stripped
+                                        : '#$stripped');
+                                return Text(
+                                  display,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -489,7 +506,7 @@ class CartItemCard extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.only(top: 1),
               child: Icon(
-                Icons.edit_note_rounded,
+                Icons.notes_rounded,
                 color: Color(0xFFD97706),
                 size: 14,
               ),

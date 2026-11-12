@@ -355,49 +355,6 @@ class _BackOnlinePillState extends State<_BackOnlinePill>
                     decoration: TextDecoration.none,
                   ),
                 ),
-                const SizedBox(width: 7),
-                Container(
-                  width: 3.5,
-                  height: 3.5,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFF94A3B8),
-                  ),
-                ),
-                const SizedBox(width: 7),
-                const Text(
-                  'Live Sync Active',
-                  style: TextStyle(
-                    color: Color(0xFF059669),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12.5,
-                    letterSpacing: 0,
-                    decoration: TextDecoration.none,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: widget.onDismiss,
-                    child: Container(
-                      width: 18,
-                      height: 18,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFFF1F5F9),
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.close_rounded,
-                          size: 11,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),

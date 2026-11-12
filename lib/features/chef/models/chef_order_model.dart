@@ -1,3 +1,5 @@
+import 'package:restaurant_pos_system/core/utils/date_time_formatter.dart';
+
 enum ChefOrderStatus {
   pending, // STATUS 1: New order in queue, awaiting Chef Approve (-> 2) or Reject (-> 4)
   preparing, // STATUS 2: Chef approved, currently cooking in kitchen (-> 3)
@@ -92,17 +94,9 @@ class ChefOrder {
   double get totalAmount =>
       items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
 
-  /// Formatted as "YYYY-MM-DD • hh:mm a" (Year -> Month -> Day -> Hour -> Minute)
-  String get formattedOrderDateTime {
-    final year = orderTime.year.toString();
-    final month = orderTime.month.toString().padLeft(2, '0');
-    final day = orderTime.day.toString().padLeft(2, '0');
-    final h = orderTime.hour;
-    final m = orderTime.minute.toString().padLeft(2, '0');
-    final period = h >= 12 ? 'PM' : 'AM';
-    final hour12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
-    return '$year-$month-$day • $hour12:$m $period';
-  }
+  /// Formatted as "DD/MM/YYYY • hh:mm a"
+  String get formattedOrderDateTime =>
+      '${DateTimeFormatter.formatDate(orderTime)} • ${DateTimeFormatter.formatTime(orderTime)}';
 
   String get timeAgo {
     final now = DateTime.now();

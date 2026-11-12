@@ -1924,46 +1924,158 @@ class _ReprintBillCard extends StatelessWidget {
     required this.onViewBill,
   });
 
+  Widget _buildStatusBadge(bool paid, bool partiallyPaid, String statusText) {
+    if (paid) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFECFDF5),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: const Color(0xFFA7F3D0),
+            width: 0.9,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.check_circle_rounded,
+              size: 11,
+              color: Color(0xFF059669),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              statusText.isNotEmpty ? statusText : 'Paid',
+              style: const TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF047857),
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (partiallyPaid) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFBEB),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: const Color(0xFFFDE68A),
+            width: 0.9,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.timelapse_rounded,
+              size: 11,
+              color: Color(0xFFD97706),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              statusText.isNotEmpty ? statusText : 'Partially Paid',
+              style: const TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFFB45309),
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF2F2),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: const Color(0xFFFECACA),
+            width: 0.9,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.schedule_rounded,
+              size: 11,
+              color: Color(0xFFDC2626),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              statusText.isNotEmpty ? statusText : 'Not Paid',
+              style: const TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFFB91C1C),
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final paid = bill.isPaid == 2;
     final partiallyPaid = bill.isPaid == 1;
     final canReprint = paid;
 
+    // Card border color matches payment status:
+    // Green for Paid, Amber/Yellow for Partially Paid, Red for Not Paid
     final Color statusColor = paid
         ? const Color(0xFF10B981)
         : partiallyPaid
             ? const Color(0xFFF59E0B)
             : const Color(0xFFEF4444);
 
+    // Bill number with receipt icon at top-left
     final displayBillNo = bill.billNo.isNotEmpty
         ? (bill.billNo.startsWith('#') || bill.billNo.startsWith('BL')
             ? bill.billNo
             : '#${bill.billNo}')
         : (bill.orderNo.isNotEmpty ? '#${bill.orderNo}' : '#BILL');
 
+    // Clean order number for middle section
     final cleanOrderNo = bill.orderNo.isNotEmpty
-        ? (bill.orderNo.startsWith('#') ? bill.orderNo : '#${bill.orderNo}')
+        ? (bill.orderNo.startsWith('#') || bill.orderNo.startsWith('OD')
+            ? bill.orderNo
+            : '#${bill.orderNo}')
         : '';
 
-    final hasCustomer = bill.customerName.isNotEmpty &&
-        bill.customerName.toLowerCase() != 'walk-in' &&
-        bill.customerName.toLowerCase() != 'walk-in customer' &&
-        bill.customerName.toLowerCase() != 'walk-in guest';
-    final hasOrderNo =
-        cleanOrderNo.isNotEmpty && cleanOrderNo != displayBillNo;
+    final rawCustomer = bill.customerName.trim();
+    final lowerCustomer = rawCustomer.toLowerCase();
+    final hasCustomer = rawCustomer.isNotEmpty &&
+        lowerCustomer != 'null' &&
+        lowerCustomer != 'n/a' &&
+        lowerCustomer != 'na' &&
+        lowerCustomer != 'walk-in' &&
+        lowerCustomer != 'walk-in customer' &&
+        lowerCustomer != 'walk-in guest' &&
+        lowerCustomer != 'walkin' &&
+        lowerCustomer != 'walk in' &&
+        lowerCustomer != 'none';
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.35),
-          width: 1.2,
+          color: statusColor.withValues(alpha: 0.55),
+          width: 1.3,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.05),
+            color: statusColor.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -1984,7 +2096,7 @@ class _ReprintBillCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Row 1: Bill Number Badge (Left) + Status Pill (Right)
+                // Line 1: Bill Number Badge (Left) + Status Badge (Right)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -2007,206 +2119,149 @@ class _ReprintBillCard extends StatelessWidget {
                         children: [
                           const Icon(
                             Icons.receipt_long_rounded,
-                            size: 12,
+                            size: 13,
                             color: AppColors.primaryDark,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             displayBillNo,
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: 11.5,
                               fontWeight: FontWeight.w800,
                               color: AppColors.primaryDark,
-                              letterSpacing: 0.3,
+                              letterSpacing: 0.2,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: statusColor.withValues(alpha: 0.25),
-                        ),
-                      ),
-                      child: Text(
-                        bill.paymentStatus.isNotEmpty
-                            ? bill.paymentStatus
-                            : (paid
-                                ? 'Paid'
-                                : partiallyPaid
-                                    ? 'Partially Paid'
-                                    : 'Not Paid'),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: statusColor,
-                        ),
-                      ),
-                    ),
+                    _buildStatusBadge(paid, partiallyPaid, bill.paymentStatus),
                   ],
                 ),
                 const SizedBox(height: 8),
 
-                // Row 2: Left: Clean Order # / Customer Name, Right: Amount
+                // Lines 2 & 3: Order Number & Customer Name (Left) + Amount (Right Side Middle)
+                // When NO customer name is present: Order ID and Amount are in the same line.
+                // When customer name IS present: Order ID is top, customer name just below, and Amount vertically centered in the middle on the right.
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
-                      child: Row(
-                        children: [
-                          if (hasCustomer) ...[
-                            const Icon(
-                              Icons.person_rounded,
-                              size: 14,
-                              color: AppColors.textSecondary,
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                bill.customerName,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary,
-                                  letterSpacing: -0.2,
+                      child: hasCustomer
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Order Number
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.assignment_outlined,
+                                      size: 13,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        cleanOrderNo.isNotEmpty
+                                            ? cleanOrderNo
+                                            : 'Order #N/A',
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF334155),
+                                          letterSpacing: 0.1,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                softWrap: true,
-                              ),
-                            ),
-                            if (hasOrderNo) ...[
-                              const SizedBox(width: 6),
-                              const Text(
-                                '•',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
+                                const SizedBox(height: 3),
+                                // Customer Name (just below)
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.person_outline_rounded,
+                                      size: 13.5,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        rawCustomer,
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF1E293B),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Icon(
-                                Icons.assignment_outlined,
-                                size: 13,
-                                color: Color(0xFF64748B),
-                              ),
-                              const SizedBox(width: 3.5),
-                              Text(
-                                cleanOrderNo,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF475569),
+                              ],
+                            )
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.assignment_outlined,
+                                  size: 13,
+                                  color: Color(0xFF64748B),
                                 ),
-                              ),
-                            ],
-                          ] else if (hasOrderNo) ...[
-                            const Icon(
-                              Icons.assignment_outlined,
-                              size: 14,
-                              color: Color(0xFF64748B),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    cleanOrderNo.isNotEmpty
+                                        ? cleanOrderNo
+                                        : 'Order #N/A',
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF334155),
+                                      letterSpacing: 0.1,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              cleanOrderNo,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                          ] else ...[
-                            const Text(
-                              'Walk-in Customer',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textSecondary,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      CurrencyConstants.format(bill.amount),
-                      style: const TextStyle(
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Partially Paid Breakdown
-                if (partiallyPaid) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFFFDE68A)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    const SizedBox(width: 10),
+                    // Amount (middle right)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.check_circle_outline_rounded,
-                              size: 13,
-                              color: Color(0xFF059669),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Paid: ${CurrencyConstants.format(bill.paidAmount)}',
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF047857),
-                              ),
-                            ),
-                          ],
+                        Text(
+                          CurrencyConstants.format(bill.amount),
+                          style: const TextStyle(
+                            fontSize: 17.5,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF0F172A),
+                            letterSpacing: -0.3,
+                          ),
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.pending_outlined,
-                              size: 13,
-                              color: Color(0xFFD97706),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Need to Pay: ${CurrencyConstants.format(bill.balanceAmount > 0 ? bill.balanceAmount : (bill.amount - bill.paidAmount))}',
+                        if (partiallyPaid)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'Due: ${CurrencyConstants.format(bill.balanceAmount > 0 ? bill.balanceAmount : (bill.amount - bill.paidAmount))}',
                               style: const TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w800,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
                                 color: Color(0xFFB45309),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
                       ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ],
             ),
           ),
@@ -2217,90 +2272,56 @@ class _ReprintBillCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Line 4: Item (Left) + Date & Time (Right)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3.5,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${bill.itemCount} item${bill.itemCount == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF475569),
+                        ),
+                      ),
+                    ),
+                    if (bill.billDate != null)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.calendar_today_rounded,
+                            size: 12,
+                            color: AppColors.textSecondary,
                           ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '${bill.itemCount} item${bill.itemCount == 1 ? '' : 's'}',
+                          const SizedBox(width: 4),
+                          Text(
+                            bill.hasTime
+                                ? '${DateTimeFormatter.formatDate(bill.billDate!)} at ${DateTimeFormatter.formatTime(bill.billDate!)}'
+                                : DateTimeFormatter.formatDate(bill.billDate!),
                             style: const TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF475569),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        if (bill.billDate != null) ...[
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.calendar_today_rounded,
-                                size: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                bill.hasTime
-                                    ? '${DateTimeFormatter.formatDate(bill.billDate!)} at ${DateTimeFormatter.formatTime(bill.billDate!)}'
-                                    : DateTimeFormatter.formatDate(bill.billDate!),
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              if (bill.hasTime) ...[
-                                const SizedBox(width: 4),
-                                GestureDetector(
-                                  onTap: () => _showTimestampInfoDialog(context, bill),
-                                  behavior: HitTestBehavior.opaque,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(2.5),
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFFE2E8F0),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.info_outline_rounded,
-                                      size: 11.5,
-                                      color: Color(0xFF475569),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
                         ],
-                      ],
-                    ),
-                    if (bill.hasTime)
-                      Text(
-                        bill.billDate!.timeAgo(),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        ),
                       ),
                   ],
                 ),
                 const SizedBox(height: 12),
 
-                // Action Button: Full-width VIEW & REPRINT BILL (Compact)
+                // Line 5: Action Button: Full-width VIEW & REPRINT BILL (Compact)
                 // Disabled if partially paid or not paid!
                 SizedBox(
                   width: double.infinity,
@@ -2370,103 +2391,6 @@ class _ReprintBillCard extends StatelessWidget {
       ),
     );
   }
-
-  static void _showTimestampInfoDialog(BuildContext context, PendingBill bill) {
-    AppGlassDialog.show(
-      context,
-      maxWidth: 320,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.schedule_rounded,
-              size: 26,
-              color: AppColors.primaryDark,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Bill Timing Details',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF1E1B4B),
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'This timestamp marks the exact moment when this bill was first generated or paid.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Colors.black.withValues(alpha: 0.7),
-              height: 1.4,
-            ),
-          ),
-          if (bill.billDate != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.access_time_filled_rounded,
-                    size: 13,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    '${DateTimeFormatter.formatDate(bill.billDate!)} at ${DateTimeFormatter.formatTime(bill.billDate!)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryDark,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 9),
-                visualDensity: VisualDensity.compact,
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'Got it',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -2487,13 +2411,15 @@ class _ReprintKotCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayKotNo = kot.kotNo.isNotEmpty
-        ? (kot.kotNo.startsWith('KOT') || kot.kotNo.startsWith('#')
-            ? kot.kotNo
-            : '#${kot.kotNo}')
+    final cleanKot = kot.kotNo.trim().replaceFirst(
+          RegExp(r'^KOT\s*[-#]?\s*', caseSensitive: false),
+          '',
+        ).trim();
+    final displayKotNo = cleanKot.isNotEmpty
+        ? (cleanKot.startsWith('#') ? cleanKot : '#$cleanKot')
         : (kot.orderNumber.isNotEmpty
-            ? '#${kot.orderNumber}'
-            : '#KOT');
+            ? (kot.orderNumber.startsWith('#') ? kot.orderNumber : '#${kot.orderNumber}')
+            : '#');
 
     // Resolve channel type: Dine-in / Phone Order / Takeaway / Table
     final channelNameLower = (kot.channelName ?? '').toLowerCase();
@@ -2520,8 +2446,9 @@ class _ReprintKotCard extends StatelessWidget {
             ? Icons.takeout_dining_rounded
             : Icons.table_restaurant_rounded;
 
-    // Proper year -> month -> day • hour:minute + dynamic elapsed time
-    final timeStr = '${kot.formattedOrderDateTime} (${kot.timeAgo})';
+    // Standard DD/MM/YYYY at hh:mm a format (relative time indicator removed)
+    final timeStr =
+        '${DateTimeFormatter.formatDate(kot.orderTime)} at ${DateTimeFormatter.formatTime(kot.orderTime)}';
 
     return Container(
       decoration: BoxDecoration(

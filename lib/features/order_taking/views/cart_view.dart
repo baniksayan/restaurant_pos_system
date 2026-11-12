@@ -339,25 +339,16 @@ class _CartViewState extends State<CartView> {
 
   String _formatKotTitle(String rawKey) {
     final trimmed = rawKey.trim();
-    if (trimmed.isEmpty) return 'KOT';
+    if (trimmed.isEmpty) return '#';
 
-    final upper = trimmed.toUpperCase();
-    if (upper.startsWith('KOT #') || upper.startsWith('KOT#')) {
-      return trimmed;
-    }
-    if (upper.startsWith('KOT ') || upper == 'KOT') {
-      return trimmed;
-    }
-    if (upper.startsWith('KOT')) {
-      final stripped = trimmed
-          .replaceFirst(RegExp(r'^KOT\s*[-#]?\s*', caseSensitive: false), '')
-          .trim();
-      return stripped.isNotEmpty ? 'KOT #$stripped' : trimmed;
-    }
-    if (trimmed.startsWith('#')) {
-      return 'KOT $trimmed';
-    }
-    return 'KOT #$trimmed';
+    // Strip leading 'KOT' (with optional space/dash/#)
+    final stripped = trimmed
+        .replaceFirst(RegExp(r'^KOT\s*[-#]?\s*', caseSensitive: false), '')
+        .trim();
+
+    if (stripped.isEmpty || stripped.toUpperCase() == 'KOT') return '#';
+
+    return stripped.startsWith('#') ? stripped : '#$stripped';
   }
 
   // Build section for KOT generated items (read-only, grouped into unified boxes per KOT)
@@ -476,6 +467,9 @@ class _CartViewState extends State<CartView> {
             setState(() => _currentKotNote = note);
           }
         },
+        onClearKotNote: () {
+          setState(() => _currentKotNote = '');
+        },
         child: CartItemsList(items: newItems, onEditItem: _showEditItemDialog),
       ),
     );
@@ -512,7 +506,12 @@ class _CartViewState extends State<CartView> {
               children: [
                 Text('Item: ${item.name}'),
                 Text('Quantity: ${item.quantity}'),
-                if (item.kotNumber != null) Text('KOT #: ${item.kotNumber}'),
+                if (item.kotNumber != null)
+                  Text(
+                    item.kotNumber!.trim().startsWith('#')
+                        ? item.kotNumber!.trim()
+                        : '#${item.kotNumber!.trim()}',
+                  ),
                 if (item.kotGeneratedAt != null)
                   Text(
                     'Generated: ${item.kotGeneratedAt!.toString().substring(0, 16)}',

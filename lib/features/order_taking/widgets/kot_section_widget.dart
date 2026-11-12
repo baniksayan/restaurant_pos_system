@@ -10,6 +10,7 @@ class KotSectionWidget extends StatelessWidget {
   final Widget child;
   final String? kotNote;
   final VoidCallback? onEditKotNote;
+  final VoidCallback? onClearKotNote;
 
   const KotSectionWidget({
     super.key,
@@ -22,6 +23,7 @@ class KotSectionWidget extends StatelessWidget {
     required this.child,
     this.kotNote,
     this.onEditKotNote,
+    this.onClearKotNote,
   });
 
   @override
@@ -169,6 +171,21 @@ class KotSectionWidget extends StatelessWidget {
                 ),
               ),
             ),
+          if (onClearKotNote != null) ...[
+            const SizedBox(width: 4),
+            InkWell(
+              onTap: onClearKotNote,
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 16,
+                  color: headerColor,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

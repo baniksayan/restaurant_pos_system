@@ -1480,25 +1480,6 @@ class _PendingPaymentBillCard extends StatelessWidget {
                                   color: AppColors.textSecondary,
                                 ),
                               ),
-                              if (bill.hasTime) ...[
-                                const SizedBox(width: 4),
-                                GestureDetector(
-                                  onTap: () => _showTimestampInfoDialog(context, bill),
-                                  behavior: HitTestBehavior.opaque,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(2.5),
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFFE2E8F0),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.info_outline_rounded,
-                                      size: 11.5,
-                                      color: Color(0xFF475569),
-                                    ),
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                       ],
@@ -1578,103 +1559,6 @@ class _PendingPaymentBillCard extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static void _showTimestampInfoDialog(BuildContext context, PendingBill bill) {
-    AppGlassDialog.show(
-      context,
-      maxWidth: 320,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.schedule_rounded,
-              size: 26,
-              color: AppColors.primaryDark,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Bill Timing Details',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF1E1B4B),
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'This timestamp marks the exact moment when this bill was first generated or paid.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Colors.black.withValues(alpha: 0.7),
-              height: 1.4,
-            ),
-          ),
-          if (bill.billDate != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.access_time_filled_rounded,
-                    size: 13,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    '${DateTimeFormatter.formatDate(bill.billDate!)} at ${DateTimeFormatter.formatTime(bill.billDate!)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryDark,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 9),
-                visualDensity: VisualDensity.compact,
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'Got it',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
             ),
           ),
         ],
