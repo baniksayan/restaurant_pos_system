@@ -11,6 +11,7 @@ import 'package:restaurant_pos_system/features/auth/providers/auth_provider.dart
 import 'package:restaurant_pos_system/features/chef/providers/chef_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/dashboard_provider.dart';
 import 'package:restaurant_pos_system/features/menu/views/standalone_menu_view.dart';
+import 'package:restaurant_pos_system/features/billing/providers/tax_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
 class SplashView extends StatefulWidget {
@@ -163,6 +164,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
             });
             // Hydrate location & outletId from Hive database immediately on startup
             context.read<DashboardProvider>().loadLocationsFromHive();
+            context.read<TaxProvider>().initializeTaxData();
           }
           final companySiteUrl = HiveService.getCompanySiteUrl();
 

@@ -1,4 +1,6 @@
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
+import 'package:restaurant_pos_system/data/models/bill_details_response.dart'
+    show BillOrderDetails;
 
 /// Helper utility to merge identical items for the final order and bill summary,
 /// while allowing KOT items to remain separated internally for kitchen-related tracking.
@@ -96,23 +98,94 @@ class BillItemMerger {
     final Map<String, CartItem> map = {};
 
     for (final item in items) {
-      final String name = (item.name as String? ?? 'Item').trim();
-      final double price = (item.price as num? ?? 0).toDouble();
-      final int quantity = (item.quantity as num? ?? 1).toInt();
-      final String? specialNotes = (item.specialNotes as String?);
-      final String? uom = (item is CartItem ? item.uom : null);
-      final String tableId =
-          item is CartItem ? item.tableId : (item.tableId?.toString() ?? '');
-      final String tableName =
-          item is CartItem ? item.tableName : (item.tableName?.toString() ?? '');
-      final String id =
-          item is CartItem ? item.id : (item.id?.toString() ?? name);
+      String name = 'Item';
+      double price = 0.0;
+      int quantity = 1;
+      String? specialNotes;
+      String? uom;
+      String tableId = '';
+      String tableName = '';
+      String id = '';
+
+      if (item is CartItem) {
+        name = item.name.trim().isNotEmpty ? item.name.trim() : 'Item';
+        price = item.price;
+        quantity = item.quantity;
+        specialNotes = item.specialNotes;
+        uom = item.uom;
+        tableId = item.tableId;
+        tableName = item.tableName;
+        id = item.id;
+      } else if (item is BillOrderDetails) {
+        name = item.itemName.trim().isNotEmpty ? item.itemName.trim() : 'Item';
+        price = item.itemPrice;
+        quantity = item.orderQty.round();
+        if (quantity < 1) quantity = 1;
+        uom = item.uom.isNotEmpty ? item.uom : null;
+        id = item.orderId;
+      } else if (item is Map) {
+        name = (item['itemName'] ?? item['productName'] ?? item['name'] ?? 'Item').toString().trim();
+        final rawPrice = item['itemPrice'] ?? item['price'] ?? item['rate'];
+        if (rawPrice is num) {
+          price = rawPrice.toDouble();
+        } else if (rawPrice != null) {
+          price = double.tryParse(rawPrice.toString().trim()) ?? 0.0;
+        }
+        final rawQty = item['orderQty'] ?? item['productQty'] ?? item['quantity'] ?? item['qty'];
+        if (rawQty is num) {
+          quantity = rawQty.toInt();
+        } else if (rawQty != null) {
+          quantity = int.tryParse(rawQty.toString().trim()) ?? 1;
+        }
+        if (quantity < 1) quantity = 1;
+        specialNotes = item['specialNotes']?.toString();
+        uom = (item['uom'] ?? item['unit'])?.toString();
+        tableId = (item['tableId'] ?? '').toString();
+        tableName = (item['tableName'] ?? '').toString();
+        id = (item['orderId'] ?? item['id'] ?? name).toString();
+      } else {
+        try {
+          name = ((item as dynamic).name ?? (item as dynamic).itemName ?? 'Item').toString().trim();
+        } catch (_) {}
+        try {
+          final p = (item as dynamic).price ?? (item as dynamic).itemPrice;
+          if (p is num) {
+            price = p.toDouble();
+          } else if (p != null) {
+            price = double.tryParse(p.toString().trim()) ?? 0.0;
+          }
+        } catch (_) {}
+        try {
+          final q = (item as dynamic).quantity ?? (item as dynamic).orderQty ?? (item as dynamic).productQty;
+          if (q is num) {
+            quantity = q.toInt();
+          } else if (q != null) {
+            quantity = int.tryParse(q.toString().trim()) ?? 1;
+          }
+        } catch (_) {}
+        if (quantity < 1) quantity = 1;
+        try {
+          specialNotes = (item as dynamic).specialNotes as String?;
+        } catch (_) {}
+        try {
+          uom = (item as dynamic).uom as String?;
+        } catch (_) {}
+        try {
+          tableId = ((item as dynamic).tableId ?? '').toString();
+        } catch (_) {}
+        try {
+          tableName = ((item as dynamic).tableName ?? '').toString();
+        } catch (_) {}
+        try {
+          id = ((item as dynamic).id ?? name).toString();
+        } catch (_) {}
+      }
 
       final key = '${name.toLowerCase()}##${price.toStringAsFixed(2)}##${(uom ?? '').toLowerCase()}';
 
       if (!map.containsKey(key)) {
         map[key] = CartItem(
-          id: id,
+          id: id.isNotEmpty ? id : name,
           name: name,
           price: price,
           quantity: quantity,

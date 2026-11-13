@@ -10,6 +10,10 @@ class AppRadius {
   static const double xl = 24.0;
   static const double round = 999.0;
 
+  // Canonical component radius tokens
+  static const double card = lg; // 16.0
+  static const double cardSm = md; // 12.0
+
   static const BorderRadius radiusXs = BorderRadius.all(Radius.circular(xs));
   static const BorderRadius radiusSm = BorderRadius.all(Radius.circular(sm));
   static const BorderRadius radiusMd = BorderRadius.all(Radius.circular(md));
@@ -18,4 +22,6 @@ class AppRadius {
   static const BorderRadius radiusRound = BorderRadius.all(
     Radius.circular(round),
   );
+  static const BorderRadius radiusCard = radiusLg;
+  static const BorderRadius radiusCardSm = radiusMd;
 }

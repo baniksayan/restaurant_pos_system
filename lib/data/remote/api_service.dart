@@ -1428,27 +1428,35 @@ class ApiService {
     required DateTime to,
     String searchString = '',
   }) async {
-    // Same UTC conversion — bills are also stored with UTC timestamps.
-    final fromUtc = DateTime(from.year, from.month, from.day).toUtc();
-    final toUtc = DateTime(to.year, to.month, to.day, 23, 59, 59).toUtc();
-
     String iso(DateTime d) =>
         '${d.year.toString().padLeft(4, '0')}-'
         '${d.month.toString().padLeft(2, '0')}-'
         '${d.day.toString().padLeft(2, '0')}';
 
     try {
-      final response = await apiRequestHttpRawBody('Order/GetBillForReprint', {
+      final requestBody = {
         "outletId": outletId,
-        "fromDate": iso(fromUtc),
-        "toDate": iso(toUtc),
+        "fromDate": iso(from),
+        "toDate": iso(to),
         "searchString": searchString,
-      });
+      };
+
+      if (kDebugMode) {
+        debugPrint('[API Call] Order/GetBillForReprint: $requestBody');
+      }
+
+      final response = await apiRequestHttpRawBody('Order/GetBillForReprint', requestBody);
 
       if (response == null) return null;
 
       final data = response['data'];
       if (data is! List) return <PendingBill>[];
+
+      if (kDebugMode) {
+        debugPrint(
+          '[API Success] Order/GetBillForReprint returned ${data.length} records for outlet $outletId',
+        );
+      }
 
       return data
           .whereType<Map>()

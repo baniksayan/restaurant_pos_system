@@ -26,6 +26,16 @@ class BillPDFViewerDialog extends StatefulWidget {
 class _BillPDFViewerDialogState extends State<BillPDFViewerDialog> {
   bool _isPrinting = false;
 
+  String _formatOrderNumber(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '#';
+    final stripped = trimmed
+        .replaceFirst(RegExp(r'^Order\s*[-#]?\s*', caseSensitive: false), '')
+        .trim();
+    if (stripped.isEmpty || stripped.toUpperCase() == 'ORDER') return '#';
+    return stripped.startsWith('#') ? stripped : '#$stripped';
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
@@ -241,7 +251,7 @@ class _BillPDFViewerDialogState extends State<BillPDFViewerDialog> {
                         ),
                       ),
                       child: Text(
-                        'Order #${widget.orderNumber}',
+                        _formatOrderNumber(widget.orderNumber),
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,

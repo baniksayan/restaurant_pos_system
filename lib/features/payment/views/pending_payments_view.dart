@@ -4,18 +4,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_radius.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/core/utils/date_time_formatter.dart';
+import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
+import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
 import 'package:restaurant_pos_system/data/models/pending_bill.dart';
+import 'package:restaurant_pos_system/data/models/restaurant_table.dart'
+    show TableStatus;
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
+import 'package:restaurant_pos_system/features/dashboard/providers/dashboard_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/orders/providers/ready_to_collect_provider.dart'
     show ServedDateFilter;
+import 'package:restaurant_pos_system/shared/widgets/cards/app_card.dart';
 import 'package:restaurant_pos_system/shared/widgets/dialogs/app_date_range_picker_dialog.dart';
-import 'package:restaurant_pos_system/shared/widgets/dialogs/app_glass_dialog.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/premium_refresh_indicator.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/shimmer_effect.dart';
 import 'payment_view.dart';
@@ -44,7 +50,7 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
   bool _loading = true;
   String? _error;
   String _searchQuery = '';
-  ServedDateFilter _dateFilter = ServedDateFilter.today;
+  ServedDateFilter _dateFilter = ServedDateFilter.all;
   DateTimeRange? _customDateRange;
   late TextEditingController _searchController;
   String? _openingBillId;
@@ -72,7 +78,26 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
       _error = null;
     });
 
-    final outletId = HiveService.getOutletId();
+    int? outletId;
+    if (mounted) {
+      try {
+        final tp = Provider.of<TableProvider>(context, listen: false);
+        if (tp.outletId > 0) outletId = tp.outletId;
+      } catch (_) {}
+      if (outletId == null || outletId <= 0) {
+        try {
+          final dp = Provider.of<DashboardProvider>(context, listen: false);
+          outletId = dp.getOutletIdForLocation(dp.selectedLocation);
+        } catch (_) {}
+      }
+    }
+    outletId ??=
+        HiveService.getSelectedLocationId() ?? HiveService.getOutletId();
+    if (outletId != null && outletId > 0) {
+      HiveService.setOutletId(outletId);
+      HiveService.setSelectedLocationId(outletId);
+    }
+
     if (outletId == null || outletId <= 0) {
       if (!mounted) return;
       setState(() {
@@ -85,26 +110,255 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
     try {
       final now = DateTime.now();
       final from = now.subtract(const Duration(days: _windowDays));
+      final to = now.add(const Duration(days: 1));
       final bills = await ApiService.getBillsForReprint(
         outletId: outletId,
         from: from,
-        to: now,
+        to: to,
       );
 
       if (!mounted) return;
 
-      if (bills == null) {
-        setState(() {
-          _loading = false;
-          _error = 'Could not load pending bills. Pull down to retry.';
-        });
-        return;
+      final List<PendingBill> detailedBills = [];
+
+      if (bills != null && bills.isNotEmpty) {
+        // Query paid amount for all bills so we never rely on ambiguous raw isPaid bit
+        final resolvedBills = await Future.wait(
+          bills.map((b) async {
+            double paid = 0.0;
+            try {
+              final apiPaid =
+                  await ApiService.getPaidAmountForBill(billId: b.billId);
+              if (apiPaid != null && apiPaid > 0) {
+                paid = apiPaid;
+              }
+            } catch (_) {}
+
+            final total = b.amount;
+            final isFullyPaid = total > 0.004 && paid >= (total - 0.004);
+            if (isFullyPaid) return null; // Settled bill, exclude
+
+            final due = (total - paid) > 0 ? (total - paid) : 0.0;
+            final isPartial = paid > 0.004;
+
+            return b.copyWith(
+              paidAmount: paid,
+              balanceAmount: due,
+              isPaid: isPartial ? 1 : 0,
+              paymentStatus: isPartial ? 'Partially Paid' : 'Payment Pending',
+            );
+          }),
+        );
+        detailedBills.addAll(resolvedBills.whereType<PendingBill>());
       }
+
+      // Cross-reference active billed tables from TableProvider so every table
+      // showing "Bill Generated" / payment pending on the dashboard is guaranteed
+      // to appear in Pending Payments.
+      try {
+        if (mounted) {
+          final tp = Provider.of<TableProvider>(context, listen: false);
+          if (tp.tables.isEmpty) {
+            await tp.refreshTables();
+          }
+
+          for (final table in tp.tables) {
+            final isTableBilled = table.status == TableStatus.billGenerated ||
+                table.billGenerated ||
+                table.activeOrders.any((o) => o.isBilled);
+
+            if (isTableBilled) {
+              for (final order in table.activeOrders) {
+                if (order.isBilled ||
+                    table.status == TableStatus.billGenerated ||
+                    table.billGenerated) {
+                  // Check if already exists in detailedBills
+                  final existingIndex = detailedBills.indexWhere(
+                    (b) =>
+                        (b.orderNo.isNotEmpty &&
+                            (b.orderNo.trim() == order.generatedOrderNo.trim() ||
+                                b.orderNo.trim() == order.orderId.trim())) ||
+                        (order.billId != null &&
+                            order.billId!.isNotEmpty &&
+                            b.billId == order.billId),
+                  );
+
+                  String? billId = order.billId ??
+                      tp.getBillId(order.orderId) ??
+                      HiveService.getOrderBillId(order.orderId);
+
+                  // Always fetch order details first (matching PaymentPage) to guarantee
+                  // accurate billId, order items, prices, and customer info
+                  OrderDetailApiResponseModel? orderDetailResp;
+                  try {
+                    orderDetailResp = await ApiService.getOrderDetailById(
+                      orderId: order.orderId,
+                    );
+                  } catch (e) {
+                    debugPrint(
+                      '[PendingPayments] getOrderDetailById error for ${order.orderId}: $e',
+                    );
+                  }
+
+                  final od = orderDetailResp?.data?.firstOrNull;
+                  if (od != null && GuidHelper.isValid(od.billId)) {
+                    billId = od.billId;
+                    tp.storeBillId(order.orderId, billId!);
+                    HiveService.saveOrderBillId(order.orderId, billId);
+                  }
+
+                  if ((billId == null || !GuidHelper.isValid(billId)) && bills != null) {
+                    final matchedBill = bills.where((b) =>
+                        b.orderNo.isNotEmpty &&
+                        (b.orderNo.trim() == order.generatedOrderNo.trim() ||
+                            b.orderNo.trim() == order.orderId.trim())).firstOrNull;
+                    if (matchedBill != null && GuidHelper.isValid(matchedBill.billId)) {
+                      billId = matchedBill.billId;
+                      tp.storeBillId(order.orderId, billId);
+                      HiveService.saveOrderBillId(order.orderId, billId);
+                    }
+                  }
+
+                  // Compute items total from order lines
+                  double itemsTotal = 0.0;
+                  if (od?.orderDetailList != null && od!.orderDetailList!.isNotEmpty) {
+                    for (final item in od.orderDetailList!) {
+                      final price = item.totPrice?.toDouble() ??
+                          ((item.itemPrice?.toDouble() ?? 0.0) *
+                              (item.productQty ?? 1));
+                      itemsTotal += price;
+                    }
+                  }
+
+                  double billTotal = itemsTotal;
+                  String billNo = od?.generatedBillNo ?? '';
+                  String customerName = '';
+                  DateTime? resolvedBillDate;
+
+                  // If valid billId, fetch bill details and paid amount
+                  double paidAmount = 0.0;
+                  if (billId != null && billId.isNotEmpty) {
+                    try {
+                      final billResp = await ApiService.getBillDetailByBillId(
+                        billId: billId,
+                      );
+                      if (billResp != null && billResp.data != null) {
+                        final data = billResp.data!;
+                        if (data.billHeadDt.billAmountInclTax > 0) {
+                          billTotal = data.billHeadDt.billAmountInclTax;
+                        }
+                        if (data.billHeadDt.billNo.isNotEmpty) {
+                          billNo = data.billHeadDt.billNo;
+                        }
+                        if (data.billHeadDt.customerName.isNotEmpty) {
+                          customerName = data.billHeadDt.customerName;
+                        }
+                        if (data.billHeadDt.parsedBillDate != null) {
+                          resolvedBillDate = data.billHeadDt.parsedBillDate;
+                        }
+                      }
+                    } catch (e) {
+                      debugPrint(
+                        '[PendingPayments] getBillDetailByBillId error: $e',
+                      );
+                    }
+
+                    try {
+                      final paid = await ApiService.getPaidAmountForBill(
+                        billId: billId,
+                      );
+                      if (paid != null && paid > 0) {
+                        paidAmount = paid;
+                      }
+                    } catch (e) {
+                      debugPrint(
+                        '[PendingPayments] getPaidAmountForBill error: $e',
+                      );
+                    }
+                  }
+
+                  if (billTotal <= 0 && itemsTotal > 0) {
+                    billTotal = itemsTotal;
+                  }
+
+                  if (billNo.isEmpty) {
+                    billNo = od?.generatedBillNo ??
+                        (order.generatedOrderNo.isNotEmpty
+                            ? order.generatedOrderNo
+                            : 'BILL');
+                  }
+                  if (customerName.isEmpty) {
+                    customerName = HiveService.getCustomerName(billId ?? '') ??
+                        HiveService.getCustomerName(order.orderId) ??
+                        '';
+                  }
+
+                  if (resolvedBillDate == null) {
+                    final itemCreatedOn =
+                        od?.orderDetailList?.firstOrNull?.createdOn;
+                    if (itemCreatedOn != null && itemCreatedOn.isNotEmpty) {
+                      resolvedBillDate =
+                          DateTimeFormatter.parseDateTime(itemCreatedOn);
+                    }
+                  }
+                  resolvedBillDate ??= HiveService.getBillTimestamp(billId ?? '') ??
+                      HiveService.getBillTimestamp(order.orderId) ??
+                      now;
+
+                  final dueAmount = (billTotal - paidAmount) > 0
+                      ? (billTotal - paidAmount)
+                      : 0.0;
+
+                  final isFullyPaid = billTotal > 0 && paidAmount >= (billTotal - 0.004);
+                  final isPartiallyPaid = paidAmount > 0.004 && !isFullyPaid;
+
+                  if (!isFullyPaid && (dueAmount > 0.001 || billTotal > 0.001)) {
+                    final synthesizedBill = PendingBill(
+                      billId: billId ?? order.orderId,
+                      billNo: billNo,
+                      orderNo: order.generatedOrderNo.isNotEmpty
+                          ? order.generatedOrderNo
+                          : (od?.orderNo ?? order.orderId),
+                      customerName: customerName,
+                      amount: billTotal,
+                      paidAmount: paidAmount,
+                      balanceAmount: dueAmount,
+                      itemCount: (od?.orderDetailList != null && od!.orderDetailList!.isNotEmpty)
+                          ? od.orderDetailList!.length
+                          : 1,
+                      isPaid: isPartiallyPaid ? 1 : 0,
+                      paymentStatus: isPartiallyPaid
+                          ? 'Partially Paid'
+                          : 'Payment Pending',
+                      billDate: resolvedBillDate,
+                    );
+
+                    if (existingIndex >= 0) {
+                      detailedBills[existingIndex] = synthesizedBill;
+                    } else {
+                      detailedBills.add(synthesizedBill);
+                    }
+                  } else if (isFullyPaid && existingIndex >= 0) {
+                    detailedBills.removeAt(existingIndex);
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint(
+          '[PendingPaymentsView] TableProvider cross-reference sync: $e',
+        );
+      }
+
+      if (!mounted) return;
 
       setState(() {
         _loading = false;
-        // Keep only outstanding (not fully paid) bills
-        _rawBills = bills.where((b) => b.isOutstanding).toList();
+        // Keep only truly outstanding bills
+        _rawBills =
+            detailedBills.where((b) => b.effectiveDueAmount > 0.001).toList();
         _rawBills.sort((a, b) {
           final aDate = a.billDate ?? DateTime(2000);
           final bDate = b.billDate ?? DateTime(2000);
@@ -185,12 +439,16 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
         final matchesOrderNo = bill.orderNo.toLowerCase().contains(query);
         final matchesCustomer = bill.customerName.toLowerCase().contains(query);
         final matchesAmount = bill.amount.toString().contains(query);
+        final matchesDue = bill.effectiveDueAmount.toString().contains(query);
+        final matchesPaid = bill.effectivePaidAmount.toString().contains(query);
         final matchesStatus = bill.paymentStatus.toLowerCase().contains(query);
 
         if (!matchesBillNo &&
             !matchesOrderNo &&
             !matchesCustomer &&
             !matchesAmount &&
+            !matchesDue &&
+            !matchesPaid &&
             !matchesStatus) {
           return false;
         }
@@ -201,10 +459,7 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
   }
 
   bool get _isFilterActive =>
-      _searchQuery.trim().isNotEmpty || _dateFilter != ServedDateFilter.today;
-
-  double get _filteredOutstandingTotal =>
-      _filteredBills.fold(0.0, (sum, b) => sum + b.amount);
+      _searchQuery.trim().isNotEmpty || _dateFilter != ServedDateFilter.all;
 
   // ────────────────────────── Filter Actions ───────────────────────────────
 
@@ -212,7 +467,7 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
     _searchController.clear();
     setState(() {
       _searchQuery = '';
-      _dateFilter = ServedDateFilter.today;
+      _dateFilter = ServedDateFilter.all;
       _customDateRange = null;
     });
   }
@@ -239,15 +494,66 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
 
     setState(() => _openingBillId = bill.billId);
     try {
+      final tp = context.read<TableProvider>();
+      String? matchedTableId;
+      String? matchedOrderId;
+
+      for (final t in tp.tables) {
+        for (final o in t.activeOrders) {
+          if ((bill.orderNo.isNotEmpty &&
+                  (o.generatedOrderNo.trim() == bill.orderNo.trim() ||
+                      o.orderId.trim() == bill.orderNo.trim())) ||
+              (o.billId != null && o.billId == bill.billId) ||
+              (tp.getBillId(o.orderId) == bill.billId) ||
+              (HiveService.getOrderBillId(o.orderId) == bill.billId) ||
+              (o.orderId == bill.billId)) {
+            matchedTableId = t.id;
+            matchedOrderId = o.orderId;
+            break;
+          }
+        }
+        if (matchedTableId != null) break;
+      }
+
+      if (matchedOrderId == null && GuidHelper.isValid(bill.billId)) {
+        try {
+          final bResp =
+              await ApiService.getBillDetailByBillId(billId: bill.billId);
+          if (bResp != null && bResp.data != null) {
+            if (bResp.data!.billOrderDt.isNotEmpty) {
+              matchedOrderId = bResp.data!.billOrderDt.first.orderId;
+            }
+            if (bResp.data!.orderChanelDt.isNotEmpty) {
+              final chName = bResp.data!.orderChanelDt.first.channelName
+                  .trim()
+                  .toLowerCase();
+              final matchedTable = tp.tables
+                  .where((t) => t.name.trim().toLowerCase() == chName)
+                  .firstOrNull;
+              if (matchedTable != null) {
+                matchedTableId = matchedTable.id;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (!mounted) return;
       await Navigator.push(
         context,
         MaterialPageRoute(
           builder:
               (_) => PaymentPage(
                 billId: bill.billId,
+                orderId: matchedOrderId,
+                tableId: matchedTableId,
                 orderNumber:
                     bill.orderNo.isNotEmpty ? bill.orderNo : bill.billNo,
                 totalAmount: bill.amount,
+                isFinalSettlement: false,
+                onPaymentCompleted: () {
+                  tp.refreshTables();
+                },
               ),
         ),
       );
@@ -289,10 +595,6 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
 
             // Pinned Search & Filter Section
             _buildSearchAndFilterBar(context, filtered.length),
-
-            // Outstanding Summary Metrics Banner (when bills are present)
-            if (!_loading && _error == null && filtered.isNotEmpty)
-              _buildSummaryMetricsBar(),
 
             // Scrollable Content
             Expanded(
@@ -507,6 +809,17 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
             child: Row(
               children: [
                 _buildDateFilterChip(
+                  label: 'All Pending',
+                  icon: Icons.checklist_rounded,
+                  isSelected: _dateFilter == ServedDateFilter.all,
+                  onTap: () {
+                    setState(() {
+                      _dateFilter = ServedDateFilter.all;
+                    });
+                  },
+                ),
+                const SizedBox(width: 8),
+                _buildDateFilterChip(
                   label: 'Today',
                   icon: Icons.today_rounded,
                   isSelected: _dateFilter == ServedDateFilter.today,
@@ -533,17 +846,6 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
                   icon: Icons.calendar_month_rounded,
                   isSelected: _dateFilter == ServedDateFilter.custom,
                   onTap: _onPickCustomDateRange,
-                ),
-                const SizedBox(width: 8),
-                _buildDateFilterChip(
-                  label: 'Past 6 Months',
-                  icon: Icons.history_toggle_off_rounded,
-                  isSelected: _dateFilter == ServedDateFilter.all,
-                  onTap: () {
-                    setState(() {
-                      _dateFilter = ServedDateFilter.all;
-                    });
-                  },
                 ),
               ],
             ),
@@ -681,91 +983,6 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
     );
   }
 
-  // ────────────────────────── Summary Metrics Bar ──────────────────────────
-
-  Widget _buildSummaryMetricsBar() {
-    final total = _filteredOutstandingTotal;
-    final count = _filteredBills.length;
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFFFEF3C7).withValues(alpha: 0.9),
-            const Color(0xFFFFFBEB),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFFFDE68A),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFD97706).withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFD97706).withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.account_balance_wallet_outlined,
-              size: 18,
-              color: Color(0xFFB45309),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '$count ${count == 1 ? 'Bill' : 'Bills'} Awaiting Collection',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF92400E),
-                  ),
-                ),
-                const SizedBox(height: 1),
-                const Text(
-                  'Total Outstanding Balance',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFFB45309),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            total.toCurrency(),
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFFB45309),
-              letterSpacing: -0.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ────────────────────────── Bills List & Cards ───────────────────────────
 
   Widget _buildBillsList(BuildContext context, List<PendingBill> bills) {
@@ -809,7 +1026,7 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 14,
             mainAxisSpacing: 14,
-            mainAxisExtent: 220,
+            mainAxisExtent: 260,
           ),
           itemCount: bills.length,
           itemBuilder: (context, index) {
@@ -861,7 +1078,7 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
               crossAxisCount: crossAxisCount,
               crossAxisSpacing: 14,
               mainAxisSpacing: 14,
-              mainAxisExtent: 220,
+              mainAxisExtent: 260,
             ),
             itemCount: 6,
             itemBuilder: (context, index) => _buildCardSkeleton(),
@@ -927,28 +1144,56 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 3-Metric Horizontal Financial Breakdown Box Skeleton
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ShimmerBone.rectangular(
+                        width: 65,
+                        height: 24,
+                        borderRadius: BorderRadius.circular(4),
+                        color: const Color(0xFFCBD5E1),
+                      ),
+                      ShimmerBone.rectangular(
+                        width: 65,
+                        height: 24,
+                        borderRadius: BorderRadius.circular(4),
+                        color: const Color(0xFFCBD5E1),
+                      ),
+                      ShimmerBone.rectangular(
+                        width: 75,
+                        height: 24,
+                        borderRadius: BorderRadius.circular(4),
+                        color: const Color(0xFFCBD5E1),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    ShimmerBone.rectangular(
-                      width: 80,
-                      height: 14,
-                      borderRadius: BorderRadius.circular(4),
-                      color: const Color(0xFFCBD5E1),
-                    ),
+                    const ShimmerBone.pill(width: 60, height: 18),
                     ShimmerBone.rectangular(
                       width: 90,
-                      height: 18,
+                      height: 13,
                       borderRadius: BorderRadius.circular(4),
                       color: const Color(0xFFCBD5E1),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 ShimmerBone.rectangular(
                   width: double.infinity,
-                  height: 42,
-                  borderRadius: BorderRadius.circular(10),
+                  height: 38,
+                  borderRadius: BorderRadius.circular(8),
                   color: AppColors.primary.withValues(alpha: 0.2),
                 ),
               ],
@@ -1230,28 +1475,25 @@ class _PendingPaymentBillCard extends StatelessWidget {
     final hasOrderNo =
         cleanOrderNo.isNotEmpty && cleanOrderNo != displayBillNo;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color:
-              partial
-                  ? const Color(0xFFF59E0B).withValues(alpha: 0.35)
-                  : const Color(0xFFE2E8F0),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color:
-                partial
-                    ? const Color(0xFFF59E0B).withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+    return AppCard(
+      padding: EdgeInsets.zero,
+      color: Colors.white,
+      borderRadius: AppRadius.lg,
+      border: Border.all(
+        color: partial
+            ? const Color(0xFFF59E0B).withValues(alpha: 0.35)
+            : AppColors.border,
+        width: 1.2,
       ),
+      boxShadow: [
+        BoxShadow(
+          color: partial
+              ? const Color(0xFFF59E0B).withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.04),
+          blurRadius: 10,
+          offset: const Offset(0, 3),
+        ),
+      ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -1427,86 +1669,180 @@ class _PendingPaymentBillCard extends StatelessWidget {
             ),
           ),
 
-          // Body: Item count, Timestamp, Amount Due, and Action Button
+          // Body: Financial Breakdown, Item count/Timestamp, and Action Button
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3.5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Text(
-                            '${bill.itemCount} ${bill.itemCount == 1 ? 'item' : 'items'}',
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF475569),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        if (bill.billDate != null)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.calendar_today_rounded,
-                                size: 12,
-                                color: AppColors.textSecondary,
+                // 3-Metric Horizontal Financial Breakdown Container
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    children: [
+                      // Total Bill Amount
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'TOTAL BILL',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF64748B),
+                                letterSpacing: 0.3,
                               ),
-                              const SizedBox(width: 3.5),
-                              Text(
-                                bill.hasTime
-                                    ? '${DateTimeFormatter.formatDate(bill.billDate!)} at ${DateTimeFormatter.formatTime(bill.billDate!)}'
-                                    : DateTimeFormatter.formatDate(bill.billDate!),
+                            ),
+                            const SizedBox(height: 2),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                bill.amount.toCurrency(),
                                 style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary,
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF1E293B),
+                                  letterSpacing: -0.2,
                                 ),
                               ),
-                            ],
-                          ),
-                      ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 26,
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        color: const Color(0xFFE2E8F0),
+                      ),
+                      // Amount Paid
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'AMOUNT PAID',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF64748B),
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.center,
+                              child: Text(
+                                bill.effectivePaidAmount.toCurrency(),
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: bill.effectivePaidAmount > 0
+                                      ? const Color(0xFF059669)
+                                      : const Color(0xFF64748B),
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 26,
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        color: const Color(0xFFE2E8F0),
+                      ),
+                      // Amount Due / Outstanding Balance
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'AMOUNT DUE',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                color: toneColor,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                bill.effectiveDueAmount.toCurrency(),
+                                style: TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w900,
+                                  color: toneColor,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Item count and Timestamp Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Text(
+                        '${bill.itemCount} ${bill.itemCount == 1 ? 'item' : 'items'}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF475569),
+                        ),
+                      ),
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        const Text(
-                          'AMOUNT DUE',
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w700,
+                    if (bill.billDate != null)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.calendar_today_rounded,
+                            size: 11.5,
                             color: AppColors.textSecondary,
-                            letterSpacing: 0.3,
                           ),
-                        ),
-                        Text(
-                          bill.amount.toCurrency(),
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                            letterSpacing: -0.3,
+                          const SizedBox(width: 4),
+                          Text(
+                            bill.hasTime
+                                ? '${DateTimeFormatter.formatDate(bill.billDate!)} at ${DateTimeFormatter.formatTime(bill.billDate!)}'
+                                : DateTimeFormatter.formatDate(bill.billDate!),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
                   ],
                 ),
                 const SizedBox(height: 12),

@@ -5,6 +5,7 @@ import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
+import 'package:restaurant_pos_system/features/dashboard/providers/navigation_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/features/billing/providers/billing_provider.dart';
@@ -55,6 +56,8 @@ class _PaymentPageState extends State<PaymentPage>
 
   bool _processing = false;
   String? _fetchedOrderNumber;
+  String? _fetchedOrderId;
+  String? _fetchedChannelName;
   String? _fetchedBillId;
   double? _actualBillAmount;
 
@@ -138,6 +141,23 @@ class _PaymentPageState extends State<PaymentPage>
           if (billAmt > 0) {
             _actualBillAmount = billAmt;
           }
+
+          if (billDetails.data!.billOrderDt.isNotEmpty) {
+            final firstOrder = billDetails.data!.billOrderDt.first;
+            if (firstOrder.orderId.isNotEmpty) {
+              _fetchedOrderId ??= firstOrder.orderId;
+            }
+            if (firstOrder.orderNo.isNotEmpty) {
+              _fetchedOrderNumber ??= firstOrder.orderNo;
+            }
+          }
+
+          if (billDetails.data!.orderChanelDt.isNotEmpty) {
+            final channel = billDetails.data!.orderChanelDt.first;
+            if (channel.channelName.isNotEmpty) {
+              _fetchedChannelName = channel.channelName;
+            }
+          }
         }
 
         final paid = await ApiService.getPaidAmountForBill(
@@ -154,6 +174,38 @@ class _PaymentPageState extends State<PaymentPage>
         setState(() => _loadingDetails = false);
       }
     }
+  }
+
+  String? get effectiveOrderId =>
+      (widget.orderId != null && widget.orderId!.isNotEmpty)
+          ? widget.orderId
+          : _fetchedOrderId;
+
+  String? get effectiveTableId {
+    if (widget.tableId != null && widget.tableId!.isNotEmpty) {
+      return widget.tableId;
+    }
+    try {
+      final tp = Provider.of<TableProvider>(context, listen: false);
+      for (final t in tp.tables) {
+        if (effectiveOrderId != null &&
+            t.activeOrders.any((o) => o.orderId == effectiveOrderId)) {
+          return t.id;
+        }
+        if (currentOrderNumber.isNotEmpty &&
+            t.activeOrders.any((o) =>
+                o.generatedOrderNo.trim() == currentOrderNumber.trim())) {
+          return t.id;
+        }
+        if (_fetchedChannelName != null &&
+            _fetchedChannelName!.trim().isNotEmpty &&
+            t.name.trim().toLowerCase() ==
+                _fetchedChannelName!.trim().toLowerCase()) {
+          return t.id;
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   String get currentOrderNumber {
@@ -180,6 +232,10 @@ class _PaymentPageState extends State<PaymentPage>
   /// Sum of tenders staged in this session.
   double get _stagedTotal =>
       _tenders.fold(0.0, (sum, t) => sum + t.amount);
+
+  /// Total cash change to return to customer across staged tenders.
+  double get totalReturnAmount =>
+      _tenders.fold(0.0, (sum, t) => sum + t.returnAmount);
 
   /// Total amount paid (previously recorded + staged).
   double get _totalPaid => _alreadyPaidAmount + _stagedTotal;
@@ -299,12 +355,13 @@ class _PaymentPageState extends State<PaymentPage>
                     ),
                     const SizedBox(height: 14),
 
-                    // 2. Breakdown Card (Total Amount, Amount Paid, Amount Due)
+                    // 2. Breakdown Card (Total Amount, Amount Paid, Amount Due, Return to Customer)
                     PaymentBreakdownCard(
                       totalAmount: billTotalAmount,
                       paidAmount: _totalPaid,
                       remainingAmount: _remainingAfterStaged,
                       status: currentStatus,
+                      returnAmount: totalReturnAmount,
                     ),
                     const SizedBox(height: 18),
 
@@ -463,26 +520,58 @@ class _PaymentPageState extends State<PaymentPage>
         if (widget.billId != null && widget.billId!.isNotEmpty) {
           await HiveService.saveBillTimestamp(widget.billId!, now);
         }
-        if (widget.orderId != null && widget.orderId!.isNotEmpty) {
-          await HiveService.saveBillTimestamp(widget.orderId!, now);
+        final settledOrderId = effectiveOrderId;
+        if (settledOrderId != null && settledOrderId.isNotEmpty) {
+          await HiveService.saveBillTimestamp(settledOrderId, now);
         }
         if (widget.orderNumber != null && widget.orderNumber!.isNotEmpty) {
           await HiveService.saveBillTimestamp(widget.orderNumber!, now);
         }
 
-        // Clean up cart and table state if order is completed
-        if (mounted && widget.tableId != null) {
+        final isFullyPaidNow = billTotalAmount > 0.004 &&
+            (_remainingAfterStaged <= 0.004 ||
+                (_alreadyPaidAmount + _stagedTotal >= billTotalAmount - 0.004));
+
+        final double paidThisSession = _stagedTotal;
+        final double returnThisSession = totalReturnAmount;
+        final double remainingDueAfterThis = _remainingAfterStaged;
+        final double totalPaidUpdated = _alreadyPaidAmount + _stagedTotal;
+
+        // Clean up cart and table state ONLY IF bill is fully paid!
+        if (mounted) {
           try {
             final tp = Provider.of<TableProvider>(context, listen: false);
             final acp =
                 Provider.of<AnimatedCartProvider>(context, listen: false);
-            final settledOrderId = widget.orderId;
-            if (widget.isFinalSettlement) {
+            final navProvider =
+                Provider.of<NavigationProvider>(context, listen: false);
+
+            if (isFullyPaidNow) {
               if (settledOrderId != null && settledOrderId.isNotEmpty) {
-                await tp.clearBillId(settledOrderId);
+                // Update order head status on backend to Settled / Vacated (7)
+                try {
+                  await ApiService.updateOrderHeadStatus(
+                    orderHeadId: settledOrderId,
+                    statusId: 7,
+                  );
+                } catch (e) {
+                  debugPrint(
+                    '[PaymentPage] Error updating order status to Settled: $e',
+                  );
+                }
+
+                await tp.markOrderSettled(settledOrderId);
                 acp.clearOrderData(settledOrderId);
               }
+
+              final targetTableId = effectiveTableId;
+              if (targetTableId != null && targetTableId.isNotEmpty) {
+                tp.updateTableStatus(targetTableId, 'available');
+              }
+              navProvider.clearTableSelection();
             }
+
+            // Always refresh tables so pending/billed states remain synchronized
             await tp.refreshTables();
           } catch (e) {
             debugPrint('[PaymentPage] Table cleanup error: $e');
@@ -492,15 +581,25 @@ class _PaymentPageState extends State<PaymentPage>
         setState(() {
           _alreadyPaidAmount += _stagedTotal;
           _tenders.clear();
-          _savedSettled = true;
+          if (isFullyPaidNow) {
+            _savedSettled = true;
+          }
           _processing = false;
         });
 
-        widget.onPaymentCompleted?.call();
+        if (isFullyPaidNow) {
+          widget.onPaymentCompleted?.call();
+        }
 
         // Show the success redirect popup
         if (mounted) {
-          await _showSuccessRedirectDialog();
+          await _showSuccessRedirectDialog(
+            isFullyPaid: isFullyPaidNow,
+            paidAmountNow: paidThisSession,
+            totalPaidAmount: totalPaidUpdated,
+            remainingDue: remainingDueAfterThis,
+            changeReturned: returnThisSession,
+          );
         }
       } else {
         throw Exception('Failed to save payment: ${response?.message}');
@@ -515,7 +614,13 @@ class _PaymentPageState extends State<PaymentPage>
   }
 
   /// Popup showing success and auto-redirecting to the dashboard.
-  Future<void> _showSuccessRedirectDialog() async {
+  Future<void> _showSuccessRedirectDialog({
+    required bool isFullyPaid,
+    required double paidAmountNow,
+    required double totalPaidAmount,
+    required double remainingDue,
+    required double changeReturned,
+  }) async {
     bool isRedirecting = false;
     Timer? timer;
     int secondsRemaining = 4;
@@ -530,6 +635,17 @@ class _PaymentPageState extends State<PaymentPage>
       }
 
       if (mounted) {
+        try {
+          final tp = Provider.of<TableProvider>(context, listen: false);
+          final navProvider =
+              Provider.of<NavigationProvider>(context, listen: false);
+          if (isFullyPaid) {
+            navProvider.clearTableSelection();
+          }
+          navProvider.navigateToTables();
+          tp.refreshTables();
+        } catch (_) {}
+
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     }
@@ -540,16 +656,18 @@ class _PaymentPageState extends State<PaymentPage>
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (builderContext, setDialogState) {
-            timer ??= Timer.periodic(const Duration(seconds: 1), (t) {
-              if (secondsRemaining > 1) {
-                if (builderContext.mounted) {
-                  setDialogState(() => secondsRemaining--);
+            if (isFullyPaid) {
+              timer ??= Timer.periodic(const Duration(seconds: 1), (t) {
+                if (secondsRemaining > 1) {
+                  if (builderContext.mounted) {
+                    setDialogState(() => secondsRemaining--);
+                  }
+                } else {
+                  t.cancel();
+                  executeRedirect(dialogContext);
                 }
-              } else {
-                t.cancel();
-                executeRedirect(dialogContext);
-              }
-            });
+              });
+            }
 
             return Dialog(
               backgroundColor: Colors.white,
@@ -563,25 +681,31 @@ class _PaymentPageState extends State<PaymentPage>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Green circular checkmark with halo
+                    // Icon with halo (Green check for full, Amber coins for partial)
                     Container(
                       width: 68,
                       height: 68,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFDCFCE7),
+                      decoration: BoxDecoration(
+                        color: isFullyPaid
+                            ? const Color(0xFFDCFCE7)
+                            : const Color(0xFFFEF3C7),
                         shape: BoxShape.circle,
                       ),
                       alignment: Alignment.center,
                       child: Container(
                         width: 48,
                         height: 48,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF16A34A),
+                        decoration: BoxDecoration(
+                          color: isFullyPaid
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFFD97706),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          Icons.check_rounded,
-                          size: 30,
+                        child: Icon(
+                          isFullyPaid
+                              ? Icons.check_rounded
+                              : Icons.monetization_on_outlined,
+                          size: 28,
                           color: Colors.white,
                         ),
                       ),
@@ -589,9 +713,11 @@ class _PaymentPageState extends State<PaymentPage>
                     const SizedBox(height: 14),
 
                     // Title
-                    const Text(
-                      'Payment Successful',
-                      style: TextStyle(
+                    Text(
+                      isFullyPaid
+                          ? 'Payment Successful'
+                          : 'Partial Payment Recorded',
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF0F172A),
@@ -600,35 +726,47 @@ class _PaymentPageState extends State<PaymentPage>
                     ),
                     const SizedBox(height: 6),
 
-                    // Pill: Bill Paid & Settled
+                    // Status Pill
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 3.5,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDCFCE7),
+                        color: isFullyPaid
+                            ? const Color(0xFFDCFCE7)
+                            : const Color(0xFFFFFBEB),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: const Color(0xFFBBF7D0),
+                          color: isFullyPaid
+                              ? const Color(0xFFBBF7D0)
+                              : const Color(0xFFFDE68A),
                           width: 1,
                         ),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons.check_rounded,
+                            isFullyPaid
+                                ? Icons.check_rounded
+                                : Icons.schedule_rounded,
                             size: 13,
-                            color: Color(0xFF15803D),
+                            color: isFullyPaid
+                                ? const Color(0xFF15803D)
+                                : const Color(0xFFB45309),
                           ),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Text(
-                            'Bill Paid & Settled',
+                            isFullyPaid
+                                ? 'Bill Paid & Settled'
+                                : 'Partially Paid • Due: ${remainingDue.toCurrency()}',
                             style: TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF15803D),
+                              color: isFullyPaid
+                                  ? const Color(0xFF15803D)
+                                  : const Color(0xFFB45309),
                             ),
                           ),
                         ],
@@ -636,7 +774,7 @@ class _PaymentPageState extends State<PaymentPage>
                     ),
                     const SizedBox(height: 16),
 
-                    // Amount Card
+                    // Amount Breakdown Box
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
@@ -681,67 +819,214 @@ class _PaymentPageState extends State<PaymentPage>
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
-                                'Amount Paid',
-                                style: TextStyle(
+                              Text(
+                                isFullyPaid ? 'Amount Paid' : 'Paid Just Now',
+                                style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                   color: Color(0xFF64748B),
                                 ),
                               ),
                               Text(
-                                billTotalAmount.toCurrency(),
+                                paidAmountNow.toCurrency(),
                                 style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
                                   color: Color(0xFF16A34A),
                                 ),
                               ),
                             ],
                           ),
+                          if (!isFullyPaid) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Total Paid So Far',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                                Text(
+                                  totalPaidAmount.toCurrency(),
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF334155),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Remaining Balance Due',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFFE11D48),
+                                  ),
+                                ),
+                                Text(
+                                  remainingDue.toCurrency(),
+                                  style: const TextStyle(
+                                    fontSize: 15.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFFE11D48),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (changeReturned > 0.004) ...[
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child:
+                                  Divider(height: 1, color: Color(0xFFF1F5F9)),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Return to Customer',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF16A34A),
+                                  ),
+                                ),
+                                Text(
+                                  changeReturned.toCurrency(),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF16A34A),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
                     const SizedBox(height: 14),
 
-                    // Redirecting notice
-                    Text(
-                      'Redirecting to dashboard in ${secondsRemaining}s...',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
-                        color: Color(0xFF64748B),
+                    if (isFullyPaid) ...[
+                      // Redirecting notice
+                      Text(
+                        'Redirecting to dashboard in ${secondsRemaining}s...',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                          color: Color(0xFF64748B),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
+                      const SizedBox(height: 14),
 
-                    // Done Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 46,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          HapticHelper.triggerFeedback();
-                          executeRedirect(dialogContext);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF16A34A),
-                          foregroundColor: Colors.white,
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      // Done Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            HapticHelper.triggerFeedback();
+                            executeRedirect(dialogContext);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF16A34A),
+                            foregroundColor: Colors.white,
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                        ),
-                        icon: const Icon(Icons.check_rounded, size: 18),
-                        label: const Text(
-                          'Done',
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w800,
+                          icon: const Icon(Icons.check_rounded, size: 18),
+                          label: const Text(
+                            'Done',
+                            style: TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ] else ...[
+                      // Notice for partial payment
+                      const Text(
+                        'Table remains occupied awaiting remaining balance.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Dual buttons for partial payment: Stay vs View Tables
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 44,
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  HapticHelper.triggerFeedback();
+                                  Navigator.pop(dialogContext);
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF475569),
+                                  side: const BorderSide(
+                                    color: Color(0xFFCBD5E1),
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Collect More',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: SizedBox(
+                              height: 44,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  HapticHelper.triggerFeedback();
+                                  executeRedirect(dialogContext);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF4F46E5),
+                                  foregroundColor: Colors.white,
+                                  elevation: 1,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'View Tables',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

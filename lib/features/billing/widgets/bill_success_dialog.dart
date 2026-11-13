@@ -11,10 +11,14 @@ import 'package:restaurant_pos_system/features/dashboard/providers/navigation_pr
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/features/payment/views/payment_view.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
+import 'package:restaurant_pos_system/data/remote/api_service.dart';
+
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
 
 /// Presentation dialog for post-billing status:
-/// 1. "Payment Successful" when paid at checkout (Bill Paid & Settled)
-/// 2. "Payment Pending (Pay Later)" when unpaid (Billed · Unpaid)
+/// 1. "Payment Successful" when fully settled (Bill Paid & Settled)
+/// 2. "Partially Paid" when partial tender was collected (PARTIALLY PAID · Due remaining)
+/// 3. "Payment Pending (Pay Later)" when unpaid (Billed · Unpaid)
 class BillSuccessDialog extends StatelessWidget {
   final String orderNumber;
   final double total;
@@ -25,6 +29,7 @@ class BillSuccessDialog extends StatelessWidget {
   final String? orderId;
   final int remainingUnbilledCount;
   final bool paidAtCheckout;
+  final double paidAmount;
   final String? tableName;
   final String? orderType;
 
@@ -39,9 +44,23 @@ class BillSuccessDialog extends StatelessWidget {
     this.orderId,
     this.remainingUnbilledCount = 0,
     this.paidAtCheckout = false,
+    this.paidAmount = 0.0,
     this.tableName,
     this.orderType,
   });
+
+  double get effectivePaidAmount =>
+      paidAmount > 0 ? paidAmount : (paidAtCheckout ? total : 0.0);
+
+  double get remainingDue =>
+      (total - effectivePaidAmount) > 0.004 ? (total - effectivePaidAmount) : 0.0;
+
+  bool get isFullyPaid =>
+      total > 0 ? (effectivePaidAmount >= total - 0.004) : paidAtCheckout;
+
+  bool get isPartiallyPaid => effectivePaidAmount > 0.004 && !isFullyPaid;
+
+  bool get isUnpaid => effectivePaidAmount <= 0.004;
 
   String get _displayOrderNo {
     final clean = orderNumber.trim();
@@ -157,9 +176,11 @@ class BillSuccessDialog extends StatelessWidget {
                         ],
                       ),
                       child: SingleChildScrollView(
-                        child: paidAtCheckout
+                        child: isFullyPaid
                             ? _buildPaidSuccessContent(context)
-                            : _buildPendingContent(context),
+                            : (isPartiallyPaid
+                                ? _buildPartialPaidContent(context)
+                                : _buildPendingContent(context)),
                       ),
                     ),
                   ),
@@ -709,6 +730,455 @@ class BillSuccessDialog extends StatelessWidget {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
+  // SCREENSHOT: Partially Paid (Partial Payment Collected · Balance Remaining)
+  // ──────────────────────────────────────────────────────────────────────────
+  Widget _buildPartialPaidContent(BuildContext context) {
+    final resolvedOrderType = _resolveOrderType();
+    final resolvedTableName = _resolveTableName(context);
+    final formattedDateTime = _formatDateTime();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Top Header Bar ──
+        Container(
+          padding: const EdgeInsets.fromLTRB(18, 14, 12, 14),
+          decoration: const BoxDecoration(
+            color: Color(0xFFFAFAFA),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+            ),
+          ),
+          child: Row(
+            children: [
+              // Amber receipt icon avatar
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.receipt_rounded,
+                  size: 19,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 10),
+
+              const Text(
+                'Bill Status',
+                style: TextStyle(
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // PARTIALLY PAID Pill Badge
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3.5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFFFDE68A),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 5.5,
+                        height: 5.5,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFD97706),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4.5),
+                      Flexible(
+                        child: Text(
+                          'PARTIALLY PAID · ${remainingDue.toCurrency()} DUE',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFFB45309),
+                            letterSpacing: 0.2,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 6),
+
+              // Close (X) button
+              IconButton(
+                icon: const Icon(Icons.close_rounded, size: 18),
+                onPressed: () async {
+                  await HapticHelper.triggerFeedback();
+                  if (!context.mounted) return;
+                  await _finishPartiallyPaid(context);
+                },
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  foregroundColor: const Color(0xFF64748B),
+                  padding: const EdgeInsets.all(6),
+                  minimumSize: const Size(32, 32),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Hero Section ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+          child: Column(
+            children: [
+              // Circular Amber Hourglass / Receipt Avatar
+              Container(
+                width: 72,
+                height: 72,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFEF3C7),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFD97706),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.hourglass_top_rounded,
+                    size: 28,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              const Text(
+                'Partially Paid',
+                style: TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                  letterSpacing: -0.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+
+              Text(
+                'Order #$_displayOrderNo · Table $resolvedTableName',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF64748B),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Partial payment of ${effectivePaidAmount.toCurrency()} was recorded. Outstanding balance: ${remainingDue.toCurrency()}.',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B),
+                    height: 1.35,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // ── 3-Metric Breakdown Card ──
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 18),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFFE2E8F0),
+              width: 1.2,
+            ),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Total Bill Amount',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                  Text(
+                    total.toCurrency(),
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle_rounded,
+                        size: 15,
+                        color: Color(0xFF16A34A),
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'Amount Paid',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF15803D),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    effectivePaidAmount.toCurrency(),
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF15803D),
+                    ),
+                  ),
+                ],
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.pending_actions_rounded,
+                        size: 16,
+                        color: Color(0xFFD97706),
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'Remaining Due',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFB45309),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    remainingDue.toCurrency(),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFFD97706),
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // ── Order Details 2x2 Grid ──
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFFE2E8F0),
+              width: 1.2,
+            ),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildGridCell(
+                      icon: Icons.tag_rounded,
+                      label: 'Order ID',
+                      value: '#$_displayOrderNo',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildGridCell(
+                      icon: Icons.table_restaurant_rounded,
+                      label: 'Table',
+                      value: resolvedTableName,
+                    ),
+                  ),
+                ],
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildGridCell(
+                      icon: Icons.restaurant_menu_rounded,
+                      label: 'Order Type',
+                      value: resolvedOrderType,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildGridCell(
+                      icon: Icons.access_time_rounded,
+                      label: 'Time',
+                      value: formattedDateTime,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Bottom Action Buttons ──
+        Container(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
+          decoration: const BoxDecoration(
+            color: Color(0xFFFAFAFA),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+            ),
+          ),
+          child: Row(
+            children: [
+              // Done (Pay Later) Button
+              Expanded(
+                flex: 1,
+                child: SizedBox(
+                  height: 46,
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      await HapticHelper.triggerFeedback();
+                      if (!context.mounted) return;
+                      await _finishPartiallyPaid(context);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(
+                        color: Color(0xFFCBD5E1),
+                        width: 1.2,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Done (Pay Later)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF334155),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+
+              // Pay Remaining Now Button
+              Expanded(
+                flex: 1,
+                child: SizedBox(
+                  height: 46,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      await HapticHelper.triggerFeedback();
+                      if (!context.mounted) return;
+                      Navigator.of(context).pop();
+                      _navigateToPayment(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F46E5),
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      shadowColor:
+                          const Color(0xFF4F46E5).withValues(alpha: 0.35),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Pay ${remainingDue.toCurrency()}',
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
   // SCREENSHOT 1: Payment Successful (Bill Paid & Settled)
   // ──────────────────────────────────────────────────────────────────────────
   Widget _buildPaidSuccessContent(BuildContext context) {
@@ -865,7 +1335,7 @@ class BillSuccessDialog extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                total.toCurrency(),
+                effectivePaidAmount.toCurrency(),
                 style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
@@ -1126,8 +1596,12 @@ class BillSuccessDialog extends StatelessWidget {
         listen: false,
       );
 
+      final billIdToSave = billingProvider.billId ?? '';
       if (orderId != null && orderId!.isNotEmpty) {
-        tableProvider.storeBillId(orderId!, billingProvider.billId ?? '');
+        if (billIdToSave.isNotEmpty) {
+          tableProvider.storeBillId(orderId!, billIdToSave);
+          HiveService.saveOrderBillId(orderId!, billIdToSave);
+        }
         cartProvider.markOrderBilled(orderId!);
       }
       if (isRealTable) {
@@ -1145,7 +1619,56 @@ class BillSuccessDialog extends StatelessWidget {
     navProvider.navigateToTables();
   }
 
+  Future<void> _finishPartiallyPaid(BuildContext context) async {
+    final isRealTable =
+        tableId != null &&
+        !['PhoneOrder', 'Takeaway', 'Phone'].contains(tableId);
+
+    try {
+      final billingProvider = Provider.of<BillingProvider>(
+        context,
+        listen: false,
+      );
+      final tableProvider = Provider.of<TableProvider>(
+        context,
+        listen: false,
+      );
+      final cartProvider = Provider.of<AnimatedCartProvider>(
+        context,
+        listen: false,
+      );
+
+      final billIdToSave = billingProvider.billId ?? '';
+      if (orderId != null && orderId!.isNotEmpty) {
+        if (billIdToSave.isNotEmpty) {
+          tableProvider.storeBillId(orderId!, billIdToSave);
+          HiveService.saveOrderBillId(orderId!, billIdToSave);
+        }
+        cartProvider.markOrderBilled(orderId!);
+      }
+      if (isRealTable) {
+        // TABLE MUST REMAIN IN BILL GENERATED STATUS! NEVER AVAILABLE!
+        tableProvider.updateTableStatus(tableId!, 'billGenerated');
+        await tableProvider.refreshTables();
+      }
+    } catch (e) {
+      debugPrint('BillSuccessDialog - Error on finishPartiallyPaid: $e');
+    }
+
+    if (!context.mounted) return;
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    final navProvider = Provider.of<NavigationProvider>(context, listen: false);
+    navProvider.clearTableSelection();
+    navProvider.navigateToTables();
+  }
+
   Future<void> _finishAlreadyPaid(BuildContext context) async {
+    // If not truly fully paid, route to partial paid handler
+    if (!isFullyPaid) {
+      await _finishPartiallyPaid(context);
+      return;
+    }
+
     final isFinalSettlement = remainingUnbilledCount == 0;
 
     final isRealTable =
@@ -1160,7 +1683,16 @@ class BillSuccessDialog extends StatelessWidget {
         );
 
         if (orderId != null && orderId!.isNotEmpty) {
-          await tableProvider.clearBillId(orderId!);
+          try {
+            await ApiService.updateOrderHeadStatus(
+              orderHeadId: orderId!,
+              statusId: 7,
+            );
+          } catch (e) {
+            debugPrint('BillSuccessDialog - Error updating order status: $e');
+          }
+
+          await tableProvider.markOrderSettled(orderId!);
           if (context.mounted) {
             try {
               Provider.of<AnimatedCartProvider>(
@@ -1169,6 +1701,10 @@ class BillSuccessDialog extends StatelessWidget {
               ).clearOrderData(orderId!);
             } catch (_) {}
           }
+        }
+
+        if (tableId != null && tableId!.isNotEmpty) {
+          tableProvider.updateTableStatus(tableId!, 'available');
         }
 
         await tableProvider.refreshTables();

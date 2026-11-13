@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/core/utils/date_time_formatter.dart';
+import 'package:restaurant_pos_system/shared/widgets/cards/app_card.dart';
 import '../models/order_management_model.dart';
 
 class OrderCard extends StatelessWidget {
@@ -71,31 +72,17 @@ class OrderCard extends StatelessWidget {
             : '#$resolvedOrderNo')
         : '#ORDER';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFE2E8F0),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+    return AppCard(
+      padding: EdgeInsets.zero,
+      onTap: onTap,
+      border: Border.all(
+        color: const Color(0xFFE2E8F0),
+        width: 1.2,
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
               // ── Header: 2-Tier Responsive Layout ──
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -456,8 +443,6 @@ class OrderCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 

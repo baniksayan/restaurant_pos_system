@@ -11,6 +11,7 @@ import 'package:restaurant_pos_system/data/models/bill_details_response.dart'
     as receipt;
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
+import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 
 class BillingProvider extends ChangeNotifier {
   bool _isGenerating = false;
@@ -286,6 +287,11 @@ class BillingProvider extends ChangeNotifier {
         );
       }
 
+      final fullCustName = [resolvedFirstName, resolvedLastName]
+          .where((s) => s != null && s.trim().isNotEmpty)
+          .join(' ')
+          .trim();
+
       // Step 3: Create Bill
       debugPrint('=== STEP 3: CREATE BILL ===');
       debugPrint('BillingProvider - OrderId check: $orderId');
@@ -373,10 +379,6 @@ class BillingProvider extends ChangeNotifier {
           if (orderNumber.isNotEmpty) {
             await HiveService.saveBillTimestamp(orderNumber, now);
           }
-          final fullCustName = [resolvedFirstName, resolvedLastName]
-              .where((s) => s != null && s.trim().isNotEmpty)
-              .join(' ')
-              .trim();
           if (fullCustName.isNotEmpty) {
             if (_billId != null && _billId!.isNotEmpty) {
               await HiveService.saveCustomerName(_billId!, fullCustName);
@@ -461,10 +463,6 @@ class BillingProvider extends ChangeNotifier {
           if (orderNumber.isNotEmpty) {
             await HiveService.saveBillTimestamp(orderNumber, now);
           }
-          final fullCustName = [resolvedFirstName, resolvedLastName]
-              .where((s) => s != null && s.trim().isNotEmpty)
-              .join(' ')
-              .trim();
           if (fullCustName.isNotEmpty) {
             if (_billId != null && _billId!.isNotEmpty) {
               await HiveService.saveCustomerName(_billId!, fullCustName);
@@ -517,6 +515,8 @@ class BillingProvider extends ChangeNotifier {
       double realDiscountAmount = 0;
       List<receipt.PaymentDetail>? realPayments;
       DateTime? realBillDate;
+      List<Map<String, dynamic>>? pdfTaxBreakdown;
+      receipt.BillDetailsData? realBillData;
 
       if (_billId != null && _billId!.isNotEmpty) {
         try {
@@ -525,6 +525,7 @@ class BillingProvider extends ChangeNotifier {
           );
           final billData = billDetailsResponse?.data;
           if (billDetailsResponse?.isSuccess == true && billData != null) {
+            realBillData = billData;
             realCompanyName = billData.companyDt.companyName;
             realCompanyAddress = billData.companyDt.companyAddress;
             realCompanyPhone = billData.companyDt.contactNo;
@@ -542,10 +543,29 @@ class BillingProvider extends ChangeNotifier {
               );
               pdfGstLabel =
                   'GST (${totalPct % 1 == 0 ? totalPct.toStringAsFixed(0) : totalPct.toStringAsFixed(1)}%)';
+              pdfTaxBreakdown = billData.taxInf
+                  .map((t) => {
+                        'name': t.componentName,
+                        'percentage': t.taxPercentage,
+                      })
+                  .toList();
             }
 
             realBillNo = billData.billHeadDt.billNo;
             realCustomerName = billData.billHeadDt.customerName;
+            // Always display complete customer name (both First and Last name)
+            if (fullCustName.isNotEmpty) {
+              if (realCustomerName.isEmpty ||
+                  !realCustomerName.contains(' ') ||
+                  realCustomerName.toLowerCase() == 'walk-in' ||
+                  realCustomerName.toLowerCase() == 'walk-in customer') {
+                realCustomerName = fullCustName;
+              } else if (resolvedLastName != null &&
+                  resolvedLastName.trim().isNotEmpty &&
+                  !realCustomerName.toLowerCase().contains(resolvedLastName.trim().toLowerCase())) {
+                realCustomerName = '$realCustomerName ${resolvedLastName.trim()}'.trim();
+              }
+            }
             realCustomerPhone = billData.billHeadDt.custMobNo;
             realDiscountAmount =
                 billData.billHeadDt.discountAmnt + billData.billHeadDt.specDisAmt;
@@ -565,10 +585,28 @@ class BillingProvider extends ChangeNotifier {
       debugPrint('=== STEP 4: GENERATE PDF ===');
       debugPrint('BillingProvider - Generating PDF for bill...');
 
+      final List<dynamic> pdfItems =
+          (realBillData != null && realBillData.billOrderDt.isNotEmpty)
+              ? realBillData.billOrderDt
+                  .map(
+                    (o) => CartItem(
+                      id: o.orderId,
+                      name: o.itemName,
+                      price: o.itemPrice,
+                      quantity: o.orderQty.round(),
+                      tableId:
+                          cartItems.isNotEmpty ? cartItems.first.tableId : '',
+                      tableName:
+                          cartItems.isNotEmpty ? cartItems.first.tableName : '',
+                    ),
+                  )
+                  .toList()
+              : cartItems;
+
       final billBytes = await PDFService.generateThermalBill(
-        items: cartItems, // Let PDFService handle the type conversion
-        tableId: cartItems.first.tableId,
-        tableName: cartItems.first.tableName,
+        items: pdfItems,
+        tableId: cartItems.isNotEmpty ? cartItems.first.tableId : '',
+        tableName: cartItems.isNotEmpty ? cartItems.first.tableName : '',
         orderNumber: orderNumber,
         orderTime: realBillDate ?? DateTime.now(),
         subtotal: pdfSubtotal,
@@ -579,8 +617,9 @@ class BillingProvider extends ChangeNotifier {
         companyPhone: realCompanyPhone,
         companyGstNo: realCompanyGstNo,
         gstLabel: pdfGstLabel,
+        taxBreakdown: pdfTaxBreakdown,
         billNo: realBillNo,
-        customerName: realCustomerName,
+        customerName: realCustomerName ?? (fullCustName.isNotEmpty ? fullCustName : null),
         customerPhone: realCustomerPhone,
         discountAmount: realDiscountAmount,
         payments: realPayments,

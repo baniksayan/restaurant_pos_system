@@ -6,16 +6,43 @@ class TaxApiResModel {
 
   TaxApiResModel({this.data, this.message, this.isSuccess, this.statusCode});
 
-  TaxApiResModel.fromJson(Map<String, dynamic> json) {
-    if (json['data'] != null) {
+  /// Standard fallback restaurant GST components (CGST 5% + SGST 5% = 10% GST).
+  /// Ensures the POS system operates seamlessly without blocking bill generation
+  /// if the remote tax API endpoint is temporarily unavailable or returns empty.
+  factory TaxApiResModel.defaultRestaurantGst() {
+    return TaxApiResModel(
+      isSuccess: true,
+      message: 'Default GST (10%)',
+      statusCode: 200,
+      data: [
+        TaxData(
+          taxComponentId: 1,
+          componentName: 'CGST',
+          currentPercentage: 5.0,
+        ),
+        TaxData(
+          taxComponentId: 2,
+          componentName: 'SGST',
+          currentPercentage: 5.0,
+        ),
+      ],
+    );
+  }
+
+  TaxApiResModel.fromJson(Map<dynamic, dynamic> json) {
+    if (json['data'] != null && json['data'] is List) {
       data = <TaxData>[];
-      json['data'].forEach((v) {
-        data!.add(TaxData.fromJson(v));
-      });
+      for (final v in (json['data'] as List)) {
+        if (v is Map) {
+          data!.add(TaxData.fromJson(Map<String, dynamic>.from(v)));
+        }
+      }
     }
-    message = json['message'];
-    isSuccess = json['isSuccess'];
-    statusCode = json['statusCode'];
+    message = json['message']?.toString();
+    isSuccess = json['isSuccess'] == true || json['isSuccess'] == 1;
+    statusCode = json['statusCode'] is int
+        ? json['statusCode'] as int
+        : int.tryParse(json['statusCode']?.toString() ?? '');
   }
 
   Map<String, dynamic> toJson() {
@@ -66,15 +93,16 @@ class TaxData {
 
   TaxData({this.taxComponentId, this.componentName, this.currentPercentage});
 
-  TaxData.fromJson(Map<String, dynamic> json) {
-    taxComponentId = json['taxComponentId'];
-    componentName = json['componentName'];
-    // Handle both int and double values from API
+  TaxData.fromJson(Map<dynamic, dynamic> json) {
+    taxComponentId = json['taxComponentId'] is int
+        ? json['taxComponentId'] as int
+        : int.tryParse(json['taxComponentId']?.toString() ?? '');
+    componentName = json['componentName']?.toString();
+    // Handle both int and double values from API or Hive
     if (json['currentPercentage'] != null) {
+      final p = json['currentPercentage'];
       currentPercentage =
-          (json['currentPercentage'] is int)
-              ? (json['currentPercentage'] as int).toDouble()
-              : json['currentPercentage']?.toDouble();
+          p is num ? p.toDouble() : double.tryParse(p.toString());
     }
   }
 

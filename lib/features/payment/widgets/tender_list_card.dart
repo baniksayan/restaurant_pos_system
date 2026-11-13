@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_radius.dart';
+import 'package:restaurant_pos_system/core/constants/app_spacing.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
+import 'package:restaurant_pos_system/shared/widgets/cards/app_card.dart';
 import '../models/tender_line.dart';
 
 class TenderListCard extends StatelessWidget {
@@ -111,83 +115,77 @@ class TenderListCard extends StatelessWidget {
   }
 
   Widget _buildEmptyState() {
-    return InkWell(
+    return AppCard.outlined(
       onTap: onAddAnotherPayment,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFFE2E8F0),
-            width: 1.2,
+      borderRadius: AppRadius.card,
+      backgroundColor: const Color(0xFFF8FAFC),
+      borderColor: AppColors.border,
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.lg,
+        horizontal: AppSpacing.md,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEEF2FF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.account_balance_wallet_outlined,
+              size: 22,
+              color: Color(0xFF6366F1),
+            ),
           ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEEF2FF),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.account_balance_wallet_outlined,
-                size: 22,
-                color: Color(0xFF6366F1),
-              ),
+          const SizedBox(height: AppSpacing.sm),
+          const Text(
+            'No payments added yet',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1E293B),
             ),
-            const SizedBox(height: 10),
-            const Text(
-              'No payments added yet',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1E293B),
-              ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Add a payment to settle this order.',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF64748B),
             ),
-            const SizedBox(height: 4),
-            const Text(
-              'Add a payment to settle this order.',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF64748B),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            if (onAddAnotherPayment != null) ...[
-              const SizedBox(height: 14),
-              SizedBox(
-                height: 38,
-                child: ElevatedButton.icon(
-                  onPressed: onAddAnotherPayment,
-                  icon: const Icon(Icons.add_rounded, size: 17),
-                  label: const Text(
-                    'Add Payment',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F46E5),
-                    foregroundColor: Colors.white,
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
+            textAlign: TextAlign.center,
+          ),
+          if (onAddAnotherPayment != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              height: 38,
+              child: ElevatedButton.icon(
+                onPressed: onAddAnotherPayment,
+                icon: const Icon(Icons.add_rounded, size: 17),
+                label: const Text(
+                  'Add Payment',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 1,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                ),
               ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -220,6 +218,8 @@ class TenderListCard extends StatelessWidget {
       method: tender.label,
       timestamp: tender.formattedTime,
       amount: tender.amount,
+      returnChange:
+          tender.returnAmount > 0.004 ? tender.returnAmount.toCurrency() : null,
       icon: icon,
       iconBgColor: iconBgColor,
       iconColor: iconColor,
@@ -232,26 +232,20 @@ class TenderListCard extends StatelessWidget {
     required String method,
     required String timestamp,
     required double amount,
+    String? returnChange,
     required IconData icon,
     required Color iconBgColor,
     required Color iconColor,
     bool canRemove = false,
     VoidCallback? onDelete,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return AppCard.flat(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm + 4,
       ),
+      borderRadius: AppRadius.cardSm,
+      borderColor: AppColors.border,
       child: Row(
         children: [
           // Icon Container
@@ -264,7 +258,7 @@ class TenderListCard extends StatelessWidget {
             ),
             child: Icon(icon, size: 20, color: iconColor),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm + 4),
 
           // Method & Timestamp
           Expanded(
@@ -277,7 +271,7 @@ class TenderListCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -286,9 +280,31 @@ class TenderListCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF64748B),
+                    color: AppColors.textSecondary,
                   ),
                 ),
+                if (returnChange != null) ...[
+                  const SizedBox(height: 3),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.currency_exchange_rounded,
+                        size: 12,
+                        color: AppColors.success,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        'Change: $returnChange',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.success,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -299,10 +315,10 @@ class TenderListCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF0F172A),
+              color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
 
           // If removable (staged tender), show a clean delete button.
           // Otherwise, if already settled, show a subtle checkmark (NO chevron '>').
@@ -319,7 +335,7 @@ class TenderListCard extends StatelessWidget {
                 child: const Icon(
                   Icons.close_rounded,
                   size: 15,
-                  color: Color(0xFFDC2626),
+                  color: AppColors.error,
                 ),
               ),
             )
@@ -327,7 +343,7 @@ class TenderListCard extends StatelessWidget {
             const Icon(
               Icons.check_circle_rounded,
               size: 16,
-              color: Color(0xFF16A34A),
+              color: AppColors.success,
             ),
         ],
       ),

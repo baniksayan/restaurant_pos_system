@@ -11,6 +11,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/data/models/bill_details_response.dart'
     show PaymentDetail;
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
+import 'package:restaurant_pos_system/data/models/tax_api_res_model.dart';
 import 'package:restaurant_pos_system/core/utils/no_emoji_formatter.dart';
 import '../../core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/features/billing/utils/bill_item_merger.dart';
@@ -84,20 +86,8 @@ class PDFService {
                 child: pw.Row(
                   children: [
                     pw.Container(
-                      width: 18,
+                      width: 24,
                       alignment: pw.Alignment.centerLeft,
-                      child: pw.Text(
-                        '#',
-                        style: const pw.TextStyle(
-                          fontSize: 8.5,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.grey700,
-                        ),
-                      ),
-                    ),
-                    pw.Container(
-                      width: 22,
-                      alignment: pw.Alignment.center,
                       child: pw.Text(
                         'QTY',
                         style: const pw.TextStyle(
@@ -106,9 +96,9 @@ class PDFService {
                         ),
                       ),
                     ),
-                    pw.SizedBox(width: 6),
+                    pw.SizedBox(width: 8),
                     pw.Expanded(
-                      flex: 5,
+                      flex: 6,
                       child: pw.Text(
                         'ITEM NAME',
                         style: const pw.TextStyle(
@@ -131,8 +121,8 @@ class PDFService {
                 ),
               ),
               _kotDashedLine(),
-              for (int i = 0; i < items.length; i++)
-                _kotItemCard(i + 1, items[i]),
+              for (final item in items)
+                _kotItemCard(item),
 
               pw.SizedBox(height: 4),
               // Special Notes for entire order (Emoji-sanitized & capped within 75 chars)
@@ -651,7 +641,9 @@ class PDFService {
     String? companyAddress,
     String? companyPhone,
     String? companyGstNo,
+    String? companyFssaiNo,
     String gstLabel = 'GST',
+    List<Map<String, dynamic>>? taxBreakdown,
     // Extra detail a real receipt carries that generateCustomerBill's
     // callers never had a slot for — the bill's own number (distinct from
     // the order number), who it's for, and what discount was applied.
@@ -666,22 +658,31 @@ class PDFService {
     // before that fetch has happened.
     List<PaymentDetail>? payments,
   }) async {
-    final resolvedName =
-        (companyName != null && companyName.trim().isNotEmpty)
-            ? companyName.trim()
-            : restaurantName;
-    final resolvedAddress =
-        (companyAddress != null && companyAddress.trim().isNotEmpty)
-            ? companyAddress.trim()
-            : restaurantAddress;
-    final resolvedPhone =
-        (companyPhone != null && companyPhone.trim().isNotEmpty)
-            ? companyPhone.trim()
-            : restaurantPhone;
-    final resolvedGstNo =
-        (companyGstNo != null && companyGstNo.trim().isNotEmpty)
-            ? companyGstNo.trim()
-            : gstNumber;
+    final resolvedName = removeEmojis(
+      (companyName != null && companyName.trim().isNotEmpty)
+          ? companyName.trim()
+          : restaurantName,
+    );
+    final resolvedAddress = removeEmojis(
+      (companyAddress != null && companyAddress.trim().isNotEmpty)
+          ? companyAddress.trim()
+          : restaurantAddress,
+    );
+    final resolvedPhone = removeEmojis(
+      (companyPhone != null && companyPhone.trim().isNotEmpty)
+          ? companyPhone.trim()
+          : restaurantPhone,
+    );
+    final resolvedGstNo = removeEmojis(
+      (companyGstNo != null && companyGstNo.trim().isNotEmpty)
+          ? companyGstNo.trim()
+          : gstNumber,
+    );
+    final resolvedFssaiNo = removeEmojis(
+      (companyFssaiNo != null && companyFssaiNo.trim().isNotEmpty)
+          ? companyFssaiNo.trim()
+          : 'Not Available',
+    );
 
     final dateStr = _formatDate(orderTime);
     final timeStr = _formatTime(orderTime);
@@ -725,6 +726,14 @@ class PDFService {
                   style: const pw.TextStyle(fontSize: 7.5),
                 ),
               ),
+              pw.SizedBox(height: 2),
+              pw.Center(
+                child: pw.Text(
+                  'FSSAI No: $resolvedFssaiNo',
+                  textAlign: pw.TextAlign.center,
+                  style: const pw.TextStyle(fontSize: 7.5),
+                ),
+              ),
               pw.SizedBox(height: 8),
               _kotDashedLine(),
               pw.SizedBox(height: 5),
@@ -743,12 +752,12 @@ class PDFService {
 
               _thermalRow('Bill No', billNo?.isNotEmpty == true ? billNo! : orderNumber),
               _thermalRow('Order No', orderNumber),
-              _thermalRow('Date', '$dateStr  $timeStr'),
+              _thermalRow('Date & Time', '$dateStr  $timeStr'),
               _thermalRow('Table', tableName.isNotEmpty ? tableName : tableId),
               if (customerName != null && customerName.trim().isNotEmpty)
-                _thermalRow('Customer', customerName.trim()),
+                _thermalRow('Customer', removeEmojis(customerName.trim())),
               if (customerPhone != null && customerPhone.trim().isNotEmpty)
-                _thermalRow('Phone', customerPhone.trim()),
+                _thermalRow('Phone', removeEmojis(customerPhone.trim())),
 
               pw.SizedBox(height: 8),
               _kotDashedLine(),
@@ -779,7 +788,7 @@ class PDFService {
                   pw.SizedBox(
                     width: 42,
                     child: pw.Text(
-                      'RATE',
+                      'PRICE',
                       textAlign: pw.TextAlign.right,
                       style: const pw.TextStyle(
                         fontSize: 8.5,
@@ -808,7 +817,7 @@ class PDFService {
 
               if (specialNotes != null && specialNotes.trim().isNotEmpty) ...[
                 pw.Text(
-                  'Note: ${specialNotes.trim()}',
+                  'Note: ${removeEmojis(specialNotes.trim())}',
                   style: const pw.TextStyle(fontSize: 8),
                 ),
                 pw.SizedBox(height: 6),
@@ -817,7 +826,11 @@ class PDFService {
               _thermalTotalRow('Subtotal', subtotal),
               if (discountAmount > 0)
                 _thermalTotalRow('Discount', -discountAmount),
-              _thermalTotalRow(gstLabel, gstAmount),
+              ..._buildThermalTaxBreakdown(
+                subtotal: subtotal,
+                gstAmount: gstAmount,
+                taxBreakdown: taxBreakdown,
+              ),
               pw.SizedBox(height: 4),
               _kotDashedLine(),
               pw.SizedBox(height: 4),
@@ -852,7 +865,7 @@ class PDFService {
               pw.SizedBox(height: 3),
               pw.Center(
                 child: pw.Text(
-                  'Computer generated invoice — no signature required',
+                  'Computer generated invoice - no signature required',
                   textAlign: pw.TextAlign.center,
                   style: const pw.TextStyle(fontSize: 6.5, color: PdfColors.grey700),
                 ),
@@ -1340,72 +1353,116 @@ class PDFService {
     );
   }
 
+  static List<pw.Widget> _buildThermalTaxBreakdown({
+    required double subtotal,
+    required double gstAmount,
+    List<Map<String, dynamic>>? taxBreakdown,
+  }) {
+    List<Map<String, dynamic>> effectiveTaxes = [];
+    if (taxBreakdown != null && taxBreakdown.isNotEmpty) {
+      effectiveTaxes = taxBreakdown;
+    } else {
+      final saved = HiveService.getTaxData();
+      if (saved != null) {
+        try {
+          final parsed = TaxApiResModel.fromJson(saved);
+          if (parsed.data != null && parsed.data!.isNotEmpty) {
+            effectiveTaxes = parsed.data!
+                .map((t) => {
+                      'name': t.componentName ?? 'Tax',
+                      'percentage': t.currentPercentage ?? 0.0,
+                    })
+                .toList();
+          }
+        } catch (_) {}
+      }
+    }
+
+    if (effectiveTaxes.isEmpty) {
+      effectiveTaxes = [
+        {'name': 'CGST', 'percentage': 5.0},
+        {'name': 'SGST', 'percentage': 5.0},
+      ];
+    }
+
+    final totalTaxPct = effectiveTaxes.fold<double>(
+      0.0,
+      (sum, t) => sum + ((t['percentage'] as num?)?.toDouble() ?? 0.0),
+    );
+
+    final List<pw.Widget> widgets = [];
+    for (final tax in effectiveTaxes) {
+      final rawName = (tax['name'] ?? 'GST').toString().toUpperCase().trim();
+      final pct = ((tax['percentage'] as num?)?.toDouble() ?? 0.0);
+      final pctStr =
+          pct % 1 == 0 ? pct.toStringAsFixed(0) : pct.toStringAsFixed(1);
+      final label = '$rawName ($pctStr%)';
+
+      double compAmt = 0.0;
+      if (gstAmount > 0 && totalTaxPct > 0) {
+        compAmt = gstAmount * (pct / totalTaxPct);
+      } else if (subtotal > 0 && pct > 0) {
+        compAmt = subtotal * (pct / 100.0);
+      }
+      widgets.add(_thermalTotalRow(label, compAmt));
+    }
+    return widgets;
+  }
+
   /// One item line — duck-typed like generateCustomerBill's own item loop
   /// (works on CartItem or anything else exposing name/quantity/price).
+  /// Note: Item-wise special note removed for cleaner invoice appearance.
   static pw.Widget _thermalItemRow(dynamic item) {
     final double price = item.price;
     final int quantity = item.quantity;
     final double amount = price * quantity;
+    final cleanName = removeEmojis((item.name as String)).trim();
 
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(vertical: 3),
-      child: pw.Column(
+      child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Expanded(
-                flex: 5,
-                child: pw.Text(
-                  (item.name as String),
-                  style: const pw.TextStyle(fontSize: 8.5),
-                ),
-              ),
-              pw.SizedBox(
-                width: 22,
-                child: pw.Text(
-                  '$quantity',
-                  textAlign: pw.TextAlign.center,
-                  style: const pw.TextStyle(fontSize: 8.5),
-                ),
-              ),
-              pw.SizedBox(
-                width: 42,
-                child: pw.Text(
-                  price.toStringAsFixed(2),
-                  textAlign: pw.TextAlign.right,
-                  style: const pw.TextStyle(fontSize: 8.5),
-                ),
-              ),
-              pw.SizedBox(
-                width: 46,
-                child: pw.Text(
-                  amount.toStringAsFixed(2),
-                  textAlign: pw.TextAlign.right,
-                  style: const pw.TextStyle(
-                    fontSize: 8.5,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
+          pw.Expanded(
+            flex: 5,
+            child: pw.Text(
+              cleanName,
+              style: const pw.TextStyle(fontSize: 8.5),
+            ),
           ),
-          if (item.specialNotes != null &&
-              (item.specialNotes as String).trim().isNotEmpty)
-            pw.Padding(
-              padding: const pw.EdgeInsets.only(top: 1),
-              child: pw.Text(
-                'Note: ${(item.specialNotes as String).trim()}',
-                style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700),
+          pw.SizedBox(
+            width: 22,
+            child: pw.Text(
+              '$quantity',
+              textAlign: pw.TextAlign.center,
+              style: const pw.TextStyle(fontSize: 8.5),
+            ),
+          ),
+          pw.SizedBox(
+            width: 42,
+            child: pw.Text(
+              price.toStringAsFixed(2),
+              textAlign: pw.TextAlign.right,
+              style: const pw.TextStyle(fontSize: 8.5),
+            ),
+          ),
+          pw.SizedBox(
+            width: 46,
+            child: pw.Text(
+              amount.toStringAsFixed(2),
+              textAlign: pw.TextAlign.right,
+              style: const pw.TextStyle(
+                fontSize: 8.5,
+                fontWeight: pw.FontWeight.bold,
               ),
             ),
+          ),
         ],
       ),
     );
   }
 
-  static pw.Widget _kotItemCard(int index, CartItem item) {
+  static pw.Widget _kotItemCard(CartItem item) {
     String noteText = '';
     if (item.specialNotes != null && item.specialNotes!.trim().isNotEmpty) {
       String rawNote = removeEmojis(item.specialNotes!.trim());
@@ -1428,21 +1485,8 @@ class PDFService {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Container(
-                width: 18,
+                width: 24,
                 alignment: pw.Alignment.centerLeft,
-                child: pw.Text(
-                  '$index.',
-                  style: const pw.TextStyle(
-                    fontSize: 9,
-                    color: PdfColors.grey700,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-              ),
-
-              pw.Container(
-                width: 22,
-                alignment: pw.Alignment.center,
                 child: pw.Text(
                   '${item.quantity}x',
                   style: const pw.TextStyle(
@@ -1452,10 +1496,10 @@ class PDFService {
                   ),
                 ),
               ),
-              pw.SizedBox(width: 6),
+              pw.SizedBox(width: 8),
 
               pw.Expanded(
-                flex: 5,
+                flex: 6,
                 child: pw.Text(
                   itemName,
                   style: const pw.TextStyle(

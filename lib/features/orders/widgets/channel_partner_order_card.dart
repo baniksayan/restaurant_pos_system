@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_radius.dart';
+import 'package:restaurant_pos_system/core/constants/app_shadows.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/core/utils/date_time_formatter.dart';
 import 'package:restaurant_pos_system/shared/widgets/animations/countdown_timer.dart';
+import 'package:restaurant_pos_system/shared/widgets/cards/app_card.dart';
 import '../models/order_management_model.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
@@ -64,35 +67,27 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
             : '#$resolvedOrderNo')
         : '#ORDER';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: showActionButtons
-              ? const Color(0xFFF59E0B)
-              : const Color(0xFFE2E8F0),
-          width: showActionButtons ? 1.5 : 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: showActionButtons
-                ? const Color(0xFFF59E0B).withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
+    return AppCard(
+      padding: EdgeInsets.zero,
+      onTap: widget.onTap,
+      borderRadius: AppRadius.card,
+      borderColor: showActionButtons
+          ? const Color(0xFFF59E0B)
+          : AppColors.border,
+      borderWidth: showActionButtons ? 1.5 : 1.0,
+      shadow: showActionButtons
+          ? [
+              BoxShadow(
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ]
+          : AppShadows.card,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
               // ── Header: 2-Tier Responsive Layout ──
               Container(
                 padding:
@@ -493,8 +488,6 @@ class _ChannelPartnerOrderCardState extends State<ChannelPartnerOrderCard> {
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 

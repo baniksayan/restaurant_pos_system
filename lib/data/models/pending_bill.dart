@@ -41,9 +41,61 @@ class PendingBill {
   });
 
   /// Anything not fully settled still needs collecting.
-  bool get isOutstanding => isPaid != 2;
+  bool get isOutstanding => isPaid != 2 && effectiveDueAmount > 0.004;
 
-  bool get isPartiallyPaid => isPaid == 1;
+  bool get isPartiallyPaid => isPaid == 1 || (effectivePaidAmount > 0.004 && effectiveDueAmount > 0.004);
+
+  bool get isFullyPaid => isPaid == 2 || (amount > 0.004 && effectiveDueAmount <= 0.004);
+
+  bool get isUnpaid => isPaid == 0 && effectivePaidAmount <= 0.004;
+
+  /// The actual outstanding due balance that the customer still needs to pay.
+  double get effectiveDueAmount {
+    if (isPaid == 2) return 0.0;
+    if (balanceAmount > 0) return balanceAmount;
+    if (isPaid == 0) return amount;
+    final diff = amount - paidAmount;
+    return diff > 0 ? diff : 0.0;
+  }
+
+  /// The amount that has already been collected/paid.
+  double get effectivePaidAmount {
+    if (isPaid == 2) return amount;
+    if (paidAmount > 0) return paidAmount;
+    if (isPaid == 0) return 0.0;
+    if (balanceAmount > 0 && amount >= balanceAmount) {
+      return amount - balanceAmount;
+    }
+    return 0.0;
+  }
+
+  PendingBill copyWith({
+    String? billId,
+    String? billNo,
+    String? orderNo,
+    String? customerName,
+    double? amount,
+    double? paidAmount,
+    double? balanceAmount,
+    int? itemCount,
+    int? isPaid,
+    String? paymentStatus,
+    DateTime? billDate,
+  }) {
+    return PendingBill(
+      billId: billId ?? this.billId,
+      billNo: billNo ?? this.billNo,
+      orderNo: orderNo ?? this.orderNo,
+      customerName: customerName ?? this.customerName,
+      amount: amount ?? this.amount,
+      paidAmount: paidAmount ?? this.paidAmount,
+      balanceAmount: balanceAmount ?? this.balanceAmount,
+      itemCount: itemCount ?? this.itemCount,
+      isPaid: isPaid ?? this.isPaid,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      billDate: billDate ?? this.billDate,
+    );
+  }
 
   /// True only when the timestamp has non-zero hour/minute/second (real time),
   /// preventing display of midnight default '0:00'.
@@ -69,6 +121,8 @@ class PendingBill {
         'amount',
         'grossAmount',
         'grandTotal',
+        'totPrice',
+        'totalPrice',
       ]) {
         final val = toDouble(json[key]);
         if (val > 0) return val;
@@ -106,8 +160,38 @@ class PendingBill {
       return 0.0;
     }
 
-    final isPaidVal =
-        (json['isPaid'] is num) ? (json['isPaid'] as num).toInt() : 0;
+    int isPaidVal = 0;
+    final rawStatus =
+        (json['paymentStatus'] ?? '').toString().trim().toLowerCase();
+
+    if (rawStatus == 'paid' ||
+        rawStatus == 'settled' ||
+        rawStatus == 'completed') {
+      isPaidVal = 2;
+    } else if (rawStatus.contains('partial')) {
+      isPaidVal = 1;
+    } else if (rawStatus == 'not paid' ||
+        rawStatus == 'unpaid' ||
+        rawStatus == 'pending') {
+      isPaidVal = 0;
+    } else if (json['isPaid'] is bool) {
+      isPaidVal = (json['isPaid'] == true) ? 2 : 0;
+    } else if (json['isPaid'] is num) {
+      final numVal = (json['isPaid'] as num).toInt();
+      isPaidVal = (numVal == 1 && rawStatus != 'paid' && rawStatus != 'settled')
+          ? 1
+          : (numVal >= 2 ? 2 : numVal);
+    } else if (json['isPaid'] != null) {
+      final str = json['isPaid'].toString().trim().toLowerCase();
+      if (str == 'true' || str == 'paid' || str == 'settled' || str == '2') {
+        isPaidVal = 2;
+      } else if (str == 'partially paid' || str == 'partial' || str == '1') {
+        isPaidVal = 1;
+      } else {
+        isPaidVal = 0;
+      }
+    }
+
     final totalAmount = parseAmount();
     double effectivePaid = parsePaid();
     double effectiveBalance = parseBalance();
@@ -123,8 +207,19 @@ class PendingBill {
     } else if (isPaidVal == 2) {
       effectivePaid = totalAmount;
       effectiveBalance = 0;
-    } else if (isPaidVal == 0) {
+    } else if (isPaidVal == 0 && effectiveBalance <= 0) {
       effectivePaid = 0;
+      effectiveBalance = totalAmount;
+    }
+
+    // Unify status and balance calculations
+    if (totalAmount > 0.004 && effectiveBalance <= 0.004 && effectivePaid >= totalAmount - 0.004) {
+      isPaidVal = 2;
+      effectiveBalance = 0.0;
+    } else if (effectivePaid > 0.004 && effectiveBalance > 0.004) {
+      isPaidVal = 1;
+    } else if (effectivePaid <= 0.004) {
+      isPaidVal = 0;
       effectiveBalance = totalAmount;
     }
 

@@ -84,7 +84,7 @@ void main() {
 
       // Verify KOT status badge and quantity
       expect(find.text('Butter Naan'), findsOneWidget);
-      expect(find.text('KOT #KOT-101'), findsOneWidget);
+      expect(find.text('#101'), findsOneWidget);
       expect(find.text('Qty: 3'), findsOneWidget);
 
       // Info icon is removed

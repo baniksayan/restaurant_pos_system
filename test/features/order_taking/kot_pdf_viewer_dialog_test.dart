@@ -45,12 +45,12 @@ void main() {
 
       // Verify Header
       expect(find.text('KOT Print Preview'), findsOneWidget);
-      expect(find.text('KOT #101'), findsOneWidget);
+      expect(find.text('#101'), findsOneWidget);
 
       // Verify Action Buttons
       expect(find.text('Done'), findsOneWidget);
       expect(find.text('Share'), findsOneWidget);
-      expect(find.text('Print KOT'), findsOneWidget);
+      expect(find.text('Print'), findsOneWidget);
 
       // Tap Done button
       await tester.tap(find.text('Done'));

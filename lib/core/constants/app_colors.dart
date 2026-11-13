@@ -15,6 +15,8 @@ class AppColors {
   static const Color surface = Color(0xFFFFFFFF);
   static const Color cardBackground = Color(0xFFF8FAFC);
   static const Color cardShadow = Color(0x0A0F172A); // Ultra-soft slate shadow
+  static const Color border = Color(0xFFE2E8F0); // Canonical subtle border
+  static const Color borderLight = Color(0xFFF1F5F9); // Light divider/separator
 
   // Status colors
   static const Color success = Color(0xFF10B981); // Emerald

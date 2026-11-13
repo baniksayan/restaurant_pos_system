@@ -144,6 +144,9 @@ class LocationHeader extends StatelessWidget {
                   .firstOrNull;
           final outletId = matched?.id ?? HiveService.getOutletId();
           if (outletId != null && outletId > 0) {
+            HiveService.setOutletId(outletId);
+            HiveService.setSelectedLocationId(outletId);
+            HiveService.setSelectedLocationName(location);
             final tableProvider = context.read<TableProvider>();
             tableProvider.setOutletId(outletId);
             tableProvider.setSelectedLocation(location);

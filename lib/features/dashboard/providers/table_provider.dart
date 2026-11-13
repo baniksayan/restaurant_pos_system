@@ -128,13 +128,17 @@ class TableProvider extends ChangeNotifier {
       final List<RestaurantTable> mergedTables = [];
 
       for (final apiTable in tables) {
+        // Filter out any orders already marked settled locally
+        final validOrders = apiTable.activeOrders
+            .where((order) =>
+                order.orderId.isNotEmpty && !isOrderSettled(order.orderId))
+            .toList();
+
         // Re-attach each order's own bill id. The API never returns one, so
         // local storage is the only record — and it is keyed per order, since
         // a shared table can have several orders each with its own bill.
         final mergedOrders =
-            apiTable.activeOrders.map((order) {
-              if (order.orderId.isEmpty) return order;
-
+            validOrders.map((order) {
               // One-time move of anything still stored against the table.
               HiveService.migrateTableScopedData(
                 tableId: apiTable.id,
@@ -151,7 +155,16 @@ class TableProvider extends ChangeNotifier {
               return order.copyWith(billId: storedBillId);
             }).toList();
 
-        mergedTables.add(apiTable.copyWith(activeOrders: mergedOrders));
+        final resolvedStatus = mergedOrders.isEmpty
+            ? TableStatus.available
+            : (mergedOrders.any((o) => o.isBilled)
+                ? TableStatus.billGenerated
+                : TableStatus.occupied);
+
+        mergedTables.add(apiTable.copyWith(
+          activeOrders: mergedOrders,
+          status: resolvedStatus,
+        ));
       }
 
       if (tables.isNotEmpty) {
@@ -527,7 +540,7 @@ class TableProvider extends ChangeNotifier {
       // user GUID when no user was logged in.
       final result = await ApiService.updateOrderHeadStatus(
         orderHeadId: orderId,
-        statusId: 6,
+        statusId: 7,
       );
 
       if (result != null && result['isSuccess'] == true) {
@@ -733,6 +746,45 @@ class TableProvider extends ChangeNotifier {
     _applyToOrder(orderId, (order) => order.copyWith(clearBillId: true));
 
     debugPrint('[TableProvider] Cleared bill ID for order $orderId');
+  }
+
+  final Set<String> _settledOrderIds = {};
+
+  bool isOrderSettled(String orderId) {
+    if (orderId.isEmpty) return false;
+    return _settledOrderIds.contains(orderId) ||
+        HiveService.isOrderSettled(orderId);
+  }
+
+  /// Mark [orderId] as fully settled/paid, clearing its bill, removing it from active
+  /// orders, and updating the holding table to Available if no other active orders remain.
+  Future<void> markOrderSettled(String orderId) async {
+    if (orderId.isEmpty) return;
+
+    _settledOrderIds.add(orderId);
+    await HiveService.markOrderSettled(orderId);
+    await clearBillId(orderId);
+
+    // Update memory table state immediately so UI updates without waiting for network
+    var changed = false;
+    for (var i = 0; i < _tables.length; i++) {
+      final t = _tables[i];
+      if (t.activeOrders.any((o) => o.orderId == orderId)) {
+        final remaining =
+            t.activeOrders.where((o) => o.orderId != orderId).toList();
+        final newStatus =
+            remaining.isEmpty ? TableStatus.available : t.status;
+        _tables[i] = t.copyWith(
+          activeOrders: remaining,
+          status: newStatus,
+        );
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      notifyListeners();
+    }
   }
 
   /// Bill generated for [orderId], from memory or local storage.

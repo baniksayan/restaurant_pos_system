@@ -169,56 +169,17 @@ class _CartFooterState extends State<CartFooter> {
                       else
                         _buildPostKOTButtons(),
                     ] else ...[
-                      // Expanded: GST info row with arrow on right
+                      // Expanded: Header row with Title on left, collapse arrow on right
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                await HapticHelper.triggerFeedback();
-                                widget.onShowGSTInfo();
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 8,
-                                ),
-                                margin: const EdgeInsets.only(bottom: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: Colors.blue.withValues(alpha: 0.25),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(3),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Icon(
-                                        Icons.info,
-                                        color: Colors.white,
-                                        size: 12,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        'Restaurant GST: ${gstPercentage.toStringAsFixed(1)}% ${taxProvider.hasTaxData ? "(From API)" : "(Default)"} - Tap for info',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.blue[800],
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                          const Text(
+                            'Bill Details',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF64748B),
+                              letterSpacing: 0.2,
                             ),
                           ),
                           InkWell(
@@ -238,6 +199,7 @@ class _CartFooterState extends State<CartFooter> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 6),
                       _buildPriceRow(
                         "Subtotal:",
                         widget.subtotal.toCurrency(),
@@ -246,6 +208,10 @@ class _CartFooterState extends State<CartFooter> {
                       _buildPriceRow(
                         "GST (${gstPercentage.toStringAsFixed(1)}%):",
                         gstAmount.toCurrency(),
+                        onTapInfo: () async {
+                          await HapticHelper.triggerFeedback();
+                          widget.onShowGSTInfo();
+                        },
                       ),
                       const SizedBox(height: 8),
                       Divider(
@@ -277,17 +243,38 @@ class _CartFooterState extends State<CartFooter> {
     );
   }
 
-  Widget _buildPriceRow(String label, String value, {bool isTotal = false}) {
+  Widget _buildPriceRow(
+    String label,
+    String value, {
+    bool isTotal = false,
+    VoidCallback? onTapInfo,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: isTotal ? 14 : 13,
-            fontWeight: isTotal ? FontWeight.w800 : FontWeight.w600,
-            color: isTotal ? const Color(0xFF1E1B4B) : const Color(0xFF475569),
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: isTotal ? 14 : 13,
+                fontWeight: isTotal ? FontWeight.w800 : FontWeight.w600,
+                color: isTotal ? const Color(0xFF1E1B4B) : const Color(0xFF475569),
+              ),
+            ),
+            if (onTapInfo != null) ...[
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: onTapInfo,
+                child: const Icon(
+                  Icons.info_outline_rounded,
+                  size: 14,
+                  color: Color(0xFF6366F1),
+                ),
+              ),
+            ],
+          ],
         ),
         Text(
           value,

@@ -98,16 +98,32 @@ class TableRepository {
           debugPrint('[TableRepo] Table capacity: ${table.capacity}');
           debugPrint('[TableRepo] Raw orderList: ${table.orderList}');
 
-          // FIXED: Simplified filtering with proper boolean return
+          // FIXED: Filter out empty, cancelled, and settled/vacated/completed orders
           final activeOrders =
               table.orderList
                   ?.where(
-                    (order) =>
-                        order.orderId != null &&
-                        order.orderId!.isNotEmpty &&
-                        order.orderId !=
-                            "00000000-0000-0000-0000-000000000000" &&
-                        order.orderStatus != 'Cancelled',
+                    (order) {
+                      if (order.orderId == null ||
+                          order.orderId!.isEmpty ||
+                          order.orderId ==
+                              "00000000-0000-0000-0000-000000000000") {
+                        return false;
+                      }
+                      if (HiveService.isOrderSettled(order.orderId!)) {
+                        return false;
+                      }
+                      final status =
+                          (order.orderStatus ?? '').toLowerCase().trim();
+                      if (status == 'cancelled' ||
+                          status == 'settled' ||
+                          status == 'vacated' ||
+                          status == 'completed' ||
+                          status == 'closed' ||
+                          status == 'paid') {
+                        return false;
+                      }
+                      return true;
+                    },
                   )
                   .map((order) {
                     debugPrint(
@@ -118,6 +134,7 @@ class TableRepository {
                       generatedOrderNo: order.generatedOrderNo ?? 'Unknown',
                       orderStatus: order.orderStatus ?? 'Active',
                       isBilled: order.isBilled ?? false,
+                      billId: HiveService.getOrderBillId(order.orderId!),
                       // Guest counts were being parsed from the response and
                       // then dropped here, so the table card could never show
                       // who was seated. Built by hand rather than via
@@ -138,21 +155,14 @@ class TableRepository {
           final TableStatus tableStatus;
           final kotGenerated = activeOrders.isNotEmpty;
           final billGenerated = activeOrders.any((order) => order.isBilled);
-          final allBillsSettled =
-              activeOrders.isNotEmpty &&
-              activeOrders.every((order) => order.isBilled);
 
           if (activeOrders.isEmpty) {
             tableStatus = TableStatus.available;
-          } else if (allBillsSettled) {
-            // All bills are paid - table is settled and ready to be cleared
-            tableStatus = TableStatus.billSettled;
           } else if (billGenerated) {
-            // At least one bill generated but not all settled
+            // Bill has been generated for order(s) on this table awaiting payment
             tableStatus = TableStatus.billGenerated;
           } else {
-            // Orders exist but status depends on whether KOT was generated
-            // Default to occupied - status will be updated via manual triggers
+            // Orders exist and in progress
             tableStatus = TableStatus.occupied;
           }
 

@@ -94,7 +94,10 @@ class _AddTenderSheetState extends State<AddTenderSheet> {
           : 0;
 
   String _generateUpiUri() {
-    final effectiveAmount = _amount > 0 ? _amount : widget.remaining;
+    // Never generate UPI QR code for an amount higher than remaining due!
+    final effectiveAmount = (_amount > 0 && _amount <= widget.remaining)
+        ? _amount
+        : widget.remaining;
     final encodedMerchant = Uri.encodeComponent(_merchantName);
     final encodedNote = Uri.encodeComponent(
       widget.orderNumber.isNotEmpty
@@ -104,10 +107,22 @@ class _AddTenderSheetState extends State<AddTenderSheet> {
     return 'upi://pay?pa=$_upiId&pn=$encodedMerchant&am=${effectiveAmount.toStringAsFixed(2)}&cu=INR&tn=$encodedNote';
   }
 
+  void _onAmountChanged(String val) {
+    final amt = double.tryParse(val.trim()) ?? 0;
+    setState(() {
+      if (_method != 'cash' && amt > widget.remaining + 0.004) {
+        _error =
+            'Cannot exceed ${widget.remaining.toCurrency()} on ${_method.toUpperCase()}';
+      } else {
+        _error = null;
+      }
+    });
+  }
+
   void _submit() async {
     final amount = _amount;
     if (amount <= 0) {
-      setState(() => _error = 'Enter an amount');
+      setState(() => _error = 'Enter a valid amount');
       return;
     }
     if (_method != 'cash' && amount > widget.remaining + 0.004) {
@@ -357,7 +372,7 @@ class _AddTenderSheetState extends State<AddTenderSheet> {
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
                     ],
-                    onChanged: (_) => setState(() => _error = null),
+                    onChanged: _onAmountChanged,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -435,30 +450,32 @@ class _AddTenderSheetState extends State<AddTenderSheet> {
                 ),
               ),
 
-              // Change to return (for Cash)
+              // Return to Customer (for Cash)
               if (_change > 0) ...[
                 const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF0FDF4),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFDCFCE7), width: 1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFBBF7D0), width: 1.2),
                   ),
                   child: Row(
                     children: [
                       const Icon(
                         Icons.currency_exchange_rounded,
-                        size: 16,
+                        size: 18,
                         color: Color(0xFF16A34A),
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Change to return: ${_change.toCurrency()}',
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF15803D),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Return to Customer: ${_change.toCurrency()}',
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF15803D),
+                          ),
                         ),
                       ),
                     ],
@@ -472,7 +489,11 @@ class _AddTenderSheetState extends State<AddTenderSheet> {
               SizedBox(
                 height: 48,
                 child: ElevatedButton.icon(
-                  onPressed: _submit,
+                  onPressed: (_amount > 0 &&
+                          (_method == 'cash' ||
+                              _amount <= widget.remaining + 0.004))
+                      ? _submit
+                      : null,
                   icon: const Icon(Icons.check_rounded, size: 18),
                   label: const Text(
                     'Add Payment',
@@ -485,6 +506,8 @@ class _AddTenderSheetState extends State<AddTenderSheet> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4F46E5),
                     foregroundColor: Colors.white,
+                    disabledBackgroundColor: const Color(0xFFE2E8F0),
+                    disabledForegroundColor: const Color(0xFF94A3B8),
                     elevation: 2,
                     shadowColor: const Color(0xFF4F46E5).withValues(alpha: 0.35),
                     shape: RoundedRectangleBorder(
@@ -507,7 +530,12 @@ class _AddTenderSheetState extends State<AddTenderSheet> {
         onTap: () {
           setState(() {
             _method = value;
-            _error = null;
+            if (value != 'cash' && _amount > widget.remaining + 0.004) {
+              _error =
+                  'Cannot exceed ${widget.remaining.toCurrency()} on ${value.toUpperCase()}';
+            } else {
+              _error = null;
+            }
           });
           HapticHelper.triggerFeedback();
         },

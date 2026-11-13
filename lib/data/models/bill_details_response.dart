@@ -1,5 +1,12 @@
 import 'package:restaurant_pos_system/core/utils/date_time_formatter.dart';
 
+double _safeToDouble(dynamic v, [double defaultValue = 0.0]) {
+  if (v == null) return defaultValue;
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v.trim()) ?? defaultValue;
+  return defaultValue;
+}
+
 class BillDetailsResponse {
   final BillDetailsData? data;
   final String message;
@@ -162,20 +169,20 @@ class BillHeadDetails {
 
   factory BillHeadDetails.fromJson(Map<String, dynamic> json) {
     return BillHeadDetails(
-      billNo: json['billNo'] ?? '',
+      billNo: (json['billNo'] ?? '').toString(),
       billDate: (json['billDate'] ?? json['billDateTime'] ?? json['createdOn'] ?? '').toString(),
-      billCreatedBy: json['billCreatedBy'] ?? '',
-      discountPerc: (json['discountPerc'] ?? 0).toDouble(),
-      discountAmnt: (json['discountAmnt'] ?? 0).toDouble(),
-      specDisPer: (json['specDisPer'] ?? 0).toDouble(),
-      specDisAmt: (json['specDisAmt'] ?? 0).toDouble(),
-      amountAfterDisc: (json['amountAfterDisc'] ?? 0).toDouble(),
-      billAmountExclTax: (json['billAmountExclTax'] ?? 0).toDouble(),
-      billAmountInclTax: (json['billAmountInclTax'] ?? 0).toDouble(),
+      billCreatedBy: (json['billCreatedBy'] ?? '').toString(),
+      discountPerc: _safeToDouble(json['discountPerc']),
+      discountAmnt: _safeToDouble(json['discountAmnt']),
+      specDisPer: _safeToDouble(json['specDisPer']),
+      specDisAmt: _safeToDouble(json['specDisAmt']),
+      amountAfterDisc: _safeToDouble(json['amountAfterDisc']),
+      billAmountExclTax: _safeToDouble(json['billAmountExclTax']),
+      billAmountInclTax: _safeToDouble(json['billAmountInclTax']),
       customerName: DateTimeFormatter.resolveCustomerName(json),
-      custMobNo: json['custMobNo'] ?? '',
-      returnToCustomer: (json['returnToCustomer'] ?? 0).toDouble(),
-      outletAddress: json['outletAddress'] ?? '',
+      custMobNo: (json['custMobNo'] ?? '').toString(),
+      returnToCustomer: _safeToDouble(json['returnToCustomer']),
+      outletAddress: (json['outletAddress'] ?? '').toString(),
     );
   }
 
@@ -225,8 +232,8 @@ class TaxInfo {
 
   factory TaxInfo.fromJson(Map<String, dynamic> json) {
     return TaxInfo(
-      componentName: json['componentName'] ?? '',
-      taxPercentage: (json['taxPercentage'] ?? 0).toDouble(),
+      componentName: (json['componentName'] ?? json['name'] ?? '').toString(),
+      taxPercentage: _safeToDouble(json['taxPercentage'] ?? json['percentage'] ?? json['taxRate']),
     );
   }
 
@@ -259,16 +266,29 @@ class BillOrderDetails {
   });
 
   factory BillOrderDetails.fromJson(Map<String, dynamic> json) {
+    final qty = _safeToDouble(
+      json['orderQty'] ?? json['productQty'] ?? json['quantity'] ?? json['qty'],
+      1.0,
+    );
+    final price = _safeToDouble(
+      json['itemPrice'] ?? json['price'] ?? json['rate'],
+      0.0,
+    );
+    final totPrice = _safeToDouble(
+      json['totalItemPrice'] ?? json['totPrice'] ?? json['totalPrice'],
+      0.0,
+    );
+
     return BillOrderDetails(
-      orderId: json['orderId'] ?? '',
-      orderNo: json['orderNo'] ?? '',
-      orderDate: json['orderDate'] ?? '',
-      waiterName: json['waiterName'] ?? '',
-      itemName: json['itemName'] ?? '',
-      orderQty: (json['orderQty'] ?? 0).toDouble(),
-      uom: json['uom'] ?? '',
-      itemPrice: (json['itemPrice'] ?? 0).toDouble(),
-      totalItemPrice: (json['totalItemPrice'] ?? 0).toDouble(),
+      orderId: (json['orderId'] ?? json['orderHeadId'] ?? '').toString(),
+      orderNo: (json['orderNo'] ?? json['orderNumber'] ?? json['generatedOrderNo'] ?? '').toString(),
+      orderDate: (json['orderDate'] ?? json['createdOn'] ?? '').toString(),
+      waiterName: (json['waiterName'] ?? json['waiter'] ?? '').toString(),
+      itemName: (json['itemName'] ?? json['productName'] ?? json['name'] ?? 'Item').toString(),
+      orderQty: qty,
+      uom: (json['uom'] ?? json['unit'] ?? '').toString(),
+      itemPrice: price,
+      totalItemPrice: totPrice > 0 ? totPrice : (qty * price),
     );
   }
 
@@ -303,16 +323,10 @@ class PaymentDetail {
   });
 
   factory PaymentDetail.fromJson(Map<String, dynamic> json) {
-    double toDouble(dynamic v) {
-      if (v is num) return v.toDouble();
-      if (v is String) return double.tryParse(v) ?? 0;
-      return 0;
-    }
-
     return PaymentDetail(
-      paymentMode: (json['paymentMode'] ?? '').toString(),
-      paymentAmount: toDouble(json['paymentAmount']),
-      returnAmt: toDouble(json['returnAmt']),
+      paymentMode: (json['paymentMode'] ?? json['modeName'] ?? json['mode'] ?? '').toString(),
+      paymentAmount: _safeToDouble(json['paymentAmount'] ?? json['amount'] ?? json['amt']),
+      returnAmt: _safeToDouble(json['returnAmt'] ?? json['change'] ?? json['returnAmount']),
     );
   }
 

@@ -79,7 +79,7 @@ class RestaurantPOSApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => ReservationProvider()),
-        ChangeNotifierProvider(create: (_) => TaxProvider()),
+        ChangeNotifierProvider(create: (_) => TaxProvider()..initializeTaxData()),
         ChangeNotifierProvider(create: (_) => BillingProvider()),
         ChangeNotifierProvider(create: (_) => NetworkProvider()..initialize()),
       ],

@@ -60,6 +60,9 @@ class _OrderDetailViewState extends State<OrderDetailView>
   // Derived financial values
   double get _subtotal {
     if (_billDetails != null) {
+      if (_billDetails!.billHeadDt.billAmountExclTax > 0) {
+        return _billDetails!.billHeadDt.billAmountExclTax;
+      }
       return _billDetails!.billHeadDt.amountAfterDisc;
     }
     if (_detailModel?.data != null &&
@@ -190,6 +193,9 @@ class _OrderDetailViewState extends State<OrderDetailView>
   }
 
   bool get _isActuallyBilled {
+    if (_isActuallyPaid) return true;
+    if (_bills.isNotEmpty) return true;
+    if (_billDetails != null) return true;
     if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
       return _detailModel!.data!.first.isBilled ?? false;
     }
@@ -197,8 +203,35 @@ class _OrderDetailViewState extends State<OrderDetailView>
   }
 
   bool get _isActuallyPaid {
+    final effectiveId = (_orderNo != null && _orderNo!.isNotEmpty)
+        ? _orderNo!
+        : widget.order.orderId;
+    if (HiveService.isOrderSettled(effectiveId) ||
+        HiveService.isOrderSettled(widget.order.orderId)) {
+      return true;
+    }
+    if (_bills.isNotEmpty &&
+        _bills.every((b) =>
+            b.isPaid == 2 ||
+            b.paymentStatus.trim().toLowerCase() == 'paid')) {
+      return true;
+    }
+    if (_billDetails != null &&
+        _billDetails!.paymentDetail.isNotEmpty &&
+        _billDetails!.billHeadDt.billAmountInclTax > 0) {
+      final totalPaid = _billDetails!.paymentDetail.fold<double>(
+        0.0,
+        (sum, p) => sum + p.paymentAmount,
+      );
+      if (totalPaid >= (_billDetails!.billHeadDt.billAmountInclTax - 0.5)) {
+        return true;
+      }
+    }
     if (_detailModel?.data != null && _detailModel!.data!.isNotEmpty) {
-      return _detailModel!.data!.first.isPaid ?? false;
+      if (_detailModel!.data!.first.isPaid == true) return true;
+    }
+    if (widget.order.status == OrderStatusType.completed) {
+      return true;
     }
     return false;
   }
@@ -568,10 +601,36 @@ class _OrderDetailViewState extends State<OrderDetailView>
       final billTimestamp = billData.billHeadDt.parsedBillDate ??
           bill.billDate ??
           DateTime.now();
-      final resolvedCustomerName =
+
+      final hiveCustomerName = HiveService.getCustomerName(bill.billId) ??
+          (bill.billNo.isNotEmpty ? HiveService.getCustomerName(bill.billNo) : null) ??
+          (bill.orderNo.isNotEmpty ? HiveService.getCustomerName(bill.orderNo) : null);
+
+      String resolvedCustomerName =
           billData.billHeadDt.customerName.trim().isNotEmpty
               ? billData.billHeadDt.customerName.trim()
               : bill.customerName.trim();
+
+      if (hiveCustomerName != null && hiveCustomerName.trim().isNotEmpty) {
+        if (resolvedCustomerName.isEmpty ||
+            !resolvedCustomerName.contains(' ') ||
+            resolvedCustomerName.toLowerCase() == 'walk-in' ||
+            resolvedCustomerName.toLowerCase() == 'walk-in customer') {
+          resolvedCustomerName = hiveCustomerName.trim();
+        }
+      } else if (bill.customerName.trim().contains(' ') &&
+          !resolvedCustomerName.contains(' ')) {
+        resolvedCustomerName = bill.customerName.trim();
+      }
+
+      final taxBreakdown = billData.taxInf.isNotEmpty
+          ? billData.taxInf
+              .map((t) => {
+                    'name': t.componentName,
+                    'percentage': t.taxPercentage,
+                  })
+              .toList()
+          : null;
 
       final billBytes = await PDFService.generateThermalBill(
         items: items,
@@ -590,6 +649,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
         companyPhone: billData.companyDt.contactNo,
         companyGstNo: billData.companyDt.gstNo,
         gstLabel: gstLabel,
+        taxBreakdown: taxBreakdown,
         billNo: billData.billHeadDt.billNo,
         customerName: resolvedCustomerName,
         customerPhone: billData.billHeadDt.custMobNo,
@@ -1484,6 +1544,50 @@ class _OrderDetailViewState extends State<OrderDetailView>
             ),
           );
         }
+      }
+    }
+
+    if (itemWidgets.isEmpty &&
+        _billDetails != null &&
+        _billDetails!.billOrderDt.isNotEmpty) {
+      final Map<String, _MergedOrderItem> mergedMap = {};
+      for (final d in _billDetails!.billOrderDt) {
+        final name = d.itemName.trim().isNotEmpty ? d.itemName.trim() : 'Item';
+        final price = d.itemPrice;
+        final qty = d.orderQty.round();
+        final total = d.totalItemPrice > 0 ? d.totalItemPrice : (price * qty);
+        final key = '${name.toLowerCase()}##${price.toStringAsFixed(2)}';
+
+        if (!mergedMap.containsKey(key)) {
+          mergedMap[key] = _MergedOrderItem(
+            name: name,
+            quantity: qty,
+            price: price,
+            total: total,
+            instruction: null,
+          );
+        } else {
+          final prev = mergedMap[key]!;
+          mergedMap[key] = _MergedOrderItem(
+            name: prev.name,
+            quantity: prev.quantity + qty,
+            price: prev.price,
+            total: prev.total + total,
+            instruction: prev.instruction,
+          );
+        }
+      }
+      for (final m in mergedMap.values) {
+        totalItemCount += m.quantity;
+        itemWidgets.add(
+          _buildItemRow(
+            name: m.name,
+            quantity: m.quantity,
+            price: m.price,
+            total: m.total,
+            instruction: m.instruction,
+          ),
+        );
       }
     }
 
@@ -2518,6 +2622,29 @@ class _OrderDetailViewState extends State<OrderDetailView>
         return;
       }
 
+      final effectiveOrderNo = _orderNo ?? widget.order.orderNo ?? widget.order.orderId.toString();
+      final hiveCustomerName = (_billNo != null ? HiveService.getCustomerName(_billNo!) : null) ??
+          HiveService.getCustomerName(effectiveOrderNo);
+
+      String resolvedCustomerName = billData.billHeadDt.customerName.trim();
+      if (hiveCustomerName != null && hiveCustomerName.trim().isNotEmpty) {
+        if (resolvedCustomerName.isEmpty ||
+            !resolvedCustomerName.contains(' ') ||
+            resolvedCustomerName.toLowerCase() == 'walk-in' ||
+            resolvedCustomerName.toLowerCase() == 'walk-in customer') {
+          resolvedCustomerName = hiveCustomerName.trim();
+        }
+      }
+
+      final taxBreakdown = billData.taxInf.isNotEmpty
+          ? billData.taxInf
+              .map((t) => {
+                    'name': t.componentName,
+                    'percentage': t.taxPercentage,
+                  })
+              .toList()
+          : null;
+
       final billBytes = await PDFService.generateThermalBill(
         items: widget.order.items,
         tableId: widget.order.tableNumber ?? '1',
@@ -2525,7 +2652,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
             widget.order.tableNumber != null
                 ? _formatTableName(widget.order.tableNumber)
                 : 'Table 1',
-        orderNumber: _orderNo ?? widget.order.orderNo ?? widget.order.orderId.toString(),
+        orderNumber: effectiveOrderNo,
         orderTime: billData.billHeadDt.parsedBillDate ?? widget.order.orderTime,
         subtotal: _subtotal,
         gstAmount: _gstAmount,
@@ -2536,8 +2663,9 @@ class _OrderDetailViewState extends State<OrderDetailView>
         companyPhone: billData.companyDt.contactNo,
         companyGstNo: billData.companyDt.gstNo,
         gstLabel: _gstLabel,
+        taxBreakdown: taxBreakdown,
         billNo: _billNo,
-        customerName: billData.billHeadDt.customerName,
+        customerName: resolvedCustomerName,
         customerPhone: billData.billHeadDt.custMobNo,
         discountAmount: _discount,
         payments: billData.paymentDetail,

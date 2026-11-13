@@ -397,6 +397,30 @@ class HiveService {
     return Map<String, dynamic>.from(raw as Map);
   }
 
+  /// Tenant company ID, distinct from location/outlet ID.
+  static int? getCompanyId() {
+    try {
+      final userDetails = getAuthData()?.data?.userDetails;
+      if (userDetails?.companyId != null &&
+          userDetails!.companyId! > 0 &&
+          userDetails.companyId! < 1000) {
+        return userDetails.companyId;
+      }
+      final compInfo = getCompanyInfo();
+      if (compInfo != null && compInfo['companyId'] != null) {
+        final cid = (compInfo['companyId'] is num)
+            ? (compInfo['companyId'] as num).toInt()
+            : int.tryParse(compInfo['companyId'].toString());
+        if (cid != null && cid > 0 && cid < 1000) {
+          return cid;
+        }
+      }
+    } catch (e) {
+      debugPrint('[HiveService] Error getting companyId: $e');
+    }
+    return null;
+  }
+
   static bool isTaxDataExpired({int maxAgeHours = 24}) {
     final timestamp = getTaxDataTimestamp();
     if (timestamp == null) return true;
@@ -476,6 +500,25 @@ class HiveService {
       debugPrint('Saved bill ID for order $orderId: $billId');
     } catch (e) {
       debugPrint('Error saving order bill ID: $e');
+    }
+  }
+
+  static Future<void> markOrderSettled(String orderId) async {
+    try {
+      if (orderId.trim().isEmpty) return;
+      await posBox.put('settled_order_$orderId', true);
+      debugPrint('[HiveService] Marked order settled: $orderId');
+    } catch (e) {
+      debugPrint('[HiveService] Error marking order settled: $e');
+    }
+  }
+
+  static bool isOrderSettled(String orderId) {
+    try {
+      if (orderId.trim().isEmpty) return false;
+      return posBox.get('settled_order_$orderId') == true;
+    } catch (_) {
+      return false;
     }
   }
 

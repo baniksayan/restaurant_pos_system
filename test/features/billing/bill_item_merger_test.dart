@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:restaurant_pos_system/data/models/bill_details_response.dart';
 import 'package:restaurant_pos_system/features/billing/utils/bill_item_merger.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 
@@ -186,6 +187,54 @@ void main() {
       expect(merged.first.name, 'Chai');
       expect(merged.first.quantity, 3);
       expect(merged.first.specialNotes, 'Strong');
+    });
+
+    test('mergeDynamicCartItems correctly merges BillOrderDetails instances', () {
+      final billOrderItems = [
+        BillOrderDetails(
+          orderId: 'O1',
+          orderNo: 'OD-101',
+          orderDate: '2026-11-13',
+          waiterName: 'Waiter',
+          itemName: 'Paneer Butter Masala',
+          orderQty: 2.0,
+          uom: 'Plate',
+          itemPrice: 220.0,
+          totalItemPrice: 440.0,
+        ),
+        BillOrderDetails(
+          orderId: 'O1',
+          orderNo: 'OD-101',
+          orderDate: '2026-11-13',
+          waiterName: 'Waiter',
+          itemName: 'Paneer Butter Masala',
+          orderQty: 1.0,
+          uom: 'Plate',
+          itemPrice: 220.0,
+          totalItemPrice: 220.0,
+        ),
+        BillOrderDetails(
+          orderId: 'O1',
+          orderNo: 'OD-101',
+          orderDate: '2026-11-13',
+          waiterName: 'Waiter',
+          itemName: 'Butter Naan',
+          orderQty: 4.0,
+          uom: 'Pcs',
+          itemPrice: 40.0,
+          totalItemPrice: 160.0,
+        ),
+      ];
+
+      final merged = BillItemMerger.mergeDynamicCartItems(billOrderItems);
+
+      expect(merged.length, 2);
+      expect(merged[0].name, 'Paneer Butter Masala');
+      expect(merged[0].quantity, 3);
+      expect(merged[0].price, 220.0);
+      expect(merged[1].name, 'Butter Naan');
+      expect(merged[1].quantity, 4);
+      expect(merged[1].price, 40.0);
     });
   });
 }

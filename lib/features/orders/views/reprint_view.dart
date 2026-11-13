@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_radius.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
 import 'package:restaurant_pos_system/core/utils/date_time_formatter.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
@@ -17,8 +18,8 @@ import 'package:restaurant_pos_system/features/order_taking/providers/animated_c
 import 'package:restaurant_pos_system/features/order_taking/widgets/kot_pdf_viewer_dialog.dart';
 import 'package:restaurant_pos_system/features/orders/providers/ready_to_collect_provider.dart';
 import 'package:restaurant_pos_system/shared/services/pdf_service.dart';
+import 'package:restaurant_pos_system/shared/widgets/cards/app_card.dart';
 import 'package:restaurant_pos_system/shared/widgets/dialogs/app_date_range_picker_dialog.dart';
-import 'package:restaurant_pos_system/shared/widgets/dialogs/app_glass_dialog.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/premium_refresh_indicator.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/shimmer_effect.dart';
 
@@ -533,10 +534,36 @@ class _ReprintViewState extends State<ReprintView> {
       final billTimestamp = billData.billHeadDt.parsedBillDate ??
           bill.billDate ??
           DateTime.now();
-      final resolvedCustomerName =
+
+      final hiveCustomerName = HiveService.getCustomerName(bill.billId) ??
+          (bill.billNo.isNotEmpty ? HiveService.getCustomerName(bill.billNo) : null) ??
+          (bill.orderNo.isNotEmpty ? HiveService.getCustomerName(bill.orderNo) : null);
+
+      String resolvedCustomerName =
           billData.billHeadDt.customerName.trim().isNotEmpty
               ? billData.billHeadDt.customerName.trim()
               : bill.customerName.trim();
+
+      if (hiveCustomerName != null && hiveCustomerName.trim().isNotEmpty) {
+        if (resolvedCustomerName.isEmpty ||
+            !resolvedCustomerName.contains(' ') ||
+            resolvedCustomerName.toLowerCase() == 'walk-in' ||
+            resolvedCustomerName.toLowerCase() == 'walk-in customer') {
+          resolvedCustomerName = hiveCustomerName.trim();
+        }
+      } else if (bill.customerName.trim().contains(' ') &&
+          !resolvedCustomerName.contains(' ')) {
+        resolvedCustomerName = bill.customerName.trim();
+      }
+
+      final taxBreakdown = billData.taxInf.isNotEmpty
+          ? billData.taxInf
+              .map((t) => {
+                    'name': t.componentName,
+                    'percentage': t.taxPercentage,
+                  })
+              .toList()
+          : null;
 
       final billBytes = await PDFService.generateThermalBill(
         items: items,
@@ -554,6 +581,7 @@ class _ReprintViewState extends State<ReprintView> {
         companyPhone: billData.companyDt.contactNo,
         companyGstNo: billData.companyDt.gstNo,
         gstLabel: gstLabel,
+        taxBreakdown: taxBreakdown,
         billNo: billData.billHeadDt.billNo,
         customerName: resolvedCustomerName,
         customerPhone: billData.billHeadDt.custMobNo,
@@ -2065,22 +2093,21 @@ class _ReprintBillCard extends StatelessWidget {
         lowerCustomer != 'walk in' &&
         lowerCustomer != 'none';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: statusColor.withValues(alpha: 0.55),
-          width: 1.3,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: statusColor.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+    return AppCard(
+      padding: EdgeInsets.zero,
+      color: Colors.white,
+      borderRadius: AppRadius.lg,
+      border: Border.all(
+        color: statusColor.withValues(alpha: 0.55),
+        width: 1.3,
       ),
+      boxShadow: [
+        BoxShadow(
+          color: statusColor.withValues(alpha: 0.08),
+          blurRadius: 10,
+          offset: const Offset(0, 3),
+        ),
+      ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

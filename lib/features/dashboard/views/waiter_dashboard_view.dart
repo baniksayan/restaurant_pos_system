@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import 'package:restaurant_pos_system/features/billing/providers/tax_provider.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
@@ -53,6 +54,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
       final tableProvider = context.read<TableProvider>();
       tableProvider.setSelectedLocation(dashboardProvider.selectedLocation);
       tableProvider.initializeTables();
+      context.read<TaxProvider>().initializeTaxData();
     });
   }
 
@@ -89,6 +91,9 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                       .firstOrNull;
                   final outletId = matchedLoc?.id ?? HiveService.getOutletId();
                   if (outletId != null && outletId > 0) {
+                    HiveService.setOutletId(outletId);
+                    HiveService.setSelectedLocationId(outletId);
+                    HiveService.setSelectedLocationName(location);
                     final tableProvider = context.read<TableProvider>();
                     tableProvider.setOutletId(outletId);
                     tableProvider.setSelectedLocation(location);

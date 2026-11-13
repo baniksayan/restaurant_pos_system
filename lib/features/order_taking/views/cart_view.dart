@@ -75,6 +75,12 @@ class _CartViewState extends State<CartView> {
     // Switch to current table's cart when entering cart view and sync with server
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _switchToCurrentTable();
+      if (mounted) {
+        final taxProvider = Provider.of<TaxProvider>(context, listen: false);
+        if (!taxProvider.hasTaxData || (taxProvider.taxData?.data?.isEmpty ?? true)) {
+          taxProvider.initializeTaxData();
+        }
+      }
     });
   }
 

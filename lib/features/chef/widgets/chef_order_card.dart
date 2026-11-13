@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/app_radius.dart';
+import 'package:restaurant_pos_system/core/constants/app_shadows.dart';
+import 'package:restaurant_pos_system/shared/widgets/cards/app_card.dart';
 import '../models/chef_order_model.dart';
 import '../providers/chef_provider.dart';
 import 'chef_order_item.dart';
@@ -134,22 +137,12 @@ class _ChefOrderCardState extends State<ChefOrderCard>
       alignment: Alignment.center,
       child: FadeTransition(
         opacity: _fadeAnimation,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: borderColor.withValues(alpha: 0.6),
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
+        child: AppCard(
+          padding: EdgeInsets.zero,
+          borderRadius: AppRadius.card,
+          borderColor: borderColor.withValues(alpha: 0.6),
+          borderWidth: 1.2,
+          shadow: AppShadows.card,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,

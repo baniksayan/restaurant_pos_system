@@ -1,12 +1,23 @@
+// lib/features/payment/widgets/payment_breakdown_card.dart
+
 import 'package:flutter/material.dart';
+import 'package:restaurant_pos_system/core/constants/app_colors.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
+import 'package:restaurant_pos_system/shared/widgets/cards/app_breakdown_card.dart';
 import 'payment_status_illustration.dart';
 
+/// Card displaying the 3-metric payment breakdown:
+/// - Total Amount
+/// - Amount Paid
+/// - Amount Due / Remaining
+/// - Optional Return to Customer (for cash tenders)
+/// Standardized using [AppBreakdownCard].
 class PaymentBreakdownCard extends StatelessWidget {
   final double totalAmount;
   final double paidAmount;
   final double remainingAmount;
   final PaymentStatusState status;
+  final double returnAmount;
 
   const PaymentBreakdownCard({
     super.key,
@@ -14,14 +25,15 @@ class PaymentBreakdownCard extends StatelessWidget {
     required this.paidAmount,
     required this.remainingAmount,
     required this.status,
+    this.returnAmount = 0.0,
   });
 
   @override
   Widget build(BuildContext context) {
     final statusColor = switch (status) {
-      PaymentStatusState.pending => const Color(0xFFE11D48),
-      PaymentStatusState.partiallyPaid => const Color(0xFFD97706),
-      PaymentStatusState.paidInFull => const Color(0xFF16A34A),
+      PaymentStatusState.pending => AppColors.error,
+      PaymentStatusState.partiallyPaid => AppColors.warning,
+      PaymentStatusState.paidInFull => AppColors.success,
     };
 
     final dueIcon = switch (status) {
@@ -30,99 +42,37 @@ class PaymentBreakdownCard extends StatelessWidget {
       PaymentStatusState.paidInFull => Icons.check_circle_outline_rounded,
     };
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+    return AppBreakdownCard(
+      items: [
+        AppBreakdownItem(
+          icon: Icons.receipt_long_outlined,
+          label: 'Total Amount',
+          value: totalAmount.toCurrency(),
+        ),
+        const AppBreakdownItem.divider(),
+        AppBreakdownItem(
+          icon: Icons.account_balance_wallet_outlined,
+          label: 'Amount Paid',
+          value: paidAmount.toCurrency(),
+        ),
+        const AppBreakdownItem.divider(),
+        AppBreakdownItem(
+          icon: dueIcon,
+          color: statusColor,
+          label: 'Amount Due',
+          value: remainingAmount.toCurrency(),
+          isHighlighted: true,
+        ),
+        if (returnAmount > 0.004) ...[
+          const AppBreakdownItem.divider(),
+          AppBreakdownItem(
+            icon: Icons.currency_exchange_rounded,
+            color: AppColors.success,
+            label: 'Return to Customer',
+            value: returnAmount.toCurrency(),
+            isHighlighted: true,
           ),
         ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Column(
-        children: [
-          // Row 1: Total Amount
-          _buildRow(
-            icon: Icons.receipt_long_outlined,
-            iconColor: const Color(0xFF64748B),
-            label: 'Total Amount',
-            labelColor: const Color(0xFF475569),
-            value: totalAmount.toCurrency(),
-            valueColor: const Color(0xFF0F172A),
-          ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
-          ),
-
-          // Row 2: Amount Paid
-          _buildRow(
-            icon: Icons.account_balance_wallet_outlined,
-            iconColor: const Color(0xFF64748B),
-            label: 'Amount Paid',
-            labelColor: const Color(0xFF475569),
-            value: paidAmount.toCurrency(),
-            valueColor: const Color(0xFF0F172A),
-          ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
-          ),
-
-          // Row 3: Amount Due
-          _buildRow(
-            icon: dueIcon,
-            iconColor: statusColor,
-            label: 'Amount Due',
-            labelColor: statusColor,
-            labelFontWeight: FontWeight.w700,
-            value: remainingAmount.toCurrency(),
-            valueColor: statusColor,
-            valueFontWeight: FontWeight.w800,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRow({
-    required IconData icon,
-    required Color iconColor,
-    required String label,
-    required Color labelColor,
-    FontWeight labelFontWeight = FontWeight.w500,
-    required String value,
-    required Color valueColor,
-    FontWeight valueFontWeight = FontWeight.w700,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: iconColor),
-        const SizedBox(width: 10),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13.5,
-            fontWeight: labelFontWeight,
-            color: labelColor,
-          ),
-        ),
-        const Spacer(),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: valueFontWeight,
-            color: valueColor,
-          ),
-        ),
       ],
     );
   }

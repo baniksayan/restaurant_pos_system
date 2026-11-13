@@ -118,9 +118,12 @@ class _ReadyToCollectOrdersViewState extends State<ReadyToCollectOrdersView> {
     if (confirmed == true) {
       final success = await provider.markAsCollected(order.id);
       if (ctx.mounted) {
-        final displayKotNo = order.kotNo.startsWith('#') || order.kotNo.startsWith('KOT')
-            ? order.kotNo
-            : '#${order.kotNo}';
+        final strippedKotNo = order.kotNo
+            .replaceFirst(RegExp(r'^KOT\s*[-#]?\s*', caseSensitive: false), '')
+            .trim();
+        final displayKotNo = strippedKotNo.startsWith('#')
+            ? strippedKotNo
+            : '#$strippedKotNo';
         if (success) {
           AppSnackBar.showSuccess(
             ctx,

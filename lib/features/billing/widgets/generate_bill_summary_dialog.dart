@@ -986,7 +986,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
               (billingProvider.isGenerating ||
                       _loadingSplitItems ||
                       _nothingLeftToBill ||
-                      taxUnavailable ||
+                      (taxUnavailable && total <= 0) ||
                       (_splitMode && _selectedIds.isEmpty))
                   ? null
                   : () async {
@@ -1136,10 +1136,8 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
           Navigator.of(context).pop();
         }
 
-        // 3. Show the final "Bill Generated" screen. When payment was
-        // already taken above (tenders non-empty), its action bar reads
-        // "Done" and skips PaymentPage entirely — there is nothing left to
-        // pay. Bill Later keeps the original "Proceed to Pay" flow.
+        // 3. Show the final "Bill Generated" / Payment status screen.
+        // Accurately distinguish fully paid, partially paid, and unpaid/bill later.
         if (context.mounted) {
           final tableProvider = context.read<TableProvider>();
           final matchedTable = widget.tableId != null
@@ -1147,6 +1145,13 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                   .where((t) => t.id == widget.tableId)
                   .firstOrNull
               : null;
+
+          final stagedPaidAmount = tenders.fold<double>(
+            0.0,
+            (sum, t) => sum + t.amount,
+          );
+          final isFullyPaidAtCheckout =
+              total > 0 && stagedPaidAmount >= (total - 0.004);
 
           await showDialog(
             context: context,
@@ -1162,7 +1167,8 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
                   tableName: matchedTable?.name,
                   orderId: widget.orderId,
                   remainingUnbilledCount: remainingUnbilledCount,
-                  paidAtCheckout: tenders.isNotEmpty,
+                  paidAtCheckout: isFullyPaidAtCheckout,
+                  paidAmount: stagedPaidAmount,
                 ),
           );
         }
