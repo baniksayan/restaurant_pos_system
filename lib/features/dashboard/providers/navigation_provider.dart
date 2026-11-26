@@ -89,4 +89,22 @@ class NavigationProvider extends ChangeNotifier {
     _currentIndex = 1; // Navigate directly to menu tab
     notifyListeners();
   }
+
+  /// Selects a table/order context and jumps straight to the Cart tab (index 2).
+  void selectTableAndNavigateToCart(
+    String tableId,
+    String tableName,
+    String location,
+  ) {
+    _selectedTableId = tableId;
+    _selectedTableName = tableName;
+    _selectedLocation = location;
+
+    _selectedOrderType = null;
+    _customerName = null;
+    _customerPhone = null;
+
+    _currentIndex = 2; // Cart tab
+    notifyListeners();
+  }
 }

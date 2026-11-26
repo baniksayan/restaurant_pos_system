@@ -31,6 +31,7 @@ import '../providers/order_provider.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/skeleton_loader.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class CartView extends StatefulWidget {
@@ -51,10 +52,11 @@ class CartView extends StatefulWidget {
 
 class _CartViewState extends State<CartView> {
   final Set<String> _kotNumbers =
-      {}; // Track all KOT numbers generated for this table
+      {}; // Track all KOT numbers generated for this order
   final Map<String, String> _kotNotes =
       {}; // Track whole-KOT kitchen notes by KOT number
   String? _orderNumber; // Backend order number (e.g. OD/UR/...)
+  String? _syncedOrderId; // Tracks which order the local KOT metadata belongs to
   String _currentKotNote = '';
 
   /// Guards against a second KOT submission while one is still running — a
@@ -96,7 +98,7 @@ class _CartViewState extends State<CartView> {
   }
 
   Future<void> _switchToCurrentTable() async {
-    if (widget.tableId != null && widget.tableName != null) {
+    if (_isTableOrder && widget.tableId != null && widget.tableName != null) {
       final cartProvider = Provider.of<AnimatedCartProvider>(
         context,
         listen: false,
@@ -106,10 +108,68 @@ class _CartViewState extends State<CartView> {
       cartProvider.switchToOrder(
         context.read<TableProvider>().currentOrderId,
         tableId: widget.tableId!,
+        tableName: widget.tableName,
       );
 
       debugPrint('[CartView] Cart switched to table ${widget.tableId}');
     }
+  }
+
+  RestaurantTable? _findMatchedTable(TableProvider tableProvider) {
+    if (widget.tableId == null) return null;
+    return tableProvider.tables
+        .where(
+          (t) =>
+              GuidHelper.areEqual(t.id, widget.tableId) ||
+              (widget.tableName != null &&
+                  widget.tableName!.isNotEmpty &&
+                  t.name == widget.tableName),
+        )
+        .firstOrNull;
+  }
+
+  /// Resolves the specific active order ID for this cart session.
+  /// Never defaults blindly to `matchedTable.activeOrders.last` when an
+  /// explicit table order is already selected in TableProvider / CartProvider,
+  /// otherwise Team A gets hijacked by a later-seated Team B on the same table.
+  String? _resolveActiveOrderId(
+    TableProvider tableProvider,
+    AnimatedCartProvider cartProvider,
+    RestaurantTable? matchedTable,
+  ) {
+    if (_isTableOrder) {
+      final tpOrderId = tableProvider.currentOrderId;
+      final cpOrderId = cartProvider.currentOrderId;
+      final hasTableOrders =
+          matchedTable != null && matchedTable.activeOrders.isNotEmpty;
+
+      if (hasTableOrders) {
+        if (tpOrderId != null &&
+            tpOrderId.isNotEmpty &&
+            matchedTable.activeOrders.any(
+              (o) => GuidHelper.areEqual(o.orderId, tpOrderId),
+            )) {
+          return tpOrderId;
+        }
+        if (cpOrderId != null &&
+            cpOrderId.isNotEmpty &&
+            matchedTable.activeOrders.any(
+              (o) => GuidHelper.areEqual(o.orderId, cpOrderId),
+            )) {
+          return cpOrderId;
+        }
+        return matchedTable.activeOrders.last.orderId;
+      }
+
+      if (tpOrderId != null && tpOrderId.isNotEmpty) return tpOrderId;
+      if (cpOrderId != null && cpOrderId.isNotEmpty) return cpOrderId;
+      return _orderNumber;
+    }
+
+    final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+    return orderProvider.createdOrderId ??
+        cartProvider.currentOrderId ??
+        _orderNumber;
   }
 
   @override
@@ -120,6 +180,39 @@ class _CartViewState extends State<CartView> {
         bottom: false,
         child: Consumer2<AnimatedCartProvider, TableProvider>(
           builder: (context, cartProvider, tableProvider, child) {
+            final matchedTable = _findMatchedTable(tableProvider);
+            final String? orderId = _resolveActiveOrderId(
+              tableProvider,
+              cartProvider,
+              matchedTable,
+            );
+
+            // Reset local KOT/order metadata immediately whenever switching to
+            // a different order (even on the same shared table).
+            if (!GuidHelper.areEqual(_syncedOrderId, orderId)) {
+              _kotNumbers.clear();
+              _kotNotes.clear();
+              _orderNumber = null;
+              _currentKotNote = '';
+              _syncedOrderId = orderId;
+            }
+
+            // If a table order is active in TableProvider but AnimatedCartProvider
+            // hasn't switched to it yet (e.g. same tableId, different group), sync it.
+            if (_isTableOrder &&
+                orderId != null &&
+                orderId.isNotEmpty &&
+                !GuidHelper.areEqual(cartProvider.currentOrderId, orderId)) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                cartProvider.switchToOrder(
+                  orderId,
+                  tableId: widget.tableId,
+                  tableName: widget.tableName,
+                );
+              });
+            }
+
             final items = cartProvider.cartItems.values.toList();
             final newItems = cartProvider.newItems.values.toList();
             final kotGeneratedItems =
@@ -130,7 +223,7 @@ class _CartViewState extends State<CartView> {
             final hasKotItems = hasLocalKotItems || hasServerKotItems;
             final hasNewItems = newItems.isNotEmpty;
 
-            // Sync tracked KOT numbers and notes from cart items
+            // Sync tracked KOT numbers and notes from THIS order's cart items
             for (final item in kotGeneratedItems) {
               final kn = item.kotNumber?.trim();
               if (kn != null && kn.isNotEmpty) {
@@ -143,56 +236,25 @@ class _CartViewState extends State<CartView> {
               }
             }
 
-            String? orderId;
-            if (_isTableOrder) {
-              if (widget.tableId != null) {
-                final matchedTable = tableProvider.tables
-                    .where(
-                      (t) =>
-                          t.id == widget.tableId ||
-                          t.name == widget.tableName,
-                    )
-                    .firstOrNull;
-                if (matchedTable != null &&
-                    matchedTable.activeOrders.isNotEmpty) {
-                  orderId = matchedTable.activeOrders.last.orderId;
-                }
-              }
-            } else {
-              final orderProvider = Provider.of<OrderProvider>(
-                context,
-                listen: false,
-              );
-              orderId = orderProvider.createdOrderId;
-            }
-            orderId ??= cartProvider.currentOrderId ?? _orderNumber;
+            // Billing status MUST be evaluated strictly per-order — never from
+            // `matchedTable.billGenerated` or `matchedTable.activeOrders.any`,
+            // which would lock Team A out whenever Team B pays/bills first.
+            final ActiveOrder? matchedOrder = (matchedTable != null &&
+                    orderId != null &&
+                    orderId.isNotEmpty)
+                ? matchedTable.activeOrders
+                    .where((o) => GuidHelper.areEqual(o.orderId, orderId))
+                    .firstOrNull
+                : null;
 
-            final matchedTable =
-                widget.tableId != null
-                    ? tableProvider.tables
-                        .where(
-                          (t) =>
-                              t.id == widget.tableId ||
-                              t.name == widget.tableName,
-                        )
-                        .firstOrNull
-                    : null;
-
-            final bool isBilled =
-                cartProvider.isOrderBilled(orderId) ||
-                (matchedTable != null &&
-                    (matchedTable.status == TableStatus.billGenerated ||
-                        matchedTable.billGenerated ||
-                        matchedTable.activeOrders.any(
-                          (o) =>
-                              o.isBilled ||
-                              (orderId != null &&
-                                  o.orderId == orderId &&
-                                  o.isBilled),
-                        ))) ||
-                (orderId != null &&
-                    (tableProvider.getBillId(orderId) != null ||
-                        HiveService.getOrderBillId(orderId) != null));
+            final bool isBilled = (orderId != null && orderId.isNotEmpty) &&
+                (cartProvider.isOrderBilled(orderId) ||
+                    (matchedOrder?.isBilled ?? false) ||
+                    !GuidHelper.isNullOrEmpty(matchedOrder?.billId) ||
+                    !GuidHelper.isNullOrEmpty(
+                        tableProvider.getBillId(orderId)) ||
+                    !GuidHelper.isNullOrEmpty(
+                        HiveService.getOrderBillId(orderId)));
 
             final billingOrderNumber = _resolveOrderNumber(orderId);
 
@@ -1067,7 +1129,33 @@ class _CartViewState extends State<CartView> {
   }
 
   String _resolveOrderNumber(String? orderId) {
-    // 1. Direct _orderNumber if valid (not KT/ and not Unknown)
+    // 1. For table orders, resolve the specific orderId first from TableProvider
+    //    or Hive before falling back to any session-wide _orderNumber.
+    if (_isTableOrder && orderId != null && orderId.isNotEmpty) {
+      final tableProvider = Provider.of<TableProvider>(context, listen: false);
+      final matchedTable = _findMatchedTable(tableProvider);
+      if (matchedTable != null && matchedTable.activeOrders.isNotEmpty) {
+        final matchedOrder = matchedTable.activeOrders
+            .where((o) => GuidHelper.areEqual(o.orderId, orderId))
+            .firstOrNull;
+        if (matchedOrder != null &&
+            matchedOrder.generatedOrderNo.trim().isNotEmpty &&
+            !matchedOrder.generatedOrderNo.toUpperCase().contains('KT/') &&
+            !matchedOrder.generatedOrderNo.toLowerCase().contains('unknown')) {
+          return matchedOrder.generatedOrderNo.trim();
+        }
+      }
+
+      final cached = HiveService.getOrderNo(orderId);
+      if (cached != null &&
+          cached.isNotEmpty &&
+          !cached.toUpperCase().contains('KT/') &&
+          !cached.toLowerCase().contains('unknown')) {
+        return cached;
+      }
+    }
+
+    // 2. Direct _orderNumber if valid (not KT/ and not Unknown)
     if (_orderNumber != null &&
         _orderNumber!.trim().isNotEmpty &&
         !_orderNumber!.toUpperCase().contains('KT/') &&
@@ -1075,37 +1163,37 @@ class _CartViewState extends State<CartView> {
       return _orderNumber!.trim();
     }
 
-    // 2. OrderProvider generatedOrderNo or orderNo
-    final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-    final genOrderNo = orderProvider.generatedOrderNo?.trim();
-    if (genOrderNo != null &&
-        genOrderNo.isNotEmpty &&
-        !genOrderNo.toUpperCase().contains('KT/') &&
-        !genOrderNo.toLowerCase().contains('unknown')) {
-      return genOrderNo;
-    }
-    final numOrderNo = orderProvider.orderNo?.toString().trim();
-    if (numOrderNo != null &&
-        numOrderNo.isNotEmpty &&
-        !numOrderNo.toUpperCase().contains('KT/') &&
-        !numOrderNo.toLowerCase().contains('unknown')) {
-      return numOrderNo;
+    // 3. OrderProvider generatedOrderNo or orderNo (for Phone / Takeaway orders)
+    if (!_isTableOrder) {
+      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+      final genOrderNo = orderProvider.generatedOrderNo?.trim();
+      if (genOrderNo != null &&
+          genOrderNo.isNotEmpty &&
+          !genOrderNo.toUpperCase().contains('KT/') &&
+          !genOrderNo.toLowerCase().contains('unknown')) {
+        return genOrderNo;
+      }
+      final numOrderNo = orderProvider.orderNo?.toString().trim();
+      if (numOrderNo != null &&
+          numOrderNo.isNotEmpty &&
+          !numOrderNo.toUpperCase().contains('KT/') &&
+          !numOrderNo.toLowerCase().contains('unknown')) {
+        return numOrderNo;
+      }
     }
 
-    // 3. For table orders, check TableProvider's activeOrders
+    // 4. Fallback check across TableProvider or Hive
     if (widget.tableId != null) {
       final tableProvider = Provider.of<TableProvider>(context, listen: false);
-      final matchedTable = tableProvider.tables
-          .where((t) => t.id == widget.tableId || t.name == widget.tableName)
-          .firstOrNull;
+      final matchedTable = _findMatchedTable(tableProvider);
 
       if (matchedTable != null && matchedTable.activeOrders.isNotEmpty) {
         final matchedOrder = orderId != null
             ? matchedTable.activeOrders
-                .where((o) => o.orderId == orderId)
+                .where((o) => GuidHelper.areEqual(o.orderId, orderId))
                 .firstOrNull
             : null;
-        final targetOrder = matchedOrder ?? matchedTable.activeOrders.first;
+        final targetOrder = matchedOrder ?? matchedTable.activeOrders.last;
         if (targetOrder.generatedOrderNo.trim().isNotEmpty &&
             !targetOrder.generatedOrderNo.toUpperCase().contains('KT/') &&
             !targetOrder.generatedOrderNo.toLowerCase().contains('unknown')) {
@@ -1114,7 +1202,6 @@ class _CartViewState extends State<CartView> {
       }
     }
 
-    // 4. Check cached order number by orderId in Hive
     if (orderId != null && orderId.isNotEmpty) {
       final cached = HiveService.getOrderNo(orderId);
       if (cached != null &&
@@ -1139,20 +1226,13 @@ class _CartViewState extends State<CartView> {
       return;
     }
 
-    // Get orderId from table provider or order provider based on context.
-    // widget.tableId is non-null for Phone/Takeaway too (it carries the
-    // 'PhoneOrder'/'Takeaway' sentinel there) — checking _isTableOrder
-    // instead of `widget.tableId != null` is what actually tells them apart.
-    String? orderId;
-    if (_isTableOrder) {
-      // For table orders, get from TableProvider
-      final tableProvider = Provider.of<TableProvider>(context, listen: false);
-      orderId = tableProvider.currentOrderId;
-    } else {
-      // For phone/takeaway orders, get from OrderProvider
-      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-      orderId = orderProvider.createdOrderId;
-    }
+    final tableProvider = Provider.of<TableProvider>(context, listen: false);
+    final matchedTable = _findMatchedTable(tableProvider);
+    final String? orderId = _resolveActiveOrderId(
+      tableProvider,
+      cartProvider,
+      matchedTable,
+    );
 
     // Resolve proper backend order number (never KT/ or Unknown)
     final billingOrderNumber = _resolveOrderNumber(orderId);
@@ -1170,8 +1250,10 @@ class _CartViewState extends State<CartView> {
           _kotNumbers.clear();
           _kotNotes.clear();
           _orderNumber = null;
+          _syncedOrderId = null;
         });
         // Clear the active ordering session and go back to Tables dashboard
+        tableProvider.clearCurrentOrder();
         final navProvider = Provider.of<NavigationProvider>(
           context,
           listen: false,
@@ -1259,7 +1341,7 @@ class _CartViewState extends State<CartView> {
 
     final billId =
         (orderId != null ? tableProvider.getBillId(orderId) : null) ??
-        billingProvider.billId;
+        billingProvider.getBillIdForOrder(orderId);
 
     final taxProvider = Provider.of<TaxProvider>(context, listen: false);
     final totalAmount = cartProvider.totalAmount +
@@ -1285,6 +1367,7 @@ class _CartViewState extends State<CartView> {
                   cartProvider.clearOrderData(orderId);
                   tableProvider.clearBillId(orderId);
                 }
+                tableProvider.clearCurrentOrder();
                 final navProvider = Provider.of<NavigationProvider>(
                   context,
                   listen: false,

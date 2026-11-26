@@ -168,10 +168,23 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
                 table.activeOrders.any((o) => o.isBilled);
 
             if (isTableBilled) {
+              final isSingleOrderTable = table.activeOrders.length == 1;
               for (final order in table.activeOrders) {
-                if (order.isBilled ||
-                    table.status == TableStatus.billGenerated ||
-                    table.billGenerated) {
+                final hasOrderBillId =
+                    !GuidHelper.isNullOrEmpty(order.billId) ||
+                    !GuidHelper.isNullOrEmpty(tp.getBillId(order.orderId)) ||
+                    !GuidHelper.isNullOrEmpty(
+                        HiveService.getOrderBillId(order.orderId));
+
+                // Never include an unbilled peer order on a shared table just
+                // because another party on the table has generated a bill.
+                final isThisOrderBilled = order.isBilled ||
+                    hasOrderBillId ||
+                    (isSingleOrderTable &&
+                        (table.status == TableStatus.billGenerated ||
+                            table.billGenerated));
+
+                if (isThisOrderBilled) {
                   // Check if already exists in detailedBills
                   final existingIndex = detailedBills.indexWhere(
                     (b) =>
@@ -180,7 +193,7 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
                                 b.orderNo.trim() == order.orderId.trim())) ||
                         (order.billId != null &&
                             order.billId!.isNotEmpty &&
-                            b.billId == order.billId),
+                            GuidHelper.areEqual(b.billId, order.billId)),
                   );
 
                   String? billId = order.billId ??
@@ -205,6 +218,16 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
                     billId = od.billId;
                     tp.storeBillId(order.orderId, billId!);
                     HiveService.saveOrderBillId(order.orderId, billId);
+                  }
+
+                  // Guard: if this order is still not actually billed on the
+                  // backend, do not fabricate a pending payment card for it.
+                  final confirmedUnbilled = !order.isBilled &&
+                      !hasOrderBillId &&
+                      od?.isBilled != true &&
+                      !GuidHelper.isValid(billId);
+                  if (confirmedUnbilled) {
+                    continue;
                   }
 
                   if ((billId == null || !GuidHelper.isValid(billId)) && bills != null) {
@@ -502,11 +525,12 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
         for (final o in t.activeOrders) {
           if ((bill.orderNo.isNotEmpty &&
                   (o.generatedOrderNo.trim() == bill.orderNo.trim() ||
-                      o.orderId.trim() == bill.orderNo.trim())) ||
-              (o.billId != null && o.billId == bill.billId) ||
-              (tp.getBillId(o.orderId) == bill.billId) ||
-              (HiveService.getOrderBillId(o.orderId) == bill.billId) ||
-              (o.orderId == bill.billId)) {
+                      GuidHelper.areEqual(o.orderId, bill.orderNo))) ||
+              (o.billId != null && GuidHelper.areEqual(o.billId, bill.billId)) ||
+              GuidHelper.areEqual(tp.getBillId(o.orderId), bill.billId) ||
+              GuidHelper.areEqual(
+                  HiveService.getOrderBillId(o.orderId), bill.billId) ||
+              GuidHelper.areEqual(o.orderId, bill.billId)) {
             matchedTableId = t.id;
             matchedOrderId = o.orderId;
             break;

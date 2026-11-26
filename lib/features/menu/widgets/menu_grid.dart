@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/menu_provider.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
+import 'package:restaurant_pos_system/features/order_taking/providers/order_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/navigation_provider.dart';
+import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/empty_state_widget.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/skeleton_loader.dart';
@@ -185,6 +187,23 @@ class MenuGrid extends StatelessWidget {
     );
   }
 
+  String? _resolveOrderId(
+    BuildContext context,
+    NavigationProvider navProvider,
+  ) {
+    try {
+      if (navProvider.selectedTableId != null) {
+        return Provider.of<TableProvider>(context, listen: false).currentOrderId;
+      }
+      if (navProvider.selectedOrderType != null) {
+        return Provider.of<OrderProvider>(context, listen: false).createdOrderId;
+      }
+    } catch (_) {
+      // Some isolated widget tests do not mount TableProvider/OrderProvider.
+    }
+    return null;
+  }
+
   // Helper method to add item to cart
   void _addToCart(
     BuildContext context,
@@ -215,6 +234,7 @@ class MenuGrid extends StatelessWidget {
         (item.productPrice?.toDouble() ?? 0.0),
         tableId,
         tableName,
+        orderId: _resolveOrderId(context, navProvider),
         imageUrl: item.imageThumbUrl ?? item.imageUrl,
         categoryId: item.categoryId ?? '',
         categoryName: item.categoryName ?? '',
@@ -259,6 +279,7 @@ class MenuGrid extends StatelessWidget {
         (item.productPrice?.toDouble() ?? 0.0),
         tableId,
         tableName,
+        orderId: _resolveOrderId(context, navProvider),
         imageUrl: item.imageThumbUrl ?? item.imageUrl,
         categoryId: item.categoryId ?? '',
         categoryName: item.categoryName ?? '',

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
+import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import '../providers/billing_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
@@ -75,8 +76,9 @@ class BillSuccessDialog extends StatelessWidget {
     if (tableId == 'Takeaway') return 'Takeaway';
     try {
       final tableProvider = Provider.of<TableProvider>(context, listen: false);
-      final t =
-          tableProvider.tables.where((tbl) => tbl.id == tableId).firstOrNull;
+      final t = tableProvider.tables
+          .where((tbl) => GuidHelper.areEqual(tbl.id, tableId))
+          .firstOrNull;
       if (t != null && t.name.isNotEmpty) return t.name;
     } catch (_) {}
     return tableId!.startsWith('Table') ? tableId! : 'Table $tableId';
@@ -120,7 +122,10 @@ class BillSuccessDialog extends StatelessWidget {
             listen: false,
           );
           if (orderId != null && orderId!.isNotEmpty) {
-            tableProvider.storeBillId(orderId!, billingProvider.billId ?? '');
+            final scopedBillId = billingProvider.getBillIdForOrder(orderId);
+            if (GuidHelper.isValid(scopedBillId)) {
+              tableProvider.storeBillId(orderId!, scopedBillId!);
+            }
           }
         } catch (e) {
           debugPrint('BillSuccessDialog - Error storing billId: $e');
@@ -1596,12 +1601,16 @@ class BillSuccessDialog extends StatelessWidget {
         listen: false,
       );
 
-      final billIdToSave = billingProvider.billId ?? '';
+      final billIdToSave = billingProvider.getBillIdForOrder(orderId) ?? '';
       if (orderId != null && orderId!.isNotEmpty) {
-        if (billIdToSave.isNotEmpty) {
+        if (GuidHelper.isValid(billIdToSave)) {
           tableProvider.storeBillId(orderId!, billIdToSave);
           HiveService.saveOrderBillId(orderId!, billIdToSave);
         }
+        tableProvider.markOrderBilled(
+          orderId!,
+          billId: GuidHelper.isValid(billIdToSave) ? billIdToSave : null,
+        );
         cartProvider.markOrderBilled(orderId!);
       }
       if (isRealTable) {
@@ -1614,6 +1623,9 @@ class BillSuccessDialog extends StatelessWidget {
 
     if (!context.mounted) return;
     Navigator.of(context).popUntil((route) => route.isFirst);
+    try {
+      Provider.of<TableProvider>(context, listen: false).clearCurrentOrder();
+    } catch (_) {}
     final navProvider = Provider.of<NavigationProvider>(context, listen: false);
     navProvider.clearTableSelection();
     navProvider.navigateToTables();
@@ -1638,12 +1650,16 @@ class BillSuccessDialog extends StatelessWidget {
         listen: false,
       );
 
-      final billIdToSave = billingProvider.billId ?? '';
+      final billIdToSave = billingProvider.getBillIdForOrder(orderId) ?? '';
       if (orderId != null && orderId!.isNotEmpty) {
-        if (billIdToSave.isNotEmpty) {
+        if (GuidHelper.isValid(billIdToSave)) {
           tableProvider.storeBillId(orderId!, billIdToSave);
           HiveService.saveOrderBillId(orderId!, billIdToSave);
         }
+        tableProvider.markOrderBilled(
+          orderId!,
+          billId: GuidHelper.isValid(billIdToSave) ? billIdToSave : null,
+        );
         cartProvider.markOrderBilled(orderId!);
       }
       if (isRealTable) {
@@ -1657,6 +1673,9 @@ class BillSuccessDialog extends StatelessWidget {
 
     if (!context.mounted) return;
     Navigator.of(context).popUntil((route) => route.isFirst);
+    try {
+      Provider.of<TableProvider>(context, listen: false).clearCurrentOrder();
+    } catch (_) {}
     final navProvider = Provider.of<NavigationProvider>(context, listen: false);
     navProvider.clearTableSelection();
     navProvider.navigateToTables();
@@ -1687,6 +1706,8 @@ class BillSuccessDialog extends StatelessWidget {
             await ApiService.updateOrderHeadStatus(
               orderHeadId: orderId!,
               statusId: 7,
+              status: 'Settled',
+              tableId: tableId,
             );
           } catch (e) {
             debugPrint('BillSuccessDialog - Error updating order status: $e');
@@ -1703,8 +1724,21 @@ class BillSuccessDialog extends StatelessWidget {
           }
         }
 
+        // Only mark table channel Available on the server if this was the last
+        // active order on the table — another party may still be dining!
         if (tableId != null && tableId!.isNotEmpty) {
-          tableProvider.updateTableStatus(tableId!, 'available');
+          final hostTable = tableProvider.tables
+              .where((t) => GuidHelper.areEqual(t.id, tableId))
+              .firstOrNull;
+          if (hostTable == null || !hostTable.hasActiveOrders) {
+            try {
+              await ApiService.updateOrderChannelStatus(
+                orderChannelId: tableId!,
+                channelStatusId: 0,
+                status: 'Available',
+              );
+            } catch (_) {}
+          }
         }
 
         await tableProvider.refreshTables();
@@ -1734,7 +1768,7 @@ class BillSuccessDialog extends StatelessWidget {
         context,
         listen: false,
       );
-      billId = billingProvider.billId;
+      billId = billingProvider.getBillIdForOrder(orderId);
     } catch (e) {
       debugPrint('BillSuccessDialog - Error getting billId: $e');
     }

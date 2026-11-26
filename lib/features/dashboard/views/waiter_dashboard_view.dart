@@ -8,6 +8,7 @@ import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
+import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
 import '../widgets/hamburger_drawer.dart';
 import '../widgets/location_header.dart';
@@ -419,8 +420,9 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     }
 
     if (billedOrder != null ||
-        table.status == TableStatus.billGenerated ||
-        table.billGenerated) {
+        (!table.hasActiveOrders &&
+            (table.status == TableStatus.billGenerated ||
+                table.billGenerated))) {
       final targetOrderId =
           billedOrder?.orderId ??
           (table.hasActiveOrders ? table.activeOrders.last.orderId : null);
@@ -583,7 +585,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     // it — createOrderForTable has already made it the current order.
     final newOrderId = tableProvider.currentOrderId;
     final refreshed = tableProvider.tables.firstWhere(
-      (t) => t.id == table.id,
+      (t) => GuidHelper.areEqual(t.id, table.id),
       orElse: () => table,
     );
     if (newOrderId != null && newOrderId.isNotEmpty) {

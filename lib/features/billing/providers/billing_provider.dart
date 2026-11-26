@@ -11,6 +11,7 @@ import 'package:restaurant_pos_system/data/models/bill_details_response.dart'
     as receipt;
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
+import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 
 class BillingProvider extends ChangeNotifier {
@@ -22,6 +23,8 @@ class BillingProvider extends ChangeNotifier {
   List<PaymentModeData> _paymentModes = [];
   PaymentModeData? _selectedPaymentMode;
   String? _billId; // Store billId from CreateBill response
+  String? _billOrderId; // Track which order _billId belongs to
+  final Map<String, String> _orderBillIds = {};
 
   BillingProvider() {
     debugPrint('BillingProvider - Instance created');
@@ -38,6 +41,24 @@ class BillingProvider extends ChangeNotifier {
   String? get billId {
     debugPrint('BillingProvider - BillId accessed: $_billId');
     return _billId;
+  }
+
+  /// Returns the generated bill ID scoped strictly to [orderId] so that a
+  /// bill generated for one party at a table never leaks to another party.
+  String? getBillIdForOrder(String? orderId) {
+    if (orderId == null || orderId.trim().isEmpty) {
+      return (_billOrderId == null || _billOrderId!.trim().isEmpty)
+          ? _billId
+          : null;
+    }
+    final clean = orderId.trim().toLowerCase();
+    final mapped = _orderBillIds[clean];
+    if (GuidHelper.isValid(mapped)) return mapped;
+    if (GuidHelper.areEqual(_billOrderId, orderId) &&
+        GuidHelper.isValid(_billId)) {
+      return _billId;
+    }
+    return null;
   }
 
   void setCustomerPhone(String? phone) {
@@ -60,15 +81,27 @@ class BillingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void clearBillId() {
-    _billId = null;
-    debugPrint('BillingProvider - Bill ID cleared');
+  void clearBillId({String? orderId}) {
+    if (orderId != null && orderId.trim().isNotEmpty) {
+      _orderBillIds.remove(orderId.trim().toLowerCase());
+      if (GuidHelper.areEqual(_billOrderId, orderId)) {
+        _billId = null;
+        _billOrderId = null;
+      }
+    } else {
+      _billId = null;
+      _billOrderId = null;
+      _orderBillIds.clear();
+    }
+    debugPrint('BillingProvider - Bill ID cleared (orderId: $orderId)');
     notifyListeners();
   }
 
   /// Wipes all in-memory state on logout.
   void reset() {
     _billId = null;
+    _billOrderId = null;
+    _orderBillIds.clear();
     _customerPhone = null;
     _selectedPaymentMode = null;
     _paymentModes = [];
@@ -178,6 +211,8 @@ class BillingProvider extends ChangeNotifier {
   }) async {
     _isGenerating = true;
     _errorMessage = null;
+    _billId = null;
+    _billOrderId = orderId;
     notifyListeners();
 
     try {
@@ -365,6 +400,11 @@ class BillingProvider extends ChangeNotifier {
 
         if (billResponse?.isSuccess == true) {
           _billId = billResponse!.data?.billId; // Store billId
+          _billOrderId = orderId;
+          if (_billId != null && _billId!.isNotEmpty) {
+            _orderBillIds[orderId.trim().toLowerCase()] = _billId!;
+            await HiveService.saveOrderBillId(orderId, _billId!);
+          }
           final now = DateTime.now();
           if (_billId != null && _billId!.isNotEmpty) {
             await HiveService.saveBillTimestamp(_billId!, now);
@@ -449,6 +489,14 @@ class BillingProvider extends ChangeNotifier {
 
         if (billResponse?.isSuccess == true) {
           _billId = billResponse!.data?.billId; // Store billId
+          _billOrderId = orderId;
+          if (orderId != null &&
+              orderId.isNotEmpty &&
+              _billId != null &&
+              _billId!.isNotEmpty) {
+            _orderBillIds[orderId.trim().toLowerCase()] = _billId!;
+            await HiveService.saveOrderBillId(orderId, _billId!);
+          }
           final now = DateTime.now();
           if (_billId != null && _billId!.isNotEmpty) {
             await HiveService.saveBillTimestamp(_billId!, now);

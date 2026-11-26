@@ -189,7 +189,11 @@ class HiveService {
 
   // Outlet ID Management
   static int? getOutletId() {
-    return posBox.get(StorageKeys.outletId);
+    try {
+      return posBox.get(StorageKeys.outletId);
+    } catch (_) {
+      return null;
+    }
   }
 
   static void setOutletId(int outletId) {
@@ -199,7 +203,11 @@ class HiveService {
 
   // Location Management
   static int? getSelectedLocationId() {
-    return posBox.get(StorageKeys.selectedLocationId) ?? getOutletId();
+    try {
+      return posBox.get(StorageKeys.selectedLocationId) ?? getOutletId();
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<void> setSelectedLocationId(int locationId) async {
@@ -208,7 +216,11 @@ class HiveService {
   }
 
   static String? getSelectedLocationName() {
-    return posBox.get(StorageKeys.selectedLocationName);
+    try {
+      return posBox.get(StorageKeys.selectedLocationName);
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<void> setSelectedLocationName(String locationName) async {
@@ -463,12 +475,16 @@ class HiveService {
   // own bill (OrderHead.OrderChannelId is many-to-one). Keying by table gave
   // those groups a single shared cart and a single shared bill id, so the
   // second group's bill silently overwrote the first's.
+  static String _normId(String id) => id.trim().toLowerCase();
+
   static Future<void> saveOrderCart(
     String orderId,
     Map<String, dynamic> cartData,
   ) async {
     try {
-      await posBox.put('cart_$orderId', cartData);
+      final norm = _normId(orderId);
+      if (norm.isEmpty) return;
+      await posBox.put('cart_$norm', cartData);
     } catch (e) {
       debugPrint('Error saving order cart: $e');
     }
@@ -476,7 +492,9 @@ class HiveService {
 
   static Map<String, dynamic>? getOrderCart(String orderId) {
     try {
-      final data = posBox.get('cart_$orderId');
+      final norm = _normId(orderId);
+      if (norm.isEmpty) return null;
+      final data = posBox.get('cart_$norm') ?? posBox.get('cart_$orderId');
       if (data != null && data is Map) {
         return Map<String, dynamic>.from(data);
       }
@@ -488,6 +506,10 @@ class HiveService {
 
   static Future<void> clearOrderCart(String orderId) async {
     try {
+      final norm = _normId(orderId);
+      if (norm.isNotEmpty) {
+        await posBox.delete('cart_$norm');
+      }
       await posBox.delete('cart_$orderId');
     } catch (e) {
       debugPrint('Error clearing order cart: $e');
@@ -496,8 +518,10 @@ class HiveService {
 
   static Future<void> saveOrderBillId(String orderId, String billId) async {
     try {
-      await posBox.put('bill_id_$orderId', billId);
-      debugPrint('Saved bill ID for order $orderId: $billId');
+      final norm = _normId(orderId);
+      if (norm.isEmpty) return;
+      await posBox.put('bill_id_$norm', billId);
+      debugPrint('Saved bill ID for order $norm: $billId');
     } catch (e) {
       debugPrint('Error saving order bill ID: $e');
     }
@@ -549,8 +573,10 @@ class HiveService {
 
   static String? getOrderBillId(String orderId) {
     try {
-      final billId = posBox.get('bill_id_$orderId');
-      if (billId != null && billId is String) {
+      final norm = _normId(orderId);
+      final billId = (norm.isNotEmpty ? posBox.get('bill_id_$norm') : null) ??
+          posBox.get('bill_id_$orderId');
+      if (billId != null && billId is String && billId.isNotEmpty) {
         return billId;
       }
     } catch (e) {
@@ -583,11 +609,11 @@ class HiveService {
 
   static Future<void> saveOrderKotNumber(String orderId, String kotNo) async {
     try {
-      if (orderId.trim().isEmpty || kotNo.trim().isEmpty) return;
-      final cleanId = orderId.trim();
+      final norm = _normId(orderId);
+      if (norm.isEmpty || kotNo.trim().isEmpty) return;
       final cleanKot = kotNo.trim();
-      await posBox.put('order_kot_no_$cleanId', cleanKot);
-      debugPrint('[HiveService] Saved KOT number for order $cleanId: $cleanKot');
+      await posBox.put('order_kot_no_$norm', cleanKot);
+      debugPrint('[HiveService] Saved KOT number for order $norm: $cleanKot');
     } catch (e) {
       debugPrint('[HiveService] Error saving KOT number for order: $e');
     }
@@ -595,8 +621,10 @@ class HiveService {
 
   static String? getOrderKotNumber(String orderId) {
     try {
-      if (orderId.trim().isEmpty) return null;
-      final val = posBox.get('order_kot_no_${orderId.trim()}');
+      final norm = _normId(orderId);
+      if (norm.isEmpty) return null;
+      final val = posBox.get('order_kot_no_$norm') ??
+          posBox.get('order_kot_no_${orderId.trim()}');
       return (val is String && val.isNotEmpty) ? val : null;
     } catch (_) {
       return null;
@@ -605,15 +633,20 @@ class HiveService {
 
   static Future<void> clearOrderKotNumber(String orderId) async {
     try {
-      if (orderId.trim().isEmpty) return;
-      await posBox.delete('order_kot_no_${orderId.trim()}');
+      final norm = _normId(orderId);
+      if (norm.isNotEmpty) {
+        await posBox.delete('order_kot_no_$norm');
+      }
+      if (orderId.trim().isNotEmpty) {
+        await posBox.delete('order_kot_no_${orderId.trim()}');
+      }
     } catch (_) {}
   }
 
   static Future<void> saveCustomerName(String identifier, String name) async {
     try {
       if (identifier.trim().isEmpty || name.trim().isEmpty) return;
-      final clean = identifier.replaceAll('#', '').trim();
+      final clean = identifier.replaceAll('#', '').trim().toLowerCase();
       await posBox.put('cust_name_$clean', name.trim());
       debugPrint('[HiveService] Saved customer name for $clean: $name');
     } catch (e) {
@@ -624,8 +657,9 @@ class HiveService {
   static String? getCustomerName(String identifier) {
     try {
       if (identifier.trim().isEmpty) return null;
-      final clean = identifier.replaceAll('#', '').trim();
-      final name = posBox.get('cust_name_$clean');
+      final raw = identifier.replaceAll('#', '').trim();
+      final norm = raw.toLowerCase();
+      final name = posBox.get('cust_name_$norm') ?? posBox.get('cust_name_$raw');
       if (name != null && name is String && name.trim().isNotEmpty) {
         return name.trim();
       }
@@ -666,7 +700,7 @@ class HiveService {
   static Future<void> saveOrderNo(String identifier, String orderNo) async {
     try {
       if (identifier.trim().isEmpty || orderNo.trim().isEmpty) return;
-      final clean = identifier.replaceAll('#', '').trim();
+      final clean = identifier.replaceAll('#', '').trim().toLowerCase();
       await posBox.put('order_no_$clean', orderNo.trim());
       debugPrint('[HiveService] Saved order number for $clean: $orderNo');
     } catch (e) {
@@ -677,8 +711,9 @@ class HiveService {
   static String? getOrderNo(String identifier) {
     try {
       if (identifier.trim().isEmpty) return null;
-      final clean = identifier.replaceAll('#', '').trim();
-      final no = posBox.get('order_no_$clean');
+      final raw = identifier.replaceAll('#', '').trim();
+      final norm = raw.toLowerCase();
+      final no = posBox.get('order_no_$norm') ?? posBox.get('order_no_$raw');
       if (no != null && no is String && no.trim().isNotEmpty) {
         return no.trim();
       }
@@ -690,6 +725,10 @@ class HiveService {
 
   static Future<void> clearOrderBillId(String orderId) async {
     try {
+      final norm = _normId(orderId);
+      if (norm.isNotEmpty) {
+        await posBox.delete('bill_id_$norm');
+      }
       await posBox.delete('bill_id_$orderId');
       debugPrint('Cleared bill ID for order $orderId');
     } catch (e) {

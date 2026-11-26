@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,6 +16,7 @@ import '../providers/navigation_provider.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
+import 'package:restaurant_pos_system/shared/widgets/layout/shimmer_effect.dart';
 
 /// Payment status of an active order
 enum OrderPaymentStatus {
@@ -77,12 +79,18 @@ class MultiOrderManagementDialog extends StatefulWidget {
   final RestaurantTable table;
   final bool enableDynamicFetch;
   final Map<String, OrderDynamicInfo>? initialDynamicData;
+  final bool? isLoading;
+  final bool enableShimmerAnimation;
+  final Duration liveSyncInterval;
 
   const MultiOrderManagementDialog({
     super.key,
     required this.table,
     this.enableDynamicFetch = true,
     this.initialDynamicData,
+    this.isLoading,
+    this.enableShimmerAnimation = true,
+    this.liveSyncInterval = const Duration(seconds: 4),
   });
 
   @override
@@ -93,22 +101,102 @@ class MultiOrderManagementDialog extends StatefulWidget {
 class _MultiOrderManagementDialogState
     extends State<MultiOrderManagementDialog> {
   bool _isCreatingOrder = false;
+  bool _isLoadingDynamic = false;
   final Map<String, OrderDynamicInfo> _dynamicDataMap = {};
+  final Set<String> _deletingOrderIds = {};
+  Timer? _liveSyncTimer;
+  bool _isSyncing = false;
+  bool _hadActiveOrders = false;
+  String _lastTableOrdersSignature = '';
+  bool _isClosingFromRemoteClear = false;
+
+  String _buildOrdersSignature(List<ActiveOrder> orders) {
+    return orders
+        .map(
+          (o) =>
+              '${o.orderId.toLowerCase().trim()}|${o.orderStatus}|${o.isBilled}|${o.billId ?? ''}|${o.kotNumber ?? ''}',
+        )
+        .join(';');
+  }
 
   @override
   void initState() {
     super.initState();
+    _hadActiveOrders = widget.table.hasActiveOrders;
+    _lastTableOrdersSignature = _buildOrdersSignature(widget.table.activeOrders);
     if (widget.initialDynamicData != null) {
       _dynamicDataMap.addAll(widget.initialDynamicData!);
     }
+    final hasInitialData = widget.initialDynamicData != null &&
+        widget.initialDynamicData!.isNotEmpty;
+    _isLoadingDynamic = widget.isLoading ??
+        (widget.enableDynamicFetch && !hasInitialData);
+
     if (widget.enableDynamicFetch) {
       _loadDynamicOrdersData();
+      _startLiveSyncTimer();
+    }
+  }
+
+  void _startLiveSyncTimer() {
+    _liveSyncTimer?.cancel();
+    _liveSyncTimer = Timer.periodic(widget.liveSyncInterval, (_) {
+      _syncLiveTableAndOrders();
+    });
+  }
+
+  Future<void> _syncLiveTableAndOrders() async {
+    if (!mounted ||
+        _isSyncing ||
+        _isCreatingOrder ||
+        _deletingOrderIds.isNotEmpty) {
+      return;
+    }
+    _isSyncing = true;
+    try {
+      final tableProvider = Provider.of<TableProvider>(context, listen: false);
+      await tableProvider.refreshTables(silent: true);
+      if (mounted) {
+        await _loadDynamicOrdersData(silent: true);
+      }
+    } finally {
+      _isSyncing = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _liveSyncTimer?.cancel();
+    _liveSyncTimer = null;
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant MultiOrderManagementDialog oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialDynamicData != null) {
+      _dynamicDataMap.addAll(widget.initialDynamicData!);
+    }
+    if (widget.isLoading != null && widget.isLoading != oldWidget.isLoading) {
+      setState(() {
+        _isLoadingDynamic = widget.isLoading!;
+      });
+    }
+    if (widget.liveSyncInterval != oldWidget.liveSyncInterval &&
+        widget.enableDynamicFetch) {
+      _startLiveSyncTimer();
     }
   }
 
   /// Dynamically load full order line details, live kitchen statuses, and payment states
   Future<void> _loadDynamicOrdersData({bool silent = false}) async {
     if (!mounted) return;
+
+    if (!silent && _dynamicDataMap.isEmpty) {
+      setState(() {
+        _isLoadingDynamic = true;
+      });
+    }
 
     try {
       final token = HiveService.getAuthToken();
@@ -328,14 +416,33 @@ class _MultiOrderManagementDialogState
       );
 
       if (mounted) {
+        final latestTable = tableProvider.tables.firstWhere(
+          (t) => GuidHelper.areEqual(t.id, widget.table.id),
+          orElse: () => currentTable,
+        );
+        final latestActiveIds = latestTable.activeOrders
+            .map((o) => o.orderId.toLowerCase().trim())
+            .toSet();
         setState(() {
           for (final entry in results) {
-            _dynamicDataMap[entry.key] = entry.value;
+            if (latestActiveIds.contains(entry.key.toLowerCase().trim())) {
+              _dynamicDataMap[entry.key] = entry.value;
+            }
           }
+          _dynamicDataMap.removeWhere(
+            (orderId, _) =>
+                !latestActiveIds.contains(orderId.toLowerCase().trim()),
+          );
         });
       }
     } catch (e) {
       debugPrint('[MultiOrderDialog] Error loading dynamic orders data: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingDynamic = widget.isLoading ?? false;
+        });
+      }
     }
   }
 
@@ -350,6 +457,46 @@ class _MultiOrderManagementDialogState
           (t) => GuidHelper.areEqual(t.id, widget.table.id),
           orElse: () => widget.table,
         );
+
+        if (currentTable.hasActiveOrders) {
+          _hadActiveOrders = true;
+        }
+
+        final activeIds = currentTable.activeOrders
+            .map((o) => o.orderId.toLowerCase().trim())
+            .toSet();
+        _dynamicDataMap.removeWhere(
+          (orderId, _) => !activeIds.contains(orderId.toLowerCase().trim()),
+        );
+
+        final currentSig = _buildOrdersSignature(currentTable.activeOrders);
+        if (currentSig != _lastTableOrdersSignature) {
+          _lastTableOrdersSignature = currentSig;
+          if (widget.enableDynamicFetch && currentTable.hasActiveOrders) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _loadDynamicOrdersData(silent: true);
+              }
+            });
+          }
+        }
+
+        final bool isReservedOnly = !currentTable.hasActiveOrders &&
+            currentTable.status == TableStatus.occupied;
+        if (_hadActiveOrders &&
+            !currentTable.hasActiveOrders &&
+            !isReservedOnly &&
+            !_isClosingFromRemoteClear &&
+            _deletingOrderIds.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted || _isClosingFromRemoteClear) return;
+            final isCurrent = ModalRoute.of(context)?.isCurrent ?? false;
+            if (isCurrent && Navigator.of(context).canPop()) {
+              _isClosingFromRemoteClear = true;
+              Navigator.of(context).pop();
+            }
+          });
+        }
 
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
@@ -586,6 +733,10 @@ class _MultiOrderManagementDialogState
       return _buildNoActiveOrders(isDark);
     }
 
+    if (_isLoadingDynamic) {
+      return _buildSkeletonOrdersView(context, table, isDark);
+    }
+
     return ListView.separated(
       shrinkWrap: true,
       padding: const EdgeInsets.all(10),
@@ -604,6 +755,320 @@ class _MultiOrderManagementDialogState
           isDark,
         );
       },
+    );
+  }
+
+  Widget _buildSkeletonOrdersView(
+    BuildContext context,
+    RestaurantTable table,
+    bool isDark,
+  ) {
+    final count = table.activeOrders.isNotEmpty
+        ? table.activeOrders.length
+        : (table.orderCount > 0 ? table.orderCount : 2);
+
+    final baseColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final highlightColor =
+        isDark ? const Color(0xFF475569) : const Color(0xFFFFFFFF);
+    final boneColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    return Shimmer(
+      enabled: widget.enableShimmerAnimation,
+      duration: const Duration(milliseconds: 1400),
+      gradient: LinearGradient(
+        colors: [
+          baseColor,
+          Color.lerp(baseColor, highlightColor, 0.4) ?? baseColor,
+          highlightColor,
+          Color.lerp(baseColor, highlightColor, 0.4) ?? baseColor,
+          baseColor,
+        ],
+        stops: const [0.0, 0.35, 0.5, 0.65, 1.0],
+        begin: const Alignment(-1.0, -0.3),
+        end: const Alignment(1.0, 0.3),
+        tileMode: TileMode.clamp,
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        padding: const EdgeInsets.all(10),
+        itemCount: count,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        itemBuilder: (context, index) {
+          return _buildOrderCardSkeleton(
+            index: index,
+            isDark: isDark,
+            boneColor: boneColor,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildOrderCardSkeleton({
+    required int index,
+    required bool isDark,
+    required Color boneColor,
+  }) {
+    // Alternates between KOT style (index 0) and Bill Generated / Partially Paid style (index 1)
+    final isBilledStyle = index % 2 == 1;
+
+    final accentColor = isBilledStyle
+        ? (isDark
+            ? const Color(0xFFD97706).withValues(alpha: 0.6)
+            : const Color(0xFFFDE68A))
+        : (isDark
+            ? const Color(0xFF059669).withValues(alpha: 0.6)
+            : const Color(0xFFA7F3D0));
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.10)
+              : const Color(0xFFE2E8F0),
+          width: 0.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: ShimmerLoading(
+        child: Stack(
+          children: [
+            // Left accent indicator stripe
+            Positioned(
+              top: 0,
+              bottom: 0,
+              left: 0,
+              width: 3.5,
+              child: Container(color: accentColor),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Row 1: Order ID bone + Badges bones
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      ShimmerBone.rectangular(
+                        width: isBilledStyle ? 130 : 140,
+                        height: 16,
+                        color: boneColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      const Spacer(),
+                      ShimmerBone.pill(
+                        width: isBilledStyle ? 88 : 94,
+                        height: 20,
+                        color: boneColor,
+                      ),
+                      const SizedBox(width: 5),
+                      ShimmerBone.pill(
+                        width: isBilledStyle ? 80 : 72,
+                        height: 20,
+                        color: boneColor,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 7),
+
+                  // Row 2: Guests & Items meta bones
+                  Row(
+                    children: [
+                      ShimmerBone.circular(
+                        size: 13,
+                        color: boneColor,
+                      ),
+                      const SizedBox(width: 4),
+                      ShimmerBone.rectangular(
+                        width: 52,
+                        height: 11,
+                        color: boneColor,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      Container(
+                        height: 10,
+                        width: 1,
+                        margin: const EdgeInsets.symmetric(horizontal: 8),
+                        color: isDark
+                            ? Colors.white24
+                            : const Color(0xFFCBD5E1),
+                      ),
+                      ShimmerBone.circular(
+                        size: 13,
+                        color: boneColor,
+                      ),
+                      const SizedBox(width: 4),
+                      ShimmerBone.rectangular(
+                        width: 46,
+                        height: 11,
+                        color: boneColor,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ],
+                  ),
+
+                  if (isBilledStyle) ...[
+                    const SizedBox(height: 7),
+                    // 3-Column financial summary box skeleton
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.03)
+                            : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : const Color(0xFFF1F5F9),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ShimmerBone.rectangular(
+                                width: 50,
+                                height: 9,
+                                color: boneColor,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              const SizedBox(height: 4),
+                              ShimmerBone.rectangular(
+                                width: 58,
+                                height: 13,
+                                color: boneColor,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ShimmerBone.rectangular(
+                                width: 36,
+                                height: 9,
+                                color: boneColor,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              const SizedBox(height: 4),
+                              ShimmerBone.rectangular(
+                                width: 50,
+                                height: 13,
+                                color: boneColor,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ShimmerBone.rectangular(
+                                width: 52,
+                                height: 9,
+                                color: boneColor,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              const SizedBox(height: 4),
+                              ShimmerBone.rectangular(
+                                width: 54,
+                                height: 13,
+                                color: boneColor,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    // Reminder banner bone
+                    ShimmerBone.rectangular(
+                      width: double.infinity,
+                      height: 22,
+                      color: boneColor,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    const SizedBox(height: 8),
+                    // Action row: delete icon + collect payment button bones
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ShimmerBone.rectangular(
+                          width: 32,
+                          height: 30,
+                          color: boneColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        const SizedBox(width: 8),
+                        ShimmerBone.rectangular(
+                          width: 118,
+                          height: 30,
+                          color: boneColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 10),
+                    // KOT Action row: Amount on left, Delete + Open Cart on right
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        ShimmerBone.rectangular(
+                          width: 65,
+                          height: 18,
+                          color: boneColor,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ShimmerBone.rectangular(
+                              width: 32,
+                              height: 30,
+                              color: boneColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            const SizedBox(width: 8),
+                            ShimmerBone.rectangular(
+                              width: 95,
+                              height: 30,
+                              color: boneColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1292,15 +1757,21 @@ class _MultiOrderManagementDialogState
     OrderDynamicInfo? dynamicInfo,
     bool isDark,
   ) {
+    final bool isDeleting = _deletingOrderIds.any(
+      (id) => GuidHelper.areEqual(id, order.orderId),
+    );
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => _removeOrder(
-          context,
-          table,
-          order,
-          dynamicInfo,
-        ),
+        onTap: isDeleting
+            ? null
+            : () => _removeOrder(
+                  context,
+                  table,
+                  order,
+                  dynamicInfo,
+                ),
         borderRadius: BorderRadius.circular(8),
         child: Container(
           height: 34,
@@ -1317,11 +1788,24 @@ class _MultiOrderManagementDialogState
               width: 1,
             ),
           ),
-          child: const Icon(
-            Icons.delete_outline_rounded,
-            size: 17,
-            color: Color(0xFFDC2626),
-          ),
+          child: isDeleting
+              ? const Center(
+                  child: SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFFDC2626),
+                      ),
+                    ),
+                  ),
+                )
+              : const Icon(
+                  Icons.delete_outline_rounded,
+                  size: 17,
+                  color: Color(0xFFDC2626),
+                ),
         ),
       ),
     );
@@ -1555,7 +2039,11 @@ class _MultiOrderManagementDialogState
         context,
         listen: false,
       );
-      navProvider.selectTable(table.id, table.name, table.location);
+      navProvider.selectTableAndNavigateToCart(
+        table.id,
+        table.name,
+        table.location,
+      );
 
       Navigator.pop(context); // Close dialog
     }
@@ -1567,14 +2055,29 @@ class _MultiOrderManagementDialogState
     ActiveOrder order,
     TableProvider tableProvider,
   ) async {
+    final items = await tableProvider.loadCartStateForOrder(order.orderId);
     tableProvider.setCurrentOrder(order.orderId);
-    final navProvider = Provider.of<NavigationProvider>(context, listen: false);
-    navProvider.selectTableAndNavigateToMenu(
-      table.id,
-      table.name,
-      table.location,
-    );
-    Navigator.pop(context); // Close dialog
+    if (context.mounted) {
+      final animatedCart = Provider.of<AnimatedCartProvider>(
+        context,
+        listen: false,
+      );
+      animatedCart.importFromOrderCart(
+        items,
+        orderId: order.orderId,
+        tableId: table.id,
+        tableName: table.name,
+        clearExisting: true,
+      );
+      final navProvider =
+          Provider.of<NavigationProvider>(context, listen: false);
+      navProvider.selectTableAndNavigateToMenu(
+        table.id,
+        table.name,
+        table.location,
+      );
+      Navigator.pop(context); // Close dialog
+    }
   }
 
   Future<void> _handleOpenMenuForTable(
@@ -1800,6 +2303,10 @@ class _MultiOrderManagementDialogState
     ActiveOrder order,
     OrderDynamicInfo? dynamicInfo,
   ) {
+    if (_deletingOrderIds.any((id) => GuidHelper.areEqual(id, order.orderId))) {
+      return;
+    }
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final double paidAmount = dynamicInfo?.paidAmount ?? 0.0;
@@ -1983,6 +2490,20 @@ class _MultiOrderManagementDialogState
                                         Expanded(
                                           child: ElevatedButton(
                                             onPressed: () async {
+                                              if (_deletingOrderIds.any(
+                                                (id) => GuidHelper.areEqual(
+                                                  id,
+                                                  order.orderId,
+                                                ),
+                                              )) {
+                                                return;
+                                              }
+                                              if (mounted) {
+                                                setState(() {
+                                                  _deletingOrderIds
+                                                      .add(order.orderId);
+                                                });
+                                              }
                                               closeDialog();
                                               final tableProvider =
                                                   Provider.of<TableProvider>(
@@ -1995,18 +2516,49 @@ class _MultiOrderManagementDialogState
                                                 listen: false,
                                               );
 
-                                              final success = await tableProvider
-                                                  .removeOrderFromTable(
-                                                table.id,
-                                                order.orderId,
-                                                isPaidInFull: isPaidInFull,
-                                              );
+                                              var success = false;
+                                              try {
+                                                success = await tableProvider
+                                                    .removeOrderFromTable(
+                                                  table.id,
+                                                  order.orderId,
+                                                  isPaidInFull: isPaidInFull,
+                                                );
+                                              } finally {
+                                                if (mounted) {
+                                                  setState(() {
+                                                    _deletingOrderIds
+                                                        .removeWhere(
+                                                      (id) =>
+                                                          GuidHelper.areEqual(
+                                                        id,
+                                                        order.orderId,
+                                                      ),
+                                                    );
+                                                  });
+                                                }
+                                              }
 
                                               if (context.mounted) {
                                                 if (success) {
-                                                  cartProvider.clearCart();
-                                                  _dynamicDataMap
-                                                      .remove(order.orderId);
+                                                  cartProvider.clearOrderData(
+                                                    order.orderId,
+                                                  );
+                                                  if (GuidHelper.areEqual(
+                                                    tableProvider
+                                                        .currentOrderId,
+                                                    order.orderId,
+                                                  )) {
+                                                    tableProvider
+                                                        .clearCurrentOrder();
+                                                  }
+                                                  _dynamicDataMap.removeWhere(
+                                                    (key, _) =>
+                                                        GuidHelper.areEqual(
+                                                      key,
+                                                      order.orderId,
+                                                    ),
+                                                  );
 
                                                   AppSnackBar.showSuccess(
                                                     context,
@@ -2019,16 +2571,37 @@ class _MultiOrderManagementDialogState
                                                           .firstWhere(
                                                     (t) => GuidHelper.areEqual(
                                                         t.id, table.id),
-                                                    orElse: () => table,
+                                                    orElse: () =>
+                                                        RestaurantTable(
+                                                      id: table.id,
+                                                      name: table.name,
+                                                      capacity: table.capacity,
+                                                      location: table.location,
+                                                      status:
+                                                          TableStatus.available,
+                                                      kotGenerated: false,
+                                                      billGenerated: false,
+                                                    ),
                                                   );
                                                   if (!updatedTable
                                                       .hasActiveOrders) {
-                                                    Navigator.pop(context);
+                                                    if ((ModalRoute.of(context)
+                                                                ?.isCurrent ??
+                                                            false) &&
+                                                        Navigator.of(context)
+                                                            .canPop()) {
+                                                      _isClosingFromRemoteClear =
+                                                          true;
+                                                      Navigator.pop(context);
+                                                    }
                                                   } else {
                                                     setState(() {});
-                                                    _loadDynamicOrdersData(
-                                                      silent: true,
-                                                    );
+                                                    if (widget
+                                                        .enableDynamicFetch) {
+                                                      _loadDynamicOrdersData(
+                                                        silent: true,
+                                                      );
+                                                    }
                                                   }
                                                 } else {
                                                   AppSnackBar.showError(

@@ -9,6 +9,7 @@ import 'package:restaurant_pos_system/features/dashboard/providers/navigation_pr
 import 'package:restaurant_pos_system/features/dashboard/providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/dashboard/widgets/multi_order_management_dialog.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
+import 'package:restaurant_pos_system/shared/widgets/layout/shimmer_effect.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -832,6 +833,565 @@ void main() {
       expect(updated.activeOrders.isEmpty, isTrue);
       expect(updated.status, equals(TableStatus.available));
       expect(updated.hasActiveOrders, isFalse);
+    });
+
+    testWidgets('MultiOrderManagementDialog displays skeleton with shimmer effect when dynamic loading is in progress', (WidgetTester tester) async {
+      const testTable = RestaurantTable(
+        id: 'table-shimmer-1',
+        name: 'Table 1',
+        capacity: 5,
+        location: 'Urban Spice - Salt Lake',
+        status: TableStatus.occupied,
+        kotGenerated: true,
+        billGenerated: false,
+        activeOrders: [
+          ActiveOrder(
+            orderId: 'order-1',
+            generatedOrderNo: 'OD/UR/261126/0001',
+            orderStatus: 'In Progress',
+            isBilled: false,
+          ),
+          ActiveOrder(
+            orderId: 'order-2',
+            generatedOrderNo: 'OD/UR/261126/0002',
+            orderStatus: 'Bill Generated',
+            isBilled: true,
+          ),
+        ],
+      );
+
+      tableProvider.tables.add(testTable);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<TableProvider>.value(value: tableProvider),
+            ChangeNotifierProvider<AnimatedCartProvider>.value(value: cartProvider),
+            ChangeNotifierProvider<NavigationProvider>.value(value: navProvider),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: MultiOrderManagementDialog(
+                table: testTable,
+                isLoading: true,
+                enableDynamicFetch: false,
+                enableShimmerAnimation: false,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Shimmer and ShimmerBone skeleton elements are actively rendered
+      expect(find.byType(Shimmer), findsOneWidget);
+      expect(find.byType(ShimmerLoading), findsWidgets);
+      expect(find.byType(ShimmerBone), findsWidgets);
+
+      // Real order text should not be rendered yet while in skeleton loading state
+      expect(find.text('OD/UR/261126/0001'), findsNothing);
+      expect(find.text('OD/UR/261126/0002'), findsNothing);
+      expect(find.text('Open Cart'), findsNothing);
+    });
+
+    testWidgets('MultiOrderManagementDialog smoothly reveals real order cards once dynamic data finishes loading', (WidgetTester tester) async {
+      const testTable = RestaurantTable(
+        id: 'table-shimmer-2',
+        name: 'Table 1',
+        capacity: 5,
+        location: 'Urban Spice - Salt Lake',
+        status: TableStatus.occupied,
+        kotGenerated: true,
+        billGenerated: false,
+        activeOrders: [
+          ActiveOrder(
+            orderId: 'order-1',
+            generatedOrderNo: 'OD/UR/261126/0001',
+            orderStatus: 'In Progress',
+            isBilled: false,
+          ),
+        ],
+      );
+
+      tableProvider.tables.add(testTable);
+
+      // Initially loading is true
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<TableProvider>.value(value: tableProvider),
+            ChangeNotifierProvider<AnimatedCartProvider>.value(value: cartProvider),
+            ChangeNotifierProvider<NavigationProvider>.value(value: navProvider),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: MultiOrderManagementDialog(
+                table: testTable,
+                isLoading: true,
+                enableDynamicFetch: false,
+                enableShimmerAnimation: false,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(Shimmer), findsOneWidget);
+      expect(find.text('OD/UR/261126/0001'), findsNothing);
+
+      // Now dynamic data arrives: re-render with isLoading: false and loaded dynamic data
+      const dynamicInfo = OrderDynamicInfo(
+        orderId: 'order-1',
+        orderNumber: 'OD/UR/261126/0001',
+        customerName: 'Guest',
+        totalGuests: 2,
+        itemCount: 2,
+        totalAmount: 749.50,
+        paidAmount: 0.0,
+        balanceAmount: 749.50,
+        isBilled: false,
+        paymentStatus: OrderPaymentStatus.pending,
+        kitchenStatus: OrderKitchenStatus.inKitchen,
+        kitchenStatusText: 'In Progress',
+        isLoaded: true,
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<TableProvider>.value(value: tableProvider),
+            ChangeNotifierProvider<AnimatedCartProvider>.value(value: cartProvider),
+            ChangeNotifierProvider<NavigationProvider>.value(value: navProvider),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: MultiOrderManagementDialog(
+                table: testTable,
+                isLoading: false,
+                enableDynamicFetch: false,
+                enableShimmerAnimation: false,
+                initialDynamicData: {
+                  'order-1': dynamicInfo,
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Skeleton shimmer is gone, real order card and actions are rendered
+      expect(find.byType(Shimmer), findsNothing);
+      expect(find.text('OD/UR/261126/0001'), findsOneWidget);
+      expect(find.text('KOT Generated'), findsOneWidget);
+      expect(find.text('Open Cart'), findsOneWidget);
+      expect(find.text('₹749.50'), findsOneWidget);
+    });
+
+    test('Two-device sync: removeOrderFromTable never masks un-deleted server orders locally', () async {
+      final serverOrders = <ActiveOrder>[
+        const ActiveOrder(
+          orderId: 'order-a-1',
+          generatedOrderNo: 'OD/SYNC/0001',
+          orderStatus: 'Ready For Delivery',
+          isBilled: true,
+        ),
+        const ActiveOrder(
+          orderId: 'order-b-2',
+          generatedOrderNo: 'OD/SYNC/0002',
+          orderStatus: 'In Progress',
+          isBilled: false,
+        ),
+      ];
+
+      Future<List<RestaurantTable>> sharedFetchTables({
+        required String token,
+        required int outletId,
+        String? locationName,
+      }) async {
+        return [
+          RestaurantTable(
+            id: 'table-sync-1',
+            name: 'Table 1',
+            capacity: 6,
+            location: 'Outlet',
+            status: serverOrders.isEmpty
+                ? TableStatus.available
+                : TableStatus.occupied,
+            kotGenerated: serverOrders.isNotEmpty,
+            billGenerated: serverOrders.any((o) => o.isBilled),
+            activeOrders: List<ActiveOrder>.from(serverOrders),
+          ),
+        ];
+      }
+
+      // Simulate the backend returning HTTP 200 isSuccess: true without actually removing the order
+      final recordedStatusIds = <int>[];
+      Future<Map<String, dynamic>?> brokenBackendUpdate({
+        String? token,
+        required String orderHeadId,
+        required int statusId,
+        String? orderId,
+        String? status,
+        String? tableId,
+      }) async {
+        recordedStatusIds.add(statusId);
+        return {'isSuccess': true, 'statusCode': 200, 'data': 'Ok'};
+      }
+
+      final mobileA = TableProvider(
+        checkInternet: () async => true,
+        fetchTablesApi: sharedFetchTables,
+        updateOrderHeadStatusApi: brokenBackendUpdate,
+        updateOrderChannelStatusApi: ({
+          String? token,
+          required String orderChannelId,
+          required int channelStatusId,
+          required String status,
+        }) async =>
+            {'isSuccess': true, 'statusCode': 200},
+        authTokenGetter: () => 'token-shared',
+        outletIdGetter: () => 10145,
+        skipPaymentReconciliation: true,
+      );
+      final mobileB = TableProvider(
+        checkInternet: () async => true,
+        fetchTablesApi: sharedFetchTables,
+        updateOrderHeadStatusApi: brokenBackendUpdate,
+        updateOrderChannelStatusApi: ({
+          String? token,
+          required String orderChannelId,
+          required int channelStatusId,
+          required String status,
+        }) async =>
+            {'isSuccess': true, 'statusCode': 200},
+        authTokenGetter: () => 'token-shared',
+        outletIdGetter: () => 10145,
+        skipPaymentReconciliation: true,
+      );
+      addTearDown(() {
+        mobileA.stopPolling();
+        mobileB.stopPolling();
+      });
+
+      await mobileA.initializeTables();
+      await mobileB.initializeTables();
+
+      final deleted = await mobileA.removeOrderFromTable(
+        'table-sync-1',
+        'order-a-1',
+        isPaidInFull: true,
+      );
+
+      // Must fail cleanly and keep both devices consistent with server truth
+      expect(deleted, isFalse);
+      expect(recordedStatusIds, equals([6, 7, 4]));
+      expect(mobileA.tables.first.activeOrders.length, equals(2));
+      expect(mobileB.tables.first.activeOrders.length, equals(2));
+      expect(mobileA.isOrderDeleted('order-a-1'), isFalse);
+    });
+
+    test('Two-device sync: delete persists on backend and syncs across Mobile A and Mobile B', () async {
+      final serverOrders = <ActiveOrder>[
+        const ActiveOrder(
+          orderId: 'order-a-1',
+          generatedOrderNo: 'OD/SYNC/0001',
+          orderStatus: 'In Progress',
+          isBilled: true,
+        ),
+        const ActiveOrder(
+          orderId: 'order-b-2',
+          generatedOrderNo: 'OD/SYNC/0002',
+          orderStatus: 'Order Placed',
+          isBilled: false,
+        ),
+      ];
+      int? vacatedChannelStatusId;
+      final recordedStatusCalls = <int>[];
+
+      Future<List<RestaurantTable>> sharedFetchTables({
+        required String token,
+        required int outletId,
+        String? locationName,
+      }) async {
+        return [
+          RestaurantTable(
+            id: 'table-sync-2',
+            name: 'Table 2',
+            capacity: 4,
+            location: 'Outlet',
+            status: serverOrders.isEmpty
+                ? TableStatus.available
+                : TableStatus.occupied,
+            kotGenerated: serverOrders.isNotEmpty,
+            billGenerated: serverOrders.any((o) => o.isBilled),
+            activeOrders: List<ActiveOrder>.from(serverOrders),
+          ),
+        ];
+      }
+
+      // First order cancels on statusId 7 fallback (when statusId 6 is rejected);
+      // second order cancels cleanly on primary statusId 6 (`CANCELLED`).
+      Future<Map<String, dynamic>?> sharedUpdateOrderHeadStatus({
+        String? token,
+        required String orderHeadId,
+        required int statusId,
+        String? orderId,
+        String? status,
+        String? tableId,
+      }) async {
+        recordedStatusCalls.add(statusId);
+        if (orderHeadId == 'order-a-1' && statusId == 6) {
+          return {'isSuccess': false, 'statusCode': 400, 'message': 'Try 7'};
+        }
+        serverOrders.removeWhere((o) => o.orderId == orderHeadId);
+        return {'isSuccess': true, 'statusCode': 200};
+      }
+
+      Future<Map<String, dynamic>?> sharedVacateChannel({
+        String? token,
+        required String orderChannelId,
+        required int channelStatusId,
+        required String status,
+      }) async {
+        vacatedChannelStatusId = channelStatusId;
+        return {'isSuccess': true, 'statusCode': 200};
+      }
+
+      final mobileA = TableProvider(
+        checkInternet: () async => true,
+        fetchTablesApi: sharedFetchTables,
+        updateOrderHeadStatusApi: sharedUpdateOrderHeadStatus,
+        updateOrderChannelStatusApi: sharedVacateChannel,
+        authTokenGetter: () => 'token-shared',
+        outletIdGetter: () => 10145,
+        skipPaymentReconciliation: true,
+      );
+      final mobileB = TableProvider(
+        checkInternet: () async => true,
+        fetchTablesApi: sharedFetchTables,
+        updateOrderHeadStatusApi: sharedUpdateOrderHeadStatus,
+        updateOrderChannelStatusApi: sharedVacateChannel,
+        authTokenGetter: () => 'token-shared',
+        outletIdGetter: () => 10145,
+        skipPaymentReconciliation: true,
+      );
+      addTearDown(() {
+        mobileA.stopPolling();
+        mobileB.stopPolling();
+      });
+
+      await mobileA.initializeTables();
+      await mobileB.initializeTables();
+
+      // Mobile A deletes order 1
+      final deletedFirst = await mobileA.removeOrderFromTable(
+        'table-sync-2',
+        'order-a-1',
+        isPaidInFull: true,
+      );
+      expect(deletedFirst, isTrue);
+      expect(recordedStatusCalls, equals([6, 7]));
+      expect(mobileA.tables.first.activeOrders.map((o) => o.orderId).toList(),
+          equals(['order-b-2']));
+
+      // Mobile B refreshes and immediately drops deleted order 1
+      await mobileB.refreshTables(silent: true);
+      expect(mobileB.tables.first.activeOrders.map((o) => o.orderId).toList(),
+          equals(['order-b-2']));
+
+      // Mobile B deletes the remaining order 2
+      final deletedSecond = await mobileB.removeOrderFromTable(
+        'table-sync-2',
+        'order-b-2',
+      );
+      expect(deletedSecond, isTrue);
+      expect(vacatedChannelStatusId, equals(0));
+      expect(mobileB.tables.first.hasActiveOrders, isFalse);
+      expect(mobileB.tables.first.status, equals(TableStatus.available));
+
+      // Mobile A refreshes and sees table 2 empty & available
+      await mobileA.refreshTables(silent: true);
+      expect(mobileA.tables.first.hasActiveOrders, isFalse);
+      expect(mobileA.tables.first.status, equals(TableStatus.available));
+    });
+
+    testWidgets('Open MultiOrderManagementDialog on Mobile B reflects remote deletion on Mobile A and auto-closes when empty', (WidgetTester tester) async {
+      final serverOrders = <ActiveOrder>[
+        const ActiveOrder(
+          orderId: 'order-1',
+          generatedOrderNo: 'OD/SYNC/0001',
+          orderStatus: 'In Progress',
+          isBilled: false,
+          kotNumber: 'KOT-1',
+        ),
+        const ActiveOrder(
+          orderId: 'order-2',
+          generatedOrderNo: 'OD/SYNC/0002',
+          orderStatus: 'In Progress',
+          isBilled: false,
+          kotNumber: 'KOT-2',
+        ),
+      ];
+
+      Future<List<RestaurantTable>> sharedFetchTables({
+        required String token,
+        required int outletId,
+        String? locationName,
+      }) async {
+        return [
+          RestaurantTable(
+            id: 'table-widget-sync',
+            name: 'Table 1',
+            capacity: 5,
+            location: 'Outlet',
+            status: serverOrders.isEmpty
+                ? TableStatus.available
+                : TableStatus.kotGenerated,
+            kotGenerated: serverOrders.isNotEmpty,
+            billGenerated: false,
+            activeOrders: List<ActiveOrder>.from(serverOrders),
+          ),
+        ];
+      }
+
+      Future<Map<String, dynamic>?> sharedUpdateOrderHeadStatus({
+        String? token,
+        required String orderHeadId,
+        required int statusId,
+        String? orderId,
+        String? status,
+        String? tableId,
+      }) async {
+        serverOrders.removeWhere((o) => o.orderId == orderHeadId);
+        return {'isSuccess': true, 'statusCode': 200};
+      }
+
+      final mobileA = TableProvider(
+        checkInternet: () async => true,
+        fetchTablesApi: sharedFetchTables,
+        updateOrderHeadStatusApi: sharedUpdateOrderHeadStatus,
+        updateOrderChannelStatusApi: ({
+          String? token,
+          required String orderChannelId,
+          required int channelStatusId,
+          required String status,
+        }) async =>
+            {'isSuccess': true, 'statusCode': 200},
+        authTokenGetter: () => 'token-shared',
+        outletIdGetter: () => 10145,
+        skipPaymentReconciliation: true,
+      );
+      final mobileB = TableProvider(
+        checkInternet: () async => true,
+        fetchTablesApi: sharedFetchTables,
+        updateOrderHeadStatusApi: sharedUpdateOrderHeadStatus,
+        updateOrderChannelStatusApi: ({
+          String? token,
+          required String orderChannelId,
+          required int channelStatusId,
+          required String status,
+        }) async =>
+            {'isSuccess': true, 'statusCode': 200},
+        authTokenGetter: () => 'token-shared',
+        outletIdGetter: () => 10145,
+        skipPaymentReconciliation: true,
+      );
+      addTearDown(() {
+        mobileA.stopPolling();
+        mobileB.stopPolling();
+      });
+
+      await mobileA.initializeTables();
+      await mobileB.initializeTables();
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<TableProvider>.value(value: mobileB),
+            ChangeNotifierProvider<AnimatedCartProvider>.value(value: cartProvider),
+            ChangeNotifierProvider<NavigationProvider>.value(value: navProvider),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () {
+                    showDialog<void>(
+                      context: context,
+                      builder: (_) => MultiOrderManagementDialog(
+                        table: mobileB.tables.first,
+                        enableDynamicFetch: false,
+                        isLoading: false,
+                        enableShimmerAnimation: false,
+                        initialDynamicData: const {
+                          'order-1': OrderDynamicInfo(
+                            orderId: 'order-1',
+                            orderNumber: 'OD/SYNC/0001',
+                            customerName: 'Guest 1',
+                            totalGuests: 2,
+                            itemCount: 1,
+                            totalAmount: 250,
+                            paidAmount: 0,
+                            balanceAmount: 250,
+                            isBilled: false,
+                            paymentStatus: OrderPaymentStatus.pending,
+                            kitchenStatus: OrderKitchenStatus.inKitchen,
+                            kitchenStatusText: 'In Progress',
+                            isLoaded: true,
+                          ),
+                          'order-2': OrderDynamicInfo(
+                            orderId: 'order-2',
+                            orderNumber: 'OD/SYNC/0002',
+                            customerName: 'Guest 2',
+                            totalGuests: 2,
+                            itemCount: 1,
+                            totalAmount: 300,
+                            paidAmount: 0,
+                            balanceAmount: 300,
+                            isBilled: false,
+                            paymentStatus: OrderPaymentStatus.pending,
+                            kitchenStatus: OrderKitchenStatus.inKitchen,
+                            kitchenStatusText: 'In Progress',
+                            isLoaded: true,
+                          ),
+                        },
+                      ),
+                    );
+                  },
+                  child: const Text('Open Popup'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Popup'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('OD/SYNC/0001'), findsOneWidget);
+      expect(find.text('OD/SYNC/0002'), findsOneWidget);
+
+      // Mobile A deletes order-1 via backend API
+      expect(await mobileA.removeOrderFromTable('table-widget-sync', 'order-1'), isTrue);
+      await mobileB.refreshTables(silent: true);
+      await tester.pump();
+
+      expect(find.text('OD/SYNC/0001'), findsNothing);
+      expect(find.text('OD/SYNC/0002'), findsOneWidget);
+
+      // Mobile A deletes the last remaining order-2 via backend API
+      expect(await mobileA.removeOrderFromTable('table-widget-sync', 'order-2'), isTrue);
+      await mobileB.refreshTables(silent: true);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MultiOrderManagementDialog), findsNothing);
+
+      mobileA.stopPolling();
+      mobileB.stopPolling();
     });
   });
 }

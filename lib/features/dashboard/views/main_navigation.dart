@@ -16,6 +16,7 @@ import 'package:restaurant_pos_system/features/menu/views/menu_view.dart';
 import 'package:restaurant_pos_system/features/order_taking/views/cart_view.dart';
 import 'package:restaurant_pos_system/features/reports/views/reports_view.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
 import 'package:restaurant_pos_system/shared/widgets/overlays/cart_animation_overlay.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 
@@ -160,15 +161,15 @@ class _MainNavigationState extends State<MainNavigation> {
               : 'Takeaway - ${navProvider.customerName ?? "Unknown"}';
     }
 
-    // Ensure both providers are on the same context for proper state isolation
+    // Ensure both providers are on the same table & specific order context so
+    // two groups sharing a table never write into each other's carts.
+    String? targetOrderId;
     if (tableId.isNotEmpty) {
       // Switch menu provider to current context if not already
       if (menuProvider.currentTableId != tableId) {
         menuProvider.switchToTable(tableId);
       }
 
-      // Switch cart provider to current context if not already.
-      //
       // Phone/Takeaway orders pass their order type through `tableId` as a
       // sentinel ('PhoneOrder'/'Takeaway') — a real table was never
       // selected, so TableProvider.currentOrderId here is only ever a
@@ -176,14 +177,23 @@ class _MainNavigationState extends State<MainNavigation> {
       // leaving one). Blindly reading it made the cart jump onto that old
       // table's order instead of this new Phone/Takeaway one, pulling its
       // items along and later attaching the KOT/bill to the wrong order.
-      if (animatedCartProvider.currentTableId != tableId) {
-        final isRealTable = navProvider.selectedTableId != null;
-        final newOrderId =
-            isRealTable
-                ? context.read<TableProvider>().currentOrderId
-                : context.read<OrderProvider>().createdOrderId;
+      final isRealTable = navProvider.selectedTableId != null;
+      targetOrderId =
+          isRealTable
+              ? context.read<TableProvider>().currentOrderId
+              : context.read<OrderProvider>().createdOrderId;
+
+      final needsOrderSwitch =
+          targetOrderId != null &&
+          targetOrderId.isNotEmpty &&
+          !GuidHelper.areEqual(
+            animatedCartProvider.currentOrderId,
+            targetOrderId,
+          );
+
+      if (animatedCartProvider.currentTableId != tableId || needsOrderSwitch) {
         animatedCartProvider.switchToOrder(
-          newOrderId,
+          targetOrderId,
           tableId: tableId,
           tableName: tableName,
         );
@@ -197,6 +207,7 @@ class _MainNavigationState extends State<MainNavigation> {
       price,
       tableId,
       tableName,
+      orderId: targetOrderId,
       categoryId: categoryId,
       categoryName: categoryName,
     );

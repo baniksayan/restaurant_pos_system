@@ -15,6 +15,7 @@ import '../widgets/menu_grid.dart';
 import '../widgets/cart_footer.dart';
 import 'package:restaurant_pos_system/shared/widgets/layout/premium_refresh_indicator.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
 class MenuView extends StatefulWidget {
@@ -165,6 +166,33 @@ class _MenuViewState extends State<MenuView> {
         bottom: false,
         child: Consumer2<MenuProvider, NavigationProvider>(
           builder: (context, menuProvider, navProvider, child) {
+            // If two groups share the same table, widget.selectedTableId stays
+            // identical while TableProvider.currentOrderId changes. Keep
+            // AnimatedCartProvider synchronized to the selected orderId.
+            if (widget.selectedTableId != null) {
+              try {
+                final tpOrderId =
+                    Provider.of<TableProvider>(context, listen: false)
+                        .currentOrderId;
+                final cart = Provider.of<AnimatedCartProvider>(
+                  context,
+                  listen: false,
+                );
+                if (tpOrderId != null &&
+                    tpOrderId.isNotEmpty &&
+                    !GuidHelper.areEqual(cart.currentOrderId, tpOrderId)) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    cart.switchToOrder(
+                      tpOrderId,
+                      tableId: widget.selectedTableId!,
+                      tableName: widget.tableName,
+                    );
+                  });
+                }
+              } catch (_) {}
+            }
+
             // Debug prints
             debugPrint(
               'MenuView DEBUG: selectedTableId = ${widget.selectedTableId}',

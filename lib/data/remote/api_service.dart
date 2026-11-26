@@ -448,6 +448,12 @@ class ApiService {
   /// Update Order Head Status - Enhanced with proper parameters
   /// Update an order header's status (Order/UpdateOrderHeadStatus).
   /// Binds tenant companyId, outletId, orderHeadId, statusId, and userId.
+  /// Update an order header's status (`Order/UpdateOrderHeadStatus`).
+  ///
+  /// Uses the documented `PosWebApi` DTO payload (`orderHeadId`, `statusId`,
+  /// optional `companyId` / `userId`) without unsolicited string status/table
+  /// fields that can conflict with backend model binding. If that request
+  /// fails, retries once with the bare `{orderHeadId, statusId}` payload.
   static Future<Map<String, dynamic>?> updateOrderHeadStatus({
     String? token,
     required String orderHeadId,
@@ -467,64 +473,90 @@ class ApiService {
 
       final userId = HiveService.getUserId();
       final companyId = HiveService.getCompanyId();
-      final outletId =
-          HiveService.getSelectedLocationId() ?? HiveService.getOutletId();
 
-      final resolvedStatus = (status != null && status.isNotEmpty)
-          ? status
-          : (statusId == 7
-              ? 'Settled'
-              : (statusId == 6
-                  ? 'Billed'
-                  : (statusId == 5
-                      ? 'Delivered'
-                      : (statusId == 4 ? 'Cancelled' : 'Completed'))));
+      final bool hasExplicitLegacyPair = orderId != null &&
+          orderId.isNotEmpty &&
+          status != null &&
+          status.isNotEmpty;
 
-      final effectiveOrderId =
-          (orderId != null && orderId.isNotEmpty) ? orderId : orderHeadId;
+      final Map<String, dynamic> requestBody = hasExplicitLegacyPair
+          ? {
+              "orderHeadId": orderHeadId,
+              "orderId": orderId,
+              "statusId": statusId,
+              "status": status,
+              if (companyId != null && companyId > 0) "companyId": companyId,
+              if (userId != null && userId.isNotEmpty) "userId": userId,
+            }
+          : {
+              "orderHeadId": orderHeadId,
+              "statusId": statusId,
+              if (companyId != null && companyId > 0) "companyId": companyId,
+              if (userId != null && userId.isNotEmpty) "userId": userId,
+            };
 
-      final Map<String, dynamic> requestBody = {
-        "orderHeadId": orderHeadId,
-        "orderId": effectiveOrderId,
-        "statusId": statusId,
-        "status": resolvedStatus,
-        "orderStatus": resolvedStatus,
-        if (companyId != null && companyId > 0) "companyId": companyId,
-        if (outletId != null && outletId > 0) "outletId": outletId,
-        if (tableId != null && tableId.isNotEmpty) "tableId": tableId,
-        if (tableId != null && tableId.isNotEmpty) "orderChannelId": tableId,
-        if (userId != null && userId.isNotEmpty) "userId": userId,
-      };
+      Future<Map<String, dynamic>> postPayload(Map<String, dynamic> body) async {
+        final response = await http
+            .post(
+              Uri.parse('${ApiConstants.baseUrl}Order/UpdateOrderHeadStatus'),
+              headers: _bearerHeaders(authToken),
+              body: json.encode(body),
+            )
+            .timeout(const Duration(seconds: 20));
 
-      final response = await http.post(
-        Uri.parse('${ApiConstants.baseUrl}Order/UpdateOrderHeadStatus'),
-        headers: _bearerHeaders(authToken),
-        body: json.encode(requestBody),
-      );
-
-      if (kDebugMode) {
-        debugPrint(
-          '[API Call] UpdateOrderHeadStatus - Order: $orderHeadId -> Status: $statusId ($resolvedStatus), Response Code: ${response.statusCode}',
-        );
-        debugPrint('[API Call] UpdateOrderHeadStatus Request Body: ${json.encode(requestBody)}');
-        debugPrint('[API Call] UpdateOrderHeadStatus Response Body: ${response.body}');
-      }
-
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        if (decoded is Map<String, dynamic>) {
-          return decoded;
+        if (kDebugMode) {
+          debugPrint(
+            '[API Call] UpdateOrderHeadStatus - Order: $orderHeadId -> statusId: $statusId, HTTP: ${response.statusCode}',
+          );
+          debugPrint('[API Call] UpdateOrderHeadStatus Request: ${json.encode(body)}');
+          debugPrint('[API Call] UpdateOrderHeadStatus Response: ${response.body}');
         }
-        return {'isSuccess': true, 'data': decoded};
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          final trimmed = response.body.trim();
+          if (trimmed.isEmpty) {
+            return {'isSuccess': true, 'statusCode': response.statusCode};
+          }
+          final decoded = json.decode(trimmed);
+          if (decoded is Map<String, dynamic>) {
+            return {
+              ...decoded,
+              if (!decoded.containsKey('statusCode'))
+                'statusCode': response.statusCode,
+            };
+          }
+          return {
+            'isSuccess': true,
+            'statusCode': response.statusCode,
+            'data': decoded,
+          };
+        }
+
+        return {
+          'isSuccess': false,
+          'statusCode': response.statusCode,
+          'message': response.body.isNotEmpty
+              ? response.body
+              : 'HTTP ${response.statusCode} from server',
+        };
       }
 
-      return {
-        'isSuccess': false,
-        'statusCode': response.statusCode,
-        'message': response.body.isNotEmpty
-            ? response.body
-            : 'HTTP ${response.statusCode} from server',
-      };
+      var result = await postPayload(requestBody);
+
+      // If tenant/legacy fields caused a rejection or explicit failure, retry once
+      // with the bare documented identifier + statusId DTO.
+      if (result['isSuccess'] != true && requestBody.length > 2) {
+        final minimalBody = {
+          "orderHeadId": orderHeadId,
+          "statusId": statusId,
+        };
+        final fallbackResult = await postPayload(minimalBody);
+        if (fallbackResult['isSuccess'] == true) {
+          result = fallbackResult;
+        }
+      }
+
+      return result;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[API Error] UpdateOrderHeadStatus: $e');

@@ -16,6 +16,7 @@ import 'take_payment_step.dart';
 import '../utils/bill_item_merger.dart';
 import 'package:restaurant_pos_system/features/payment/models/tender_line.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
+import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
@@ -147,10 +148,16 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
         } else if (widget.tableId != null) {
           final tableProvider = context.read<TableProvider>();
           final table = tableProvider.tables
-              .where((t) => t.id == widget.tableId)
+              .where((t) => GuidHelper.areEqual(t.id, widget.tableId))
               .firstOrNull;
           if (table != null && table.activeOrders.isNotEmpty) {
-            final o = table.activeOrders.first;
+            final o = (widget.orderId != null && widget.orderId!.isNotEmpty)
+                ? (table.activeOrders
+                        .where((ord) =>
+                            GuidHelper.areEqual(ord.orderId, widget.orderId))
+                        .firstOrNull ??
+                    table.activeOrders.last)
+                : table.activeOrders.last;
             final gen = _cleanOrderNumber(o.generatedOrderNo);
             if (gen.isNotEmpty) {
               setState(() => _resolvedOrderNumber = gen);
@@ -1142,7 +1149,7 @@ class _GenerateBillSummaryDialogState extends State<GenerateBillSummaryDialog> {
           final tableProvider = context.read<TableProvider>();
           final matchedTable = widget.tableId != null
               ? tableProvider.tables
-                  .where((t) => t.id == widget.tableId)
+                  .where((t) => GuidHelper.areEqual(t.id, widget.tableId))
                   .firstOrNull
               : null;
 

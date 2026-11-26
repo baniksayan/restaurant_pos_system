@@ -238,7 +238,8 @@ class _PaymentPageState extends State<PaymentPage>
       final tp = Provider.of<TableProvider>(context, listen: false);
       for (final t in tp.tables) {
         if (effectiveOrderId != null &&
-            t.activeOrders.any((o) => o.orderId == effectiveOrderId)) {
+            t.activeOrders
+                .any((o) => GuidHelper.areEqual(o.orderId, effectiveOrderId))) {
           return t.id;
         }
         if (currentOrderNumber.isNotEmpty &&
@@ -609,7 +610,12 @@ class _PaymentPageState extends State<PaymentPage>
             context,
             listen: false,
           );
-          billId = GuidHelper.orNull(billingProvider.billId);
+          final scopedOrderId = effectiveOrderId;
+          billId = GuidHelper.orNull(
+            scopedOrderId != null && scopedOrderId.isNotEmpty
+                ? billingProvider.getBillIdForOrder(scopedOrderId)
+                : billingProvider.billId,
+          );
         } catch (e) {
           debugPrint('Payment Page - Error accessing BillingProvider: $e');
         }
@@ -685,6 +691,7 @@ class _PaymentPageState extends State<PaymentPage>
               }
 
               navProvider.clearTableSelection();
+              tp.clearCurrentOrder();
             }
 
             // Always refresh tables so pending/billed states remain synchronized
@@ -755,9 +762,8 @@ class _PaymentPageState extends State<PaymentPage>
           final tp = Provider.of<TableProvider>(context, listen: false);
           final navProvider =
               Provider.of<NavigationProvider>(context, listen: false);
-          if (isFullyPaid) {
-            navProvider.clearTableSelection();
-          }
+          navProvider.clearTableSelection();
+          tp.clearCurrentOrder();
           navProvider.navigateToTables();
           tp.refreshTables();
         } catch (_) {}

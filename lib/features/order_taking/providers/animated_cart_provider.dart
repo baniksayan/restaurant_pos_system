@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/data/models/order_detail_api_response_model.dart';
 
@@ -16,6 +17,8 @@ class AnimatedCartProvider extends ChangeNotifier {
   String? _currentTableId;
   List<OrderDetailList> _serverKotItems =
       []; // Current order's server KOT items
+
+  String _key(String orderId) => orderId.trim().toLowerCase();
 
   Map<String, CartItem> get cartItems => _cartItems;
   int get totalItems => _totalItems;
@@ -40,19 +43,19 @@ class AnimatedCartProvider extends ChangeNotifier {
 
   // Check if an order has been billed
   bool isOrderBilled(String? orderId) {
-    if (orderId == null || orderId.isEmpty) return false;
-    return _billedOrderIds.contains(orderId);
+    if (orderId == null || orderId.trim().isEmpty) return false;
+    return _billedOrderIds.contains(_key(orderId));
   }
 
   void markOrderBilled(String orderId) {
-    if (orderId.isEmpty) return;
-    _billedOrderIds.add(orderId);
+    if (orderId.trim().isEmpty) return;
+    _billedOrderIds.add(_key(orderId));
     notifyListeners();
   }
 
   void clearOrderBilled(String orderId) {
-    if (orderId.isEmpty) return;
-    _billedOrderIds.remove(orderId);
+    if (orderId.trim().isEmpty) return;
+    _billedOrderIds.remove(_key(orderId));
     notifyListeners();
   }
 
@@ -119,9 +122,11 @@ class AnimatedCartProvider extends ChangeNotifier {
     String? tableId,
     String? tableName,
   }) {
-    if (newOrderId == null || newOrderId.isEmpty) return;
+    if (newOrderId == null || newOrderId.trim().isEmpty) return;
     if (tableId != null && tableId.isNotEmpty) _currentTableId = tableId;
-    if (_currentOrderId == newOrderId) return;
+    if (GuidHelper.areEqual(_currentOrderId, newOrderId)) return;
+
+    final newKey = _key(newOrderId);
 
     // Items can be added before the order id is known — addItem falls back to
     // scoping by table when no order is open yet. Carry that basket onto the
@@ -132,14 +137,15 @@ class AnimatedCartProvider extends ChangeNotifier {
         _currentOrderId == null &&
         fallbackScope != null &&
         _cartItems.isNotEmpty &&
-        (_orderWiseCarts[newOrderId]?.isEmpty ?? true);
+        (_orderWiseCarts[newKey]?.isEmpty ?? true);
 
     if (adoptingFallback) {
       debugPrint(
         '[AnimatedCart] Adopting ${_cartItems.length} item(s) held under '
         '"$fallbackScope" into order $newOrderId',
       );
-      _orderWiseCarts[newOrderId] = Map<String, CartItem>.from(_cartItems);
+      _orderWiseCarts[newKey] = Map<String, CartItem>.from(_cartItems);
+      _orderWiseCarts.remove(_key(fallbackScope));
       _orderWiseCarts.remove(fallbackScope);
       HiveService.clearOrderCart(fallbackScope);
       _currentOrderId = newOrderId;
@@ -149,8 +155,10 @@ class AnimatedCartProvider extends ChangeNotifier {
       return;
     }
 
-    // Save current cart state to persistent storage
-    if (_currentOrderId != null) {
+    // Save current cart state to persistent storage under the outgoing order
+    if (_currentOrderId != null && _currentOrderId!.trim().isNotEmpty) {
+      final prevKey = _key(_currentOrderId!);
+      _orderWiseCarts[prevKey] = Map<String, CartItem>.from(_cartItems);
       _saveCartToPersistentStorage(_currentOrderId!);
     }
 
@@ -162,19 +170,19 @@ class AnimatedCartProvider extends ChangeNotifier {
 
     // Load cart from memory first, then from persistent storage if needed
     _cartItems.clear();
-    final existingCart = _orderWiseCarts[newOrderId];
+    final existingCart = _orderWiseCarts[newKey];
     if (existingCart != null && existingCart.isNotEmpty) {
       _cartItems.addAll(existingCart);
     } else {
       // If no cart in memory, try loading from persistent storage
       _loadCartFromPersistentStorage(newOrderId);
-      final loadedCart = _orderWiseCarts[newOrderId];
+      final loadedCart = _orderWiseCarts[newKey];
       if (loadedCart != null) {
         _cartItems.addAll(loadedCart);
       }
     }
 
-    _serverKotItems = _orderWiseServerKotItems[newOrderId] ?? [];
+    _serverKotItems = _orderWiseServerKotItems[newKey] ?? [];
 
     _updateTotalItems();
     debugPrint(
@@ -517,15 +525,19 @@ class AnimatedCartProvider extends ChangeNotifier {
   // Clear specific table's data after bill settlement
   /// Drops one order's cart. Other orders on the same table are untouched.
   void clearOrderData(String orderId) {
-    if (orderId.isEmpty) return;
+    if (orderId.trim().isEmpty) return;
+    final k = _key(orderId);
     debugPrint('[AnimatedCart] Clearing data for order: $orderId');
 
+    _orderWiseCarts.remove(k);
     _orderWiseCarts.remove(orderId);
+    _orderWiseServerKotItems.remove(k);
     _orderWiseServerKotItems.remove(orderId);
+    _billedOrderIds.remove(k);
     _billedOrderIds.remove(orderId);
     HiveService.clearOrderCart(orderId);
 
-    if (_currentOrderId == orderId) {
+    if (GuidHelper.areEqual(_currentOrderId, orderId)) {
       _cartItems.clear();
       _serverKotItems.clear();
       _currentOrderId = null;
@@ -591,6 +603,38 @@ class AnimatedCartProvider extends ChangeNotifier {
     String tableName = '',
     bool clearExisting = true,
   }) {
+    final targetKey = orderId.trim().isNotEmpty ? _key(orderId) : '';
+
+    // Save the outgoing order's staged items before switching carts so another
+    // group's un-KOT'd items on the same table are preserved rather than lost.
+    if (_currentOrderId != null &&
+        _currentOrderId!.trim().isNotEmpty &&
+        orderId.trim().isNotEmpty &&
+        !GuidHelper.areEqual(_currentOrderId, orderId)) {
+      final prevKey = _key(_currentOrderId!);
+      _orderWiseCarts[prevKey] = Map<String, CartItem>.from(_cartItems);
+      _saveCartToPersistentStorage(_currentOrderId!);
+    }
+
+    // Snapshot any unsent (non-KOT'd) local items already buffered for this exact order.
+    final List<CartItem> pendingLocalItems = [];
+    if (clearExisting && targetKey.isNotEmpty) {
+      final sourceMap = GuidHelper.areEqual(_currentOrderId, orderId)
+          ? _cartItems
+          : (_orderWiseCarts[targetKey] ??
+              (() {
+                _loadCartFromPersistentStorage(orderId);
+                return _orderWiseCarts[targetKey];
+              })());
+      if (sourceMap != null) {
+        for (final existing in sourceMap.values) {
+          if (!existing.isKotGenerated) {
+            pendingLocalItems.add(existing);
+          }
+        }
+      }
+    }
+
     if (clearExisting) {
       _cartItems.clear();
     }
@@ -685,12 +729,26 @@ class AnimatedCartProvider extends ChangeNotifier {
       );
     }
 
+    // Re-attach unsent local items staged for this specific order
+    for (final localItem in pendingLocalItems) {
+      String itemKey = localItem.id;
+      int keyIndex = 1;
+      while (_cartItems.containsKey(itemKey)) {
+        itemKey = '${localItem.id}_$keyIndex';
+        keyIndex++;
+      }
+      _cartItems[itemKey] = localItem;
+    }
+
     if (tableId.isNotEmpty) {
       _currentTableId = tableId;
     }
-    if (orderId.isNotEmpty) {
+    if (orderId.trim().isNotEmpty) {
       _currentOrderId = orderId;
-      _orderWiseCarts[orderId] = Map<String, CartItem>.from(_cartItems);
+      _orderWiseCarts[targetKey] = Map<String, CartItem>.from(_cartItems);
+      _serverKotItems = _orderWiseServerKotItems[targetKey] ?? [];
+    } else {
+      _serverKotItems = [];
     }
 
     _updateTotalItems();
@@ -700,7 +758,7 @@ class AnimatedCartProvider extends ChangeNotifier {
   // Persistent storage methods for cart data
   void _saveCartToPersistentStorage(String orderId) {
     try {
-      final cartData = _orderWiseCarts[orderId];
+      final cartData = _orderWiseCarts[_key(orderId)];
       if (cartData != null && cartData.isNotEmpty) {
         final cartJson = cartData.map(
           (key, item) => MapEntry(key, {
@@ -766,7 +824,7 @@ class AnimatedCartProvider extends ChangeNotifier {
           );
         }
 
-        _orderWiseCarts[orderId] = loadedCart;
+        _orderWiseCarts[_key(orderId)] = loadedCart;
         debugPrint(
           '[AnimatedCart] Loaded ${loadedCart.length} items for order $orderId from persistent storage',
         );
