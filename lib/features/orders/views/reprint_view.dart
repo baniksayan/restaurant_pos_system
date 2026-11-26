@@ -511,7 +511,7 @@ class _ReprintViewState extends State<ReprintView> {
             'GST (${totalPct % 1 == 0 ? totalPct.toStringAsFixed(0) : totalPct.toStringAsFixed(1)}%)';
       }
       final gstAmount =
-          billData.billHeadDt.billAmountInclTax -
+          billData.billHeadDt.effectivePayableAmount -
           billData.billHeadDt.amountAfterDisc;
 
       final items =
@@ -575,7 +575,7 @@ class _ReprintViewState extends State<ReprintView> {
         orderTime: billTimestamp,
         subtotal: billData.billHeadDt.amountAfterDisc,
         gstAmount: gstAmount > 0 ? gstAmount : 0,
-        total: billData.billHeadDt.billAmountInclTax,
+        total: billData.billHeadDt.effectivePayableAmount,
         companyName: billData.companyDt.companyName,
         companyAddress: billData.companyDt.companyAddress,
         companyPhone: billData.companyDt.contactNo,

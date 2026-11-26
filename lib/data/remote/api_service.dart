@@ -447,11 +447,7 @@ class ApiService {
 
   /// Update Order Head Status - Enhanced with proper parameters
   /// Update an order header's status (Order/UpdateOrderHeadStatus).
-  ///
-  /// Deliberately sends neither companyId nor userId: the API binds only
-  /// orderHeadId/statusId and resolves the company and the acting user from
-  /// the auth token. Sending a client-side company id was both ignored and
-  /// misleading — it hardcoded a single tenant.
+  /// Binds tenant companyId, outletId, orderHeadId, statusId, and userId.
   static Future<Map<String, dynamic>?> updateOrderHeadStatus({
     String? token,
     required String orderHeadId,
@@ -469,20 +465,36 @@ class ApiService {
               ? token
               : HiveService.getAuthToken();
 
-      Map<String, dynamic> requestBody;
+      final userId = HiveService.getUserId();
+      final companyId = HiveService.getCompanyId();
+      final outletId =
+          HiveService.getSelectedLocationId() ?? HiveService.getOutletId();
 
-      // Support both old and new parameter formats
-      if (orderId != null && status != null) {
-        // Legacy format
-        requestBody = {
-          "orderId": orderId,
-          "status": status,
-          if (tableId != null) "tableId": tableId,
-        };
-      } else {
-        // New format
-        requestBody = {"orderHeadId": orderHeadId, "statusId": statusId};
-      }
+      final resolvedStatus = (status != null && status.isNotEmpty)
+          ? status
+          : (statusId == 7
+              ? 'Settled'
+              : (statusId == 6
+                  ? 'Billed'
+                  : (statusId == 5
+                      ? 'Delivered'
+                      : (statusId == 4 ? 'Cancelled' : 'Completed'))));
+
+      final effectiveOrderId =
+          (orderId != null && orderId.isNotEmpty) ? orderId : orderHeadId;
+
+      final Map<String, dynamic> requestBody = {
+        "orderHeadId": orderHeadId,
+        "orderId": effectiveOrderId,
+        "statusId": statusId,
+        "status": resolvedStatus,
+        "orderStatus": resolvedStatus,
+        if (companyId != null && companyId > 0) "companyId": companyId,
+        if (outletId != null && outletId > 0) "outletId": outletId,
+        if (tableId != null && tableId.isNotEmpty) "tableId": tableId,
+        if (tableId != null && tableId.isNotEmpty) "orderChannelId": tableId,
+        if (userId != null && userId.isNotEmpty) "userId": userId,
+      };
 
       final response = await http.post(
         Uri.parse('${ApiConstants.baseUrl}Order/UpdateOrderHeadStatus'),
@@ -491,35 +503,90 @@ class ApiService {
       );
 
       if (kDebugMode) {
-        if (orderId != null) {
-          debugPrint(
-            '[API Call] UpdateOrderHeadStatus - Table: $tableId -> $status',
-          );
-          debugPrint(
-            '[Order ${status == 'occupied' ? 'Created' : 'Removed'}] ID: $orderId',
-          );
-        } else {
-          debugPrint(
-            '[API Call] UpdateOrderHeadStatus - Order: $orderHeadId -> Status: $statusId',
-          );
-          debugPrint(
-            '[Order ${statusId == 6
-                ? 'Created'
-                : statusId == 7
-                ? 'Removed'
-                : 'Updated'}] ID: $orderHeadId',
-          );
-        }
+        debugPrint(
+          '[API Call] UpdateOrderHeadStatus - Order: $orderHeadId -> Status: $statusId ($resolvedStatus), Response Code: ${response.statusCode}',
+        );
+        debugPrint('[API Call] UpdateOrderHeadStatus Request Body: ${json.encode(requestBody)}');
+        debugPrint('[API Call] UpdateOrderHeadStatus Response Body: ${response.body}');
       }
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+        return {'isSuccess': true, 'data': decoded};
       }
 
-      return null;
+      return {
+        'isSuccess': false,
+        'statusCode': response.statusCode,
+        'message': response.body.isNotEmpty
+            ? response.body
+            : 'HTTP ${response.statusCode} from server',
+      };
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[API Error] UpdateOrderHeadStatus: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Update an order channel's (table's) status (Setting/UpdateOrderChannelStatus).
+  /// Sets table channelstatusId to 0 (Available) when vacated.
+  static Future<Map<String, dynamic>?> updateOrderChannelStatus({
+    String? token,
+    required String orderChannelId,
+    int channelStatusId = 0,
+    String status = 'Available',
+    String channelType = 'Table',
+  }) async {
+    final isConnected = await checkInternetAndGoForward();
+    if (!isConnected) return null;
+
+    try {
+      final authToken =
+          (token != null && token.isNotEmpty)
+              ? token
+              : HiveService.getAuthToken();
+
+      final companyId = HiveService.getCompanyId();
+      final outletId =
+          HiveService.getSelectedLocationId() ?? HiveService.getOutletId();
+
+      final Map<String, dynamic> requestBody = {
+        "orderChannelId": orderChannelId,
+        "channelstatusId": channelStatusId,
+        "status": status,
+        "channelType": channelType,
+        if (companyId != null && companyId > 0) "companyId": companyId,
+        if (outletId != null && outletId > 0) "outletId": outletId,
+      };
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}Setting/UpdateOrderChannelStatus'),
+        headers: _bearerHeaders(authToken),
+        body: json.encode(requestBody),
+      );
+
+      if (kDebugMode) {
+        debugPrint(
+          '[API Call] UpdateOrderChannelStatus - Table: $orderChannelId -> $status ($channelStatusId), Code: ${response.statusCode}',
+        );
+      }
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+        return {'isSuccess': true, 'data': decoded};
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[API Error] UpdateOrderChannelStatus: $e');
       }
       return null;
     }
@@ -844,13 +911,17 @@ class ApiService {
   /// Get all taxes for a company
   static Future<Map<String, dynamic>?> getAllTaxes({
     required int companyId,
+    int? outletId,
   }) async {
     final isConnected = await checkInternetAndGoForward();
     if (!isConnected) return null;
 
     try {
       const endpoint = 'Order/getTaxDt';
-      final body = {"companyId": companyId};
+      final body = {
+        "companyId": companyId,
+        if (outletId != null && outletId > 0) "outletId": outletId,
+      };
 
       if (kDebugMode) {
         debugPrint('Calling getAllTaxes API: $endpoint');
@@ -1046,7 +1117,7 @@ class ApiService {
       debugPrint('orderDetails count: ${orderDetails.length}');
       debugPrint('orderDetails: $orderDetails');
       debugPrint('Full body: $body');
-      debugPrint('Auth token: ${HiveService.getAuthToken()}');
+      debugPrint('Auth token: [PRESENT]');
       debugPrint('========================');
     }
 

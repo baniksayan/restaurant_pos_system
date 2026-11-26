@@ -182,7 +182,7 @@ class AuthProvider with ChangeNotifier {
         // Save token to hive
         await HiveService.saveAuthToken(model.data?.posToken ?? '');
 
-        debugPrint('Saved Token: ${HiveService.getAuthToken()}');
+        debugPrint('Saved Token: [PRESENT]');
         HiveService.setUserId(model.data?.userDetails?.userId ?? '');
         HiveService.setWaiterId("cceb307f-2f01-4e0e-8f28-e07ba8e941ac");
 

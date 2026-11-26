@@ -183,9 +183,9 @@ class TaxProvider with ChangeNotifier {
         'Fetching tax data from API (companyId: $targetCompanyId, outlet: $outletId)',
       );
 
-      // Primary call: Order/getTaxDt with tenant's companyId
+      // Primary call: Order/getTaxDt with tenant's companyId and outletId
       Map<String, dynamic>? response =
-          await ApiService.getAllTaxes(companyId: targetCompanyId);
+          await ApiService.getAllTaxes(companyId: targetCompanyId, outletId: outletId);
 
       // If primary returned empty or failure and an outletId is supplied, try outletId as secondary
       if (response == null ||

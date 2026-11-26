@@ -60,6 +60,7 @@ class _PaymentPageState extends State<PaymentPage>
   String? _fetchedChannelName;
   String? _fetchedBillId;
   double? _actualBillAmount;
+  final List<String> _associatedOrderIds = [];
 
   /// Sum of payments already recorded against this bill from earlier calls.
   double _alreadyPaidAmount = 0;
@@ -137,12 +138,17 @@ class _PaymentPageState extends State<PaymentPage>
         if (billDetails != null &&
             billDetails.isSuccess &&
             billDetails.data != null) {
-          final billAmt = billDetails.data!.billHeadDt.billAmountInclTax;
+          final billAmt = billDetails.data!.billHeadDt.effectivePayableAmount;
           if (billAmt > 0) {
             _actualBillAmount = billAmt;
           }
 
           if (billDetails.data!.billOrderDt.isNotEmpty) {
+            for (final bo in billDetails.data!.billOrderDt) {
+              if (bo.orderId.isNotEmpty && !_associatedOrderIds.contains(bo.orderId)) {
+                _associatedOrderIds.add(bo.orderId);
+              }
+            }
             final firstOrder = billDetails.data!.billOrderDt.first;
             if (firstOrder.orderId.isNotEmpty) {
               _fetchedOrderId ??= firstOrder.orderId;
@@ -165,6 +171,49 @@ class _PaymentPageState extends State<PaymentPage>
         );
         if (paid != null && paid > 0) {
           _alreadyPaidAmount = paid;
+        } else if (billDetails?.data != null && billDetails!.data!.totalPaidAmount > 0) {
+          _alreadyPaidAmount = billDetails.data!.totalPaidAmount;
+        }
+
+        // Check if already paid in full from earlier transaction
+        final bool isAlreadyFullyPaid = (billTotalAmount > 0 && _alreadyPaidAmount >= billTotalAmount - 0.004) ||
+            (billDetails?.data?.isPaidInFull == true);
+
+        if (isAlreadyFullyPaid) {
+          _savedSettled = true;
+          final Set<String> ordersToSettle = {};
+          final settledOrderId = effectiveOrderId;
+          if (settledOrderId != null && settledOrderId.isNotEmpty) {
+            ordersToSettle.add(settledOrderId);
+          }
+          ordersToSettle.addAll(_associatedOrderIds);
+
+          for (final oid in ordersToSettle) {
+            try {
+              await ApiService.updateOrderHeadStatus(
+                orderHeadId: oid,
+                statusId: 7,
+                status: 'Settled',
+                tableId: effectiveTableId,
+              );
+            } catch (e) {
+              debugPrint('[PaymentPage] Error updating status to settled for $oid: $e');
+            }
+          }
+
+          if (mounted) {
+            try {
+              final tp = Provider.of<TableProvider>(context, listen: false);
+              final acp = Provider.of<AnimatedCartProvider>(context, listen: false);
+              for (final oid in ordersToSettle) {
+                acp.clearOrderData(oid);
+                await tp.markOrderSettled(oid);
+              }
+              await tp.refreshTables(silent: true);
+            } catch (e) {
+              debugPrint('[PaymentPage] Error syncing settlement: $e');
+            }
+          }
         }
       }
     } catch (e) {
@@ -289,7 +338,17 @@ class _PaymentPageState extends State<PaymentPage>
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () async {
             await HapticHelper.triggerFeedback();
-            if (context.mounted) Navigator.pop(context);
+            if (context.mounted) {
+              if (_isAlreadySettled) {
+                try {
+                  final tp = Provider.of<TableProvider>(context, listen: false);
+                  final navProvider = Provider.of<NavigationProvider>(context, listen: false);
+                  navProvider.clearTableSelection();
+                  tp.refreshTables();
+                } catch (_) {}
+              }
+              Navigator.pop(context);
+            }
           },
         ),
         title: const Text(
@@ -380,7 +439,61 @@ class _PaymentPageState extends State<PaymentPage>
               ),
             ),
       bottomNavigationBar: _isAlreadySettled
-          ? null
+          ? SafeArea(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: const Border(
+                    top: BorderSide(color: Color(0xFFF1F5F9), width: 1.2),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, -3),
+                    ),
+                  ],
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await HapticHelper.triggerFeedback();
+                      if (!context.mounted) return;
+                      try {
+                        final tp = Provider.of<TableProvider>(context, listen: false);
+                        final navProvider = Provider.of<NavigationProvider>(context, listen: false);
+                        navProvider.clearTableSelection();
+                        await tp.refreshTables();
+                      } catch (_) {}
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    },
+                    icon: const Icon(Icons.check_circle_rounded, size: 20, color: Colors.white),
+                    label: const Text(
+                      'Bill Paid in Full • Back to Tables',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      shadowColor: const Color(0xFF10B981).withValues(alpha: 0.35),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
           : SafeArea(
               child: Container(
                 padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
@@ -547,12 +660,19 @@ class _PaymentPageState extends State<PaymentPage>
                 Provider.of<NavigationProvider>(context, listen: false);
 
             if (isFullyPaidNow) {
+              final Set<String> ordersToSettle = {};
               if (settledOrderId != null && settledOrderId.isNotEmpty) {
-                // Update order head status on backend to Settled / Vacated (7)
+                ordersToSettle.add(settledOrderId);
+              }
+              ordersToSettle.addAll(_associatedOrderIds);
+
+              for (final oid in ordersToSettle) {
                 try {
                   await ApiService.updateOrderHeadStatus(
-                    orderHeadId: settledOrderId,
+                    orderHeadId: oid,
                     statusId: 7,
+                    status: 'Settled',
+                    tableId: effectiveTableId,
                   );
                 } catch (e) {
                   debugPrint(
@@ -560,14 +680,10 @@ class _PaymentPageState extends State<PaymentPage>
                   );
                 }
 
-                await tp.markOrderSettled(settledOrderId);
-                acp.clearOrderData(settledOrderId);
+                await tp.markOrderSettled(oid);
+                acp.clearOrderData(oid);
               }
 
-              final targetTableId = effectiveTableId;
-              if (targetTableId != null && targetTableId.isNotEmpty) {
-                tp.updateTableStatus(targetTableId, 'available');
-              }
               navProvider.clearTableSelection();
             }
 

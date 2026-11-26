@@ -125,7 +125,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
               debugPrint('[UI] Error: ${tableProvider.error}');
             }
 
-            if (tableProvider.isLoading) {
+            if (tableProvider.isLoading && tableProvider.tables.isEmpty) {
               return const DashboardLoadingState();
             }
 
@@ -209,17 +209,16 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                               child: PremiumRefreshIndicator(
                                 onRefresh: () async {
                                   try {
-                                    // Re-initialize / reload tables from provider (API)
-                                    context
+                                    // Await real backend API refresh across all tables
+                                    await context
                                         .read<TableProvider>()
-                                        .initializeTables();
-                                    // Removed green SnackBar per request
+                                        .refreshTables(isPullToRefresh: true);
                                   } catch (e) {
                                     if (kDebugMode) {
                                       debugPrint('Refresh error: $e');
                                     }
                                     _showSnackBar(
-                                      'Failed to refresh tables',
+                                      'Failed to refresh tables: $e',
                                       Colors.red,
                                     );
                                   }
@@ -396,12 +395,15 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
 
     // 1. If table has multiple orders, open multi-order management popup directly
     if (table.orderCount > 1) {
-      showDialog(
+      await showDialog(
         context: context,
         barrierDismissible: true,
         barrierColor: Colors.black.withValues(alpha: 0.15),
         builder: (context) => MultiOrderManagementDialog(table: table),
       );
+      if (mounted) {
+        tableProvider.refreshTables();
+      }
       return;
     }
 
@@ -456,7 +458,7 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
       if (!mounted) return;
       final navProvider = context.read<NavigationProvider>();
 
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(
           builder:
@@ -472,6 +474,9 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
               ),
         ),
       );
+      if (mounted) {
+        tableProvider.refreshTables();
+      }
       return;
     }
 
@@ -643,12 +648,16 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
     }
 
     // Always show management dialog for long press (as per requirements)
-    showDialog(
+    await showDialog(
       context: context,
       barrierDismissible: true,
       barrierColor: Colors.black.withValues(alpha: 0.15),
       builder: (context) => MultiOrderManagementDialog(table: table),
     );
+    if (mounted) {
+      final tp = Provider.of<TableProvider>(context, listen: false);
+      tp.refreshTables();
+    }
   }
 
 

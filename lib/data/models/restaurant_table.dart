@@ -173,6 +173,12 @@ class ActiveOrder {
   final int? totalAdult;
   final int? totalChild;
 
+  /// Whether a KOT was generated/recorded for this order
+  final bool isKotCreated;
+
+  /// The generated KOT ticket number if available (e.g. KT/ME/161126/0010)
+  final String? kotNumber;
+
   const ActiveOrder({
     required this.orderId,
     required this.generatedOrderNo,
@@ -181,12 +187,28 @@ class ActiveOrder {
     this.billId,
     this.totalAdult,
     this.totalChild,
+    this.isKotCreated = false,
+    this.kotNumber,
   });
 
   /// Guests on this order, or null when the server has not sent the counts.
   int? get guestCount {
     if (totalAdult == null && totalChild == null) return null;
     return (totalAdult ?? 0) + (totalChild ?? 0);
+  }
+
+  /// True when this order has progressed to KOT generation or kitchen preparation
+  bool get hasKotGenerated {
+    if (isKotCreated) return true;
+    final s = orderStatus.toLowerCase().trim();
+    return s.contains('kot') ||
+        s.contains('kitchen') ||
+        s.contains('prepar') ||
+        s.contains('cook') ||
+        s.contains('ready') ||
+        s.contains('active') ||
+        s.contains('progress') ||
+        s == 'running';
   }
 
   ActiveOrder copyWith({
@@ -198,6 +220,8 @@ class ActiveOrder {
     bool clearBillId = false,
     int? totalAdult,
     int? totalChild,
+    bool? isKotCreated,
+    String? kotNumber,
   }) {
     return ActiveOrder(
       orderId: orderId ?? this.orderId,
@@ -207,6 +231,8 @@ class ActiveOrder {
       billId: clearBillId ? null : (billId ?? this.billId),
       totalAdult: totalAdult ?? this.totalAdult,
       totalChild: totalChild ?? this.totalChild,
+      isKotCreated: isKotCreated ?? this.isKotCreated,
+      kotNumber: kotNumber ?? this.kotNumber,
     );
   }
 

@@ -57,6 +57,18 @@ class BillDetailsData {
     required this.paymentDetail,
   });
 
+  /// Total amount collected across all payments recorded for this bill
+  double get totalPaidAmount {
+    return paymentDetail.fold(0.0, (sum, p) => sum + p.paymentAmount);
+  }
+
+  /// Whether this bill is fully settled based on recorded payment rows
+  bool get isPaidInFull {
+    final payable = billHeadDt.effectivePayableAmount;
+    if (payable <= 0.004) return false;
+    return totalPaidAmount >= (payable - 0.004);
+  }
+
   factory BillDetailsData.fromJson(Map<String, dynamic> json) {
     return BillDetailsData(
       companyDt: CompanyDetails.fromJson(json['companyDt'] ?? {}),
@@ -166,6 +178,15 @@ class BillHeadDetails {
   });
 
   DateTime? get parsedBillDate => DateTimeFormatter.parseDateTime(billDate);
+
+  /// Effective payable bill amount, checking billAmountInclTax first,
+  /// falling back to billAmountExclTax or amountAfterDisc if tax is 0 or uncalculated.
+  double get effectivePayableAmount {
+    if (billAmountInclTax > 0.004) return billAmountInclTax;
+    if (billAmountExclTax > 0.004) return billAmountExclTax;
+    if (amountAfterDisc > 0.004) return amountAfterDisc;
+    return 0.0;
+  }
 
   factory BillHeadDetails.fromJson(Map<String, dynamic> json) {
     return BillHeadDetails(

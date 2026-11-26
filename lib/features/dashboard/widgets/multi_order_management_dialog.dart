@@ -3,19 +3,87 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_colors.dart';
+import 'package:restaurant_pos_system/core/constants/currency_constants.dart';
+import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
+import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
-import 'add_party_dialog.dart';
+import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/features/payment/views/payment_view.dart';
+import 'add_party_dialog.dart';
 import '../providers/table_provider.dart';
 import '../providers/navigation_provider.dart';
 import 'package:restaurant_pos_system/features/order_taking/providers/animated_cart_provider.dart';
 import 'package:restaurant_pos_system/core/constants/app_strings.dart';
 import 'package:restaurant_pos_system/core/utils/snackbar_helper.dart';
 
+/// Payment status of an active order
+enum OrderPaymentStatus {
+  paidInFull,
+  partiallyPaid,
+  pending,
+}
+
+/// Kitchen / delivery workflow status of an active order
+enum OrderKitchenStatus {
+  readyForDelivery,
+  preparing,
+  inKitchen,
+  orderPlaced,
+  delivered,
+}
+
+/// Dynamically fetched and computed metadata for an active order
+class OrderDynamicInfo {
+  final String orderId;
+  final String orderNumber;
+  final String customerName;
+  final int totalGuests;
+  final int itemCount;
+  final double totalAmount;
+  final double paidAmount;
+  final double balanceAmount;
+  final String? billId;
+  final bool isBilled;
+  final OrderPaymentStatus paymentStatus;
+  final OrderKitchenStatus kitchenStatus;
+  final String kitchenStatusText;
+  final List<String> itemNamesPreview;
+  final bool isLoaded;
+
+  const OrderDynamicInfo({
+    required this.orderId,
+    required this.orderNumber,
+    required this.customerName,
+    required this.totalGuests,
+    required this.itemCount,
+    required this.totalAmount,
+    required this.paidAmount,
+    required this.balanceAmount,
+    this.billId,
+    required this.isBilled,
+    required this.paymentStatus,
+    required this.kitchenStatus,
+    required this.kitchenStatusText,
+    this.itemNamesPreview = const [],
+    this.isLoaded = false,
+  });
+
+  bool get isPaidInFull => paymentStatus == OrderPaymentStatus.paidInFull;
+  bool get isPartiallyPaid => paymentStatus == OrderPaymentStatus.partiallyPaid;
+  bool get isPending => paymentStatus == OrderPaymentStatus.pending;
+}
+
 class MultiOrderManagementDialog extends StatefulWidget {
   final RestaurantTable table;
+  final bool enableDynamicFetch;
+  final Map<String, OrderDynamicInfo>? initialDynamicData;
 
-  const MultiOrderManagementDialog({super.key, required this.table});
+  const MultiOrderManagementDialog({
+    super.key,
+    required this.table,
+    this.enableDynamicFetch = true,
+    this.initialDynamicData,
+  });
 
   @override
   State<MultiOrderManagementDialog> createState() =>
@@ -25,6 +93,251 @@ class MultiOrderManagementDialog extends StatefulWidget {
 class _MultiOrderManagementDialogState
     extends State<MultiOrderManagementDialog> {
   bool _isCreatingOrder = false;
+  final Map<String, OrderDynamicInfo> _dynamicDataMap = {};
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialDynamicData != null) {
+      _dynamicDataMap.addAll(widget.initialDynamicData!);
+    }
+    if (widget.enableDynamicFetch) {
+      _loadDynamicOrdersData();
+    }
+  }
+
+  /// Dynamically load full order line details, live kitchen statuses, and payment states
+  Future<void> _loadDynamicOrdersData({bool silent = false}) async {
+    if (!mounted) return;
+
+    try {
+      final token = HiveService.getAuthToken();
+      final tableProvider = Provider.of<TableProvider>(context, listen: false);
+      final currentTable = tableProvider.tables.firstWhere(
+        (t) => GuidHelper.areEqual(t.id, widget.table.id),
+        orElse: () => widget.table,
+      );
+
+      final results = await Future.wait(
+        currentTable.activeOrders.map((order) async {
+          try {
+            // 1. Fetch live order details from API
+            final orderDetails = await ApiService.getOrderDetailById(
+              token: token,
+              orderId: order.orderId,
+            );
+
+            String customerName =
+                HiveService.getCustomerName(order.orderId) ?? 'Guest';
+            int itemCount = 0;
+            double itemsSum = 0.0;
+            String? resolvedBillId =
+                order.billId ?? HiveService.getOrderBillId(order.orderId);
+            bool isActuallyBilled = order.isBilled;
+            bool isActuallyPaid = false;
+            final List<String> topItems = [];
+
+            int readyCount = 0;
+            int preparingCount = 0;
+            int kotCount = 0;
+            int servedCount = 0;
+            int totalItemsInList = 0;
+
+            if (orderDetails != null &&
+                orderDetails.isSuccess == true &&
+                orderDetails.data != null &&
+                orderDetails.data!.isNotEmpty) {
+              final headData = orderDetails.data!.first;
+
+              if (GuidHelper.isValid(headData.billId)) {
+                resolvedBillId = headData.billId;
+                await HiveService.saveOrderBillId(
+                  order.orderId,
+                  resolvedBillId!,
+                );
+              }
+
+              if (headData.isBilled == true) {
+                isActuallyBilled = true;
+              }
+              if (headData.isPaid == true) {
+                isActuallyPaid = true;
+              }
+
+              final orderDetailList = headData.orderDetailList ?? [];
+              totalItemsInList = orderDetailList.length;
+
+              for (final line in orderDetailList) {
+                final qty = line.productQty ?? 1;
+                itemCount += qty;
+
+                final price =
+                    line.totPrice?.toDouble() ??
+                    ((line.itemPrice?.toDouble() ?? 0.0) * qty);
+                itemsSum += price;
+
+                if (line.productName != null &&
+                    line.productName!.isNotEmpty &&
+                    topItems.length < 3) {
+                  topItems.add('${qty}x ${line.productName}');
+                }
+
+                final statusId = line.orderStatusId;
+                final statusName = (line.statusSystemName ??
+                        line.status ??
+                        line.kotStatusName ??
+                        '')
+                    .toLowerCase();
+
+                if (statusId == 3 ||
+                    statusName.contains('ready') ||
+                    statusName.contains('deliver')) {
+                  readyCount++;
+                } else if (statusId == 2 || statusName.contains('prepar')) {
+                  preparingCount++;
+                } else if (statusId == 5 ||
+                    statusName.contains('serv') ||
+                    statusName.contains('complet')) {
+                  servedCount++;
+                } else if (line.kotNo != null && line.kotNo!.isNotEmpty) {
+                  kotCount++;
+                }
+              }
+            }
+
+            // 2. Resolve live kitchen / delivery status dynamically
+            OrderKitchenStatus kitchenStatus;
+            String kitchenStatusText;
+            if (readyCount > 0) {
+              kitchenStatus = OrderKitchenStatus.readyForDelivery;
+              kitchenStatusText = 'Ready for Delivery';
+            } else if (preparingCount > 0) {
+              kitchenStatus = OrderKitchenStatus.preparing;
+              kitchenStatusText = 'Preparing in Kitchen';
+            } else if (kotCount > 0) {
+              kitchenStatus = OrderKitchenStatus.inKitchen;
+              kitchenStatusText = 'In Kitchen (KOT Sent)';
+            } else if (totalItemsInList > 0 &&
+                servedCount == totalItemsInList) {
+              kitchenStatus = OrderKitchenStatus.delivered;
+              kitchenStatusText = 'Delivered / Served';
+            } else {
+              kitchenStatus = OrderKitchenStatus.orderPlaced;
+              kitchenStatusText = 'Order Placed';
+            }
+
+            // 3. Resolve live bill details and payments
+            double billTotal = itemsSum;
+            double paidAmount = 0.0;
+
+            if (resolvedBillId != null && resolvedBillId.isNotEmpty) {
+              final paid = await ApiService.getPaidAmountForBill(
+                billId: resolvedBillId,
+              );
+              if (paid != null && paid > 0) {
+                paidAmount = paid;
+              }
+
+              final billResp = await ApiService.getBillDetailByBillId(
+                billId: resolvedBillId,
+              );
+              if (billResp != null &&
+                  billResp.isSuccess &&
+                  billResp.data != null) {
+                final amt = billResp.data!.billHeadDt.effectivePayableAmount;
+                if (amt > 0) {
+                  billTotal = amt;
+                }
+                if (paidAmount <= 0.004 && billResp.data!.totalPaidAmount > 0) {
+                  paidAmount = billResp.data!.totalPaidAmount;
+                }
+                final cust = billResp.data!.billHeadDt.customerName.trim();
+                if (cust.isNotEmpty &&
+                    cust.toLowerCase() != 'walk-in customer') {
+                  customerName = cust;
+                }
+                if (billResp.data!.isPaidInFull) {
+                  isActuallyPaid = true;
+                }
+              }
+            }
+
+            // 4. Resolve exact payment status directly from backend data
+            OrderPaymentStatus paymentStatus;
+            if (isActuallyPaid ||
+                HiveService.isOrderSettled(order.orderId) ||
+                (billTotal > 0.004 && paidAmount >= (billTotal - 0.004))) {
+              paymentStatus = OrderPaymentStatus.paidInFull;
+            } else if (paidAmount > 0.004) {
+              paymentStatus = OrderPaymentStatus.partiallyPaid;
+            } else {
+              paymentStatus = OrderPaymentStatus.pending;
+            }
+
+            final balanceAmount =
+                (billTotal - paidAmount) > 0 ? (billTotal - paidAmount) : 0.0;
+
+            return MapEntry(
+              order.orderId,
+              OrderDynamicInfo(
+                orderId: order.orderId,
+                orderNumber: order.generatedOrderNo,
+                customerName: customerName,
+                totalGuests: order.guestCount ?? 1,
+                itemCount: itemCount,
+                totalAmount: billTotal,
+                paidAmount: paidAmount,
+                balanceAmount: balanceAmount,
+                billId: resolvedBillId,
+                isBilled: isActuallyBilled,
+                paymentStatus: paymentStatus,
+                kitchenStatus: kitchenStatus,
+                kitchenStatusText: kitchenStatusText,
+                itemNamesPreview: topItems,
+                isLoaded: true,
+              ),
+            );
+          } catch (e) {
+            debugPrint(
+              '[MultiOrderDialog] Error loading dynamic order ${order.orderId}: $e',
+            );
+            return MapEntry(
+              order.orderId,
+              OrderDynamicInfo(
+                orderId: order.orderId,
+                orderNumber: order.generatedOrderNo,
+                customerName: 'Guest',
+                totalGuests: order.guestCount ?? 1,
+                itemCount: 0,
+                totalAmount: 0.0,
+                paidAmount: 0.0,
+                balanceAmount: 0.0,
+                isBilled: order.isBilled,
+                paymentStatus: order.isBilled
+                    ? OrderPaymentStatus.pending
+                    : OrderPaymentStatus.pending,
+                kitchenStatus: OrderKitchenStatus.orderPlaced,
+                kitchenStatusText: order.orderStatus.isNotEmpty
+                    ? order.orderStatus
+                    : 'Order Placed',
+                isLoaded: true,
+              ),
+            );
+          }
+        }),
+      );
+
+      if (mounted) {
+        setState(() {
+          for (final entry in results) {
+            _dynamicDataMap[entry.key] = entry.value;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('[MultiOrderDialog] Error loading dynamic orders data: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,12 +347,12 @@ class _MultiOrderManagementDialogState
     return Consumer<TableProvider>(
       builder: (context, tableProvider, child) {
         final currentTable = tableProvider.tables.firstWhere(
-          (t) => t.id == widget.table.id,
+          (t) => GuidHelper.areEqual(t.id, widget.table.id),
           orElse: () => widget.table,
         );
 
         return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+          filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () {
@@ -51,46 +364,46 @@ class _MultiOrderManagementDialogState
               backgroundColor: Colors.transparent,
               elevation: 0,
               insetPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 20,
+                horizontal: 12,
+                vertical: 16,
               ),
               child: Center(
                 child: GestureDetector(
                   onTap: () {}, // Prevent taps inside popup from closing
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(20),
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                       child: Container(
-                        width: MediaQuery.of(context).size.width * 0.90,
+                        width: MediaQuery.of(context).size.width * 0.94,
                         constraints: BoxConstraints(
-                          maxWidth: 460,
-                          maxHeight: MediaQuery.of(context).size.height * 0.72,
+                          maxWidth: 520,
+                          maxHeight: MediaQuery.of(context).size.height *
+                              (MediaQuery.of(context).orientation ==
+                                      Orientation.landscape
+                                  ? 0.92
+                                  : 0.82),
                         ),
                         decoration: BoxDecoration(
-                          color:
-                              isDark
-                                  ? const Color(
-                                    0xFF0F172A,
-                                  ).withValues(alpha: 0.35)
-                                  : Colors.white.withValues(alpha: 0.30),
-                          borderRadius: BorderRadius.circular(24),
+                          color: isDark
+                              ? const Color(0xFF0F172A).withValues(alpha: 0.85)
+                              : Colors.white.withValues(alpha: 0.92),
+                          borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color:
-                                isDark
-                                    ? Colors.white.withValues(alpha: 0.20)
-                                    : Colors.white.withValues(alpha: 0.50),
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.15)
+                                : Colors.white.withValues(alpha: 0.8),
                             width: 1.2,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.08),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              blurRadius: 24,
+                              offset: const Offset(0, 10),
                             ),
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.10),
-                              blurRadius: 12,
+                              blurRadius: 16,
                               offset: const Offset(0, 4),
                             ),
                           ],
@@ -135,327 +448,1176 @@ class _MultiOrderManagementDialogState
     final theme = Theme.of(context);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color:
-            isDark
-                ? Colors.white.withValues(alpha: 0.04)
-                : Colors.white.withValues(alpha: 0.20),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.04)
+            : const Color(0xFFF8FAFC),
         border: Border(
           bottom: BorderSide(
-            color:
-                isDark
-                    ? Colors.white.withValues(alpha: 0.10)
-                    : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : const Color(0xFFE2E8F0),
             width: 1,
           ),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // iOS Drag handle
-          Center(
-            child: Container(
-              width: 32,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: (isDark ? Colors.white : AppColors.textPrimary)
-                    .withValues(alpha: 0.20),
-                borderRadius: BorderRadius.circular(2),
-              ),
+          // Table Badge Icon
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: const Color(0xFF4F46E5),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF4F46E5).withValues(alpha: 0.28),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.table_restaurant_rounded,
+              color: Colors.white,
+              size: 20,
             ),
           ),
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.table_restaurant_rounded,
-                  color: AppColors.primary,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(width: 10),
+          // Title & Table Meta
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            'Active Orders',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color:
-                                  isDark ? Colors.white : AppColors.textPrimary,
-                              letterSpacing: -0.3,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            table.name,
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
                     Text(
-                      'Capacity: ${table.capacity}  •  Orders: ${table.orderCount}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color:
-                            isDark
-                                ? Colors.white.withValues(alpha: 0.7)
-                                : AppColors.textSecondary,
+                      'Active Orders',
+                      style: TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEEF2FF),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: const Color(0xFFC7D2FE),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Text(
+                        table.name,
+                        style: const TextStyle(
+                          color: Color(0xFF4F46E5),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              // Single minimal close X button
-              InkWell(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  Navigator.pop(context);
-                },
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding: const EdgeInsets.all(6.0),
-                  child: Icon(
-                    Icons.close_rounded,
-                    size: 18,
-                    color: isDark ? Colors.white70 : AppColors.textSecondary,
+                const SizedBox(height: 2),
+                Text(
+                  'Capacity: ${table.capacity} guests  •  ${table.orderCount} active ${table.orderCount == 1 ? "order" : "orders"}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white70 : const Color(0xFF64748B),
                   ),
                 ),
+              ],
+            ),
+          ),
+          // Close X button
+          InkWell(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              Navigator.pop(context);
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(5.0),
+              child: Icon(
+                Icons.close_rounded,
+                size: 20,
+                color: isDark ? Colors.white70 : const Color(0xFF64748B),
               ),
-            ],
+            ),
           ),
         ],
       ),
     );
   }
-
   Widget _buildContent(
     BuildContext context,
     RestaurantTable table,
     TableProvider tableProvider,
     bool isDark,
   ) {
-    if (table.hasActiveOrders) {
-      return ListView.separated(
+    // Scenario: Table is marked reserved and has no active orders
+    final isReservedNoOrder =
+        (table.status == TableStatus.reserved || table.reservationInfo != null) &&
+        !table.hasActiveOrders;
+
+    if (isReservedNoOrder) {
+      return ListView(
         shrinkWrap: true,
-        padding: const EdgeInsets.all(12),
-        itemCount: table.activeOrders.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
-        itemBuilder: (context, index) {
-          final order = table.activeOrders[index];
-          return _buildCompactOrderCard(
-            context,
-            table,
-            order,
-            index,
-            tableProvider,
-            isDark,
-          );
-        },
+        padding: const EdgeInsets.all(10),
+        children: [
+          _buildReservedTableCard(context, table, tableProvider, isDark),
+        ],
       );
-    } else {
+    }
+
+    if (!table.hasActiveOrders) {
       return _buildNoActiveOrders(isDark);
     }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      padding: const EdgeInsets.all(10),
+      itemCount: table.activeOrders.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final order = table.activeOrders[index];
+        final dynamicInfo = _dynamicDataMap[order.orderId];
+        return _buildEnhancedOrderCard(
+          context,
+          table,
+          order,
+          dynamicInfo,
+          index,
+          tableProvider,
+          isDark,
+        );
+      },
+    );
   }
 
-  Widget _buildCompactOrderCard(
+  String _formatReservationDateTime(ReservationInfo? info) {
+    if (info != null) {
+      final date = info.reservationDate;
+      final months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      final monthStr = (date.month >= 1 && date.month <= 12)
+          ? months[date.month - 1]
+          : '';
+      final timeStr = info.startTime.isNotEmpty ? info.startTime : '';
+      if (timeStr.isNotEmpty) {
+        return '${date.day} $monthStr, $timeStr';
+      }
+      return '${date.day} $monthStr';
+    }
+    final now = DateTime.now();
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final monthStr = months[now.month - 1];
+    final hour = now.hour % 12 == 0 ? 12 : now.hour % 12;
+    final minute = now.minute.toString().padLeft(2, '0');
+    final ampm = now.hour >= 12 ? 'PM' : 'AM';
+    return '${now.day} $monthStr, $hour:$minute $ampm';
+  }
+
+  Widget _buildReservedTableCard(
     BuildContext context,
     RestaurantTable table,
-    ActiveOrder order,
-    int index,
     TableProvider tableProvider,
     bool isDark,
   ) {
-    final bool isBilled = order.isBilled;
+    final info = table.reservationInfo;
+    final guestCount = info?.guestCount ?? table.capacity;
+    final formattedTime = _formatReservationDateTime(info);
 
-    return _OrderCardItem(
-      onTap: () => _handleOrderTap(context, table, order, tableProvider),
-      child: Container(
-        decoration: BoxDecoration(
-          color:
-              isDark
-                  ? const Color(0xFF1E293B).withValues(alpha: 0.40)
-                  : Colors.white.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color:
-                isDark
-                    ? Colors.white.withValues(alpha: 0.15)
-                    : const Color(0xFFE2E8F0).withValues(alpha: 0.7),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.10)
+              : const Color(0xFFE2E8F0),
+          width: 0.8,
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color:
-                    isBilled
-                        ? AppColors.success.withValues(alpha: 0.15)
-                        : AppColors.primary.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                isBilled
-                    ? Icons.receipt_long_rounded
-                    : Icons.restaurant_rounded,
-                color: isBilled ? AppColors.success : AppColors.primary,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          // Left blue accent indicator
+          Positioned(
+            top: 0,
+            bottom: 0,
+            left: 0,
+            width: 3.5,
+            child: Container(color: const Color(0xFF3B82F6)),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Row 1: Table Name & Badges
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
                         child: Text(
-                          order.generatedOrderNo,
+                          table.name,
+                          maxLines: 1,
                           style: TextStyle(
-                            fontSize: 13.5,
+                            fontSize: 14.5,
                             fontWeight: FontWeight.w800,
-                            color:
-                                isDark ? Colors.white : AppColors.textPrimary,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
                             letterSpacing: -0.2,
                           ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
                         ),
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildBadge(
+                          label: 'Reserved',
+                          icon: Icons.calendar_today_outlined,
+                          bg: const Color(0xFFEFF6FF),
+                          border: const Color(0xFFBFDBFE),
+                          text: const Color(0xFF2563EB),
+                        ),
+                        const SizedBox(width: 5),
+                        _buildBadge(
+                          label: 'Awaiting Order',
+                          icon: Icons.access_time_rounded,
+                          bg: const Color(0xFFF8FAFC),
+                          border: const Color(0xFFE2E8F0),
+                          text: const Color(0xFF64748B),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // Row 2: Guest count
+                Row(
+                  children: [
+                    Icon(
+                      Icons.person_outline_rounded,
+                      size: 14,
+                      color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$guestCount ${guestCount == 1 ? "Guest" : "Guests"}',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white70 : const Color(0xFF334155),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // Row 3: Reserved At Banner
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF1E3A8A).withValues(alpha: 0.25)
+                        : const Color(0xFFF0F7FF),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
+                          : const Color(0xFFDBEAFE),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_month_outlined,
+                        size: 13,
+                        color: Color(0xFF2563EB),
+                      ),
                       const SizedBox(width: 6),
-                      // Status Chip
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color:
-                              isBilled
-                                  ? AppColors.success.withValues(alpha: 0.12)
-                                  : AppColors.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color:
-                                isBilled
-                                    ? AppColors.success.withValues(alpha: 0.3)
-                                    : AppColors.primary.withValues(alpha: 0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: Text(
-                          isBilled
-                              ? 'Billed'
-                              : (order.orderStatus.isNotEmpty
-                                  ? order.orderStatus
-                                  : 'Active'),
-                          style: TextStyle(
-                            color:
-                                isBilled
-                                    ? AppColors.success
-                                    : AppColors.primary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                          ),
+                      Text(
+                        'Reserved At: $formattedTime',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  if (order.guestCount != null)
+                ),
+                const SizedBox(height: 8),
+                // Row 4: Bottom Action Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
                     Text(
-                      '${order.guestCount} '
-                      '${order.guestCount == 1 ? 'guest' : 'guests'}',
+                      '—',
                       style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color:
-                            isDark
-                                ? Colors.white70
-                                : AppColors.textSecondary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white54 : const Color(0xFF94A3B8),
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  Text(
-                    isBilled ? 'Tap to pay' : 'Tap to view cart',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      color: isBilled ? AppColors.success : AppColors.primary,
-                      fontWeight: FontWeight.w600,
+                    _buildPrimaryButton(
+                      icon: Icons.menu_book_rounded,
+                      label: 'Open Menu',
+                      onPressed: () => _handleOpenMenuForTable(context, table, tableProvider),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnhancedOrderCard(
+    BuildContext context,
+    RestaurantTable table,
+    ActiveOrder order,
+    OrderDynamicInfo? dynamicInfo,
+    int index,
+    TableProvider tableProvider,
+    bool isDark,
+  ) {
+    final String orderNo = dynamicInfo?.orderNumber ?? order.generatedOrderNo;
+    final int guestCount = dynamicInfo?.totalGuests ?? (order.guestCount ?? 1);
+    final int itemCount = dynamicInfo?.itemCount ?? 0;
+    final double totalAmount = dynamicInfo?.totalAmount ?? 0.0;
+    final double paidAmount = dynamicInfo?.paidAmount ?? 0.0;
+    final double balanceAmount = dynamicInfo?.balanceAmount ??
+        (totalAmount - paidAmount > 0 ? totalAmount - paidAmount : 0.0);
+
+    final bool isBilled = order.isBilled || (dynamicInfo?.isBilled ?? false);
+    final bool isSettledInHive = HiveService.isOrderSettled(order.orderId);
+    final bool isPaidInFull = (dynamicInfo?.isPaidInFull ?? false) ||
+        isSettledInHive ||
+        (isBilled && totalAmount > 0.004 && paidAmount >= (totalAmount - 0.004));
+    final bool isPartiallyPaid = isBilled && !isPaidInFull && paidAmount > 0.004;
+    final bool isUnpaid = isBilled && !isPaidInFull && !isPartiallyPaid;
+
+    // A newly created order before items/KOT is in Awaiting Order state!
+    final bool hasKotGenerated = order.hasKotGenerated ||
+        (dynamicInfo != null &&
+            dynamicInfo.kitchenStatus != OrderKitchenStatus.orderPlaced) ||
+        itemCount > 0;
+    final bool isAwaitingOrder = !isBilled && !hasKotGenerated;
+
+    // Left border indicator accent color
+    final Color accentColor;
+    if (isAwaitingOrder) {
+      accentColor = const Color(0xFF3B82F6); // Blue for Reserved / Awaiting Order
+    } else if (!isBilled) {
+      accentColor = const Color(0xFF10B981); // Green for KOT Generated
+    } else if (isPaidInFull) {
+      accentColor = const Color(0xFF10B981); // Green for Paid
+    } else if (isPartiallyPaid) {
+      accentColor = const Color(0xFFF59E0B); // Amber for Partially Paid
+    } else {
+      accentColor = const Color(0xFFEF4444); // Red for Unpaid
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.10)
+              : const Color(0xFFE2E8F0),
+          width: 0.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          // Left accent stripe
+          Positioned(
+            top: 0,
+            bottom: 0,
+            left: 0,
+            width: 3.5,
+            child: Container(color: accentColor),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Row 1: Title (Order ID or Table) + Badges (Never wrap) ─
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          isAwaitingOrder ? table.name : orderNo,
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (isAwaitingOrder) ...[
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildBadge(
+                            label: 'Reserved',
+                            icon: Icons.calendar_today_outlined,
+                            bg: const Color(0xFFEFF6FF),
+                            border: const Color(0xFFBFDBFE),
+                            text: const Color(0xFF2563EB),
+                          ),
+                          const SizedBox(width: 5),
+                          _buildBadge(
+                            label: 'Awaiting Order',
+                            icon: Icons.access_time_rounded,
+                            bg: const Color(0xFFF8FAFC),
+                            border: const Color(0xFFE2E8F0),
+                            text: const Color(0xFF64748B),
+                          ),
+                        ],
+                      ),
+                    ] else if (!isBilled) ...[
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildBadge(
+                            label: 'KOT Generated',
+                            icon: Icons.outdoor_grill_outlined,
+                            bg: const Color(0xFFECFDF5),
+                            border: const Color(0xFFA7F3D0),
+                            text: const Color(0xFF059669),
+                          ),
+                          const SizedBox(width: 5),
+                          _buildBadge(
+                            label: dynamicInfo?.kitchenStatusText == 'Ready for Delivery'
+                                ? 'Ready'
+                                : (dynamicInfo?.kitchenStatusText == 'Preparing in Kitchen'
+                                    ? 'Preparing'
+                                    : 'In Progress'),
+                            icon: Icons.access_time_rounded,
+                            bg: const Color(0xFFFFFBEB),
+                            border: const Color(0xFFFDE68A),
+                            text: const Color(0xFFD97706),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildBadge(
+                            label: 'Bill Generated',
+                            icon: Icons.description_outlined,
+                            bg: const Color(0xFFEEF2FF),
+                            border: const Color(0xFFC7D2FE),
+                            text: const Color(0xFF4F46E5),
+                          ),
+                          const SizedBox(width: 5),
+                          if (isPaidInFull)
+                            _buildBadge(
+                              label: 'Paid',
+                              icon: Icons.check_circle_outline_rounded,
+                              bg: const Color(0xFFECFDF5),
+                              border: const Color(0xFFA7F3D0),
+                              text: const Color(0xFF059669),
+                            )
+                          else if (isPartiallyPaid)
+                            _buildBadge(
+                              label: 'Partially Paid',
+                              icon: Icons.credit_card_outlined,
+                              bg: const Color(0xFFFFFBEB),
+                              border: const Color(0xFFFDE68A),
+                              text: const Color(0xFFD97706),
+                            )
+                          else
+                            _buildBadge(
+                              label: 'Unpaid',
+                              icon: Icons.credit_card_outlined,
+                              bg: const Color(0xFFFEF2F2),
+                              border: const Color(0xFFFECACA),
+                              text: const Color(0xFFDC2626),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 6),
+
+                // ── Row 2: Guest Count & Item Count ────────────────────────
+                Row(
+                  children: [
+                    Icon(
+                      Icons.person_outline_rounded,
+                      size: 14,
+                      color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$guestCount ${guestCount == 1 ? "Guest" : "Guests"}',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white70 : const Color(0xFF334155),
+                      ),
+                    ),
+                    if (!isAwaitingOrder) ...[
+                      Container(
+                        height: 10,
+                        width: 1,
+                        margin: const EdgeInsets.symmetric(horizontal: 8),
+                        color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+                      ),
+                      Icon(
+                        Icons.restaurant_outlined,
+                        size: 14,
+                        color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$itemCount ${itemCount == 1 ? "Item" : "Items"}',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white70 : const Color(0xFF334155),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+
+                // ── Reserved At Banner (for Awaiting Order) ────────────────
+                if (isAwaitingOrder) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF1E3A8A).withValues(alpha: 0.25)
+                          : const Color(0xFFF0F7FF),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: isDark
+                            ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
+                            : const Color(0xFFDBEAFE),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.calendar_month_outlined,
+                          size: 13,
+                          color: Color(0xFF2563EB),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Reserved At: ${_formatReservationDateTime(table.reservationInfo)}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
+
+                // ── Scenarios 3, 4, 5: 3-Column Payment Breakdown ──────────
+                if (isBilled) ...[
+                  const SizedBox(height: 6),
+                  _buildPaymentSummaryThreeColumns(
+                    billAmount: totalAmount,
+                    paidAmount: paidAmount,
+                    dueOrRemaining: isUnpaid ? totalAmount : balanceAmount,
+                    isUnpaid: isUnpaid,
+                    isPaidInFull: isPaidInFull,
+                    isDark: isDark,
+                  ),
+                ],
+
+                // ── Scenario 4: Payment Reminder Banner ───────────────────
+                if (isPartiallyPaid) ...[
+                  const SizedBox(height: 6),
+                  _buildPaymentReminderBanner(
+                    remainingAmount: balanceAmount,
+                    isDark: isDark,
+                  ),
+                ],
+
+                const SizedBox(height: 8),
+
+                // ── Bottom Action Row ─────────────────────────────────────
+                if (isAwaitingOrder) ...[
+                  // Awaiting Order: Amount dash on left, Delete Icon + Open Menu on right
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        '—',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white54 : const Color(0xFF94A3B8),
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildDeleteIconButton(
+                            context,
+                            table,
+                            order,
+                            dynamicInfo,
+                            isDark,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildPrimaryButton(
+                            icon: Icons.menu_book_rounded,
+                            label: 'Open Menu',
+                            onPressed: () => _handleOpenMenuForOrder(
+                              context,
+                              table,
+                              order,
+                              tableProvider,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ] else if (!isBilled) ...[
+                  // Scenario 1: Order amount on left, Delete Icon + Open Cart on right
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${CurrencyConstants.symbol}${CurrencyConstants.formatWithoutSymbol(totalAmount)}',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildDeleteIconButton(
+                            context,
+                            table,
+                            order,
+                            dynamicInfo,
+                            isDark,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildPrimaryButton(
+                            icon: Icons.shopping_cart_outlined,
+                            label: 'Open Cart',
+                            onPressed: () => _handleOpenCart(
+                              context,
+                              table,
+                              order,
+                              tableProvider,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  // Scenarios 3, 4, 5: Right-aligned CTA + Delete action
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (isPaidInFull)
+                        // Scenario 5: Delete Order button (prominent red)
+                        _buildPrimaryButton(
+                          icon: Icons.delete_outline_rounded,
+                          label: 'Delete Order',
+                          backgroundColor: const Color(0xFFDC2626),
+                          onPressed: () => _removeOrder(
+                            context,
+                            table,
+                            order,
+                            dynamicInfo,
+                          ),
+                        )
+                      else if (isPartiallyPaid) ...[
+                        _buildDeleteIconButton(
+                          context,
+                          table,
+                          order,
+                          dynamicInfo,
+                          isDark,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildPrimaryButton(
+                          icon: Icons.credit_card_rounded,
+                          label: 'Collect ${CurrencyConstants.symbol}${CurrencyConstants.formatWithoutSymbol(balanceAmount)}',
+                          onPressed: () => _handleCollectPayment(
+                            context,
+                            table,
+                            order,
+                            dynamicInfo,
+                            tableProvider,
+                          ),
+                        ),
+                      ] else ...[
+                        _buildDeleteIconButton(
+                          context,
+                          table,
+                          order,
+                          dynamicInfo,
+                          isDark,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildPrimaryButton(
+                          icon: Icons.credit_card_rounded,
+                          label: 'Collect Payment',
+                          onPressed: () => _handleCollectPayment(
+                            context,
+                            table,
+                            order,
+                            dynamicInfo,
+                            tableProvider,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(width: 6),
-            // Delete button matching Cart UI & Menu Item Card styling
-            InkWell(
-              onTap: () => _removeOrder(context, table, order),
-              borderRadius: BorderRadius.circular(8),
-              child: const Padding(
-                padding: EdgeInsets.all(6.0),
-                child: Icon(
-                  Icons.delete_outline_rounded,
-                  size: 20,
-                  color: Colors.red,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBadge({
+    required String label,
+    required IconData icon,
+    required Color bg,
+    required Color border,
+    required Color text,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6.5, vertical: 2.5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: border, width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: text),
+          const SizedBox(width: 3.5),
+          Text(
+            label,
+            style: TextStyle(
+              color: text,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeleteIconButton(
+    BuildContext context,
+    RestaurantTable table,
+    ActiveOrder order,
+    OrderDynamicInfo? dynamicInfo,
+    bool isDark,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _removeOrder(
+          context,
+          table,
+          order,
+          dynamicInfo,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          height: 34,
+          width: 34,
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xFF7F1D1D).withValues(alpha: 0.3)
+                : const Color(0xFFFEF2F2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isDark
+                  ? const Color(0xFFEF4444).withValues(alpha: 0.4)
+                  : const Color(0xFFFECACA),
+              width: 1,
+            ),
+          ),
+          child: const Icon(
+            Icons.delete_outline_rounded,
+            size: 17,
+            color: Color(0xFFDC2626),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrimaryButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+    Color? backgroundColor,
+  }) {
+    return SizedBox(
+      height: 34,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 14),
+        label: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor ?? const Color(0xFF4F46E5),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 13),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentSummaryThreeColumns({
+    required double billAmount,
+    required double paidAmount,
+    required double dueOrRemaining,
+    required bool isUnpaid,
+    required bool isPaidInFull,
+    required bool isDark,
+  }) {
+    final dueLabel = isUnpaid ? 'Due' : 'Remaining';
+    final dueColor = isPaidInFull
+        ? const Color(0xFF10B981) // Green for 0.00
+        : const Color(0xFFDC2626); // Red for outstanding due
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.03)
+            : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.06)
+              : const Color(0xFFF1F5F9),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        children: [
+          // Column 1: Bill Amount
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Bill Amount',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                  ),
                 ),
+                const SizedBox(height: 2),
+                Text(
+                  '${CurrencyConstants.symbol}${CurrencyConstants.formatWithoutSymbol(billAmount)}',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Divider 1
+          Container(
+            height: 22,
+            width: 1,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.12)
+                : const Color(0xFFE2E8F0),
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+          ),
+          // Column 2: Paid
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Paid',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${CurrencyConstants.symbol}${CurrencyConstants.formatWithoutSymbol(paidAmount)}',
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF10B981), // Green
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Divider 2
+          Container(
+            height: 22,
+            width: 1,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.12)
+                : const Color(0xFFE2E8F0),
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+          ),
+          // Column 3: Due / Remaining
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  dueLabel,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${CurrencyConstants.symbol}${CurrencyConstants.formatWithoutSymbol(dueOrRemaining)}',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: dueColor,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentReminderBanner({
+    required double remainingAmount,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF78350F).withValues(alpha: 0.25)
+            : const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isDark
+              ? const Color(0xFFF59E0B).withValues(alpha: 0.3)
+              : const Color(0xFFFDE68A),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            size: 13,
+            color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Please pay ${CurrencyConstants.symbol}${CurrencyConstants.formatWithoutSymbol(remainingAmount)} to complete the bill.',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
               ),
             ),
-            const SizedBox(width: 2),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 18,
-              color:
-                  isDark
-                      ? Colors.white.withValues(alpha: 0.5)
-                      : AppColors.textSecondary,
-            ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleOpenCart(
+    BuildContext context,
+    RestaurantTable table,
+    ActiveOrder order,
+    TableProvider tableProvider,
+  ) async {
+    final items = await tableProvider.loadCartStateForOrder(order.orderId);
+    tableProvider.setCurrentOrder(order.orderId);
+
+    if (context.mounted) {
+      final animatedCart = Provider.of<AnimatedCartProvider>(
+        context,
+        listen: false,
+      );
+      animatedCart.importFromOrderCart(
+        items,
+        orderId: order.orderId,
+        tableId: table.id,
+        tableName: table.name,
+        clearExisting: true,
+      );
+
+      final navProvider = Provider.of<NavigationProvider>(
+        context,
+        listen: false,
+      );
+      navProvider.selectTable(table.id, table.name, table.location);
+
+      Navigator.pop(context); // Close dialog
+    }
+  }
+
+  Future<void> _handleOpenMenuForOrder(
+    BuildContext context,
+    RestaurantTable table,
+    ActiveOrder order,
+    TableProvider tableProvider,
+  ) async {
+    tableProvider.setCurrentOrder(order.orderId);
+    final navProvider = Provider.of<NavigationProvider>(context, listen: false);
+    navProvider.selectTableAndNavigateToMenu(
+      table.id,
+      table.name,
+      table.location,
+    );
+    Navigator.pop(context); // Close dialog
+  }
+
+  Future<void> _handleOpenMenuForTable(
+    BuildContext context,
+    RestaurantTable table,
+    TableProvider tableProvider,
+  ) async {
+    Navigator.pop(context); // Close dialog
+    final navProvider = Provider.of<NavigationProvider>(context, listen: false);
+    navProvider.selectTableAndNavigateToMenu(
+      table.id,
+      table.name,
+      table.location,
+    );
+  }
+
+  Future<void> _handleCollectPayment(
+    BuildContext context,
+    RestaurantTable table,
+    ActiveOrder order,
+    OrderDynamicInfo? dynamicInfo,
+    TableProvider tableProvider,
+  ) async {
+    final storedBillId =
+        dynamicInfo?.billId ?? tableProvider.getBillId(order.orderId);
+    Navigator.pop(context); // Close dialog
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaymentPage(
+          orderId: order.orderId,
+          orderNumber: order.generatedOrderNo,
+          tableId: table.id,
+          billId: storedBillId,
+          totalAmount: dynamicInfo?.totalAmount,
+          onPaymentCompleted: () {
+            tableProvider.refreshTables();
+            Provider.of<NavigationProvider>(
+              context,
+              listen: false,
+            ).clearTableSelection();
+          },
         ),
       ),
     );
@@ -463,36 +1625,37 @@ class _MultiOrderManagementDialogState
 
   Widget _buildNoActiveOrders(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: const Icon(
-              Icons.inbox_outlined,
-              size: 34,
+              Icons.check_circle_outline_rounded,
+              size: 40,
               color: AppColors.primary,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           Text(
-            'No Active Orders',
+            'Table is Available',
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 16.5,
               color: isDark ? Colors.white : AppColors.textPrimary,
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 5),
           Text(
-            'Tap "+ Add New Order" below to create an order',
+            'No active orders. Tap "Add New Order" below to seat guests.',
+            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 11.5,
+              fontSize: 12.5,
               color: isDark ? Colors.white70 : AppColors.textSecondary,
             ),
           ),
@@ -508,26 +1671,24 @@ class _MultiOrderManagementDialogState
     bool isDark,
   ) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color:
-            isDark
-                ? Colors.white.withValues(alpha: 0.04)
-                : Colors.white.withValues(alpha: 0.20),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.04)
+            : const Color(0xFFF8FAFC),
         border: Border(
           top: BorderSide(
-            color:
-                isDark
-                    ? Colors.white.withValues(alpha: 0.10)
-                    : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : const Color(0xFFE2E8F0),
             width: 1,
           ),
         ),
       ),
       child: SizedBox(
-        height: 44,
+        height: 48,
         width: double.infinity,
-        child: Container(
+        child: DecoratedBox(
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [AppColors.primary, AppColors.primaryDark],
@@ -537,38 +1698,44 @@ class _MultiOrderManagementDialogState
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.25),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
+                color: AppColors.primary.withValues(alpha: 0.28),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: FilledButton.icon(
-            onPressed:
-                _isCreatingOrder
-                    ? null
-                    : () {
-                      HapticFeedback.selectionClick();
-                      _handleAddNewOrder(context, table, tableProvider);
-                    },
-            icon:
-                _isCreatingOrder
-                    ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                    : const Icon(Icons.add_rounded, size: 18),
+          child: ElevatedButton.icon(
+            onPressed: _isCreatingOrder
+                ? null
+                : () {
+                    HapticFeedback.selectionClick();
+                    _handleAddNewOrder(context, table, tableProvider);
+                  },
+            icon: _isCreatingOrder
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.add_rounded, size: 20),
             label: Text(
-              _isCreatingOrder ? 'Adding...' : '+ Add New Order',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+              _isCreatingOrder ? 'Adding Order...' : 'Add New Order',
+              style: const TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
             ),
-            style: FilledButton.styleFrom(
+            style: ElevatedButton.styleFrom(
               backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              disabledForegroundColor: Colors.white70,
               shadowColor: Colors.transparent,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -607,6 +1774,7 @@ class _MultiOrderManagementDialogState
       if (context.mounted) {
         if (success) {
           AppSnackBar.showSuccess(context, 'New order added to ${table.name}');
+          _loadDynamicOrdersData(silent: false);
         } else {
           AppSnackBar.showError(
             context,
@@ -625,78 +1793,27 @@ class _MultiOrderManagementDialogState
     }
   }
 
-  /// Handle tapping an order (opens PaymentPage if billed, otherwise loads cart & navigates)
-  Future<void> _handleOrderTap(
-    BuildContext context,
-    RestaurantTable table,
-    ActiveOrder order,
-    TableProvider tableProvider,
-  ) async {
-    if (order.isBilled) {
-      final storedBillId = tableProvider.getBillId(order.orderId);
-      Navigator.pop(context); // Close dialog
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder:
-              (context) => PaymentPage(
-                orderId: order.orderId,
-                orderNumber: order.generatedOrderNo,
-                tableId: table.id,
-                billId: storedBillId,
-                onPaymentCompleted: () {
-                  tableProvider.refreshTables();
-                  Provider.of<NavigationProvider>(
-                    context,
-                    listen: false,
-                  ).clearTableSelection();
-                },
-              ),
-        ),
-      );
-    } else {
-      final items = await tableProvider.loadCartStateForOrder(order.orderId);
-      tableProvider.setCurrentOrder(order.orderId);
-
-      if (context.mounted) {
-        final animatedCart = Provider.of<AnimatedCartProvider>(
-          context,
-          listen: false,
-        );
-        animatedCart.importFromOrderCart(
-          items,
-          orderId: order.orderId,
-          tableId: table.id,
-          tableName: table.name,
-          clearExisting: true,
-        );
-
-        final navProvider = Provider.of<NavigationProvider>(
-          context,
-          listen: false,
-        );
-        navProvider.selectTable(table.id, table.name, table.location);
-
-        Navigator.pop(context);
-      }
-    }
-  }
-
-  /// Handle removing an order matching cart_item_card.dart delete dialog design
+  /// Handle removing an order with proper payment warning & confirmation
   void _removeOrder(
     BuildContext context,
     RestaurantTable table,
     ActiveOrder order,
+    OrderDynamicInfo? dynamicInfo,
   ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final double paidAmount = dynamicInfo?.paidAmount ?? 0.0;
+    final bool isPaidInFull = (dynamicInfo?.isPaidInFull ?? false) ||
+        HiveService.isOrderSettled(order.orderId) ||
+        (order.isBilled &&
+            (dynamicInfo?.totalAmount ?? 0.0) > 0.004 &&
+            paidAmount >= ((dynamicInfo?.totalAmount ?? 0.0) - 0.004));
 
     showGeneralDialog<void>(
       context: context,
       barrierLabel: 'Remove order dialog',
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.20),
+      barrierColor: Colors.black.withValues(alpha: 0.35),
       transitionDuration: const Duration(milliseconds: 180),
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
         void closeDialog() {
@@ -713,196 +1830,233 @@ class _MultiOrderManagementDialogState
               Positioned.fill(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                  child: Container(color: Colors.black.withValues(alpha: 0.05)),
+                  child: Container(color: Colors.black.withValues(alpha: 0.1)),
                 ),
               ),
               SafeArea(
                 child: Center(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: GestureDetector(
                       onTap: () {},
                       child: Material(
                         color: Colors.transparent,
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(20),
                           child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                             child: Container(
                               constraints: const BoxConstraints(maxWidth: 360),
                               decoration: BoxDecoration(
-                                color:
-                                    isDark
-                                        ? const Color(
-                                          0xFF0F172A,
-                                        ).withValues(alpha: 0.55)
-                                        : Colors.white.withValues(alpha: 0.65),
-                                borderRadius: BorderRadius.circular(24),
+                                color: isDark
+                                    ? const Color(0xFF0F172A).withValues(alpha: 0.92)
+                                    : Colors.white.withValues(alpha: 0.96),
+                                borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.6),
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.15)
+                                      : Colors.white.withValues(alpha: 0.8),
                                   width: 1.2,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
+                                    color: Colors.black.withValues(alpha: 0.12),
                                     blurRadius: 20,
                                     offset: const Offset(0, 8),
                                   ),
                                 ],
                               ),
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  20,
-                                  24,
-                                  20,
-                                  20,
-                                ),
+                                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    // 52x52 Red Circle Trash Icon (matches Cart UI)
                                     Container(
-                                      width: 52,
-                                      height: 52,
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.withValues(
-                                          alpha: 0.12,
-                                        ),
+                                      width: 48,
+                                      height: 48,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFFEE2E2),
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(
                                         Icons.delete_outline_rounded,
-                                        color: Colors.red,
-                                        size: 28,
+                                        color: Color(0xFFDC2626),
+                                        size: 26,
                                       ),
                                     ),
-                                    const SizedBox(height: 16),
+                                    const SizedBox(height: 14),
                                     Text(
-                                      'Remove Order',
+                                      isPaidInFull
+                                          ? 'Delete Settled Order'
+                                          : 'Delete Order',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w700,
-                                        color:
-                                            isDark
-                                                ? Colors.white
-                                                : AppColors.textPrimary,
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w800,
+                                        color: isDark
+                                            ? Colors.white
+                                            : AppColors.textPrimary,
                                         letterSpacing: -0.3,
                                       ),
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      'Are you sure you want to remove "${order.generatedOrderNo}"?',
+                                      'Are you sure you want to delete order "${order.generatedOrderNo}" from ${table.name}?',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                        fontSize: 13.5,
-                                        color:
-                                            isDark
-                                                ? Colors.white70
-                                                : AppColors.textSecondary,
+                                        fontSize: 13,
+                                        color: isDark
+                                            ? Colors.white70
+                                            : AppColors.textSecondary,
                                         height: 1.4,
                                       ),
                                     ),
-                                    const SizedBox(height: 24),
+                                    if (isPaidInFull) ...[
+                                      const SizedBox(height: 10),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFECFDF5),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: const Color(0xFF10B981)
+                                                .withValues(alpha: 0.35),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.check_circle_rounded,
+                                              size: 15,
+                                              color: Color(0xFF059669),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              'Bill Paid in Full (${CurrencyConstants.symbol}${CurrencyConstants.formatWithoutSymbol(paidAmount > 0 ? paidAmount : (dynamicInfo?.totalAmount ?? 0.0))})',
+                                              style: const TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: Color(0xFF065F46),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 18),
                                     Row(
                                       children: [
                                         Expanded(
                                           child: OutlinedButton(
                                             onPressed: closeDialog,
                                             style: OutlinedButton.styleFrom(
-                                              backgroundColor:
-                                                  isDark
-                                                      ? Colors.white.withValues(
-                                                        alpha: 0.1,
-                                                      )
-                                                      : Colors.white.withValues(
-                                                        alpha: 0.5,
-                                                      ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 13,
-                                                  ),
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 10,
+                                              ),
                                               side: BorderSide(
-                                                color: (isDark
-                                                        ? Colors.white
-                                                        : AppColors.textHint)
-                                                    .withValues(alpha: 0.3),
+                                                color: isDark
+                                                    ? Colors.white24
+                                                    : const Color(0xFFCBD5E1),
                                               ),
                                               shape: RoundedRectangleBorder(
                                                 borderRadius:
-                                                    BorderRadius.circular(12),
+                                                    BorderRadius.circular(10),
                                               ),
                                             ),
                                             child: Text(
                                               'Cancel',
                                               style: TextStyle(
-                                                fontSize: 14,
+                                                fontSize: 13,
                                                 fontWeight: FontWeight.w600,
-                                                color:
-                                                    isDark
-                                                        ? Colors.white
-                                                        : AppColors
-                                                            .textSecondary,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : AppColors.textSecondary,
                                               ),
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
+                                        const SizedBox(width: 10),
                                         Expanded(
                                           child: ElevatedButton(
                                             onPressed: () async {
                                               closeDialog();
                                               final tableProvider =
                                                   Provider.of<TableProvider>(
-                                                    context,
-                                                    listen: false,
-                                                  );
-                                              final cartProvider = Provider.of<
-                                                AnimatedCartProvider
-                                              >(context, listen: false);
+                                                context,
+                                                listen: false,
+                                              );
+                                              final cartProvider =
+                                                  Provider.of<AnimatedCartProvider>(
+                                                context,
+                                                listen: false,
+                                              );
 
-                                              final success =
-                                                  await tableProvider
-                                                      .removeOrderFromTable(
-                                                        table.id,
-                                                        order.orderId,
-                                                      );
-
-                                              cartProvider.clearCart();
-                                              await tableProvider
-                                                  .refreshTables();
+                                              final success = await tableProvider
+                                                  .removeOrderFromTable(
+                                                table.id,
+                                                order.orderId,
+                                                isPaidInFull: isPaidInFull,
+                                              );
 
                                               if (context.mounted) {
                                                 if (success) {
+                                                  cartProvider.clearCart();
+                                                  _dynamicDataMap
+                                                      .remove(order.orderId);
+
                                                   AppSnackBar.showSuccess(
                                                     context,
-                                                    'Order ${order.generatedOrderNo} removed',
+                                                    'Order ${order.generatedOrderNo} deleted',
                                                   );
+
+                                                  // Check if table now has no orders, pop dialog
+                                                  final updatedTable =
+                                                      tableProvider.tables
+                                                          .firstWhere(
+                                                    (t) => GuidHelper.areEqual(
+                                                        t.id, table.id),
+                                                    orElse: () => table,
+                                                  );
+                                                  if (!updatedTable
+                                                      .hasActiveOrders) {
+                                                    Navigator.pop(context);
+                                                  } else {
+                                                    setState(() {});
+                                                    _loadDynamicOrdersData(
+                                                      silent: true,
+                                                    );
+                                                  }
                                                 } else {
                                                   AppSnackBar.showError(
                                                     context,
-                                                    'Failed to remove order',
+                                                    tableProvider.error ??
+                                                        'Failed to delete order from server',
                                                   );
                                                 }
                                               }
                                             },
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.red[600],
+                                              backgroundColor:
+                                                  const Color(0xFFDC2626),
                                               foregroundColor: Colors.white,
                                               elevation: 0,
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                    vertical: 13,
-                                                  ),
+                                                vertical: 10,
+                                              ),
                                               shape: RoundedRectangleBorder(
                                                 borderRadius:
-                                                    BorderRadius.circular(12),
+                                                    BorderRadius.circular(10),
                                               ),
                                             ),
                                             child: const Text(
-                                              'Remove',
+                                              'Delete',
                                               style: TextStyle(
-                                                fontSize: 14,
+                                                fontSize: 13,
                                                 fontWeight: FontWeight.w700,
                                               ),
                                             ),
@@ -925,61 +2079,6 @@ class _MultiOrderManagementDialogState
           ),
         );
       },
-    );
-  }
-}
-
-/// Helper stateful widget for order card item tap animation
-class _OrderCardItem extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onTap;
-
-  const _OrderCardItem({required this.child, required this.onTap});
-
-  @override
-  State<_OrderCardItem> createState() => _OrderCardItemState();
-}
-
-class _OrderCardItemState extends State<_OrderCardItem>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scaleAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-    _scaleAnim = Tween<double>(
-      begin: 1.0,
-      end: 0.98,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) {
-        _controller.reverse();
-        HapticFeedback.selectionClick();
-        widget.onTap();
-      },
-      onTapCancel: () => _controller.reverse(),
-      child: AnimatedBuilder(
-        animation: _scaleAnim,
-        builder: (context, child) {
-          return Transform.scale(scale: _scaleAnim.value, child: widget.child);
-        },
-      ),
     );
   }
 }

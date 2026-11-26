@@ -532,7 +532,7 @@ class BillingProvider extends ChangeNotifier {
             realCompanyGstNo = billData.companyDt.gstNo;
 
             pdfSubtotal = billData.billHeadDt.amountAfterDisc;
-            pdfTotal = billData.billHeadDt.billAmountInclTax;
+            pdfTotal = billData.billHeadDt.effectivePayableAmount;
             final realGst = pdfTotal - pdfSubtotal;
             pdfGstAmount = realGst > 0 ? realGst : 0;
 

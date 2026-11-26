@@ -81,7 +81,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
   double get _gstAmount {
     if (_billDetails == null) return 0.0;
     final gst =
-        _billDetails!.billHeadDt.billAmountInclTax -
+        _billDetails!.billHeadDt.effectivePayableAmount -
         _billDetails!.billHeadDt.amountAfterDisc;
     return gst > 0 ? gst : 0.0;
   }
@@ -110,7 +110,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
   }
 
   double get _grandTotal {
-    if (_billDetails != null) return _billDetails!.billHeadDt.billAmountInclTax;
+    if (_billDetails != null) return _billDetails!.billHeadDt.effectivePayableAmount;
     return _subtotal + _gstAmount + _serviceCharge - _discount;
   }
 
@@ -218,12 +218,12 @@ class _OrderDetailViewState extends State<OrderDetailView>
     }
     if (_billDetails != null &&
         _billDetails!.paymentDetail.isNotEmpty &&
-        _billDetails!.billHeadDt.billAmountInclTax > 0) {
+        _billDetails!.billHeadDt.effectivePayableAmount > 0) {
       final totalPaid = _billDetails!.paymentDetail.fold<double>(
         0.0,
         (sum, p) => sum + p.paymentAmount,
       );
-      if (totalPaid >= (_billDetails!.billHeadDt.billAmountInclTax - 0.5)) {
+      if (totalPaid >= (_billDetails!.billHeadDt.effectivePayableAmount - 0.5)) {
         return true;
       }
     }
@@ -578,7 +578,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
             'GST (${totalPct % 1 == 0 ? totalPct.toStringAsFixed(0) : totalPct.toStringAsFixed(1)}%)';
       }
       final gstAmount =
-          billData.billHeadDt.billAmountInclTax -
+          billData.billHeadDt.effectivePayableAmount -
           billData.billHeadDt.amountAfterDisc;
 
       final items =
@@ -643,7 +643,7 @@ class _OrderDetailViewState extends State<OrderDetailView>
         orderTime: billTimestamp,
         subtotal: billData.billHeadDt.amountAfterDisc,
         gstAmount: gstAmount > 0 ? gstAmount : 0,
-        total: billData.billHeadDt.billAmountInclTax,
+        total: billData.billHeadDt.effectivePayableAmount,
         companyName: billData.companyDt.companyName,
         companyAddress: billData.companyDt.companyAddress,
         companyPhone: billData.companyDt.contactNo,

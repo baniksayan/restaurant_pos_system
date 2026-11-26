@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:restaurant_pos_system/core/utils/guid_helper.dart';
 import 'package:restaurant_pos_system/core/utils/connectivity_helper.dart';
 import 'package:restaurant_pos_system/data/remote/api_service.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
 import 'package:restaurant_pos_system/data/models/bill_details_response.dart';
+import 'package:restaurant_pos_system/data/models/pending_bill.dart';
 import 'package:restaurant_pos_system/data/repositories/table_repository.dart';
 import 'package:restaurant_pos_system/data/local/hive_service.dart';
 import 'package:restaurant_pos_system/data/models/order_channel.dart';
@@ -14,6 +16,7 @@ class TableProvider extends ChangeNotifier {
   String? _error;
   String _selectedLocation = '';
   int? _outletId; // Remove static assignment - will get from Hive
+  Timer? _pollingTimer;
 
   // Multi-order support
   final Map<String, List<Map<String, dynamic>>> _orderCartStates = {};
@@ -81,12 +84,31 @@ class TableProvider extends ChangeNotifier {
     return getAuthToken();
   }
 
+  /// Start background polling timer to automatically keep all devices synchronized
+  void startPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      final token = _getAuthToken();
+      final outletId = _getOutletId();
+      if (token != null && outletId != null && outletId > 0) {
+        refreshTables(silent: true);
+      }
+    });
+  }
+
+  /// Stop background polling
+  void stopPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
+  }
+
   /// Initialize tables with proper authentication - ONLY API DATA
-  void initializeTables() {
+  Future<void> initializeTables({bool silent = false}) async {
     final token = _getAuthToken();
     final outletId = _getOutletId();
-    if (token != null && outletId != null) {
-      fetchTablesWithAuth(token, outletId);
+    if (token != null && outletId != null && outletId > 0) {
+      await fetchTablesWithAuth(token, outletId, selectedLocation, silent);
+      startPolling();
     } else {
       _error = 'Authentication token or outlet ID not found';
       notifyListeners();
@@ -108,11 +130,21 @@ class TableProvider extends ChangeNotifier {
     return null;
   }
 
-  /// Fetch tables using ONLY API data - FIXED UI UPDATE
-  Future<void> fetchTablesWithAuth(String token, int outletId, [String? locationName]) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners(); // First notification: Loading state
+  /// Fetch tables using ONLY API data - Multi-device synchronized
+  Future<void> fetchTablesWithAuth(
+    String token,
+    int outletId, [
+    String? locationName,
+    bool silent = false,
+  ]) async {
+    // Only show full loading spinner if this is an initial empty load,
+    // avoiding UI unmounting on background sync or pull-to-refresh
+    if (!silent && _tables.isEmpty) {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+    }
+
     try {
       final effectiveLocation = locationName ?? selectedLocation;
       debugPrint(
@@ -124,46 +156,234 @@ class TableProvider extends ChangeNotifier {
         locationName: effectiveLocation,
       );
 
-      // CRITICAL FIX: Merge API data with existing local data to preserve bill IDs
+      // Multi-device backend payment synchronization:
+      // Fetch bills from backend via Order/GetBillForReprint to resolve real billIds
+      // and payment status without relying on local device Hive cache.
+      final List<ActiveOrder> billedOrdersToCheck = [];
+      for (final apiTable in tables) {
+        for (final order in apiTable.activeOrders) {
+          if (order.isBilled || apiTable.billGenerated || order.billId != null) {
+            billedOrdersToCheck.add(order);
+          }
+        }
+      }
+
+      final Set<String> backendPaidOrderIds = {};
+
+      if (billedOrdersToCheck.isNotEmpty) {
+        try {
+          final now = DateTime.now();
+          final fromDate = now.subtract(const Duration(days: 14));
+          final toDate = now.add(const Duration(days: 1));
+          final billsList = await ApiService.getBillsForReprint(
+            outletId: outletId,
+            from: fromDate,
+            to: toDate,
+          );
+
+          final Map<String, PendingBill> billsByOrderNo = {};
+          final Map<String, PendingBill> billsByBillId = {};
+          final Map<String, PendingBill> billsByBillNo = {};
+          if (billsList != null) {
+            for (final b in billsList) {
+              if (b.orderNo.isNotEmpty) {
+                billsByOrderNo[b.orderNo.toLowerCase().trim()] = b;
+              }
+              if (b.billId.isNotEmpty) {
+                billsByBillId[b.billId.toLowerCase().trim()] = b;
+              }
+              if (b.billNo.isNotEmpty) {
+                billsByBillNo[b.billNo.toLowerCase().trim()] = b;
+              }
+            }
+          }
+
+          await Future.wait(
+            billedOrdersToCheck.map((order) async {
+              try {
+                final matchByNo = billsByOrderNo[order.generatedOrderNo.toLowerCase().trim()];
+                final storedBillId = order.billId ?? HiveService.getOrderBillId(order.orderId);
+                final matchById = storedBillId != null
+                    ? billsByBillId[storedBillId.toLowerCase().trim()]
+                    : null;
+
+                var matchedBill = matchByNo ?? matchById;
+                String? billId = matchedBill?.billId ?? storedBillId;
+
+                // Direct order details lookup if billId not known or not matched in reprint list
+                if (billId == null || billId.isEmpty) {
+                  try {
+                    final orderDetails = await ApiService.getOrderDetailById(
+                      token: token,
+                      orderId: order.orderId,
+                    );
+                    if (orderDetails != null &&
+                        orderDetails.isSuccess == true &&
+                        orderDetails.data != null &&
+                        orderDetails.data!.isNotEmpty) {
+                      final head = orderDetails.data!.first;
+                      if (head.isPaid == true) {
+                        backendPaidOrderIds.add(order.orderId);
+                        await markOrderSettled(order.orderId);
+                        try {
+                          await ApiService.updateOrderHeadStatus(
+                            orderHeadId: order.orderId,
+                            statusId: 7,
+                            status: 'Settled',
+                          );
+                        } catch (_) {}
+                        return;
+                      }
+                      final hBillId = head.billId;
+                      if (GuidHelper.isValid(hBillId)) {
+                        billId = hBillId;
+                        await HiveService.saveOrderBillId(order.orderId, hBillId!);
+                        matchedBill = billsByBillId[hBillId.toLowerCase().trim()];
+                      }
+                    }
+                  } catch (e) {
+                    debugPrint('[TableProvider] Error checking order details: $e');
+                  }
+                }
+
+                if (matchedBill != null) {
+                  // Save real billId from backend across all devices
+                  if (GuidHelper.isValid(matchedBill.billId)) {
+                    await HiveService.saveOrderBillId(order.orderId, matchedBill.billId);
+                  }
+
+                  // Verify if backend confirms bill is fully paid (isPaid == 2 or balance <= 0.004)
+                  if (matchedBill.isFullyPaid) {
+                    backendPaidOrderIds.add(order.orderId);
+                    await markOrderSettled(order.orderId);
+                    try {
+                      await ApiService.updateOrderHeadStatus(
+                        orderHeadId: order.orderId,
+                        statusId: 7,
+                        status: 'Settled',
+                      );
+                    } catch (_) {}
+                    return;
+                  }
+                }
+
+                // Verify through paid amount and bill details
+                if (GuidHelper.isValid(billId)) {
+                  final paid = await ApiService.getPaidAmountForBill(billId: billId!);
+                  final billDetails = await ApiService.getBillDetailByBillId(billId: billId);
+                  final double effectivePaid = (paid != null && paid > 0)
+                      ? paid
+                      : (billDetails?.data?.totalPaidAmount ?? 0.0);
+
+                  final head = billDetails?.data?.billHeadDt;
+                  double billAmt = head?.effectivePayableAmount ?? 0.0;
+                  if (billAmt <= 0.004 && matchedBill != null && matchedBill.totalAmount > 0.004) {
+                    billAmt = matchedBill.totalAmount;
+                  }
+
+                  final bool isPaidInFull = (billAmt > 0 && effectivePaid >= (billAmt - 0.004)) ||
+                      (billDetails?.data?.isPaidInFull == true);
+
+                  if (isPaidInFull) {
+                    backendPaidOrderIds.add(order.orderId);
+                    await markOrderSettled(order.orderId);
+                    try {
+                      await ApiService.updateOrderHeadStatus(
+                        orderHeadId: order.orderId,
+                        statusId: 7,
+                        status: 'Settled',
+                      );
+                    } catch (_) {}
+                  }
+                }
+              } catch (e) {
+                debugPrint('[TableProvider] Error verifying billed order payment: $e');
+              }
+            }),
+          );
+        } catch (e) {
+          debugPrint('[TableProvider] Error fetching reprint bills for sync: $e');
+        }
+      }
+
+      // Check unbilled orders to synchronize KOT generation status across devices
+      final List<ActiveOrder> unbilledOrdersToCheck = [];
+      for (final apiTable in tables) {
+        for (final order in apiTable.activeOrders) {
+          if (!order.isBilled &&
+              !order.hasKotGenerated &&
+              !isOrderSettled(order.orderId) &&
+              !backendPaidOrderIds.contains(order.orderId)) {
+            unbilledOrdersToCheck.add(order);
+          }
+        }
+      }
+
+      if (unbilledOrdersToCheck.isNotEmpty) {
+        await Future.wait(
+          unbilledOrdersToCheck.map((order) async {
+            try {
+              final orderDetails = await ApiService.getOrderDetailById(
+                token: token,
+                orderId: order.orderId,
+              );
+              if (orderDetails != null &&
+                  orderDetails.isSuccess == true &&
+                  orderDetails.data != null &&
+                  orderDetails.data!.isNotEmpty) {
+                final head = orderDetails.data!.first;
+                final lines = head.orderDetailList ?? [];
+                for (final l in lines) {
+                  if (l.kotNo != null && l.kotNo!.isNotEmpty) {
+                    await HiveService.saveOrderKotNumber(order.orderId, l.kotNo!);
+                    break;
+                  }
+                }
+              }
+            } catch (_) {}
+          }),
+        );
+      }
+
       final List<RestaurantTable> mergedTables = [];
 
       for (final apiTable in tables) {
-        // Filter out any orders already marked settled locally
+        // Exclude orders verified as fully paid directly from backend, marked settled, or deleted
         final validOrders = apiTable.activeOrders
             .where((order) =>
-                order.orderId.isNotEmpty && !isOrderSettled(order.orderId))
+                order.orderId.isNotEmpty &&
+                !isOrderSettled(order.orderId) &&
+                !isOrderDeleted(order.orderId) &&
+                !backendPaidOrderIds.contains(order.orderId))
             .toList();
 
-        // Re-attach each order's own bill id. The API never returns one, so
-        // local storage is the only record — and it is keyed per order, since
-        // a shared table can have several orders each with its own bill.
-        final mergedOrders =
-            validOrders.map((order) {
-              // One-time move of anything still stored against the table.
-              HiveService.migrateTableScopedData(
-                tableId: apiTable.id,
-                orderId: order.orderId,
-              );
+        // Re-attach each order's billId and KOT status from memory/Hive if present
+        final mergedOrders = validOrders.map((order) {
+          final storedBillId = HiveService.getOrderBillId(order.orderId);
+          final storedKotNo = HiveService.getOrderKotNumber(order.orderId);
+          final isKotCreated =
+              order.isKotCreated || (storedKotNo != null && storedKotNo.isNotEmpty);
+          return order.copyWith(
+            billId: GuidHelper.isNullOrEmpty(storedBillId) ? order.billId : storedBillId,
+            isKotCreated: isKotCreated,
+            kotNumber: storedKotNo ?? order.kotNumber,
+          );
+        }).toList();
 
-              final storedBillId = HiveService.getOrderBillId(order.orderId);
-              if (GuidHelper.isNullOrEmpty(storedBillId)) return order;
-
-              debugPrint(
-                '[TableProvider] Preserved bill ID for ${apiTable.name} / '
-                'order ${order.generatedOrderNo}: $storedBillId',
-              );
-              return order.copyWith(billId: storedBillId);
-            }).toList();
+        final hasKot = mergedOrders.any((o) => o.hasKotGenerated);
+        final hasBill = mergedOrders.any((o) => o.isBilled);
 
         final resolvedStatus = mergedOrders.isEmpty
             ? TableStatus.available
-            : (mergedOrders.any((o) => o.isBilled)
+            : (hasBill
                 ? TableStatus.billGenerated
-                : TableStatus.occupied);
+                : (hasKot ? TableStatus.kotGenerated : TableStatus.occupied));
 
         mergedTables.add(apiTable.copyWith(
           activeOrders: mergedOrders,
           status: resolvedStatus,
+          kotGenerated: hasKot,
+          billGenerated: hasBill,
         ));
       }
 
@@ -173,21 +393,14 @@ class TableProvider extends ChangeNotifier {
         debugPrint(
           '[TableProvider] Successfully loaded ${_tables.length} REAL tables from API',
         );
-        for (final table in _tables) {
-          debugPrint(
-            '[TableProvider] API Table: ${table.name} (${table.location}) - Orders: ${table.activeOrders.length}',
-          );
-        }
       } else {
-        // If API returned 0 tables, check if we're offline before asserting any error
         final isConnected = await ConnectivityHelper.hasInternetConnection();
         if (!isConnected) {
-          // Keep existing tables if any, do not set misleading error
           _error = null;
           debugPrint('[TableProvider] Offline: preserved ${_tables.length} existing tables');
         } else {
           _tables = [];
-          _error = null; // Let the empty state handle it gracefully
+          _error = null;
           debugPrint('[TableProvider] Online: No tables found for this outlet');
         }
       }
@@ -198,12 +411,11 @@ class TableProvider extends ChangeNotifier {
         debugPrint('[TableProvider] Offline caught: preserved ${_tables.length} existing tables');
       } else {
         _error = 'Failed to fetch tables: ${e.toString()}';
-        _tables = [];
         debugPrint('[TableProvider] API Error: $e');
       }
     } finally {
       _isLoading = false;
-      notifyListeners(); // CRITICAL: Notify after data changes
+      notifyListeners();
     }
   }
 
@@ -219,7 +431,7 @@ class TableProvider extends ChangeNotifier {
       debugPrint(
         '[TableProvider] fetchTablesByOutlet called - Outlet: $outletId',
       );
-      debugPrint('[TableProvider] Token: ${token.substring(0, 10)}...');
+      debugPrint('[TableProvider] Auth Token: [PRESENT]');
 
       // Call the API service directly
       final response = await ApiService.getOrderChannelListByType(
@@ -433,7 +645,8 @@ class TableProvider extends ChangeNotifier {
     String? newOrderId,
     String? generatedOrderNo,
   ]) {
-    final tableIndex = _tables.indexWhere((t) => t.id == tableId);
+    final tableIndex =
+        _tables.indexWhere((t) => GuidHelper.areEqual(t.id, tableId));
     if (tableIndex != -1) {
       List<ActiveOrder> orders = List.from(_tables[tableIndex].activeOrders);
 
@@ -532,60 +745,228 @@ class TableProvider extends ChangeNotifier {
     return [];
   }
 
-  /// Remove order from table (API-driven) - FIXED
-  Future<bool> removeOrderFromTable(String tableId, String orderId) async {
+  /// Remove order from table via authoritative backend API operation.
+  /// If the backend operation fails or is offline, local state is NOT mutated.
+  Future<bool> removeOrderFromTable(
+    String tableId,
+    String orderId, {
+    bool isPaidInFull = false,
+  }) async {
     try {
-      // Company and acting user come from the auth token server-side; this
-      // used to pass a hardcoded companyId of 18 and fall back to a literal
-      // user GUID when no user was logged in.
-      final result = await ApiService.updateOrderHeadStatus(
-        orderHeadId: orderId,
-        statusId: 7,
-      );
-
-      if (result != null && result['isSuccess'] == true) {
-        debugPrint('[Order Removed] ID: $orderId');
-
-        // Update local state immediately
-        final tableIndex = _tables.indexWhere((t) => t.id == tableId);
-        if (tableIndex != -1) {
-          final currentOrders =
-              _tables[tableIndex].activeOrders
-                  .where((order) => order.orderId != orderId)
-                  .toList();
-          final newStatus =
-              currentOrders.isEmpty
-                  ? TableStatus.available
-                  : TableStatus.occupied;
-
-          _tables[tableIndex] = _tables[tableIndex].copyWith(
-            activeOrders: currentOrders,
-            status: newStatus,
-          );
-
-          if (currentOrders.isEmpty) {
-            debugPrint(
-              '[API Call] Table $tableId -> Available (no more orders)',
-            );
-          }
-
-          // Clear cart state for this order
-          _orderCartStates.remove(orderId);
-          notifyListeners();
-
-          // Refresh from API to sync with backend
-          await refreshTables();
-
-          return true;
-        }
-
+      // 1. Verify connectivity
+      final isConnected = await ConnectivityHelper.hasInternetConnection();
+      if (!isConnected) {
+        _error = 'No internet connection. Cannot delete order.';
+        notifyListeners();
+        debugPrint(
+          '[TableProvider] removeOrderFromTable aborted: No internet connection',
+        );
         return false;
       }
+
+      // 2. Call backend API with primary status and fallback:
+      // For orders paid in full: primary status 7 (Settled), fallback 4 (Cancelled)
+      // For unbilled/unpaid/awaiting orders: primary status 4 (Cancelled), fallback 7 (Settled)
+      final primaryStatusId = isPaidInFull ? 7 : 4;
+      final primaryStatus = isPaidInFull ? 'Settled' : 'Cancelled';
+      final fallbackStatusId = isPaidInFull ? 4 : 7;
+      final fallbackStatus = isPaidInFull ? 'Cancelled' : 'Settled';
+
+      var response = await ApiService.updateOrderHeadStatus(
+        orderHeadId: orderId,
+        statusId: primaryStatusId,
+        status: primaryStatus,
+        tableId: tableId,
+      );
+
+      if (response == null || response['isSuccess'] == false) {
+        debugPrint(
+          '[TableProvider] removeOrderFromTable primary status $primaryStatusId failed, trying fallback $fallbackStatusId',
+        );
+        response = await ApiService.updateOrderHeadStatus(
+          orderHeadId: orderId,
+          statusId: fallbackStatusId,
+          status: fallbackStatus,
+          tableId: tableId,
+        );
+      }
+
+      // 3. Verify backend response
+      if (response == null || response['isSuccess'] == false) {
+        final errMsg =
+            response?['message']?.toString() ?? 'Server failed to remove order.';
+        _error = errMsg;
+        notifyListeners();
+        debugPrint(
+          '[TableProvider] removeOrderFromTable failed on server: $errMsg',
+        );
+        return false;
+      }
+
+      debugPrint(
+        '[TableProvider] removeOrderFromTable confirmed by server for order $orderId',
+      );
+
+      // 4. Mark deleted (and settled if paid) in provider and Hive so subsequent refreshes never resurrect it
+      await markOrderDeleted(orderId);
+      if (isPaidInFull) {
+        await markOrderSettled(orderId);
+      }
+
+      // 5. Clear local order cart and stored bill references
+      _orderCartStates.remove(orderId);
+      await HiveService.clearOrderBillId(orderId);
+
+      // 6. Immediately update local table in-memory active orders upon confirmed backend success
+      final tableIdx =
+          _tables.indexWhere((t) => GuidHelper.areEqual(t.id, tableId));
+      if (tableIdx != -1) {
+        final remainingOrders = _tables[tableIdx]
+            .activeOrders
+            .where((o) => !GuidHelper.areEqual(o.orderId, orderId))
+            .toList();
+        final hasKot = remainingOrders.any((o) => o.hasKotGenerated);
+        final hasBill = remainingOrders.any((o) => o.isBilled);
+        final resolvedStatus = remainingOrders.isEmpty
+            ? TableStatus.available
+            : (hasBill
+                ? TableStatus.billGenerated
+                : (hasKot ? TableStatus.kotGenerated : TableStatus.occupied));
+
+        _tables[tableIdx] = _tables[tableIdx].copyWith(
+          activeOrders: remainingOrders,
+          status: resolvedStatus,
+          kotGenerated: hasKot,
+          billGenerated: hasBill,
+        );
+
+        // If no orders remain on table, notify server that table is Available
+        if (remainingOrders.isEmpty) {
+          try {
+            await ApiService.updateOrderChannelStatus(
+              orderChannelId: tableId,
+              channelStatusId: 0,
+              status: 'Available',
+            );
+          } catch (_) {}
+        }
+
+        notifyListeners();
+      }
+
+      // 7. Refresh authoritative table list from backend
+      await refreshTables(silent: true);
+      return true;
     } catch (e) {
-      debugPrint('[Error] Removing order: $e');
+      debugPrint('[TableProvider] Error removing order $orderId: $e');
+      _error = 'Error removing order: $e';
+      notifyListeners();
       return false;
     }
-    return false;
+  }
+
+  /// Vacate and clear an entire table by executing backend API operations for each active order.
+  /// Does NOT simulate local deletion if backend operations fail or internet is offline.
+  Future<bool> clearTable(String tableId) async {
+    try {
+      // 1. Verify connectivity
+      final isConnected = await ConnectivityHelper.hasInternetConnection();
+      if (!isConnected) {
+        _error = 'No internet connection. Cannot clear table.';
+        notifyListeners();
+        debugPrint('[TableProvider] clearTable aborted: No internet connection');
+        return false;
+      }
+
+      final tableIndex =
+          _tables.indexWhere((t) => GuidHelper.areEqual(t.id, tableId));
+      if (tableIndex == -1) return false;
+
+      final ordersToClear =
+          List<ActiveOrder>.from(_tables[tableIndex].activeOrders);
+      if (ordersToClear.isEmpty) {
+        try {
+          await ApiService.updateOrderChannelStatus(
+            orderChannelId: tableId,
+            channelStatusId: 0,
+            status: 'Available',
+          );
+        } catch (_) {}
+        return true;
+      }
+
+      bool allSucceeded = true;
+      String? failureMessage;
+
+      // 2. Execute backend removal for every active order (Settled fallback Cancelled)
+      for (final order in ordersToClear) {
+        var response = await ApiService.updateOrderHeadStatus(
+          orderHeadId: order.orderId,
+          statusId: 7,
+          status: 'Settled',
+          tableId: tableId,
+        );
+
+        if (response == null || response['isSuccess'] == false) {
+          response = await ApiService.updateOrderHeadStatus(
+            orderHeadId: order.orderId,
+            statusId: 4,
+            status: 'Cancelled',
+            tableId: tableId,
+          );
+        }
+
+        if (response == null || response['isSuccess'] == false) {
+          allSucceeded = false;
+          failureMessage = response?['message']?.toString() ??
+              'Server failed to vacate order ${order.generatedOrderNo}';
+          break;
+        }
+
+        await markOrderSettled(order.orderId);
+        await markOrderDeleted(order.orderId);
+        _orderCartStates.remove(order.orderId);
+        await HiveService.clearOrderBillId(order.orderId);
+      }
+
+      // 3. Handle backend failure
+      if (!allSucceeded) {
+        _error = failureMessage ?? 'Failed to clear all orders on server.';
+        notifyListeners();
+        await refreshTables(silent: true);
+        return false;
+      }
+
+      debugPrint('[TableProvider] clearTable confirmed by server for table $tableId');
+
+      try {
+        await ApiService.updateOrderChannelStatus(
+          orderChannelId: tableId,
+          channelStatusId: 0,
+          status: 'Available',
+        );
+      } catch (_) {}
+
+      // Update in-memory table status to available immediately upon confirmed backend success
+      if (tableIndex != -1 && tableIndex < _tables.length) {
+        _tables[tableIndex] = _tables[tableIndex].copyWith(
+          activeOrders: [],
+          status: TableStatus.available,
+          kotGenerated: false,
+          billGenerated: false,
+        );
+        notifyListeners();
+      }
+
+      // 4. Refresh authoritative table list from backend
+      await refreshTables(silent: true);
+      return true;
+    } catch (e) {
+      debugPrint('[TableProvider] Error clearing table $tableId: $e');
+      _error = 'Error clearing table: $e';
+      notifyListeners();
+      return false;
+    }
   }
 
   /// Set current active order - NEWLY ADDED METHOD
@@ -702,9 +1083,19 @@ class TableProvider extends ChangeNotifier {
     }
 
     if (status != null) {
-      final tableIndex = _tables.indexWhere((table) => table.id == tableId);
+      final tableIndex =
+          _tables.indexWhere((table) => GuidHelper.areEqual(table.id, tableId));
       if (tableIndex != -1) {
-        _tables[tableIndex] = _tables[tableIndex].copyWith(status: status);
+        if (status == TableStatus.available) {
+          _tables[tableIndex] = _tables[tableIndex].copyWith(
+            status: TableStatus.available,
+            activeOrders: const [],
+            kotGenerated: false,
+            billGenerated: false,
+          );
+        } else {
+          _tables[tableIndex] = _tables[tableIndex].copyWith(status: status);
+        }
         notifyListeners();
       }
     }
@@ -749,11 +1140,60 @@ class TableProvider extends ChangeNotifier {
   }
 
   final Set<String> _settledOrderIds = {};
+  final Set<String> _deletedOrderIds = {};
 
   bool isOrderSettled(String orderId) {
     if (orderId.isEmpty) return false;
-    return _settledOrderIds.contains(orderId) ||
-        HiveService.isOrderSettled(orderId);
+    final clean = orderId.toLowerCase().trim();
+    return _settledOrderIds.contains(clean) ||
+        HiveService.isOrderSettled(clean);
+  }
+
+  bool isOrderDeleted(String orderId) {
+    if (orderId.isEmpty) return false;
+    final clean = orderId.toLowerCase().trim();
+    return _deletedOrderIds.contains(clean) ||
+        HiveService.isOrderDeleted(clean);
+  }
+
+  /// Mark [orderId] as deleted/cancelled, clearing its bill, removing it from active
+  /// orders, and updating the holding table to Available if no other active orders remain.
+  Future<void> markOrderDeleted(String orderId) async {
+    if (orderId.isEmpty) return;
+
+    final clean = orderId.toLowerCase().trim();
+    _deletedOrderIds.add(clean);
+    await HiveService.markOrderDeleted(clean);
+    await clearBillId(orderId);
+
+    // Update in-memory table state immediately
+    var changed = false;
+    for (var i = 0; i < _tables.length; i++) {
+      final t = _tables[i];
+      if (t.activeOrders.any((o) => GuidHelper.areEqual(o.orderId, orderId))) {
+        final remaining = t.activeOrders
+            .where((o) => !GuidHelper.areEqual(o.orderId, orderId))
+            .toList();
+        final hasKot = remaining.any((o) => o.hasKotGenerated);
+        final hasBill = remaining.any((o) => o.isBilled);
+        final newStatus = remaining.isEmpty
+            ? TableStatus.available
+            : (hasBill
+                ? TableStatus.billGenerated
+                : (hasKot ? TableStatus.kotGenerated : TableStatus.occupied));
+        _tables[i] = t.copyWith(
+          activeOrders: remaining,
+          status: newStatus,
+          kotGenerated: hasKot,
+          billGenerated: hasBill,
+        );
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      notifyListeners();
+    }
   }
 
   /// Mark [orderId] as fully settled/paid, clearing its bill, removing it from active
@@ -761,22 +1201,31 @@ class TableProvider extends ChangeNotifier {
   Future<void> markOrderSettled(String orderId) async {
     if (orderId.isEmpty) return;
 
-    _settledOrderIds.add(orderId);
-    await HiveService.markOrderSettled(orderId);
+    final clean = orderId.toLowerCase().trim();
+    _settledOrderIds.add(clean);
+    await HiveService.markOrderSettled(clean);
     await clearBillId(orderId);
 
     // Update memory table state immediately so UI updates without waiting for network
     var changed = false;
     for (var i = 0; i < _tables.length; i++) {
       final t = _tables[i];
-      if (t.activeOrders.any((o) => o.orderId == orderId)) {
-        final remaining =
-            t.activeOrders.where((o) => o.orderId != orderId).toList();
-        final newStatus =
-            remaining.isEmpty ? TableStatus.available : t.status;
+      if (t.activeOrders.any((o) => GuidHelper.areEqual(o.orderId, orderId))) {
+        final remaining = t.activeOrders
+            .where((o) => !GuidHelper.areEqual(o.orderId, orderId))
+            .toList();
+        final hasKot = remaining.any((o) => o.hasKotGenerated);
+        final hasBill = remaining.any((o) => o.isBilled);
+        final newStatus = remaining.isEmpty
+            ? TableStatus.available
+            : (hasBill
+                ? TableStatus.billGenerated
+                : (hasKot ? TableStatus.kotGenerated : TableStatus.occupied));
         _tables[i] = t.copyWith(
           activeOrders: remaining,
           status: newStatus,
+          kotGenerated: hasKot,
+          billGenerated: hasBill,
         );
         changed = true;
       }
@@ -793,7 +1242,8 @@ class TableProvider extends ChangeNotifier {
 
     for (final table in _tables) {
       for (final order in table.activeOrders) {
-        if (order.orderId == orderId && GuidHelper.isValid(order.billId)) {
+        if (GuidHelper.areEqual(order.orderId, orderId) &&
+            GuidHelper.isValid(order.billId)) {
           return GuidHelper.orNull(order.billId);
         }
       }
@@ -811,7 +1261,8 @@ class TableProvider extends ChangeNotifier {
 
     for (var i = 0; i < _tables.length; i++) {
       final orders = _tables[i].activeOrders;
-      final index = orders.indexWhere((o) => o.orderId == orderId);
+      final index =
+          orders.indexWhere((o) => GuidHelper.areEqual(o.orderId, orderId));
       if (index == -1) continue;
 
       final updated = List<ActiveOrder>.from(orders);
@@ -871,7 +1322,7 @@ class TableProvider extends ChangeNotifier {
   Future<double?> getBillAmount(String orderId) async {
     try {
       final billDetails = await getBillDetails(orderId);
-      return billDetails?.data?.billHeadDt.billAmountInclTax;
+      return billDetails?.data?.billHeadDt.effectivePayableAmount;
     } catch (e) {
       debugPrint(
         '[TableProvider] Error getting bill amount for order $orderId: $e',
@@ -901,11 +1352,27 @@ class TableProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> refreshTables() async {
+  @override
+  void dispose() {
+    stopPolling();
+    super.dispose();
+  }
+
+  /// Refreshes table data from backend.
+  /// When [silent] or [isPullToRefresh] is true, avoids full-screen loading flash.
+  Future<void> refreshTables({
+    bool silent = false,
+    bool isPullToRefresh = false,
+  }) async {
     final token = _getAuthToken();
     final outletId = _getOutletId();
-    if (token != null && outletId != null) {
-      await fetchTablesWithAuth(token, outletId, selectedLocation);
+    if (token != null && outletId != null && outletId > 0) {
+      await fetchTablesWithAuth(
+        token,
+        outletId,
+        selectedLocation,
+        silent || isPullToRefresh || _tables.isNotEmpty,
+      );
     }
   }
 

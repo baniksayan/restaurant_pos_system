@@ -27,4 +27,11 @@ class GuidHelper {
   /// [value] when it is a real id, otherwise null — handy for collapsing the
   /// placeholder back to null before storing or passing it along.
   static String? orNull(String? value) => isValid(value) ? value!.trim() : null;
+
+  /// Case-insensitive trimmed equality check for identifiers and GUIDs.
+  static bool areEqual(String? a, String? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return a.trim().toLowerCase() == b.trim().toLowerCase();
+  }
 }

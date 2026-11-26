@@ -505,9 +505,10 @@ class HiveService {
 
   static Future<void> markOrderSettled(String orderId) async {
     try {
-      if (orderId.trim().isEmpty) return;
-      await posBox.put('settled_order_$orderId', true);
-      debugPrint('[HiveService] Marked order settled: $orderId');
+      final clean = orderId.trim().toLowerCase();
+      if (clean.isEmpty) return;
+      await posBox.put('settled_order_$clean', true);
+      debugPrint('[HiveService] Marked order settled: $clean');
     } catch (e) {
       debugPrint('[HiveService] Error marking order settled: $e');
     }
@@ -515,8 +516,32 @@ class HiveService {
 
   static bool isOrderSettled(String orderId) {
     try {
-      if (orderId.trim().isEmpty) return false;
-      return posBox.get('settled_order_$orderId') == true;
+      final clean = orderId.trim().toLowerCase();
+      if (clean.isEmpty) return false;
+      return posBox.get('settled_order_$clean') == true ||
+          posBox.get('settled_order_$orderId') == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> markOrderDeleted(String orderId) async {
+    try {
+      final clean = orderId.trim().toLowerCase();
+      if (clean.isEmpty) return;
+      await posBox.put('deleted_order_$clean', true);
+      debugPrint('[HiveService] Marked order deleted: $clean');
+    } catch (e) {
+      debugPrint('[HiveService] Error marking order deleted: $e');
+    }
+  }
+
+  static bool isOrderDeleted(String orderId) {
+    try {
+      final clean = orderId.trim().toLowerCase();
+      if (clean.isEmpty) return false;
+      return posBox.get('deleted_order_$clean') == true ||
+          posBox.get('deleted_order_$orderId') == true;
     } catch (_) {
       return false;
     }
@@ -554,6 +579,35 @@ class HiveService {
     } catch (e) {
       debugPrint('[HiveService] Error saving KOT note: $e');
     }
+  }
+
+  static Future<void> saveOrderKotNumber(String orderId, String kotNo) async {
+    try {
+      if (orderId.trim().isEmpty || kotNo.trim().isEmpty) return;
+      final cleanId = orderId.trim();
+      final cleanKot = kotNo.trim();
+      await posBox.put('order_kot_no_$cleanId', cleanKot);
+      debugPrint('[HiveService] Saved KOT number for order $cleanId: $cleanKot');
+    } catch (e) {
+      debugPrint('[HiveService] Error saving KOT number for order: $e');
+    }
+  }
+
+  static String? getOrderKotNumber(String orderId) {
+    try {
+      if (orderId.trim().isEmpty) return null;
+      final val = posBox.get('order_kot_no_${orderId.trim()}');
+      return (val is String && val.isNotEmpty) ? val : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> clearOrderKotNumber(String orderId) async {
+    try {
+      if (orderId.trim().isEmpty) return;
+      await posBox.delete('order_kot_no_${orderId.trim()}');
+    } catch (_) {}
   }
 
   static Future<void> saveCustomerName(String identifier, String name) async {

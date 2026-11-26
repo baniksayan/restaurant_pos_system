@@ -244,8 +244,8 @@ class _PendingPaymentsViewState extends State<PendingPaymentsView> {
                       );
                       if (billResp != null && billResp.data != null) {
                         final data = billResp.data!;
-                        if (data.billHeadDt.billAmountInclTax > 0) {
-                          billTotal = data.billHeadDt.billAmountInclTax;
+                        if (data.billHeadDt.effectivePayableAmount > 0) {
+                          billTotal = data.billHeadDt.effectivePayableAmount;
                         }
                         if (data.billHeadDt.billNo.isNotEmpty) {
                           billNo = data.billHeadDt.billNo;

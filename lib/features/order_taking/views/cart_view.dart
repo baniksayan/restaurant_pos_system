@@ -839,6 +839,7 @@ class _CartViewState extends State<CartView> {
 
         setState(() {
           _kotNumbers.add(apiKotNumber);
+          HiveService.saveOrderKotNumber(backendOrderId, apiKotNumber);
           if (kotNote.isNotEmpty) {
             _kotNotes[apiKotNumber] = kotNote;
             HiveService.saveKotNote(apiKotNumber, kotNote);

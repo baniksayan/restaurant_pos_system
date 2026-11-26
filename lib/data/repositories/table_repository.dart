@@ -17,7 +17,7 @@ class TableRepository {
   }) async {
     try {
       debugPrint('[TableRepo] Calling OrderChannelListByType API...');
-      debugPrint('[TableRepo] Token: ${token.substring(0, 20)}...');
+      debugPrint('[TableRepo] Auth Token: [PRESENT]');
       debugPrint('[TableRepo] OutletId: $outletId');
       debugPrint('[TableRepo] OrderChannelType: $orderChannelType');
 
@@ -98,7 +98,7 @@ class TableRepository {
           debugPrint('[TableRepo] Table capacity: ${table.capacity}');
           debugPrint('[TableRepo] Raw orderList: ${table.orderList}');
 
-          // FIXED: Filter out empty, cancelled, and settled/vacated/completed orders
+          // Filter out empty, cancelled, and settled/vacated/completed orders directly from backend response
           final activeOrders =
               table.orderList
                   ?.where(
@@ -109,17 +109,20 @@ class TableRepository {
                               "00000000-0000-0000-0000-000000000000") {
                         return false;
                       }
-                      if (HiveService.isOrderSettled(order.orderId!)) {
-                        return false;
-                      }
                       final status =
                           (order.orderStatus ?? '').toLowerCase().trim();
-                      if (status == 'cancelled' ||
-                          status == 'settled' ||
-                          status == 'vacated' ||
-                          status == 'completed' ||
-                          status == 'closed' ||
-                          status == 'paid') {
+                      if (status.contains('cancel') ||
+                          status.contains('delet') ||
+                          status.contains('remov') ||
+                          status.contains('void') ||
+                          status.contains('inactiv') ||
+                          status.contains('settle') ||
+                          status.contains('vacat') ||
+                          status.contains('complet') ||
+                          status.contains('closed') ||
+                          status.contains('paid') ||
+                          status == 'bill settled' ||
+                          status == 'paid in full') {
                         return false;
                       }
                       return true;
@@ -129,17 +132,16 @@ class TableRepository {
                     debugPrint(
                       '[TableRepo] Creating ActiveOrder: ${order.generatedOrderNo}',
                     );
+                    final storedKotNo = HiveService.getOrderKotNumber(order.orderId!);
+                    final isKotCreated = storedKotNo != null && storedKotNo.isNotEmpty;
                     return ActiveOrder(
                       orderId: order.orderId!,
                       generatedOrderNo: order.generatedOrderNo ?? 'Unknown',
                       orderStatus: order.orderStatus ?? 'Active',
                       isBilled: order.isBilled ?? false,
                       billId: HiveService.getOrderBillId(order.orderId!),
-                      // Guest counts were being parsed from the response and
-                      // then dropped here, so the table card could never show
-                      // who was seated. Built by hand rather than via
-                      // ActiveOrder.fromNewApiOrderList, which is why adding
-                      // fields to that factory had no effect.
+                      isKotCreated: isKotCreated,
+                      kotNumber: storedKotNo,
                       totalAdult: order.totalAdult,
                       totalChild: order.totalChild,
                     );
@@ -151,9 +153,9 @@ class TableRepository {
             '[TableRepo] Table ${table.name}: ${activeOrders.length} active orders',
           );
 
-          // Determine enhanced table status based on order progression
+          // Determine enhanced table status based on order progression from backend
           final TableStatus tableStatus;
-          final kotGenerated = activeOrders.isNotEmpty;
+          final kotGenerated = activeOrders.any((order) => order.hasKotGenerated);
           final billGenerated = activeOrders.any((order) => order.isBilled);
 
           if (activeOrders.isEmpty) {
@@ -161,8 +163,11 @@ class TableRepository {
           } else if (billGenerated) {
             // Bill has been generated for order(s) on this table awaiting payment
             tableStatus = TableStatus.billGenerated;
+          } else if (kotGenerated) {
+            // Orders have been sent to kitchen / KOT generated
+            tableStatus = TableStatus.kotGenerated;
           } else {
-            // Orders exist and in progress
+            // Orders exist but KOT not yet generated (occupied & order in progress)
             tableStatus = TableStatus.occupied;
           }
 

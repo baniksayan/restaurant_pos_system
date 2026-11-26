@@ -40,6 +40,9 @@ class PendingBill {
     this.billDate,
   });
 
+  /// Alias for amount
+  double get totalAmount => amount;
+
   /// Anything not fully settled still needs collecting.
   bool get isOutstanding => isPaid != 2 && effectiveDueAmount > 0.004;
 
@@ -117,6 +120,7 @@ class PendingBill {
         'totalAmount',
         'netAmount',
         'amountAfterDisc',
+        'billAmountExclTax',
         'orderAmount',
         'amount',
         'grossAmount',
@@ -127,7 +131,13 @@ class PendingBill {
         final val = toDouble(json[key]);
         if (val > 0) return val;
       }
-      return toDouble(json['billAmountInclTax']);
+      final incl = toDouble(json['billAmountInclTax']);
+      if (incl > 0) return incl;
+      final excl = toDouble(json['billAmountExclTax']);
+      if (excl > 0) return excl;
+      final disc = toDouble(json['amountAfterDisc']);
+      if (disc > 0) return disc;
+      return 0.0;
     }
 
     double parsePaid() {
