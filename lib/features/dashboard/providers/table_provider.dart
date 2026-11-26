@@ -52,6 +52,7 @@ class TableProvider extends ChangeNotifier {
     OutletIdGetter? outletIdGetter,
     Duration? pollingInterval,
     bool skipPaymentReconciliation = false,
+    bool initialLoading = false,
   })  : _checkInternet = checkInternet ?? ConnectivityHelper.hasInternetConnection,
         _fetchTablesApi =
             fetchTablesApi ?? TableRepository.fetchTablesFromOrderChannelAPI,
@@ -62,13 +63,15 @@ class TableProvider extends ChangeNotifier {
         _authTokenGetter = authTokenGetter,
         _outletIdGetter = outletIdGetter,
         _pollingInterval = pollingInterval ?? const Duration(seconds: 8),
-        _skipPaymentReconciliation = skipPaymentReconciliation;
+        _skipPaymentReconciliation = skipPaymentReconciliation,
+        _isLoading = initialLoading;
 
   int _fetchGeneration = 0;
   int _committedGeneration = 0;
 
   List<RestaurantTable> _tables = [];
   bool _isLoading = false;
+  bool _hasCompletedInitialFetch = false;
   String? _error;
   String _selectedLocation = '';
   int? _outletId; // Remove static assignment - will get from Hive
@@ -86,6 +89,8 @@ class TableProvider extends ChangeNotifier {
   // Getters
   List<RestaurantTable> get tables => _tables;
   bool get isLoading => _isLoading;
+  bool get hasCompletedInitialFetch =>
+      _hasCompletedInitialFetch || _tables.isNotEmpty;
   String? get error => _error;
   String get selectedLocation =>
       _selectedLocation.isNotEmpty
@@ -93,8 +98,13 @@ class TableProvider extends ChangeNotifier {
           : (HiveService.getSelectedLocationName() ?? '');
 
   void setSelectedLocation(String location) {
-    _selectedLocation = location;
-    notifyListeners();
+    if (_selectedLocation != location) {
+      _selectedLocation = location;
+      _tables = [];
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+    }
   }
   int get outletId => _outletId ?? _getOutletIdFromHive();
 
@@ -123,15 +133,45 @@ class TableProvider extends ChangeNotifier {
   List<OrderChannel> get orderChannels => _orderChannels;
 
   void setOutletId(int outletId) {
-    _outletId = outletId;
-    // Also save to Hive for persistence
-    HiveService.setOutletId(outletId);
-    if (kDebugMode) {
-      debugPrint(
-        '[TableProvider] Updated outlet ID: $outletId (saved to Hive)',
-      );
+    if (_outletId != outletId) {
+      _outletId = outletId;
+      HiveService.setOutletId(outletId);
+      if (kDebugMode) {
+        debugPrint(
+          '[TableProvider] Updated outlet ID: $outletId (saved to Hive)',
+        );
+      }
+      _tables = [];
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
     }
-    notifyListeners();
+  }
+
+  /// Explicitly switches location and outlet ID, immediately entering loading state
+  /// so that the UI shows skeleton shimmer loading instead of empty state while fetching.
+  Future<void> switchLocation({
+    required String location,
+    required int outletId,
+  }) async {
+    final bool changed = _selectedLocation != location || _outletId != outletId;
+    _selectedLocation = location;
+    _outletId = outletId;
+    HiveService.setOutletId(outletId);
+    HiveService.setSelectedLocationId(outletId);
+    HiveService.setSelectedLocationName(location);
+
+    if (changed || _tables.isEmpty) {
+      _tables = [];
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+    }
+
+    final token = _getAuthToken();
+    if (token != null && outletId > 0) {
+      await fetchTablesWithAuth(token, outletId, location, false);
+    }
   }
 
   /// Get authentication token - Made public for dialog access
@@ -167,9 +207,16 @@ class TableProvider extends ChangeNotifier {
     final token = _getAuthToken();
     final outletId = _getOutletId();
     if (token != null && outletId != null && outletId > 0) {
+      if (!silent) {
+        _isLoading = true;
+        _error = null;
+        notifyListeners();
+      }
       await fetchTablesWithAuth(token, outletId, selectedLocation, silent);
       startPolling();
     } else {
+      _isLoading = false;
+      _hasCompletedInitialFetch = true;
       _error = 'Authentication token or outlet ID not found';
       notifyListeners();
       if (kDebugMode) {
@@ -203,9 +250,8 @@ class TableProvider extends ChangeNotifier {
   ]) async {
     final int generation = ++_fetchGeneration;
 
-    // Only show full loading spinner if this is an initial empty load,
-    // avoiding UI unmounting on background sync or pull-to-refresh
-    if (!silent && _tables.isEmpty) {
+    // Show full loading skeleton if this is not a silent background sync / pull-to-refresh
+    if (!silent) {
       _isLoading = true;
       _error = null;
       notifyListeners();
@@ -470,8 +516,11 @@ class TableProvider extends ChangeNotifier {
         debugPrint('[TableProvider] API Error: $e');
       }
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (generation == _fetchGeneration) {
+        _isLoading = false;
+        _hasCompletedInitialFetch = true;
+        notifyListeners();
+      }
     }
   }
 
@@ -1662,7 +1711,7 @@ class TableProvider extends ChangeNotifier {
         token,
         outletId,
         selectedLocation,
-        silent || isPullToRefresh || _tables.isNotEmpty,
+        silent || isPullToRefresh,
       );
     }
   }

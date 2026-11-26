@@ -11,6 +11,7 @@ import '../providers/table_provider.dart';
 import 'package:restaurant_pos_system/features/menu/providers/menu_provider.dart';
 import 'package:restaurant_pos_system/data/models/restaurant_table.dart';
 import 'package:restaurant_pos_system/core/utils/haptic_helper.dart';
+import 'package:restaurant_pos_system/shared/widgets/layout/skeleton_loader.dart';
 
 class LocationHeader extends StatelessWidget {
   final String selectedLocation;
@@ -26,6 +27,8 @@ class LocationHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tableProvider = context.watch<TableProvider>();
+    final isTableLoading = tableProvider.isLoading;
     final availableCount =
         tables.where((t) => t.status == TableStatus.available).length;
     final totalCount = tables.length;
@@ -89,30 +92,41 @@ class LocationHeader extends StatelessWidget {
                       const SizedBox(height: 3),
                       Row(
                         children: [
-                          // Clean emerald live indicator dot
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF10B981),
-                              shape: BoxShape.circle,
+                          if (isTableLoading) ...[
+                            const SkeletonLoader.circular(size: 6),
+                            const SizedBox(width: 6),
+                            const SkeletonLoader.rectangular(
+                              width: 90,
+                              height: 12,
+                              borderRadius: BorderRadius.all(Radius.circular(4)),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              statsText,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF64748B),
-                                letterSpacing: -0.1,
-                                height: 1.2,
+                          ] else ...[
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: totalCount == 0
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF10B981),
+                                shape: BoxShape.circle,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                statsText,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF64748B),
+                                  letterSpacing: -0.1,
+                                  height: 1.2,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],
@@ -144,13 +158,11 @@ class LocationHeader extends StatelessWidget {
                   .firstOrNull;
           final outletId = matched?.id ?? HiveService.getOutletId();
           if (outletId != null && outletId > 0) {
-            HiveService.setOutletId(outletId);
-            HiveService.setSelectedLocationId(outletId);
-            HiveService.setSelectedLocationName(location);
             final tableProvider = context.read<TableProvider>();
-            tableProvider.setOutletId(outletId);
-            tableProvider.setSelectedLocation(location);
-            tableProvider.refreshTables();
+            tableProvider.switchLocation(
+              location: location,
+              outletId: outletId,
+            );
 
             context.read<MenuProvider>().loadMenuData(
                   outletId: outletId,

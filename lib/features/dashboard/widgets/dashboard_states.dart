@@ -10,9 +10,9 @@ class DashboardLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: Column(
+    return Container(
+      color: Colors.grey[50],
+      child: Column(
         children: [
           // 1. Skeleton matching DashboardHeader
           _buildHeaderSkeleton(),
@@ -21,21 +21,8 @@ class DashboardLoadingState extends StatelessWidget {
           _buildLocationHeaderSkeleton(),
 
           // 3. Grid of Skeleton Cards matching TableGrid & EnhancedTableCard
-          Expanded(
-            child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              itemCount: 6,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 1.2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-              ),
-              itemBuilder: (context, index) {
-                return _buildTableCardSkeleton();
-              },
-            ),
+          const Expanded(
+            child: TableGridSkeleton(),
           ),
         ],
       ),
@@ -123,9 +110,34 @@ class DashboardLoadingState extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Shimmer skeleton grid for table cards, matching TableGrid geometry
+class TableGridSkeleton extends StatelessWidget {
+  final int itemCount;
+
+  const TableGridSkeleton({super.key, this.itemCount = 6});
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      itemCount: itemCount,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 1.25,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
+      ),
+      itemBuilder: (context, index) {
+        return buildTableCardSkeleton();
+      },
+    );
+  }
 
   /// Skeleton matching EnhancedTableCard
-  Widget _buildTableCardSkeleton() {
+  static Widget buildTableCardSkeleton() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -139,36 +151,53 @@ class DashboardLoadingState extends StatelessWidget {
           ),
         ],
       ),
-      child: const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Skeleton circular icon container (56x56)
-            SkeletonLoader.circular(size: 56),
-            SizedBox(height: 8),
-            // Skeleton table name
-            SkeletonLoader.rectangular(
-              width: 75,
-              height: 16,
-              borderRadius: BorderRadius.all(Radius.circular(4)),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final h = constraints.maxHeight;
+          final w = constraints.maxWidth;
+          final avatar = (h * 0.30).clamp(32.0, 48.0);
+          final gap = (h * 0.022).clamp(2.0, 4.0);
+          final compact = h < 132;
+
+          return Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: 6,
+                vertical: compact ? 3 : 5,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Skeleton circular icon container
+                  SkeletonLoader.circular(size: avatar),
+                  SizedBox(height: gap),
+                  // Skeleton table name
+                  SkeletonLoader.rectangular(
+                    width: (w * 0.45).clamp(50.0, 75.0),
+                    height: (h * 0.10).clamp(11.0, 14.0),
+                    borderRadius: const BorderRadius.all(Radius.circular(4)),
+                  ),
+                  SizedBox(height: (gap * 0.8).clamp(2.0, 3.5)),
+                  // Skeleton capacity text
+                  SkeletonLoader.rectangular(
+                    width: (w * 0.52).clamp(60.0, 85.0),
+                    height: (h * 0.08).clamp(9.0, 11.5),
+                    borderRadius: const BorderRadius.all(Radius.circular(4)),
+                  ),
+                  SizedBox(height: gap),
+                  // Skeleton status badge pill
+                  SkeletonLoader.rectangular(
+                    width: (w * 0.42).clamp(52.0, 70.0),
+                    height: (h * 0.12).clamp(14.0, 18.0),
+                    borderRadius: const BorderRadius.all(Radius.circular(10)),
+                  ),
+                ],
+              ),
             ),
-            SizedBox(height: 5),
-            // Skeleton capacity text
-            SkeletonLoader.rectangular(
-              width: 85,
-              height: 12,
-              borderRadius: BorderRadius.all(Radius.circular(4)),
-            ),
-            SizedBox(height: 8),
-            // Skeleton status badge pill
-            SkeletonLoader.rectangular(
-              width: 70,
-              height: 20,
-              borderRadius: BorderRadius.all(Radius.circular(12)),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

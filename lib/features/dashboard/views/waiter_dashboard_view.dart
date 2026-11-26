@@ -92,13 +92,11 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                       .firstOrNull;
                   final outletId = matchedLoc?.id ?? HiveService.getOutletId();
                   if (outletId != null && outletId > 0) {
-                    HiveService.setOutletId(outletId);
-                    HiveService.setSelectedLocationId(outletId);
-                    HiveService.setSelectedLocationName(location);
                     final tableProvider = context.read<TableProvider>();
-                    tableProvider.setOutletId(outletId);
-                    tableProvider.setSelectedLocation(location);
-                    tableProvider.refreshTables();
+                    tableProvider.switchLocation(
+                      location: location,
+                      outletId: outletId,
+                    );
 
                     context.read<MenuProvider>().loadMenuData(
                           outletId: outletId,
@@ -126,11 +124,15 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
               debugPrint('[UI] Error: ${tableProvider.error}');
             }
 
-            if (tableProvider.isLoading && tableProvider.tables.isEmpty) {
+            final bool isInitialEmptyLoad =
+                !tableProvider.hasCompletedInitialFetch &&
+                tableProvider.tables.isEmpty;
+
+            if (isInitialEmptyLoad) {
               return const DashboardLoadingState();
             }
 
-            if (tableProvider.error != null) {
+            if (tableProvider.error != null && tableProvider.tables.isEmpty) {
               return DashboardErrorState(tableProvider: tableProvider);
             }
 
@@ -162,7 +164,9 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                             child: AnimatedSize(
                               duration: const Duration(milliseconds: 250),
                               curve: Curves.easeInOutCubic,
-                              child: (_isLocationHeaderVisible || tables.isEmpty)
+                              child: (_isLocationHeaderVisible ||
+                                      tables.isEmpty ||
+                                      tableProvider.isLoading)
                                   ? LocationHeader(
                                       selectedLocation:
                                           dashboardProvider.selectedLocation,
@@ -227,8 +231,10 @@ class _WaiterDashboardViewState extends State<WaiterDashboardView> {
                                 // The TableGrid likely uses a scrollable (GridView). For empty state,
                                 // provide a scrollable ListView so pull-to-refresh still works.
                                 child:
-                                    tables.isEmpty
-                                        ? LayoutBuilder(
+                                    tableProvider.isLoading
+                                        ? const TableGridSkeleton()
+                                        : tables.isEmpty
+                                            ? LayoutBuilder(
                                           builder: (context, constraints) {
                                             return ListView(
                                               physics:
